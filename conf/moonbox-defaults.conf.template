@@ -1,0 +1,35 @@
+##########################    MOONBOX CORE    ###########################
+
+moonbox.core.engine                                   spark
+moonbox.core.spark.master						      local[*]
+moonbox.core.spark.loglevel							  ERROR
+moonbox.core.spark.app.name							  moonbox
+moonbox.core.spark.cores.max                          8
+moonbox.core.spark.executor.cores                     1
+##########################    MOONBOX GRID CACHE    ##########################
+
+moonbox.grid.cache.impl                               redis
+moonbox.grid.cache.redis.servers                      host:port
+
+moonbox.grid.persist.impl                             zookeeper
+moonbox.grid.persist.zookeeper.servers                host:port
+moonbox.grid.recovery.workerRegister.delay            10s
+moonbox.grid.recovery.waittingWorkerRegister.time     60s
+##############################    MOONBOX GRID AKKA     ######################
+
+moonbox.grid.cluster                                  MoonboxSystem
+moonbox.grid.akka.loglevel                         	  ERROR
+moonbox.grid.akka.actor.provider                   	  akka.cluster.ClusterActorRefProvider
+moonbox.grid.akka.actor.debug.autoreceive          	  off
+moonbox.grid.akka.remote.transport                 	  akka.remote.netty.NettyRemoteTransport
+moonbox.grid.akka.remote.log-remote-lifecycle-events  off
+moonbox.grid.akka.cluster.auto-down					  on
+moonbox.grid.akka.cluster.auto-down-unreachable-after 5s
+moonbox.grid.akka.extensions.0					      akka.cluster.client.ClusterClientReceptionist
+
+
+
+
+
+
+
