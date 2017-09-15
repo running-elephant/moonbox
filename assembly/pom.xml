@@ -14,29 +14,9 @@
     <packaging>pom</packaging>
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
-        <sbt.project.name>assembly</sbt.project.name>
         <build.testJarPhase>none</build.testJarPhase>
         <build.copyDependenciesPhase>package</build.copyDependenciesPhase>
     </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_${scala.library}</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-core_${scala.library}</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-grid_${scala.library}</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-    </dependencies>
 
     <build>
         <plugins>
