@@ -66,6 +66,22 @@ object Util extends EdpLogging {
 		props.getOrElse(key, throw new Exception(s"$key is not defined"))
 	}
 
+	def delete (file: File) {
+		if (file == null) {
+			return
+		}
+		else if (file.isDirectory) {
+			val files: Array[File] = file.listFiles
+			if (files != null) {
+				for (f <- files) delete(f)
+			}
+			file.delete
+		}
+		else {
+			file.delete
+		}
+	}
+
 	def akkaAddress(clusterName: String,
 	                hostname: String,
 	                port: Int,
