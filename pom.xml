@@ -39,10 +39,10 @@
         <spark.version>2.2.0</spark.version>
         <calcite.version>1.8.0</calcite.version>
         <guava.version>18.0</guava.version>
-        <elasticsearch.version>2.3.2</elasticsearch.version>
         <hppc.version>0.7.1</hppc.version>
         <jsr305.version>1.3.9</jsr305.version>
         <typesage.config.version>1.3.1</typesage.config.version>
+        <elasticsearch.version>5.3.2</elasticsearch.version>
         <elasticsearch-spark.version>5.3.2</elasticsearch-spark.version>
         <mysql.connector.version>5.1.37</mysql.connector.version>
         <ojdbc6.version>11.2.0.3</ojdbc6.version>
@@ -189,6 +189,40 @@
                 <version>${scala-xml.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka_${scala.library}</artifactId>
+                <version>0.10.0.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.kstyrc</groupId>
+                <artifactId>embedded-redis</artifactId>
+                <version>0.6</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.elasticsearch</groupId>
+                <artifactId>elasticsearch</artifactId>
+                <version>${elasticsearch.version}</version>
+            </dependency>
+            <dependency><!-- required by elasticsearch -->
+                <groupId>org.elasticsearch.plugin</groupId>
+                <artifactId>transport-netty3-client</artifactId>
+                <version>${elasticsearch.version}</version>
+            </dependency>
+
+            <dependency><!-- required by elasticsearch -->
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>2.7</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>1.4.194</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

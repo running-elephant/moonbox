@@ -23,7 +23,7 @@ package edp.moonbox.common
 import java.util
 import java.util.Map.Entry
 
-import redis.clients.jedis.{Jedis, ScanParams}
+import _root_.redis.clients.jedis.{Jedis, ScanParams}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
