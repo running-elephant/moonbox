@@ -41,18 +41,18 @@ class Table(plan: LogicalPlan, val platform: Platform,  val isResult: Boolean) {
 
 case class PushDownTable(plan: LogicalPlan, override val platform: Platform, override val isResult: Boolean) extends Table(plan, platform, isResult) with EdpLogging {
 	override def execute(implicit spark: SparkSession): DataFrame = {
-		//try {
+		try {
 			val rdd = new CalciteRDD(spark.sparkContext,
 				platform.getConnection(),
 				sql,
 				mapRow = rs => Row(CalciteRDD.resultSetToObjectArray(rs):_*)
 			)
 			spark.createDataFrame(rdd, schema)
-		//} catch {
-		//	case e: Exception =>
-		//		logWarning(s"pushdown sql: $sql \n to platform ${platform.name} error, attempt running in spark")
-		//		super.execute
-		//}
+		} catch {
+			case e: Exception =>
+				logWarning(s"pushdown sql: $sql \n to platform ${platform.name} error, attempt running in spark")
+				super.execute
+		}
 	}
 }
 case class ResultTable(plan: LogicalPlan, override val platform: Platform) extends Table(plan, platform, true)
