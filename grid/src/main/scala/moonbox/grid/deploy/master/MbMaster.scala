@@ -70,7 +70,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private var persistenceEngine: PersistenceEngine = _
 	private var singletonMaster: ActorRef = _
 	private var resultGetter: ActorRef = _
-	private var checkForWorkerTimeOutTask: Cancellable = _
+	/*private var checkForWorkerTimeOutTask: Cancellable = _*/
 
 	private val restServerEnabled = conf.get(REST_SERVER_ENABLE.key, REST_SERVER_ENABLE.defaultValue.get)
 	private var restServer: Option[RestServer] = None
@@ -150,7 +150,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				case None =>
 					// do nothing
 			}
-
 		case Terminated(worker) =>
 			workerToRunningJobIds.get(worker) match {
 				case Some(jobIds) =>
@@ -361,12 +360,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		loginManager = new LoginManager(catalogContext)
 
-		checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
+		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
 			FiniteDuration(0, MILLISECONDS),
 			FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS),
 			self,
 			CheckForWorkerTimeOut
-		)
+		)*/
 
 		singletonMaster = startMasterEndpoint(akkaSystem)
 		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter]), "result-getter")
@@ -410,9 +409,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	@scala.throws[Exception](classOf[Exception])
 	override def postStop(): Unit = {
 
-		if (checkForWorkerTimeOutTask != null && !checkForWorkerTimeOutTask.isCancelled) {
+		/*if (checkForWorkerTimeOutTask != null && !checkForWorkerTimeOutTask.isCancelled) {
 			checkForWorkerTimeOutTask.cancel()
-		}
+		}*/
 
 		restServer.foreach(_.stop())
 		tcpServer.foreach(_.stop())
