@@ -265,6 +265,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DropDatabase(name, ignoreIfNotExists, cascade)
 	}
 
+	override def visitUseDatabase(ctx: UseDatabaseContext): MbCommand = {
+		UseDatabase(ctx.db.getText)
+	}
+
 	override def visitMountTable(ctx: MountTableContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
 		val properties = visitPropertyList(ctx.propertyList())

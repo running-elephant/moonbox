@@ -712,6 +712,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterUseDatabase(MqlBaseParser.UseDatabaseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitUseDatabase(MqlBaseParser.UseDatabaseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterCreateFunction(MqlBaseParser.CreateFunctionContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1288,30 +1300,6 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterColTypeList(MqlBaseParser.ColTypeListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitColTypeList(MqlBaseParser.ColTypeListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterColType(MqlBaseParser.ColTypeContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitColType(MqlBaseParser.ColTypeContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterComplexDataType(MqlBaseParser.ComplexDataTypeContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1331,6 +1319,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitPrimitiveDataType(MqlBaseParser.PrimitiveDataTypeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterColTypeList(MqlBaseParser.ColTypeListContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitColTypeList(MqlBaseParser.ColTypeListContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterColType(MqlBaseParser.ColTypeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitColType(MqlBaseParser.ColTypeContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

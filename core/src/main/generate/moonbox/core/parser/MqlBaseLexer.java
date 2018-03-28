@@ -29,7 +29,7 @@ public class MqlBaseLexer extends Lexer {
 		REPLACE=67, REVOKE=68, SA=69, SELECT=70, SET=71, SHOW=72, STAR=73, STREAM=74, 
 		SYSINFO=75, TABLE=76, TABLES=77, TEMP=78, TEMPORARY=79, TO=80, TYPE=81, 
 		UNMOUNT=82, USER=83, USERS=84, VIEW=85, VIEWS=86, WITH=87, STRING=88, 
-		IDENTIFIER=89, INTEGER_VALUE=90, SIMPLE_COMMENT=91, BRACKETED_COMMENT=92, 
+		INTEGER_VALUE=89, IDENTIFIER=90, SIMPLE_COMMENT=91, BRACKETED_COMMENT=92, 
 		WS=93, UNRECOGNIZED=94;
 	public static String[] modeNames = {
 		"DEFAULT_MODE"
@@ -47,7 +47,7 @@ public class MqlBaseLexer extends Lexer {
 		"OVERWRITE", "REMOVE", "RENAME", "REPLACE", "REVOKE", "SA", "SELECT", 
 		"SET", "SHOW", "STAR", "STREAM", "SYSINFO", "TABLE", "TABLES", "TEMP", 
 		"TEMPORARY", "TO", "TYPE", "UNMOUNT", "USER", "USERS", "VIEW", "VIEWS", 
-		"WITH", "STRING", "IDENTIFIER", "INTEGER_VALUE", "DIGIT", "LETTER", "SIMPLE_COMMENT", 
+		"WITH", "STRING", "INTEGER_VALUE", "IDENTIFIER", "DIGIT", "LETTER", "SIMPLE_COMMENT", 
 		"BRACKETED_COMMENT", "WS", "UNRECOGNIZED"
 	};
 
@@ -78,7 +78,7 @@ public class MqlBaseLexer extends Lexer {
 		"OVERWRITE", "REMOVE", "RENAME", "REPLACE", "REVOKE", "SA", "SELECT", 
 		"SET", "SHOW", "STAR", "STREAM", "SYSINFO", "TABLE", "TABLES", "TEMP", 
 		"TEMPORARY", "TO", "TYPE", "UNMOUNT", "USER", "USERS", "VIEW", "VIEWS", 
-		"WITH", "STRING", "IDENTIFIER", "INTEGER_VALUE", "SIMPLE_COMMENT", "BRACKETED_COMMENT", 
+		"WITH", "STRING", "INTEGER_VALUE", "IDENTIFIER", "SIMPLE_COMMENT", "BRACKETED_COMMENT", 
 		"WS", "UNRECOGNIZED"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
@@ -176,11 +176,11 @@ public class MqlBaseLexer extends Lexer {
 		"P\3P\3P\3Q\3Q\3Q\3R\3R\3R\3R\3R\3S\3S\3S\3S\3S\3S\3S\3S\3T\3T\3T\3T\3"+
 		"T\3U\3U\3U\3U\3U\3U\3V\3V\3V\3V\3V\3W\3W\3W\3W\3W\3W\3X\3X\3X\3X\3X\3"+
 		"Y\3Y\3Y\3Y\7Y\u02c8\nY\fY\16Y\u02cb\13Y\3Y\3Y\3Y\3Y\3Y\7Y\u02d2\nY\fY"+
-		"\16Y\u02d5\13Y\3Y\5Y\u02d8\nY\3Z\3Z\3Z\6Z\u02dd\nZ\rZ\16Z\u02de\3Z\3Z"+
-		"\3Z\3Z\6Z\u02e5\nZ\rZ\16Z\u02e6\3Z\3Z\3Z\3Z\3Z\6Z\u02ee\nZ\rZ\16Z\u02ef"+
-		"\3Z\5Z\u02f3\nZ\3[\6[\u02f6\n[\r[\16[\u02f7\3\\\3\\\3]\5]\u02fd\n]\3^"+
-		"\3^\3^\3^\7^\u0303\n^\f^\16^\u0306\13^\3^\5^\u0309\n^\3^\5^\u030c\n^\3"+
-		"^\3^\3_\3_\3_\3_\7_\u0314\n_\f_\16_\u0317\13_\3_\3_\3_\3_\3_\3`\6`\u031f"+
+		"\16Y\u02d5\13Y\3Y\5Y\u02d8\nY\3Z\6Z\u02db\nZ\rZ\16Z\u02dc\3[\3[\3[\6["+
+		"\u02e2\n[\r[\16[\u02e3\3[\3[\3[\3[\6[\u02ea\n[\r[\16[\u02eb\3[\3[\3[\3"+
+		"[\3[\6[\u02f3\n[\r[\16[\u02f4\3[\5[\u02f8\n[\3\\\3\\\3]\5]\u02fd\n]\3"+
+		"^\3^\3^\3^\7^\u0303\n^\f^\16^\u0306\13^\3^\5^\u0309\n^\3^\5^\u030c\n^"+
+		"\3^\3^\3_\3_\3_\3_\7_\u0314\n_\f_\16_\u0317\13_\3_\3_\3_\3_\3_\3`\6`\u031f"+
 		"\n`\r`\16`\u0320\3`\3`\3a\3a\3\u0315\2b\3\3\5\4\7\5\t\6\13\7\r\b\17\t"+
 		"\21\n\23\13\25\f\27\r\31\16\33\17\35\20\37\21!\22#\23%\24\'\25)\26+\27"+
 		"-\30/\31\61\32\63\33\65\34\67\359\36;\37= ?!A\"C#E$G%I&K\'M(O)Q*S+U,W"+
@@ -227,8 +227,8 @@ public class MqlBaseLexer extends Lexer {
 		"\2\2\u0099\u027c\3\2\2\2\u009b\u0282\3\2\2\2\u009d\u0289\3\2\2\2\u009f"+
 		"\u028e\3\2\2\2\u00a1\u0298\3\2\2\2\u00a3\u029b\3\2\2\2\u00a5\u02a0\3\2"+
 		"\2\2\u00a7\u02a8\3\2\2\2\u00a9\u02ad\3\2\2\2\u00ab\u02b3\3\2\2\2\u00ad"+
-		"\u02b8\3\2\2\2\u00af\u02be\3\2\2\2\u00b1\u02d7\3\2\2\2\u00b3\u02f2\3\2"+
-		"\2\2\u00b5\u02f5\3\2\2\2\u00b7\u02f9\3\2\2\2\u00b9\u02fc\3\2\2\2\u00bb"+
+		"\u02b8\3\2\2\2\u00af\u02be\3\2\2\2\u00b1\u02d7\3\2\2\2\u00b3\u02da\3\2"+
+		"\2\2\u00b5\u02f7\3\2\2\2\u00b7\u02f9\3\2\2\2\u00b9\u02fc\3\2\2\2\u00bb"+
 		"\u02fe\3\2\2\2\u00bd\u030f\3\2\2\2\u00bf\u031e\3\2\2\2\u00c1\u0324\3\2"+
 		"\2\2\u00c3\u00c4\7*\2\2\u00c4\4\3\2\2\2\u00c5\u00c6\7+\2\2\u00c6\6\3\2"+
 		"\2\2\u00c7\u00c8\7.\2\2\u00c8\b\3\2\2\2\u00c9\u00ca\7>\2\2\u00ca\n\3\2"+
@@ -373,35 +373,35 @@ public class MqlBaseLexer extends Lexer {
 		"\3\2\2\2\u02d1\u02cf\3\2\2\2\u02d2\u02d5\3\2\2\2\u02d3\u02d1\3\2\2\2\u02d3"+
 		"\u02d4\3\2\2\2\u02d4\u02d6\3\2\2\2\u02d5\u02d3\3\2\2\2\u02d6\u02d8\7$"+
 		"\2\2\u02d7\u02c3\3\2\2\2\u02d7\u02cd\3\2\2\2\u02d8\u00b2\3\2\2\2\u02d9"+
-		"\u02dd\5\u00b9]\2\u02da\u02dd\5\u00b7\\\2\u02db\u02dd\7a\2\2\u02dc\u02d9"+
-		"\3\2\2\2\u02dc\u02da\3\2\2\2\u02dc\u02db\3\2\2\2\u02dd\u02de\3\2\2\2\u02de"+
-		"\u02dc\3\2\2\2\u02de\u02df\3\2\2\2\u02df\u02f3\3\2\2\2\u02e0\u02e4\7)"+
-		"\2\2\u02e1\u02e5\5\u00b9]\2\u02e2\u02e5\5\u00b7\\\2\u02e3\u02e5\7a\2\2"+
-		"\u02e4\u02e1\3\2\2\2\u02e4\u02e2\3\2\2\2\u02e4\u02e3\3\2\2\2\u02e5\u02e6"+
-		"\3\2\2\2\u02e6\u02e4\3\2\2\2\u02e6\u02e7\3\2\2\2\u02e7\u02e8\3\2\2\2\u02e8"+
-		"\u02f3\7)\2\2\u02e9\u02ed\7$\2\2\u02ea\u02ee\5\u00b9]\2\u02eb\u02ee\5"+
-		"\u00b7\\\2\u02ec\u02ee\7a\2\2\u02ed\u02ea\3\2\2\2\u02ed\u02eb\3\2\2\2"+
-		"\u02ed\u02ec\3\2\2\2\u02ee\u02ef\3\2\2\2\u02ef\u02ed\3\2\2\2\u02ef\u02f0"+
-		"\3\2\2\2\u02f0\u02f1\3\2\2\2\u02f1\u02f3\7$\2\2\u02f2\u02dc\3\2\2\2\u02f2"+
-		"\u02e0\3\2\2\2\u02f2\u02e9\3\2\2\2\u02f3\u00b4\3\2\2\2\u02f4\u02f6\5\u00b7"+
-		"\\\2\u02f5\u02f4\3\2\2\2\u02f6\u02f7\3\2\2\2\u02f7\u02f5\3\2\2\2\u02f7"+
-		"\u02f8\3\2\2\2\u02f8\u00b6\3\2\2\2\u02f9\u02fa\t\4\2\2\u02fa\u00b8\3\2"+
-		"\2\2\u02fb\u02fd\t\5\2\2\u02fc\u02fb\3\2\2\2\u02fd\u00ba\3\2\2\2\u02fe"+
-		"\u02ff\7/\2\2\u02ff\u0300\7/\2\2\u0300\u0304\3\2\2\2\u0301\u0303\n\6\2"+
-		"\2\u0302\u0301\3\2\2\2\u0303\u0306\3\2\2\2\u0304\u0302\3\2\2\2\u0304\u0305"+
-		"\3\2\2\2\u0305\u0308\3\2\2\2\u0306\u0304\3\2\2\2\u0307\u0309\7\17\2\2"+
-		"\u0308\u0307\3\2\2\2\u0308\u0309\3\2\2\2\u0309\u030b\3\2\2\2\u030a\u030c"+
-		"\7\f\2\2\u030b\u030a\3\2\2\2\u030b\u030c\3\2\2\2\u030c\u030d\3\2\2\2\u030d"+
-		"\u030e\b^\2\2\u030e\u00bc\3\2\2\2\u030f\u0310\7\61\2\2\u0310\u0311\7,"+
-		"\2\2\u0311\u0315\3\2\2\2\u0312\u0314\13\2\2\2\u0313\u0312\3\2\2\2\u0314"+
-		"\u0317\3\2\2\2\u0315\u0316\3\2\2\2\u0315\u0313\3\2\2\2\u0316\u0318\3\2"+
-		"\2\2\u0317\u0315\3\2\2\2\u0318\u0319\7,\2\2\u0319\u031a\7\61\2\2\u031a"+
-		"\u031b\3\2\2\2\u031b\u031c\b_\2\2\u031c\u00be\3\2\2\2\u031d\u031f\t\7"+
-		"\2\2\u031e\u031d\3\2\2\2\u031f\u0320\3\2\2\2\u0320\u031e\3\2\2\2\u0320"+
-		"\u0321\3\2\2\2\u0321\u0322\3\2\2\2\u0322\u0323\b`\2\2\u0323\u00c0\3\2"+
-		"\2\2\u0324\u0325\13\2\2\2\u0325\u00c2\3\2\2\2\27\2\u019e\u02c7\u02c9\u02d1"+
-		"\u02d3\u02d7\u02dc\u02de\u02e4\u02e6\u02ed\u02ef\u02f2\u02f7\u02fc\u0304"+
-		"\u0308\u030b\u0315\u0320\3\2\3\2";
+		"\u02db\5\u00b7\\\2\u02da\u02d9\3\2\2\2\u02db\u02dc\3\2\2\2\u02dc\u02da"+
+		"\3\2\2\2\u02dc\u02dd\3\2\2\2\u02dd\u00b4\3\2\2\2\u02de\u02e2\5\u00b9]"+
+		"\2\u02df\u02e2\5\u00b7\\\2\u02e0\u02e2\7a\2\2\u02e1\u02de\3\2\2\2\u02e1"+
+		"\u02df\3\2\2\2\u02e1\u02e0\3\2\2\2\u02e2\u02e3\3\2\2\2\u02e3\u02e1\3\2"+
+		"\2\2\u02e3\u02e4\3\2\2\2\u02e4\u02f8\3\2\2\2\u02e5\u02e9\7)\2\2\u02e6"+
+		"\u02ea\5\u00b9]\2\u02e7\u02ea\5\u00b7\\\2\u02e8\u02ea\7a\2\2\u02e9\u02e6"+
+		"\3\2\2\2\u02e9\u02e7\3\2\2\2\u02e9\u02e8\3\2\2\2\u02ea\u02eb\3\2\2\2\u02eb"+
+		"\u02e9\3\2\2\2\u02eb\u02ec\3\2\2\2\u02ec\u02ed\3\2\2\2\u02ed\u02f8\7)"+
+		"\2\2\u02ee\u02f2\7$\2\2\u02ef\u02f3\5\u00b9]\2\u02f0\u02f3\5\u00b7\\\2"+
+		"\u02f1\u02f3\7a\2\2\u02f2\u02ef\3\2\2\2\u02f2\u02f0\3\2\2\2\u02f2\u02f1"+
+		"\3\2\2\2\u02f3\u02f4\3\2\2\2\u02f4\u02f2\3\2\2\2\u02f4\u02f5\3\2\2\2\u02f5"+
+		"\u02f6\3\2\2\2\u02f6\u02f8\7$\2\2\u02f7\u02e1\3\2\2\2\u02f7\u02e5\3\2"+
+		"\2\2\u02f7\u02ee\3\2\2\2\u02f8\u00b6\3\2\2\2\u02f9\u02fa\t\4\2\2\u02fa"+
+		"\u00b8\3\2\2\2\u02fb\u02fd\t\5\2\2\u02fc\u02fb\3\2\2\2\u02fd\u00ba\3\2"+
+		"\2\2\u02fe\u02ff\7/\2\2\u02ff\u0300\7/\2\2\u0300\u0304\3\2\2\2\u0301\u0303"+
+		"\n\6\2\2\u0302\u0301\3\2\2\2\u0303\u0306\3\2\2\2\u0304\u0302\3\2\2\2\u0304"+
+		"\u0305\3\2\2\2\u0305\u0308\3\2\2\2\u0306\u0304\3\2\2\2\u0307\u0309\7\17"+
+		"\2\2\u0308\u0307\3\2\2\2\u0308\u0309\3\2\2\2\u0309\u030b\3\2\2\2\u030a"+
+		"\u030c\7\f\2\2\u030b\u030a\3\2\2\2\u030b\u030c\3\2\2\2\u030c\u030d\3\2"+
+		"\2\2\u030d\u030e\b^\2\2\u030e\u00bc\3\2\2\2\u030f\u0310\7\61\2\2\u0310"+
+		"\u0311\7,\2\2\u0311\u0315\3\2\2\2\u0312\u0314\13\2\2\2\u0313\u0312\3\2"+
+		"\2\2\u0314\u0317\3\2\2\2\u0315\u0316\3\2\2\2\u0315\u0313\3\2\2\2\u0316"+
+		"\u0318\3\2\2\2\u0317\u0315\3\2\2\2\u0318\u0319\7,\2\2\u0319\u031a\7\61"+
+		"\2\2\u031a\u031b\3\2\2\2\u031b\u031c\b_\2\2\u031c\u00be\3\2\2\2\u031d"+
+		"\u031f\t\7\2\2\u031e\u031d\3\2\2\2\u031f\u0320\3\2\2\2\u0320\u031e\3\2"+
+		"\2\2\u0320\u0321\3\2\2\2\u0321\u0322\3\2\2\2\u0322\u0323\b`\2\2\u0323"+
+		"\u00c0\3\2\2\2\u0324\u0325\13\2\2\2\u0325\u00c2\3\2\2\2\27\2\u019e\u02c7"+
+		"\u02c9\u02d1\u02d3\u02d7\u02dc\u02e1\u02e3\u02e9\u02eb\u02f2\u02f4\u02f7"+
+		"\u02fc\u0304\u0308\u030b\u0315\u0320\3\2\3\2";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

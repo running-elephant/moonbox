@@ -27,7 +27,14 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 					case false => throw new OrganizationExistsException(orgDefinition.name)
 				}
 			case false =>
-				jdbcDao.createOrganization(orgDefinition)
+				jdbcDao.createOrganization(orgDefinition).flatMap { id =>
+					jdbcDao.createDatabase(CatalogDatabase(
+						name = "default",
+						organizationId = id,
+						createBy = orgDefinition.createBy,
+						updateBy = orgDefinition.updateBy
+					))
+				}
 		}
 	}
 

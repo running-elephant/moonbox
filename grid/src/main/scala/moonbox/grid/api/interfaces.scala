@@ -2,15 +2,20 @@ package moonbox.grid.api
 
 import moonbox.grid.JobInfo
 
-case class MbRequest(username: String, request: MbApi)
-case class MbResponse(username: String, request: MbApi)
-
-
 sealed trait MbApi
 
-case class JobQuery(sqls: Seq[String]) extends MbApi
+case class OpenSession(username: String) extends MbApi
+case class OpenedSession(sessionId: String) extends MbApi
+case class OpenSessionFailed(error: String) extends MbApi
 
-case class JobSubmit(sqls: Seq[String], async: Boolean = true) extends MbApi
+case class CloseSession(sessionId: String) extends MbApi
+case object ClosedSession extends MbApi
+case class CloseSessionFailed(error: String) extends MbApi
+
+case class JobQuery(sessionId: String, sqls: Seq[String]) extends MbApi
+
+case class JobSubmit(username: String, sqls: Seq[String], async: Boolean = true) extends MbApi
+
 case class JobAccepted(jobId: String) extends MbApi
 case class JobRejected(error: String) extends MbApi
 case class JobFailed(jobId: String, error: String) extends MbApi

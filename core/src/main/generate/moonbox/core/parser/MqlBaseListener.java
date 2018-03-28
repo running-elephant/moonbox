@@ -702,6 +702,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitDropDatabase(MqlBaseParser.DropDatabaseContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code useDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterUseDatabase(MqlBaseParser.UseDatabaseContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code useDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitUseDatabase(MqlBaseParser.UseDatabaseContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code createFunction}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -1258,26 +1270,6 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCtes(MqlBaseParser.CtesContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#colTypeList}.
-	 * @param ctx the parse tree
-	 */
-	void enterColTypeList(MqlBaseParser.ColTypeListContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#colTypeList}.
-	 * @param ctx the parse tree
-	 */
-	void exitColTypeList(MqlBaseParser.ColTypeListContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#colType}.
-	 * @param ctx the parse tree
-	 */
-	void enterColType(MqlBaseParser.ColTypeContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#colType}.
-	 * @param ctx the parse tree
-	 */
-	void exitColType(MqlBaseParser.ColTypeContext ctx);
-	/**
 	 * Enter a parse tree produced by the {@code complexDataType}
 	 * labeled alternative in {@link MqlBaseParser#dataType}.
 	 * @param ctx the parse tree
@@ -1301,6 +1293,26 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitPrimitiveDataType(MqlBaseParser.PrimitiveDataTypeContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#colTypeList}.
+	 * @param ctx the parse tree
+	 */
+	void enterColTypeList(MqlBaseParser.ColTypeListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#colTypeList}.
+	 * @param ctx the parse tree
+	 */
+	void exitColTypeList(MqlBaseParser.ColTypeListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#colType}.
+	 * @param ctx the parse tree
+	 */
+	void enterColType(MqlBaseParser.ColTypeContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#colType}.
+	 * @param ctx the parse tree
+	 */
+	void exitColType(MqlBaseParser.ColTypeContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#complexColTypeList}.
 	 * @param ctx the parse tree

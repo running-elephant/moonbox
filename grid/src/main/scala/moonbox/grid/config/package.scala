@@ -144,4 +144,8 @@ package object config {
 	val WORKER_TIMEOUT = ConfigBuilder("moonbox.worker.timeout")
 	    .longConf
 	    .createWithDefault(60)
+
+	val WORKER_STATEREPORT_INTERVAL = ConfigBuilder("moonbox.worker.stateReport.interval")
+	    .timeConf
+	    .createWithDefaultString("3min")
 }

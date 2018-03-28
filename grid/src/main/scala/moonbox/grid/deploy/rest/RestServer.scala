@@ -1,5 +1,7 @@
 package moonbox.grid.deploy.rest
 
+import java.util.concurrent.ConcurrentHashMap
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -61,6 +63,48 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case Some(username) =>
 								service.logout(username)
+						}
+					}
+				}
+			}
+		} ~
+		path("openSession") {
+			post {
+				entity(as[OpenSessionInbound]) { in =>
+					complete {
+						tokenManager.decode(in.token) match {
+							case None =>
+								LogoutOutbound(error = Some("Token is incorrect or expired."))
+							case Some(username) =>
+								service.openSession(username)
+						}
+					}
+				}
+			}
+		} ~
+		path("closeSession") {
+			post {
+				entity(as[CloseSessionInbound]) { in =>
+					complete {
+						tokenManager.decode(in.token) match {
+							case None =>
+								LogoutOutbound(error = Some("Token is incorrect or expired."))
+							case Some(username) =>
+								service.closeSession(username, in.sessionId)
+						}
+					}
+				}
+			}
+		} ~
+		path("query") {
+			post {
+				entity(as[QueryInbound]) { in =>
+					complete {
+						tokenManager.decode(in.token) match {
+							case None =>
+								LogoutOutbound(error = Some("Token is incorrect or expired."))
+							case Some(username) =>
+								service.jobQuery(in.sessionId, in.sqls)
 						}
 					}
 				}

@@ -16,13 +16,15 @@ class TokenManager(conf: MbConf) {
 
 	def encode(username: String): String = {
 		val jwtClaim: JwtClaim = JwtClaim() + ("username", username)
-		Jwt.encode(jwtHeader, jwtClaim.expiresIn(_JWT_TIMEOUT), _JWT_SECRET)
+		Jwt.encode(jwtHeader, jwtClaim.expiresIn(1000000000), _JWT_SECRET)
 	}
 
 	def decode(token: String): Option[String] = {
 		implicit val formats = DefaultFormats
 		Jwt.decodeRaw(token, _JWT_SECRET, JwtAlgorithm.allHmac()).map { decoded =>
-			Some(parse(decoded).extract[String])
-		}.getOrElse(None)
+			Some(parse(decoded).extract[Username])
+		}.getOrElse(None).map(_.username)
 	}
+
+	case class Username(username: String)
 }

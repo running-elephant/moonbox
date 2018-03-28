@@ -80,6 +80,7 @@ mql
     | ALTER DATABASE name=identifier RENAME TO newName=identifier                               # setDatabaseName
     | ALTER DATABASE name=identifier SET COMMENT comment=STRING                                 # setDatabaseComment
     | DROP DATABASE (IF EXISTS)? name=identifier (CASCADE)?                                     # dropDatabase
+    | USE db=identifier                                                                         # useDatabase
 
     | CREATE FUNCTION (IF NOT EXISTS)? name=funcIdentifier OPTIONS propertyList                 # createFunction
     | RENAME FUNCTION name=funcIdentifier TO newName=funcIdentifier                             # renameFunction

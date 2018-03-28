@@ -26,7 +26,11 @@ case class ResultOutbound(jobId: String, error: Option[String] = None, schema: O
 case class CancelInbound(token: String, jobId: String) extends Inbound
 case class CancelOutbound(jobId: String, error: Option[String] = None) extends Outbound
 
-case class QueryInbound(token: String, sqls: Seq[String]) extends Inbound
+case class QueryInbound(sessionId: String, token: String, sqls: Seq[String]) extends Inbound
 case class QueryOutbound(error: Option[String] = None, schema: Option[Seq[String]] = None, data: Option[Seq[Seq[String]]] = None) extends Outbound
 
+case class OpenSessionInbound(token: String) extends Inbound
+case class OpenSessionOutbound(sessionId: Option[String], error: Option[String]) extends Outbound
 
+case class CloseSessionInbound(token: String, sessionId: String) extends Inbound
+case class CloseSessionOutbound(error: Option[String]) extends Outbound

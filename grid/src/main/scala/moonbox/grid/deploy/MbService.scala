@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import moonbox.common.MbLogging
-import moonbox.grid.api._
+import moonbox.grid.api.{ClosedSession, _}
 import moonbox.grid.deploy.authenticate.LoginManager
 import moonbox.grid.deploy.rest._
 
@@ -30,45 +30,66 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 		}
 	}
 
-	def jobQuery(username: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
+	def openSession(username: String): Future[OpenSessionOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(MbRequest(username, JobQuery(sqls))).flatMap {
-					case MbResponse(_, JobFailed(jobId, error)) =>
-						Future(QueryOutbound(error = Some(error)))
-					case MbResponse(_, JobCompleteWithCachedData(jobId)) =>
-						askForResult(MbRequest(username, FetchData(jobId, offset = 0, fetchSize))).map {
-							case MbResponse(_, FetchDataSuccess(id, schema, data)) =>
-								QueryOutbound(schema = Some(schema), data = Some(data))
-							case MbResponse(_, FetchDataFailed(id, error)) =>
-								QueryOutbound(error = Some(error))
-						}
-					case MbResponse(_, JobCompleteWithExternalData(jobId, message)) =>
-						Future(QueryOutbound())
-					case MbResponse(_, JobCompleteWithDirectData(jobId, data)) =>
-						Future(QueryOutbound(data = Some(data)))
+				askForCompute(OpenSession(username)).flatMap {
+					case OpenedSession(sessionId) =>
+						Future(OpenSessionOutbound(Some(sessionId), None))
+					case OpenSessionFailed(error) =>
+						Future(OpenSessionOutbound(None, Some(error)))
 				}
 			case false =>
-				Future(QueryOutbound(error = Some("Please login first.")))
+				Future(OpenSessionOutbound(None, Some("Please login first.")))
+		}
+	}
+
+	def closeSession(username: String, sessionId: String): Future[CloseSessionOutbound] = {
+		isLogin(username).flatMap {
+			case true =>
+				askForCompute(CloseSession(sessionId)).flatMap {
+					case ClosedSession => Future(CloseSessionOutbound(None))
+					case CloseSessionFailed(error) => Future(CloseSessionOutbound(Some(error)))
+				}
+			case false =>
+				Future(CloseSessionOutbound(Some("Please login first.")))
+		}
+	}
+
+	def jobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
+		askForCompute(JobQuery(sessionId, sqls)).flatMap {
+			case JobFailed(jobId, error) =>
+				Future(QueryOutbound(error = Some(error)))
+			case JobCompleteWithCachedData(jobId) =>
+				askForResult(FetchData(jobId, offset = 0, fetchSize)).map {
+					case FetchDataSuccess(id, schema, data) =>
+						QueryOutbound(schema = Some(schema), data = Some(data))
+					case FetchDataFailed(id, error) =>
+						QueryOutbound(error = Some(error))
+				}
+			case JobCompleteWithExternalData(jobId, message) =>
+				Future(QueryOutbound())
+			case JobCompleteWithDirectData(jobId, data) =>
+				Future(QueryOutbound(data = Some(data)))
 		}
 	}
 
 	def jobSubmitSync(username: String, sqls: Seq[String]): Future[SubmitOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(MbRequest(username, JobSubmit(sqls, async = false))).flatMap {
-					case MbResponse(_, JobFailed(jobId, error)) =>
+				askForCompute(JobSubmit(username, sqls, async = false)).flatMap {
+					case JobFailed(jobId, error) =>
 						Future(SubmitOutbound(jobId = Some(jobId), error = Some(error)))
-					case MbResponse(_, JobCompleteWithCachedData(jobId)) =>
-						askForResult(MbRequest(username, FetchData(jobId, offset = 0, size = 200))).map {
-							case MbResponse(_, FetchDataSuccess(id, schema, data)) =>
+					case JobCompleteWithCachedData(jobId) =>
+						askForResult(FetchData(jobId, offset = 0, size = 200)).map {
+							case FetchDataSuccess(id, schema, data) =>
 								SubmitOutbound(jobId = Some(id), schema = Some(schema), data = Some(data))
-							case MbResponse(_, FetchDataFailed(id, error)) =>
+							case FetchDataFailed(id, error) =>
 								SubmitOutbound(jobId = Some(id), error = Some(error))
 						}
-					case MbResponse(_, JobCompleteWithExternalData(jobId, message)) =>
+					case JobCompleteWithExternalData(jobId, message) =>
 						Future(SubmitOutbound(jobId = Some(jobId), message = message))
-					case MbResponse(_, JobCompleteWithDirectData(jobId, data)) =>
+					case JobCompleteWithDirectData(jobId, data) =>
 						Future(SubmitOutbound(jobId = Some(jobId), data = Some(data)))
 				}
 			case false =>
@@ -79,10 +100,10 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobSubmitAsync(username: String, sqls: Seq[String]): Future[SubmitOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(MbRequest(username, JobSubmit(sqls, async = true))).map {
-					case MbResponse(_, JobAccepted(jobId)) =>
+				askForCompute(JobSubmit(username, sqls, async = true)).map {
+					case JobAccepted(jobId) =>
 						SubmitOutbound(jobId = Some(jobId))
-					case MbResponse(_, JobRejected(error)) =>
+					case JobRejected(error) =>
 						SubmitOutbound(error = Some(error))
 				}
 			case false =>
@@ -93,10 +114,10 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobCancel(username: String, jobId: String): Future[CancelOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(MbRequest(username, JobCancel(jobId))).map {
-					case MbResponse(_, JobCancelSuccess(id)) =>
+				askForCompute(JobCancel(jobId)).map {
+					case JobCancelSuccess(id) =>
 						CancelOutbound(jobId = jobId)
-					case MbResponse(_, JobCancelFailed(id, error)) =>
+					case JobCancelFailed(id, error) =>
 						CancelOutbound(jobId = jobId, error = Some(error))
 				}
 			case false =>
@@ -107,8 +128,8 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobProgress(username: String, jobId: String): Future[ProgressOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(MbRequest(username, JobProgress(jobId))).map {
-					case MbResponse(_, JobProgressResponse(id, jobInfo)) =>
+				askForCompute(JobProgress(jobId)).map {
+					case JobProgressResponse(id, jobInfo) =>
 						ProgressOutbound(id, error = jobInfo.errorMessage, status = Some(s"${jobInfo.status}"))
 				}
 			case false =>
@@ -119,10 +140,10 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobResult(username: String, jobId: String, offset: Long, size: Long): Future[ResultOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForResult(MbRequest(username, FetchData(jobId, offset, size))).map {
-					case MbResponse(_, FetchDataSuccess(id, schema, data)) =>
+				askForResult(FetchData(jobId, offset, size)).map {
+					case FetchDataSuccess(id, schema, data) =>
 						ResultOutbound(jobId = id, schema = Some(schema), data = Some(data))
-					case MbResponse(_, FetchDataFailed(id, error)) =>
+					case FetchDataFailed(id, error) =>
 						ResultOutbound(jobId = id, error = Some(error))
 				}
 			case false =>
@@ -131,12 +152,12 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	}
 
 
-	private def askForCompute(message: MbRequest): Future[MbResponse] = askFor(master)(message)
+	private def askForCompute(message: MbApi): Future[MbApi] = askFor(master)(message)
 
-	private def askForResult(message: MbRequest): Future[MbResponse] = askFor(resultGetter)(message)
+	private def askForResult(message: MbApi): Future[MbApi] = askFor(resultGetter)(message)
 
-	private def askFor(actorRef: ActorRef)(message: MbRequest): Future[MbResponse] = {
-		(actorRef ask message).mapTo[MbResponse]
+	private def askFor(actorRef: ActorRef)(message: MbApi): Future[MbApi] = {
+		(actorRef ask message).mapTo[MbApi]
 	}
 
 

@@ -9,6 +9,15 @@ sealed trait DML
 
 case object ShowSysInfo extends MbCommand with DML
 
+case class UseDatabase(db: String) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
+		ctx.databaseId = currentDb.id.get
+		ctx.databaseName = currentDb.name
+		Seq.empty[Row]
+	}
+}
+
 case class ShowDatasources(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 

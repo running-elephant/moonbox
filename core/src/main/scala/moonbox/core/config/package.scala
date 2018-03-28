@@ -40,7 +40,7 @@ package object config {
 		.createWithDefaultString("local[*]")
 	val MIXCAL_SPARK_LOGLEVEL = ConfigBuilder("moonbox.mixcal.spark.loglevel")
 		.stringConf
-		.createWithDefaultString("ERROR")
+		.createWithDefaultString("INFO")
 	val MIXCAL_SPARK_SQL_CROSSJOIN_ENABLE = ConfigBuilder("moonbox.mixcal.spark.sql.crossJoin.enable")
 		.booleanConf
 		.createWithDefault(true)

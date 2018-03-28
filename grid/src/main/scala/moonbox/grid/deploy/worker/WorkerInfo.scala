@@ -10,4 +10,8 @@ case class WorkerInfo(
 	var coresUsed: Int = _
 	var memoryUsed: Int = _
 	var lastHeartbeat: Long = _
+
+	def coresFree(): Int = cores - coresUsed
+
+	def memoryFree(): Int = memory - memoryUsed
 }

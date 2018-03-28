@@ -416,6 +416,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDropDatabase(MqlBaseParser.DropDatabaseContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code useDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitUseDatabase(MqlBaseParser.UseDatabaseContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code createFunction}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -742,18 +749,6 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCtes(MqlBaseParser.CtesContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#colTypeList}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitColTypeList(MqlBaseParser.ColTypeListContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#colType}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitColType(MqlBaseParser.ColTypeContext ctx);
-	/**
 	 * Visit a parse tree produced by the {@code complexDataType}
 	 * labeled alternative in {@link MqlBaseParser#dataType}.
 	 * @param ctx the parse tree
@@ -767,6 +762,18 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitPrimitiveDataType(MqlBaseParser.PrimitiveDataTypeContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#colTypeList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitColTypeList(MqlBaseParser.ColTypeListContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#colType}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitColType(MqlBaseParser.ColTypeContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#complexColTypeList}.
 	 * @param ctx the parse tree

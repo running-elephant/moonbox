@@ -4,15 +4,17 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
+import akka.pattern._
 import akka.cluster.Cluster
 import akka.cluster.client.ClusterClientReceptionist
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
+import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.core.parser.MbParser
-import moonbox.grid.{JobInfo, JobState}
+import moonbox.grid._
 import moonbox.grid.api._
 import moonbox.grid.deploy.worker.WorkerInfo
 import moonbox.grid.config._
@@ -28,7 +30,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) extends Actor with MbLogging {
 	import MbMaster._
@@ -38,19 +40,29 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private val conf: MbConf = param.conf
 	private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT.key, WORKER_TIMEOUT.defaultValue.get)
 	private val PERSISTENCE_MODE = conf.get(PERSIST_IMPLEMENTATION.key, PERSIST_IMPLEMENTATION.defaultValue.get)
+	private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
+	private var nextJobNumber = 0
+	private val workers = new mutable.HashMap[ActorRef, WorkerInfo]
 
+	/*private val jobIdToClient = new mutable.HashMap[String, ActorRef]()*/
+	private val jobIdToWorker = new mutable.HashMap[String, ActorRef]()
+
+	// only for batch
 	private val waitingJobs = new mutable.Queue[JobInfo]
+
+	// for batch and adhoc
 	private val runningJobs = new mutable.HashMap[String, JobInfo]
 	private val completeJobs = new mutable.HashMap[String, JobInfo]
 	private val retainedCompleteJobs = new ArrayBuffer[String]()
 	private val failedJobs = new mutable.HashMap[String, JobInfo]
 	private val retainedFailedJobs = new ArrayBuffer[String]()
-	private var nextJobNumber = 0
-	private val workers = new mutable.HashMap[ActorRef, WorkerInfo]
 
-	private val adhocUserToWorker = new mutable.HashMap[String, ActorRef]()
-	private val jobIdToClient = new mutable.HashMap[String, ActorRef]()
-	private val jobIdToWorker = new mutable.HashMap[String, ActorRef]()
+
+	private val workerToRunningJobIds = new mutable.HashMap[ActorRef, mutable.Set[String]]()
+
+	// for context dependent
+	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
+
 
 	private var cluster: Cluster = _
 	private var catalogContext: CatalogContext = _
@@ -71,7 +83,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private val mbParser = new MbParser
 
 	override def receive: Receive = {
-		case request: MbRequest =>
+		case request: MbApi =>
 			// TODO privilege check
 			process.apply(request)
 		case control =>
@@ -95,98 +107,185 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				endpoint ! RegisteredWorker(self)
 				schedule()
 			}
-		case JobStateChanged(jobId, state, message) =>
-		case WorkerLatestState =>
+		case JobStateChanged(jobId, state, result) =>
+			logInfo(s"Job $jobId state changed to $state")
+			state match {
+				case JobState.SUCCESS =>
+					runningJobs.get(jobId) match {
+						case Some(jobInfo) =>
+							val response = result match {
+								case CachedData(key) =>
+									JobCompleteWithCachedData(key)
+								case DirectData(data) =>
+									JobCompleteWithDirectData(jobId, data)
+								case ExternalData(id) =>
+									JobCompleteWithExternalData(id, None)
+							}
+							jobInfo.client ! response
+							completeJobs.put(jobId, jobInfo)
+							runningJobs.remove(jobId)
+						case None =>
+							// do nothing
+					}
+
+				case JobState.FAILED =>
+					runningJobs.get(jobId) match {
+						case Some(jobInfo) =>
+							jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
+							failedJobs.put(jobId, jobInfo)
+							runningJobs.remove(jobId)
+						case None =>
+						// do nothing
+					}
+				case _ =>
+			}
+
+		case WorkerLatestState(workerInfo) =>
+			logDebug(s"Worker ${workerInfo.id} update state $workerInfo")
+			workers.update(workerInfo.endpoint, workerInfo)
 		case Heartbeat =>
-		case Terminated =>
+			workers.get(sender()) match {
+				case Some(workerInfo) =>
+					workerInfo.lastHeartbeat = Utils.now
+				case None =>
+					// do nothing
+			}
+
+		case Terminated(worker) =>
+			workerToRunningJobIds.get(worker) match {
+				case Some(jobIds) =>
+					jobIds.foreach { jobId =>
+						runningJobs.get(jobId) match {
+							case Some(jobInfo) =>
+								if (jobInfo.sessionId.isDefined) { // context dependent
+									runningJobs.remove(jobInfo.jobId)
+									jobInfo.client ! JobFailed(jobInfo.jobId, s"Worker $worker shutdown.")
+								} else {
+									runningJobs.remove(jobInfo.jobId)
+									val newJobInfo = jobInfo.copy(status = JobState.WAITING,
+										updateTime = Utils.now)
+									waitingJobs.enqueue(newJobInfo)
+								}
+							case None =>
+								// do nothing
+						}
+					}
+				case None =>
+					// do nothing
+			}
+
 	}
 
 	private def process: Receive = {
-		// adhoc mode context dependent
-		// schedule successfully or failed
-		case MbRequest(username, query: JobQuery) =>
+		case OpenSession(username) =>
 			val client = sender()
-			Future {
-				var job: JobInfo = null
-				try {
-					job= createJob(username, query.sqls, client)
-					jobQuery(job)
-				} catch {
-					case e: Exception =>
-						client ! MbResponse(username, JobFailed(job.jobId, e.getMessage))
-				}
-			}
-
-		// batch mode context independent
-		case MbRequest(username, JobSubmit(sqls, async)) =>
-			val client = sender()
-			Future {
-				var job: JobInfo = null
-				try {
-					job = createJob(username, sqls, client)
-					waitingJobs.enqueue(job)
-					persistenceEngine.addJob(job)
-					if (async) {
-						client ! MbResponse(username, JobAccepted(job.jobId))
+			val candidate = selectWorker()
+			candidate match {
+				case Some(worker) =>
+					val future = worker.ask(AllocateSession(username)).mapTo[AllocateSessionResponse]
+					future.onComplete {
+						case Success(response) =>
+							response match {
+								case AllocatedSession(sessionId) =>
+									sessionIdToWorker.put(sessionId, worker)
+									client ! OpenedSession(sessionId)
+								case AllocateSessionFailed(error) =>
+									client ! OpenSessionFailed(error)
+							}
+						case Failure(e) =>
+							client ! OpenSessionFailed(e.getMessage)
 					}
-				} catch {
-					case e: Exception =>
-						client ! MbResponse(username, JobFailed(job.jobId, e.getMessage))
+				case None =>
+					client ! OpenSessionFailed("there is no available worker.")
+			}
+		case CloseSession(sessionId) =>
+			val client = sender()
+			sessionIdToWorker.get(sessionId) match {
+				case Some(worker) =>
+					val future = worker.ask(FreeSession(sessionId)).mapTo[FreeSessionResponse]
+					future.onComplete {
+						case Success(response) =>
+							response match {
+								case FreedSession(id) =>
+									sessionIdToWorker.remove(id)
+									client ! ClosedSession
+								case FreeSessionFailed(error) =>
+									client ! CloseSessionFailed(error)
+							}
+						case Failure(e) =>
+							client ! CloseSessionFailed(e.getMessage)
+					}
+				case None =>
+					client ! CloseSessionFailed(s"Session $sessionId does not exist.")
+			}
+		case JobQuery(sessionId, sqls) =>
+			val client = sender()
+			var jobInfo: JobInfo = null
+			try {
+				jobInfo = createJob(None, Some(sessionId), sqls, client)
+				sessionIdToWorker.get(sessionId) match {
+					case Some(worker) =>
+						runningJobs.put(jobInfo.jobId, jobInfo)
+						worker ! AssignJobToWorker(jobInfo)
+					case None =>
+						client ! JobFailed(jobInfo.jobId, "Session lost.")
 				}
+			} catch {
+				case e: Exception =>
+					client ! JobFailed(jobInfo.jobId, e.getMessage)
 			}
 
-		case MbRequest(username, JobProgress(jobId)) =>
+		case JobSubmit(username, sqls, async) =>
 			val client = sender()
-			Future {
-				val jobInfo = runningJobs.get(jobId).orElse(
-					completeJobs.get(jobId).orElse(
-						failedJobs.get(jobId).orElse(
-							waitingJobs.find(_.jobId == jobId)
-						)
+			var jobInfo: JobInfo = null
+			try {
+				jobInfo = createJob(Some(username), None, sqls, client)
+				waitingJobs.enqueue(jobInfo)
+				persistenceEngine.addJob(jobInfo)
+				if (async) {
+					client ! JobAccepted(jobInfo.jobId)
+				}
+			} catch {
+				case e: Exception =>
+					client ! JobFailed(jobInfo.jobId, e.getMessage)
+			}
+		case JobProgress(jobId) =>
+			val client = sender()
+			val jobInfo = runningJobs.get(jobId).orElse(
+				completeJobs.get(jobId).orElse(
+					failedJobs.get(jobId).orElse(
+						waitingJobs.find(_.jobId == jobId)
 					)
 				)
-				jobInfo match {
-					case Some(job) =>
-						client ! MbResponse(username, JobProgressResponse(jobId, job))
-					case None =>
-						client ! MbResponse(username, JobFailed(jobId, s"Job $jobId does not exist or has been removed."))
-				}
+			)
+			jobInfo match {
+				case Some(job) =>
+					client ! JobProgressResponse(job.jobId, job)
+				case None =>
+					client ! JobFailed(jobId, s"Job $jobId does not exist or has been removed.")
 			}
 
-		case MbRequest(username, JobCancel(jobId)) =>
+		case JobCancel(jobId) =>
 			val client = sender()
-			Future {
-				waitingJobs.find(_.jobId == jobId) match {
-					case Some(jobInfo) =>
-						waitingJobs.dequeueFirst(_.jobId == jobId)
-						persistenceEngine.removeJob(jobInfo)
-					case None =>
-						runningJobs.get(jobId) match {
-							case Some(jobInfo) =>
-								jobIdToWorker.get(jobId) match {
-									case Some(worker) =>
-										worker ! RemoveJobFromWorker(jobId)
-										client ! MbResponse(username, JobCancelSuccess(jobId))
-									case None =>
-										client ! MbResponse(username, JobCancelSuccess(jobId))
-								}
-							case None =>
-								client ! MbResponse(username, JobCancelSuccess(jobId))
-						}
-				}
+			waitingJobs.find(_.jobId == jobId) match {
+				case Some(jobInfo) =>
+					waitingJobs.dequeueFirst(_.jobId == jobId)
+					persistenceEngine.removeJob(jobInfo)
+				case None =>
+					runningJobs.get(jobId) match {
+						case Some(jobInfo) =>
+							jobIdToWorker.get(jobId) match {
+								case Some(worker) =>
+									worker ! RemoveJobFromWorker(jobId)
+									client ! JobCancelSuccess(jobId)
+								case None =>
+									client ! JobCancelSuccess(jobId)
+							}
+						case None =>
+							client ! JobCancelSuccess(jobId)
+					}
 			}
 	}
-
-	private def jobQuery(job: JobInfo): Unit = {
-		val worker = adhocUserToWorker.getOrElse(job.user, {
-			// TODO scheduler algorithm
-			val selected = null.asInstanceOf[ActorRef]
-			adhocUserToWorker.put(job.user, selected)
-			selected
-		})
-		worker ! AssignJobToWorker(job)
-	}
-
 
 	private def timeOutDeadWorkers(): Unit = {
 		val currentTime = Utils.now
@@ -198,19 +297,43 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	}
 
 	private def schedule(): Unit = {
-
+		// jobId to worker
+		if (waitingJobs.nonEmpty) {
+			val jobInfo = waitingJobs.head
+			val worker = selectWorker()
+			worker match {
+				case Some(w) =>
+					jobIdToWorker.put(jobInfo.jobId, w)
+					runningJobs.put(jobInfo.jobId, waitingJobs.dequeue())
+					w ! AssignJobToWorker(jobInfo)
+				case None =>
+			}
+		}
 	}
 
-	private def createJob(username: String, sqls: Seq[String], client: ActorRef): JobInfo = {
+	private def selectWorker(): Option[ActorRef] = {
+		// TODO
+		val candidate = workers.filter { case (ref, workerInfo) =>
+			workerInfo.coresFree() > 0 && workerInfo.memoryFree() > 0
+		}
+		if (candidate.isEmpty) None
+		else {
+			val selected = candidate.toSeq.sortWith(_._2.coresFree() > _._2.coresFree()).head._1
+			Some(selected)
+		}
+	}
+
+	private def createJob(username: Option[String], sessionId: Option[String], sqls: Seq[String], client: ActorRef): JobInfo = {
 		val commands = sqls.map(mbParser.parsePlan)
 		val now = Utils.now
 		val date = new Date(now)
 		JobInfo(
 			jobId = newJobId(date),
+			sessionId = sessionId,
 			cmds = commands,
 			status = JobState.WAITING,
 			errorMessage = None,
-			user = username,
+			username = username,
 			submitTime = now,
 			updateTime = now,
 			client = client
