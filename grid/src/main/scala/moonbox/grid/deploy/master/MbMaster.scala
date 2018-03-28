@@ -93,8 +93,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private def internal: Receive = {
 		case ScheduleJob =>
 			schedule()
-		case CheckForWorkerTimeOut =>
-			timeOutDeadWorkers()
 		case RegisterWorker(id, endpoint, cores, memory) =>
 			logInfo(s"Registering worker $endpoint with $cores cores, $memory RAM")
 			if (workers.contains(endpoint)) {
@@ -124,6 +122,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							jobInfo.client ! response
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
+							persistenceEngine.removeJob(jobInfo)
 						case None =>
 							// do nothing
 					}
@@ -134,6 +133,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
+							persistenceEngine.removeJob(jobInfo)
 						case None =>
 						// do nothing
 					}
@@ -173,7 +173,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				case None =>
 					// do nothing
 			}
-
+			workers.get(worker) match {
+				case Some(workerInfo) =>
+					workers.-(worker)
+					persistenceEngine.removeWorker(workerInfo)
+				case None =>
+			}
 	}
 
 	private def process: Receive = {
@@ -287,14 +292,15 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
 	}
 
-	private def timeOutDeadWorkers(): Unit = {
+	/*private def timeOutDeadWorkers(): Unit = {
 		val currentTime = Utils.now
 		val toRemove = workers.filter {
 			case (endpoint, workerInfo) =>
 				workerInfo.lastHeartbeat < currentTime - WORKER_TIMEOUT_MS
-		}.keys
-		workers.--(toRemove)
-	}
+		}
+		workers.--(toRemove.keys)
+		toRemove.foreach {case (key, value) => persistenceEngine.removeWorker(value)}
+	}*/
 
 	private def schedule(): Unit = {
 		// jobId to worker
