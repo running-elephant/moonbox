@@ -1,7 +1,7 @@
 package moonbox.grid.deploy.worker
 
 import java.text.SimpleDateFormat
-import java.util.{Date, Locale}
+import java.util.{Date, Locale, UUID}
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.cluster.Cluster
@@ -10,6 +10,8 @@ import akka.cluster.client.ClusterClientReceptionist
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.MbSession
+import moonbox.grid.api.{OpenSessionFailed, OpenedSession}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.MbMaster
 import moonbox.grid.config._
@@ -18,6 +20,8 @@ import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogging {
 	private val conf = param.conf
@@ -41,7 +45,19 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 	override def receive: Receive = {
 
 		case AllocateSession(username) =>
-
+			val requester = sender()
+			Future {
+				val mbSession = MbSession.getMbSession(conf).bindUser(username)
+				val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
+				val sessionId = newSessionId()
+				sessionIdToJobRunner.put(sessionId, runner)
+				sessionId
+			}.onComplete {
+				case Success(sessionId) =>
+					requester ! AllocatedSession(sessionId)
+				case Failure(e) =>
+					requester ! AllocateSessionFailed(e.getMessage)
+			}
 		case FreeSession(sessionId) =>
 
 		case AssignJobToWorker(jobInfo) =>
@@ -79,6 +95,10 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 
 	private def generateWorkerId(): String = {
 		"worker-%s-%s-%d".format(createDateFormat.format(new Date), param.host, param.port)
+	}
+
+	private def newSessionId(): String = {
+		UUID.randomUUID().toString
 	}
 }
 

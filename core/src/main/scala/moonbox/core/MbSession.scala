@@ -76,4 +76,6 @@ object MbSession extends MbLogging {
 	}
 
 	def addJar(path: String): Unit = resources.add(path)
+
+	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
 }
