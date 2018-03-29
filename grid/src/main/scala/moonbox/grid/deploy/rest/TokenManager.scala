@@ -16,7 +16,7 @@ class TokenManager(conf: MbConf) {
 
 	def encode(username: String): String = {
 		val jwtClaim: JwtClaim = JwtClaim() + ("username", username)
-		Jwt.encode(jwtHeader, jwtClaim.expiresIn(1000000000), _JWT_SECRET)
+		Jwt.encode(jwtHeader, jwtClaim.expiresIn(_JWT_TIMEOUT), _JWT_SECRET)
 	}
 
 	def decode(token: String): Option[String] = {
