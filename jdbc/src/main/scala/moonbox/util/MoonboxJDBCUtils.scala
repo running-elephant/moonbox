@@ -1,0 +1,45 @@
+package moonbox.util
+
+import java.util.Properties
+
+object MoonboxJDBCUtils {
+  val URL_PREFIX: String = "jdbc:moonbox://"
+  val DB_NAME = "database"
+  val USER_KEY = "user"
+  val PASSWORD_KEY = "password"
+  val FETCH_SIZE = "fetchsize"
+  val DEFAULT_PORT = 8080
+  val HOSTS_AND_PORTS = "nodes" //host1:port1,host2:port2,host3:port3
+
+  def parseURL(url: String, defaults: Properties): Properties = {
+    val resProps = if (defaults != null) defaults else new Properties()
+    if (url != null && url.toUpperCase().startsWith(URL_PREFIX.toUpperCase)) {
+      val props = url.substring(URL_PREFIX.length).split("\\?")
+      val hpAndDB = props(0).split("/")
+      resProps.setProperty(HOSTS_AND_PORTS, hpAndDB(0))
+      if (hpAndDB.length == 2)
+        resProps.setProperty(DB_NAME, hpAndDB(1))
+      if (props.length == 2) {
+        props(1).split("&").map { kv: String =>
+          val temp = kv.split("=")
+          if (temp.length == 2)
+            (temp(0), temp(1))
+          else null
+        }.filter(_ != null).foreach(kv => resProps.setProperty(kv._1, kv._2))
+      }
+    }
+    resProps
+  }
+
+  def parseHostsAndPorts(hostsAndPorts: String): Seq[(String, String)] = {
+    if (hostsAndPorts != null && hostsAndPorts.length > 0)
+      hostsAndPorts.split(",").map { hp =>
+        val h_p = hp.split(":")
+        if (h_p.length == 2) {
+          (h_p(0).trim, h_p(1).trim)
+        } else null
+      }.filter(_ != null).toSeq
+    else null
+  }
+
+}
