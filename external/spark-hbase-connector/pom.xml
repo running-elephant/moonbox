@@ -11,6 +11,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>spark-hbase-connector</artifactId>
+    <name>Moonbox Project Hbase Connector</name>
 
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>

@@ -69,7 +69,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 
 }
 
-object MixcalContext {
+object MixcalContext extends MbLogging {
 	private val resources = ConcurrentHashMap.newKeySet[String]()
 	private var sparkContext: SparkContext = _
 

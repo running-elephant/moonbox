@@ -6,7 +6,7 @@ object DataSystemFactory {
 	def getInstance(props: Map[String, String], sparkSession: SparkSession): DataSystem = {
 		require(props.contains("type"))
 		props("type").toLowerCase match {
-			case "mysql" => new MysqlDataSystem(props)
+			case "mysql" => new MysqlDataSystem(props)(sparkSession)
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}

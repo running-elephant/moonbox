@@ -1,6 +1,7 @@
 package moonbox.grid.api
 
 import moonbox.grid.JobInfo
+import org.apache.spark.sql.Row
 
 sealed trait MbApi
 

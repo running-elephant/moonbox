@@ -187,12 +187,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					runningJobs.get(jobId) match {
 						case Some(jobInfo) =>
 							val response = result match {
-								case CachedData(key) =>
-									JobCompleteWithCachedData(key)
+								case CachedData =>
+									JobCompleteWithCachedData(jobId)
 								case DirectData(data) =>
 									JobCompleteWithDirectData(jobId, data)
-								case UnitData(id) =>
-									JobCompleteWithExternalData(id, None)
+								case UnitData =>
+									JobCompleteWithExternalData(jobId, None)
 							}
 							jobInfo.client ! response
 							jobInfo.status = state //update status
