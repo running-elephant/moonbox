@@ -14,6 +14,7 @@ object DataSystemFactory {
 	def typeToSparkDatasource(typ: String): String = {
 		typ match {
 			case "mysql" | "oracle" | "jdbc" => "org.apache.spark.sql.execution.datasources.mbjdbc"
+			case "hbase" => "org.apache.spark.sql.execution.datasources.hbase"
 			case "redis" => "org.apache.spark.sql.execution.datasources.redis"
 			case "mongo" | "mongodb" => "com.mongodb.spark.sql"
 			case "parquet" => "parquet"
