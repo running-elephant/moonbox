@@ -35,6 +35,21 @@ class RedisCacheSuite extends FunSuite with BeforeAndAfterAll {
 		assert(iter.toList == list)
 	}
 
+
+	test("cache map string") {
+		val email1 = "xiaoming@163.com"
+		redisCache.put("user", "email", email1)
+		val email2 = redisCache.get[String, String, String]("user", "email")
+		assert(email1==email2)
+	}
+
+	test("cache map long") {
+		val age1 = 29L
+		redisCache.put("user", "age", age1)
+		val age2 = redisCache.get[String, String, Long]("user", "age")
+		assert(age2==age1)
+	}
+
 	override protected def afterAll(): Unit = {
 		localServer.stop()
 	}

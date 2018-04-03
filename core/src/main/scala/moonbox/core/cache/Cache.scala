@@ -12,4 +12,10 @@ trait Cache {
 
 	def size[K](key: K): Long
 
+	def put[K, F, E](key: K, field: F, value: E): Long
+
+	def get[K, F, E](key: K, field: F): E
+
+	def close: Unit
+
 }

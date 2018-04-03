@@ -3,11 +3,11 @@ package moonbox.grid.deploy.master
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Terminated}
-import akka.pattern._
+import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props, Terminated}
 import akka.cluster.Cluster
 import akka.cluster.client.ClusterClientReceptionist
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
+import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
@@ -16,20 +16,20 @@ import moonbox.core.CatalogContext
 import moonbox.core.parser.MbParser
 import moonbox.grid._
 import moonbox.grid.api._
-import moonbox.grid.deploy.worker.WorkerInfo
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.MbService
 import moonbox.grid.deploy.authenticate.LoginManager
-import moonbox.grid.deploy.master.MbMasterMessages.{CheckForWorkerTimeOut, ScheduleJob}
+import moonbox.grid.deploy.master.MbMasterMessages.ScheduleJob
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
+import moonbox.grid.deploy.worker.{MbWorker, WorkerInfo}
+import moonbox.grid.deploy.{DeployMessage, MbService}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.JavaConverters._
-import scala.concurrent.duration._
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) extends Actor with MbLogging {
@@ -64,7 +64,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
 
 
-	private var cluster: Cluster = _
+	private var cluster: Cluster = Cluster.get(akkaSystem)
 	private var catalogContext: CatalogContext = _
 	private var loginManager: LoginManager = _
 	private var persistenceEngine: PersistenceEngine = _
@@ -82,6 +82,78 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 	private val mbParser = new MbParser
 
+
+	@scala.throws[Exception](classOf[Exception])
+	override def preStart(): Unit = {
+		logInfo("PreStart master ...")
+
+		catalogContext = new CatalogContext(conf)
+
+		loginManager = new LoginManager(catalogContext)
+
+		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
+			FiniteDuration(0, MILLISECONDS),
+			FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS),
+			self,
+			CheckForWorkerTimeOut
+		)*/
+
+		singletonMaster = startMasterEndpoint(akkaSystem)
+		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter], conf), "result-getter")
+
+		val serviceImpl = new MbService(loginManager, singletonMaster, resultGetter)
+
+		if (restServerEnabled) {
+			restServer = Some(new RestServer(param.host, param.restPort, conf, serviceImpl, akkaSystem))
+		}
+		restServerBoundPort = restServer.map(_.start())
+
+		if (tcpServerEnabled) {
+			tcpServer = Some(new TransportServer(serviceImpl))
+		}
+		tcpServerBoundPort = tcpServer.map(_.start())
+
+		persistenceEngine = PERSISTENCE_MODE match {
+			case "ZOOKEEPER" =>
+				logInfo("Persisting state to Zookeeper")
+				val zkFactory = new ZookeeperPersistModeFactory(conf, akkaSystem)
+				zkFactory.createPersistEngine()
+			case "HDFS" =>
+				logInfo("Persisting state to Hdfs")
+				val hdfsFactory = new HdfsPersistModeFactory(conf)
+				hdfsFactory.createPersistEngine()
+			case _ =>
+				new BlackHolePersistenceEngine
+		}
+
+		val initialDelay = conf.get(SCHEDULER_INITIAL_WAIT.key, SCHEDULER_INITIAL_WAIT.defaultValue.get)
+		val interval = conf.get(SCHEDULER_INTERVAL.key, SCHEDULER_INTERVAL.defaultValue.get)
+
+		akkaSystem.scheduler.schedule(
+			FiniteDuration(initialDelay, MILLISECONDS),
+			FiniteDuration(interval, MILLISECONDS),
+			self,
+			ScheduleJob
+		)
+
+    self ! MasterChanged
+
+	}
+
+	@scala.throws[Exception](classOf[Exception])
+	override def postStop(): Unit = {
+
+		/*if (checkForWorkerTimeOutTask != null && !checkForWorkerTimeOutTask.isCancelled) {
+			checkForWorkerTimeOutTask.cancel()
+		}*/
+
+		restServer.foreach(_.stop())
+		tcpServer.foreach(_.stop())
+
+		persistenceEngine.close()
+	}
+
+
 	override def receive: Receive = {
 		case request: MbApi =>
 			// TODO privilege check
@@ -93,6 +165,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private def internal: Receive = {
 		case ScheduleJob =>
 			schedule()
+			//logInfo(s"worker ${workers}")
+
 		case RegisterWorker(id, endpoint, cores, memory) =>
 			logInfo(s"Registering worker $endpoint with $cores cores, $memory RAM")
 			if (workers.contains(endpoint)) {
@@ -105,6 +179,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				endpoint ! RegisteredWorker(self)
 				schedule()
 			}
+
 		case JobStateChanged(jobId, state, result) =>
 			logInfo(s"Job $jobId state changed to $state")
 			state match {
@@ -120,6 +195,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 									JobCompleteWithExternalData(id, None)
 							}
 							jobInfo.client ! response
+							jobInfo.status = state //update status
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
 							persistenceEngine.removeJob(jobInfo)
@@ -131,6 +207,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					runningJobs.get(jobId) match {
 						case Some(jobInfo) =>
 							jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
+							jobInfo.status = state //update status
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
 							persistenceEngine.removeJob(jobInfo)
@@ -141,8 +218,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
 
 		case WorkerLatestState(workerInfo) =>
-			logDebug(s"Worker ${workerInfo.id} update state $workerInfo")
+			logInfo(s"Worker ${workerInfo.id} update state $workerInfo")
 			workers.update(workerInfo.endpoint, workerInfo)
+
 		case Heartbeat =>
 			workers.get(sender()) match {
 				case Some(workerInfo) =>
@@ -151,6 +229,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					// do nothing
 			}
 		case Terminated(worker) =>
+			logInfo(s"Terminated ${worker}")
 			workerToRunningJobIds.get(worker) match {
 				case Some(jobIds) =>
 					jobIds.foreach { jobId =>
@@ -165,19 +244,36 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 										updateTime = Utils.now)
 									waitingJobs.enqueue(newJobInfo)
 								}
-							case None =>
-								// do nothing
+							case None =>	// do nothing
 						}
 					}
-				case None =>
-					// do nothing
+				case None =>	// do nothing
 			}
 			workers.get(worker) match {
 				case Some(workerInfo) =>
-					workers.-(worker)
+					workers.remove(worker)
 					persistenceEngine.removeWorker(workerInfo)
 				case None =>
 			}
+
+		case ch: MasterChanged.type =>
+			logInfo("MasterChanged")
+			informAliveWorkers(ch)
+
+		case a =>
+			logWarning(s"Unknown Message: $a")
+
+	}
+
+	private def informAliveWorkers(msg: DeployMessage): Unit = {
+		cluster.state.members.filter(_.hasRole(MbWorker.ROLE))
+			.map { member =>
+				val Some(host) = member.address.host
+				val Some(port) = member.address.port
+				val address = s"akka.tcp://${akkaSystem.name}@$host:$port${MbWorker.WORKER_PATH}"
+				logInfo(s"informAliveWorkers  $address")
+				context.actorSelection(address)
+			}.foreach(_.forward(msg))
 	}
 
 	private def process: Receive = {
@@ -351,73 +447,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		jobId
 	}
 
-	@scala.throws[Exception](classOf[Exception])
-	override def preStart(): Unit = {
-		logInfo("PreStart master ...")
-		cluster = Cluster.get(akkaSystem)
-
-		catalogContext = new CatalogContext(conf)
-
-		loginManager = new LoginManager(catalogContext)
-
-		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
-			FiniteDuration(0, MILLISECONDS),
-			FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS),
-			self,
-			CheckForWorkerTimeOut
-		)*/
-
-		singletonMaster = startMasterEndpoint(akkaSystem)
-		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter]), "result-getter")
-
-		val serviceImpl = new MbService(loginManager, singletonMaster, resultGetter)
-
-		if (restServerEnabled) {
-			restServer = Some(new RestServer(param.host, param.restPort, conf, serviceImpl, akkaSystem))
-		}
-		restServerBoundPort = restServer.map(_.start())
-
-		if (tcpServerEnabled) {
-			tcpServer = Some(new TransportServer(serviceImpl))
-		}
-		tcpServerBoundPort = tcpServer.map(_.start())
-
-		persistenceEngine = PERSISTENCE_MODE match {
-			case "ZOOKEEPER" =>
-				logInfo("Persisting state to Zookeeper")
-				val zkFactory = new ZookeeperPersistModeFactory(conf, akkaSystem)
-				zkFactory.createPersistEngine()
-			case "HDFS" =>
-				logInfo("Persisting state to Hdfs")
-				val hdfsFactory = new HdfsPersistModeFactory(conf)
-				hdfsFactory.createPersistEngine()
-			case _ =>
-				new BlackHolePersistenceEngine
-		}
-
-		val initialDelay = conf.get(SCHEDULER_INITIAL_WAIT.key, SCHEDULER_INITIAL_WAIT.defaultValue.get)
-		val interval = conf.get(SCHEDULER_INTERVAL.key, SCHEDULER_INTERVAL.defaultValue.get)
-
-		akkaSystem.scheduler.schedule(
-			FiniteDuration(initialDelay, MILLISECONDS),
-			FiniteDuration(interval, MILLISECONDS),
-			self,
-			ScheduleJob
-		)
-	}
-
-	@scala.throws[Exception](classOf[Exception])
-	override def postStop(): Unit = {
-
-		/*if (checkForWorkerTimeOutTask != null && !checkForWorkerTimeOutTask.isCancelled) {
-			checkForWorkerTimeOutTask.cancel()
-		}*/
-
-		restServer.foreach(_.stop())
-		tcpServer.foreach(_.stop())
-
-		persistenceEngine.close()
-	}
 
 	private def startMasterEndpoint(akkaSystem: ActorSystem): ActorRef = {
 		val singletonProps = ClusterSingletonProxy.props(
@@ -428,6 +457,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		val endpoint = akkaSystem.actorOf(singletonProps, SINGLETON_PROXY_NAME)
 		ClusterClientReceptionist(akkaSystem).registerService(endpoint)
+		logInfo(s"startMasterEndpoint ${endpoint}")
 		endpoint
 	}
 }
@@ -448,7 +478,8 @@ object MbMaster {
 			PoisonPill,
 			ClusterSingletonManagerSettings(akkaSystem).withRole(ROLE)
 		)
-		akkaSystem.actorOf(masterProp, MASTER_NAME)
+		val master = akkaSystem.actorOf(masterProp, MASTER_NAME)
+		println(s"start master ${master}")
 	}
 
 }

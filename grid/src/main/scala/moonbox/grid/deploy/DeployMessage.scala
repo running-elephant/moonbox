@@ -61,6 +61,7 @@ object DeployMessages {
 
 
 	// Master to Worker & Client
-	case class MasterChanged(master: ActorRef, masterWebUiUrl: String) extends DeployMessage
+	//case class MasterChanged(master: ActorRef, masterWebUiUrl: String) extends DeployMessage
+	case object MasterChanged extends DeployMessage
 
 }

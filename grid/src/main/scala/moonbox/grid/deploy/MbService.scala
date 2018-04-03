@@ -59,18 +59,18 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
 		askForCompute(JobQuery(sessionId, sqls)).flatMap {
 			case JobFailed(jobId, error) =>
-				Future(QueryOutbound(error = Some(error)))
+				Future(QueryOutbound(jobId, error = Some(error)))
 			case JobCompleteWithCachedData(jobId) =>
 				askForResult(FetchData(jobId, offset = 0, fetchSize)).map {
-					case FetchDataSuccess(id, schema, data) =>
-						QueryOutbound(schema = Some(schema), data = Some(data))
+					case FetchDataSuccess(id, schema, data, size) =>
+						QueryOutbound(id, schema = Some(schema), data = Some(data), size = Some(size))  //total size
 					case FetchDataFailed(id, error) =>
-						QueryOutbound(error = Some(error))
+						QueryOutbound(id, error = Some(error))
 				}
 			case JobCompleteWithExternalData(jobId, message) =>
-				Future(QueryOutbound())
+				Future(QueryOutbound(jobId))
 			case JobCompleteWithDirectData(jobId, data) =>
-				Future(QueryOutbound(data = Some(data)))
+				Future(QueryOutbound(jobId, data = Some(data)))
 		}
 	}
 
@@ -82,7 +82,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 						Future(SubmitOutbound(jobId = Some(jobId), error = Some(error)))
 					case JobCompleteWithCachedData(jobId) =>
 						askForResult(FetchData(jobId, offset = 0, size = 200)).map {
-							case FetchDataSuccess(id, schema, data) =>
+							case FetchDataSuccess(id, schema, data, size) =>  //TODO: 200 ???, size maybe be used if the data is part of data
 								SubmitOutbound(jobId = Some(id), schema = Some(schema), data = Some(data))
 							case FetchDataFailed(id, error) =>
 								SubmitOutbound(jobId = Some(id), error = Some(error))
@@ -141,7 +141,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 		isLogin(username).flatMap {
 			case true =>
 				askForResult(FetchData(jobId, offset, size)).map {
-					case FetchDataSuccess(id, schema, data) =>
+					case FetchDataSuccess(id, schema, data, size) =>  //TODO: size maybe be used if the data is part of data
 						ResultOutbound(jobId = id, schema = Some(schema), data = Some(data))
 					case FetchDataFailed(id, error) =>
 						ResultOutbound(jobId = id, error = Some(error))
@@ -150,7 +150,6 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 				Future(ResultOutbound(jobId = jobId, error = Some("Please login first.")))
 		}
 	}
-
 
 	private def askForCompute(message: MbApi): Future[MbApi] = askFor(master)(message)
 

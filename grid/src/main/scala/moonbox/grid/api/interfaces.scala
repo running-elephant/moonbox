@@ -31,5 +31,5 @@ case class JobCancelSuccess(jobId: String) extends MbApi
 case class JobCancelFailed(jobId: String, error: String) extends MbApi
 
 case class FetchData(jobId: String, offset: Long, size: Long) extends MbApi
-case class FetchDataSuccess(jobId: String, schema: Seq[String], date: Seq[Seq[String]]) extends MbApi
+case class FetchDataSuccess(jobId: String, schema: String, date: Seq[Seq[Any]], size: Long) extends MbApi
 case class FetchDataFailed(jobId: String, error: String) extends MbApi
