@@ -63,11 +63,11 @@ package object config {
 	    .timeConf
 	    .createWithDefaultString("360s")
 
-	val TCP_SERVER_ENABLE = ConfigBuilder("moonbox.tcpServer.enable")
+	val TCP_SERVER_ENABLE = ConfigBuilder("moonbox.tcp.server.enable")
 	    .booleanConf
 	    .createWithDefault(true)
 
-	val TCP_SERVER_PORT = ConfigBuilder("moonbox.tcpServer.port")
+	val TCP_SERVER_PORT = ConfigBuilder("moonbox.tcp.server.port")
 	    .intConf
 	    .createWithDefault(10010)
 
