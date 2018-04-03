@@ -37,8 +37,8 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		val result = data match {
 			case u: Unit =>
 				UnitData
-			case seq: Seq[Row] =>
-				DirectData(seq)
+			case seq :: Nil =>
+				DirectData(seq.asInstanceOf[Seq[Row]].map(_.toSeq.map(_.toString)))
 			case str: String =>
 				CachedData
 		}

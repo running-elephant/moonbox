@@ -9,7 +9,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.rdd.MbJdbcRDD
-import org.apache.spark.sql.sqlbuilder.{MbSqlBuilder, MysqlDialect}
+import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
@@ -102,7 +102,7 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 	}
 
 	override def buildScan(plan: LogicalPlan): DataFrame = {
-		val sqlBuilder = new MbSqlBuilder(plan, MysqlDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,

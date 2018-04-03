@@ -31,14 +31,6 @@ class RedisCache(servers: String) extends Cache with MbLogging { self =>
 		jedis.lrange(serialize(key), start, end).asScala.map(deserialize[C])
 	}
 
-	override def put[K, F, E](key: K, field: F, value: E): Long = {
-		jedis.hset(serialize(key), serialize(field), serialize(value))
-	}
-
-	override def get[K, F, E](key: K, field: F): E = {
-		deserialize[E](jedis.hget(serialize(key), serialize(field)))
-	}
-
 	override def getAsIterator[K, E, C <: TraversableOnce[E]](key: K, fetchSize: Int, total: Long): Iterator[C] = {
 		require(fetchSize > 0, "fetch size should be great than zero.")
 		new Iterator[C] {
