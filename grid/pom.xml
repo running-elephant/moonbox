@@ -16,6 +16,11 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-common_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>

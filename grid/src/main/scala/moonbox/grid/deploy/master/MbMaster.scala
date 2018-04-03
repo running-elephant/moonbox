@@ -109,7 +109,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		restServerBoundPort = restServer.map(_.start())
 
 		if (tcpServerEnabled) {
-			tcpServer = Some(new TransportServer(serviceImpl))
+			tcpServer = Some(new TransportServer(conf, serviceImpl))
 		}
 		tcpServerBoundPort = tcpServer.map(_.start())
 
