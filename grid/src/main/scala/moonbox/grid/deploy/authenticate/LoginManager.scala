@@ -6,9 +6,11 @@ import moonbox.common.MbLogging
 import moonbox.common.util.{ThreadUtils, Utils}
 import moonbox.core.CatalogContext
 import moonbox.grid.config._
+import moonbox.grid.deploy.master.MbMaster
+
 import scala.collection.JavaConversions._
 
-class LoginManager(catalogContext: CatalogContext) extends MbLogging {
+class LoginManager(catalogContext: CatalogContext, master: MbMaster) extends MbLogging {
 	private lazy val conf = catalogContext.conf
 	private lazy val loginType = conf.get(LOGIN_IMPLEMENTATION.key, LOGIN_IMPLEMENTATION.defaultValueString)
 	private lazy val timeout = conf.get(LOGIN_TIMEOUT.key, LOGIN_TIMEOUT.defaultValue.get)
@@ -22,11 +24,14 @@ class LoginManager(catalogContext: CatalogContext) extends MbLogging {
 
 	cleanTimeoutCatalogSessionThread.scheduleAtFixedRate(new Runnable {
 		override def run(): Unit = {
+			val user = Set[String]()
 			userToLastActiveTime.foreach { case (u, t) =>
 				if ((Utils.now - t) >= timeout) {
+					user.add(u)
 					userToLastActiveTime.remove(u)
 				}
 			}
+			master.removeTimeOutUser(user)
 		}
 	}, timeout, timeout / 2, TimeUnit.MILLISECONDS)
 
