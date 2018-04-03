@@ -15,7 +15,7 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) {
 
-	require(contains("type", "url", "user", "password", "dbtabe"))
+	require(contains("type", "url", "user", "password", "dbtable"))
 
 	override val name: String = "mysql"
 

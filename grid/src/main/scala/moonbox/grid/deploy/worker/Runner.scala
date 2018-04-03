@@ -37,7 +37,7 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		val result = data match {
 			case u: Unit =>
 				UnitData
-			case seq :: Nil =>
+			case seq: Seq[_] =>
 				DirectData(seq.asInstanceOf[Seq[Row]].map(_.toSeq.map(_.toString)))
 			case str: String =>
 				CachedData
@@ -47,7 +47,7 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 	}
 
 	private def failureCallback(jobId: String, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
-		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(jobId))
+		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(e.getMessage))
 		if (shutdown) self ! PoisonPill
 	}
 }

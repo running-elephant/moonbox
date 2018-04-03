@@ -14,7 +14,7 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.core.parser.MbParser
-import moonbox.grid._
+import moonbox.grid.{CachedData, UnitData, _}
 import moonbox.grid.api._
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
@@ -62,7 +62,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 	// for context dependent
 	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
-
+	private val sessionIdToUser = new mutable.HashMap[String, String]()
 
 	private var cluster: Cluster = Cluster.get(akkaSystem)
 	private var catalogContext: CatalogContext = _
@@ -89,7 +89,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		catalogContext = new CatalogContext(conf)
 
-		loginManager = new LoginManager(catalogContext)
+		loginManager = new LoginManager(catalogContext, this)
 
 		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
 			FiniteDuration(0, MILLISECONDS),
@@ -181,7 +181,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
 
 		case JobStateChanged(jobId, state, result) =>
-			logInfo(s"Job $jobId state changed to $state")
+			logInfo(s"Job $jobId state changed to $state $result")
 			state match {
 				case JobState.SUCCESS =>
 					runningJobs.get(jobId) match {
@@ -288,6 +288,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							response match {
 								case AllocatedSession(sessionId) =>
 									sessionIdToWorker.put(sessionId, worker)
+									sessionIdToUser.put(sessionId, username)
 									client ! OpenedSession(sessionId)
 								case AllocateSessionFailed(error) =>
 									client ! OpenSessionFailed(error)
@@ -308,6 +309,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							response match {
 								case FreedSession(id) =>
 									sessionIdToWorker.remove(id)
+									sessionIdToUser.remove(id)
 									client ! ClosedSession
 								case FreeSessionFailed(error) =>
 									client ! CloseSessionFailed(error)
@@ -328,7 +330,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 						runningJobs.put(jobInfo.jobId, jobInfo)
 						worker ! AssignJobToWorker(jobInfo)
 					case None =>
-						client ! JobFailed(jobInfo.jobId, "Session lost.")
+						client ! JobFailed(jobInfo.jobId, "Session lost in master.")
 				}
 			} catch {
 				case e: Exception =>
@@ -385,6 +387,14 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							client ! JobCancelSuccess(jobId)
 					}
 			}
+	}
+
+	def removeTimeOutUser(user: Set[String]): Unit = {
+		sessionIdToUser.filter(elem => user.contains(elem._2)).foreach{
+			case (sessionId, u) =>
+				logInfo(s"removeTimeOutUser ${u}")
+				self ! CloseSession(sessionId)
+		}
 	}
 
 	/*private def timeOutDeadWorkers(): Unit = {

@@ -91,9 +91,9 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 							grantDdl = true,
 							grantDmlOn = true,
 							isSA = true,
-							organizationId = 0,
-							createBy = 0,
-							updateBy = 0
+							organizationId = -1,
+							createBy = -1,
+							updateBy = -1
 						)).flatMap(id => Future(true))
 				}
 			}
