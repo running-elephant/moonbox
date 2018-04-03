@@ -24,16 +24,23 @@ class MbSession(conf: MbConf) extends MbLogging {
 		this.catalogSession = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
-					val organization = catalog.getOrganization(catalogUser.organizationId)
-					val database = catalog.getDatabase(catalogUser.organizationId, "default")
-					new CatalogSession(
-						catalogUser.id.get,
-						catalogUser.name,
-						database.id.get,
-						database.name,
-						organization.id.get,
-						organization.name
-					)
+					if (catalogUser.name == "ROOT") {
+						new CatalogSession(
+							catalogUser.id.get,
+							catalogUser.name,
+							-1, "SYSTEM", -1, "SYSTEM")
+					} else {
+						val organization = catalog.getOrganization(catalogUser.organizationId)
+						val database = catalog.getDatabase(catalogUser.organizationId, "default")
+						new CatalogSession(
+							catalogUser.id.get,
+							catalogUser.name,
+							database.id.get,
+							database.name,
+							organization.id.get,
+							organization.name
+						)
+					}
 				case None =>
 					throw new Exception(s"$username does not exist.")
 			}
@@ -46,7 +53,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def execute(jobId: String, cmds: Seq[MbCommand]): Any = {
-		cmds.map{cmd => execute(jobId, cmds)}.last
+		cmds.map{c => execute(jobId, c)}.last
 	}
 
 	def execute(jobId: String, cmd: MbCommand): Any = {
@@ -65,7 +72,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				}
 			case mbQuery: MQLQuery => // cached
 				sql(mbQuery.query).write
-					.format("org.apache.spark.sql.execution.datasoruces.redis")
+					.format("org.apache.spark.sql.execution.datasources.redis")
 					.option("jobId", jobId)
 					.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
 					.save()

@@ -25,7 +25,7 @@ case class ShowDatasources(
 		val datasources = pattern.map { p =>
 			mbSession.catalog.listDatasource(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatasource(ctx.organizationId))
-		datasources.map { d => Row(d)}
+		datasources.map { d => Row(d.name)}
 	}
 }
 
@@ -36,7 +36,7 @@ case class ShowDatabases(
 		val databases = pattern.map { p =>
 			mbSession.catalog.listDatabase(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatabase(ctx.organizationId))
-		databases.map { d => Row(d)}
+		databases.map { d => Row(d.name)}
 	}
 }
 
@@ -50,7 +50,7 @@ case class ShowTables(
 		val tables = pattern.map { p =>
 			mbSession.catalog.listTables(databaseId, p)
 		}.getOrElse(mbSession.catalog.listTables(databaseId))
-		tables.map { t => Row(t) }
+		tables.map { t => Row(t.name) }
 	}
 }
 
@@ -64,7 +64,7 @@ case class ShowViews(
 		val views = pattern.map { p =>
 			mbSession.catalog.listViews(databaseId, p)
 		}.getOrElse(mbSession.catalog.listViews(databaseId))
-		views.map { v => Row(v) }
+		views.map { v => Row(v.name) }
 	}
 }
 
@@ -78,7 +78,7 @@ case class ShowFunctions(
 		val functions = pattern.map { p =>
 			mbSession.catalog.listFunctions(databaseId, p)
 		}.getOrElse(mbSession.catalog.listFunctions(databaseId))
-		functions.map { f => Row(f) }
+		functions.map { f => Row(f.name) }
 	}
 }
 
@@ -89,7 +89,7 @@ case class ShowUsers(
 		val users = pattern.map { p =>
 			mbSession.catalog.listUsers(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listUsers(ctx.organizationId))
-		users.map { u => Row(u) }
+		users.map { u => Row(u.name) }
 	}
 }
 
@@ -99,7 +99,7 @@ case class ShowGroups(
 		val groups = pattern.map { p =>
 			mbSession.catalog.listGroups(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listGroups(ctx.organizationId))
-		groups.map { g => Row(g) }
+		groups.map { g => Row(g.name) }
 	}
 }
 
@@ -110,7 +110,7 @@ case class ShowApplications(
 		val applications = pattern.map { p =>
 			mbSession.catalog.listApplications(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listApplications(ctx.organizationId))
-		applications.map { a => Row(a) }
+		applications.map { a => Row(a.name) }
 	}
 }
 

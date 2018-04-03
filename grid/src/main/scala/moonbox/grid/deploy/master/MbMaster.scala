@@ -181,7 +181,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
 
 		case JobStateChanged(jobId, state, result) =>
-			logInfo(s"Job $jobId state changed to $state")
+			logInfo(s"Job $jobId state changed to $state $result")
 			state match {
 				case JobState.SUCCESS =>
 					runningJobs.get(jobId) match {
@@ -330,7 +330,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 						runningJobs.put(jobInfo.jobId, jobInfo)
 						worker ! AssignJobToWorker(jobInfo)
 					case None =>
-						client ! JobFailed(jobInfo.jobId, "Session lost.")
+						client ! JobFailed(jobInfo.jobId, "Session lost in master.")
 				}
 			} catch {
 				case e: Exception =>

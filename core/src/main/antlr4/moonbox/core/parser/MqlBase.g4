@@ -164,8 +164,8 @@ createTemporaryFunctionCmd
     ;
 
 query
-    : SELECT (~',')*
-    | ctes
+    : SELECT (~';')*
+    | ctes SELECT (~';')*
     ;
 ctes
     : WITH namedQuery (',' namedQuery)*
@@ -357,6 +357,7 @@ TEMPORARY: 'TEMPORARY';
 TO: 'TO';
 TYPE: 'TYPE';
 UNMOUNT: 'UNMOUNT';
+USE: 'USE';
 USER: 'USER';
 USERS: 'USERS';
 VIEW: 'VIEW';

@@ -67,7 +67,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			Future {
 				if (sessionIdToJobRunner.get(sessionId).isDefined) {
 					val runner = sessionIdToJobRunner.get(sessionId).head
-					runner ! RemoveJobFromWorker(sessionId) //sessionId is not used
+					runner ! KillRunner //sessionId is not used
 					sessionIdToJobRunner.remove(sessionId)
 				}
 				sessionId
@@ -84,20 +84,20 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 				case Some(sessionId) => // adhoc
 					sessionIdToJobRunner.get(sessionId) match {
 						case Some(runner) =>
-							runner forward assign
+							runner forward RunJob(jobInfo)
 						case None =>
 							requester ! JobStateChanged(jobInfo.jobId, JobState.FAILED, Failed("Session lost."))
 					}
 				case None => // batch
 					val mb = MbSession.getMbSession(conf).bindUser(jobInfo.username.get)
 					val runner = context.actorOf(Props(classOf[Runner], conf, mb))
-					runner forward assign
+					runner forward RunJob(jobInfo)
 			}
 
 		case kill@RemoveJobFromWorker(jobId) =>
 			logDebug(s"RemoveJobFromWorker ${jobId}")
 			sessionIdToJobRunner.get(jobId) match {
-				case Some(runner) => runner forward kill
+				case Some(runner) => runner forward CancelJob(jobId)
 				case None => logWarning(s"JobRunner $jobId lost.")
 			}
 

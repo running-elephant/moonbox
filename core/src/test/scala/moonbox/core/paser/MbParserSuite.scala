@@ -618,8 +618,8 @@ class MbParserSuite extends FunSuite {
 
 	test("query") {
 		assertEquals(
-			MQLQuery("SELECT * FROM table"),
-			"SELECT * FROM table"
+			MQLQuery("SELECT id, name FROM table"),
+			"SELECT id, name FROM table"
 		)
 		assertEquals(
 			MQLQuery("WITH cte1 AS (SELECT * FROM table1), cte2 AS (SELECT * FROM table2) SELECT * FROM cte1 join cte2"),

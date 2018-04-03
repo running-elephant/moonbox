@@ -19,6 +19,7 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 		.set(CATALOG_USER.key, "testUser")
 		.set(CATALOG_PASSWORD.key, "testPass")
 	    .set(CATALOG_DRIVER.key, "org.h2.Driver")
+
 	private val jdbcDao = new JdbcDao(conf)
 
 	import jdbcDao._
