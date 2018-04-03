@@ -4,9 +4,9 @@ import moonbox.common.MbConf
 import moonbox.grid.deploy.MbService
 import moonbox.grid.deploy.transport.server.JdbcServer
 
-class TransportServer(conf: MbConf, service: MbService) {
+class TransportServer(host: String, port: Int, conf: MbConf, service: MbService) {
   def start(): Int = {
-    new JdbcServer("localhost", 8080, conf, service).start()
+    new JdbcServer(host, port, conf, service).start()
     0
   }
 

@@ -11,6 +11,7 @@ class MbMasterParam(args: Array[String], val conf: MbConf) extends MbLogging {
 	var host: String =_
 	var port: Int = _
 	var restPort: Int = _
+	var tcpPort: Int = _
 
 	parse(args.toList)
 
@@ -33,6 +34,12 @@ class MbMasterParam(args: Array[String], val conf: MbConf) extends MbLogging {
 	if (restPort == 0) {
 		if (conf.get(REST_SERVER_PORT.key).isDefined) {
 			restPort = conf.get(REST_SERVER_PORT.key).get.toInt
+		}
+	}
+
+	if (tcpPort == 0) {
+		if (conf.get(TCP_SERVER_PORT.key).isDefined) {
+			tcpPort = conf.get(TCP_SERVER_PORT.key).get.toInt
 		}
 	}
 
