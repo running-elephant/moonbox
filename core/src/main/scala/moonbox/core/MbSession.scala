@@ -1,18 +1,18 @@
 package moonbox.core
 
-import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog.CatalogSession
-import moonbox.core.command.{InsertInto, MQLQuery, MbCommand, MbRunnableCommand}
-import org.apache.spark.{SparkConf, SparkContext}
+import moonbox.core.command._
 import moonbox.core.config._
-import scala.collection.JavaConversions._
+import org.apache.spark.sql.{DataFrame, MixcalContext, SaveMode}
+
 
 class MbSession(conf: MbConf) extends MbLogging {
 	implicit private  var catalogSession: CatalogSession = _
+	val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val catalog = new CatalogContext(conf)
+	val mixcal = new MixcalContext(conf)
 
 	def bindUser(username: String): this.type = {
 		this.catalogSession = {
@@ -35,47 +35,53 @@ class MbSession(conf: MbConf) extends MbLogging {
 		this
 	}
 
-	def execute(cmds: Seq[MbCommand]): Any = {
-		cmds.map{execute}.last
+	def execute(jobId: String, cmds: Seq[MbCommand]): Any = {
+		cmds.map{cmd => execute(jobId, cmds)}.last
 	}
 
-	def execute(cmd: MbCommand): Any = {
+	def execute(jobId: String, cmd: MbCommand): Any = {
 		cmd match {
-			case runnable: MbRunnableCommand =>
+			case runnable: MbRunnableCommand => // direct
 				runnable.run(this)
-			case query: MQLQuery =>
-
-			case insert: InsertInto =>
+			case createTempView: CreateTempView =>
+				val df = sql(createTempView.query)
+				if (createTempView.isCache) {
+					df.cache()
+				}
+				if (createTempView.replaceIfExists) {
+					df.createOrReplaceTempView(createTempView.name)
+				} else {
+					df.createTempView(createTempView.name)
+				}
+			case mbQuery: MQLQuery => // cached
+				sql(mbQuery.query).write
+					.format("org.apache.spark.sql.execution.datasoruces.redis")
+					.option("jobId", jobId)
+					.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
+					.save()
+			case insert: InsertInto => // external
+				// TODO insert to external system
+				sql(insert.query).write.format("redis")
+					.option("key", "")
+					.option("server", "")
+					.mode(SaveMode.Overwrite)
+					.save()
+			case _ => throw new Exception("Unsupported command.")
 		}
+	}
+
+	def sql(sqlText: String): DataFrame = {
+		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
+		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
+		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+		val lastLogicalPlan = if (pushdown) {
+			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
+		} else optimizedLogicalPlan
+		mixcal.treeToDF(lastLogicalPlan)
 	}
 
 }
 
 object MbSession extends MbLogging {
-	private val resources = ConcurrentHashMap.newKeySet[String]()
-	private var sparkContext: SparkContext = _
-
-	private def getSparkContext(conf: MbConf): SparkContext = {
-		synchronized {
-			if (sparkContext == null || sparkContext.isStopped) {
-				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
-					case (key, value) => key.startsWith("moonbox.mixcal")
-				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
-				sparkContext = new SparkContext(sparkConf)
-				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
-				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
-				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
-				logInfo("New a sparkContext instance.")
-				resources.foreach(sparkContext.addJar)
-				resources.clear()
-			} else {
-				logInfo("Using an exists sparkContext.")
-			}
-			sparkContext
-		}
-	}
-
-	def addJar(path: String): Unit = resources.add(path)
-
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
 }

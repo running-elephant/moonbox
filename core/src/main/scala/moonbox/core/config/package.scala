@@ -38,6 +38,9 @@ package object config {
 	val MIXCAL_IMPLEMENTATION = ConfigBuilder("moonbox.mixcal.implementation")
 		.stringConf
 		.createWithDefaultString("spark")
+	val MIXCAL_PUSHDOWN_ENABLE = ConfigBuilder("moonbox.mixcal.pushdown.enable")
+	    .booleanConf
+	    .createWithDefault(true)
 	val MIXCAL_SPARK_MASTER = ConfigBuilder("moonbox.mixcal.spark.master")
 		.stringConf
 		.createWithDefaultString("local[*]")
