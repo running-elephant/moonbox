@@ -10,6 +10,7 @@
     <name>Moonbox Project Parent POM</name>
     <version>0.2.0-SNAPSHOT</version>
     <modules>
+        <module>external/spark-hbase-connector</module>
         <module>common</module>
         <module>localservice</module>
         <module>catalyst</module>

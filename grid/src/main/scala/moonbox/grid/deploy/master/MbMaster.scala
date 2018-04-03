@@ -14,7 +14,7 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.core.parser.MbParser
-import moonbox.grid._
+import moonbox.grid.{CachedData, UnitData, _}
 import moonbox.grid.api._
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
@@ -191,7 +191,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 									JobCompleteWithCachedData(key)
 								case DirectData(data) =>
 									JobCompleteWithDirectData(jobId, data)
-								case ExternalData(id) =>
+								case UnitData(id) =>
 									JobCompleteWithExternalData(id, None)
 							}
 							jobInfo.client ! response
