@@ -58,6 +58,9 @@ object DeployMessages {
 	case class RemoveJobFromWorker(jobId: String) extends DeployMessage
 
 	// Worker internal
+	case class RunJob(jobInfo: JobInfo) extends DeployMessage
+	case class CancelJob(jobId: String) extends DeployMessage
+	case object  KillRunner extends DeployMessage
 
 
 	// Master to Worker & Client

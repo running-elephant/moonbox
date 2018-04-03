@@ -11,6 +11,7 @@ import akka.cluster.{Cluster, Member, MemberStatus}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MbSession
+import moonbox.grid.{Failed, JobState}
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.MbMaster
@@ -41,7 +42,6 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		workerLatestState()
 	}
 
-
 	override def postStop(): Unit = {
 		cluster.unsubscribe(self)
 	}
@@ -51,7 +51,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		case AllocateSession(username) =>
 			val requester = sender()
 			Future {
-				val mbSession = MbSession.getMbSession(conf)////TODO:  .bindUser(username)
+				val mbSession = MbSession.getMbSession(conf).bindUser(username)
 				val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
 				val sessionId = newSessionId()
 				sessionIdToJobRunner.put(sessionId, runner)
@@ -80,17 +80,19 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		case assign@AssignJobToWorker(jobInfo) =>
 			logInfo(s"AssignJobToWorker ${jobInfo}")
 			val requester = sender()
-				val runner = if (jobInfo.sessionId.isDefined) { //adhoc
-					sessionIdToJobRunner.getOrElse(jobInfo.sessionId.get, {
-						val ref = context.actorOf(Props(classOf[Runner], conf, MbSession.getMbSession(conf))) //TODO: new session?
-						sessionIdToJobRunner.put(jobInfo.sessionId.get, ref)
-						ref
-					})
-				} else { //batch
-					val mb = MbSession.getMbSession(conf) //TODO: new session?
-					context.actorOf(Props(classOf[Runner], conf, mb))
-				}
-				runner forward assign
+			jobInfo.sessionId match {
+				case Some(sessionId) => // adhoc
+					sessionIdToJobRunner.get(sessionId) match {
+						case Some(runner) =>
+							runner forward assign
+						case None =>
+							requester ! JobStateChanged(jobInfo.jobId, JobState.FAILED, Failed("Session lost."))
+					}
+				case None => // batch
+					val mb = MbSession.getMbSession(conf).bindUser(jobInfo.username.get)
+					val runner = context.actorOf(Props(classOf[Runner], conf, mb))
+					runner forward assign
+			}
 
 		case kill@RemoveJobFromWorker(jobId) =>
 			logDebug(s"RemoveJobFromWorker ${jobId}")

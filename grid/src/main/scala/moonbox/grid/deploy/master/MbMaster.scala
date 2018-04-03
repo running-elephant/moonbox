@@ -191,7 +191,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 									JobCompleteWithCachedData(key)
 								case DirectData(data) =>
 									JobCompleteWithDirectData(jobId, data)
-								case ExternalData(id) =>
+								case UnitData(id) =>
 									JobCompleteWithExternalData(id, None)
 							}
 							jobInfo.client ! response

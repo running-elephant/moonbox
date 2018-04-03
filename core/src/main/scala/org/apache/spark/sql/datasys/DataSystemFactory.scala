@@ -10,4 +10,17 @@ object DataSystemFactory {
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}
+
+	def typeToSparkDatasource(typ: String): String = {
+		typ match {
+			case "mysql" | "oracle" | "jdbc" => "org.apache.spark.sql.execution.datasources.mbjdbc"
+			case "redis" => "org.apache.spark.sql.execution.datasources.redis"
+			case "mongo" | "mongodb" => "com.mongodb.spark.sql"
+			case "parquet" => "parquet"
+			case "json" => "json"
+			case "csv" => "csv"
+			case "text" => "text"
+			case o => o
+		}
+	}
 }
