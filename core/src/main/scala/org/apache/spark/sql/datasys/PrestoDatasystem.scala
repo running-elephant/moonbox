@@ -31,6 +31,7 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 	override protected val supportedUDF: Seq[String] = Seq()
 
 	override protected val supportedExpressions: Seq[Class[_]] = Seq(
+		classOf[AttributeReference], classOf[Alias],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[IsNaN], classOf[NullIf],
 		classOf[Least], classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],
 		classOf[Atan2], classOf[Cbrt], classOf[Ceil], classOf[Cos], classOf[Cosh],

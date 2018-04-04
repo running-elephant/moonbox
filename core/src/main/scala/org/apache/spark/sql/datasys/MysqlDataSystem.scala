@@ -4,6 +4,7 @@ import java.net.InetAddress
 import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
+import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
@@ -13,7 +14,7 @@ import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
-class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) {
+class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with MbLogging {
 
 	require(contains("type", "url", "user", "password", "dbtable"))
 
@@ -34,6 +35,7 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
+		classOf[AttributeReference], classOf[Alias],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[If], classOf[IfNull],
 		classOf[IsNull], classOf[IsNotNull], classOf[Least], classOf[NullIf],
 		classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],
@@ -104,10 +106,12 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
 	override def buildScan(plan: LogicalPlan): DataFrame = {
 		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sql = sqlBuilder.toSQL
+		logInfo(s"pushdown sql : $sql")
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
-			sqlBuilder.toSQL,
+			sql,
 			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs):_*)
 		)
 		val schema = StructType.fromAttributes(sqlBuilder.finalLogicalPlan.output)
