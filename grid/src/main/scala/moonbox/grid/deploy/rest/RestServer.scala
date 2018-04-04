@@ -76,7 +76,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 							case None =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case Some(username) =>
-								service.openSession(username)
+								service.openSession(username, in.database)
 						}
 					}
 				}

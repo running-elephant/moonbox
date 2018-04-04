@@ -20,7 +20,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
-	def bindUser(username: String): this.type = {
+	def bindUser(username: String, initializedDatabase: Option[String]): this.type = {
 		this.catalogSession = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
@@ -31,7 +31,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 							-1, "SYSTEM", -1, "SYSTEM")
 					} else {
 						val organization = catalog.getOrganization(catalogUser.organizationId)
-						val database = catalog.getDatabase(catalogUser.organizationId, "default")
+						val database = catalog.getDatabase(catalogUser.organizationId, initializedDatabase.getOrElse("default"))
 						new CatalogSession(
 							catalogUser.id.get,
 							catalogUser.name,

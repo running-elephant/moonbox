@@ -50,7 +50,7 @@ object DeployMessages {
 
 	case class RegisterWorkerFailed(message: String) extends DeployMessage with RegisterWorkerResponse
 
-	case class AllocateSession(username: String) extends DeployMessage
+	case class AllocateSession(username: String, database: Option[String]) extends DeployMessage
 	case class FreeSession(sessionId: String) extends DeployMessage
 
 	case class AssignJobToWorker(jobInfo: JobInfo) extends DeployMessage

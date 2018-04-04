@@ -48,10 +48,10 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 
 	override def receive: Receive = {
 
-		case AllocateSession(username) =>
+		case AllocateSession(username, database) =>
 			val requester = sender()
 			Future {
-				val mbSession = MbSession.getMbSession(conf).bindUser(username)
+				val mbSession = MbSession.getMbSession(conf).bindUser(username, database)
 				val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
 				val sessionId = newSessionId()
 				sessionIdToJobRunner.put(sessionId, runner)

@@ -30,10 +30,10 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 		}
 	}
 
-	def openSession(username: String): Future[OpenSessionOutbound] = {
+	def openSession(username: String, database: Option[String]): Future[OpenSessionOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(OpenSession(username)).flatMap {
+				askForCompute(OpenSession(username, database)).flatMap {
 					case OpenedSession(sessionId) =>
 						Future(OpenSessionOutbound(Some(sessionId), None))
 					case OpenSessionFailed(error) =>

@@ -38,7 +38,7 @@ class JdbcServerHandler(mbService: MbService) extends ChannelInboundHandlerAdapt
               logInfo(s"User: ${login.user} login succeed")
               //open session
               logInfo(s"Opening session for user: ${login.user}, clientId=${login.clientId}")
-              mbService.openSession(login.user).onComplete {
+              mbService.openSession(login.user, Some(login.database)).onComplete {
                 case Success(v) =>
                   if (v.error.isEmpty && v.sessionId.isDefined) {
                     clientId2SessionId += (login.clientId -> v.sessionId.get)

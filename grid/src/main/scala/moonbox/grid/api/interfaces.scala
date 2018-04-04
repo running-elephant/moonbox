@@ -1,11 +1,10 @@
 package moonbox.grid.api
 
 import moonbox.grid.JobInfo
-import org.apache.spark.sql.Row
 
 sealed trait MbApi
 
-case class OpenSession(username: String) extends MbApi
+case class OpenSession(username: String, database: Option[String]) extends MbApi
 case class OpenedSession(sessionId: String) extends MbApi
 case class OpenSessionFailed(error: String) extends MbApi
 

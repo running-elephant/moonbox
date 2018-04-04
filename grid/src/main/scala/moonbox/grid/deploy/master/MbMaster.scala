@@ -277,12 +277,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	}
 
 	private def process: Receive = {
-		case OpenSession(username) =>
+		case OpenSession(username, database) =>
 			val client = sender()
 			val candidate = selectWorker()
 			candidate match {
 				case Some(worker) =>
-					val future = worker.ask(AllocateSession(username)).mapTo[AllocateSessionResponse]
+					val future = worker.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse]
 					future.onComplete {
 						case Success(response) =>
 							response match {
