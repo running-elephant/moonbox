@@ -176,6 +176,14 @@
                 <artifactId>json4s-native_2.11</artifactId>
                 <version>${json4s-jackson.version}</version>
             </dependency>
+
+            <!-- repl -->
+            <dependency>
+                <groupId>org.jline</groupId>
+                <artifactId>jline</artifactId>
+                <version>3.3.0</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
