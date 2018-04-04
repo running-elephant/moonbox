@@ -23,7 +23,10 @@ class MoonboxResultSetMetaData(resultSet: MoonboxResultSet,
 
   override def getColumnName(column: Int) = parsedSchema(column - 1)._1
 
-  override def getColumnTypeName(column: Int) = null
+  override def getColumnTypeName(column: Int) = {
+    val parsed = parse(originalSchemaJson)
+    parsed(column - 1)._2
+  }
 
   override def isWritable(column: Int) = false
 

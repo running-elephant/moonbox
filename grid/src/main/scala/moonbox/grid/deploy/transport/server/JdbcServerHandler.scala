@@ -99,6 +99,8 @@ class JdbcServerHandler(mbService: MbService) extends ChannelInboundHandlerAdapt
               if (v.error.isDefined) {
                 logInfo(s"sql query error: ${v.error.get}")
                 ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, query.clientId, Option(v.error.get), null, null))
+              } else if (v.size.isEmpty) {
+                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, query.clientId, None, v.data.get, v.schema.orNull))
               } else {
                 logInfo(s"sql query '$query' succeed")
                 // 1. return JdbcQueryOutbound  2.return DataFetchOutbound,  according to the result data size
