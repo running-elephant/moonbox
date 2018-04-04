@@ -31,7 +31,6 @@ class LoginManager(catalogContext: CatalogContext, master: MbMaster) extends MbL
 					userToLastActiveTime.remove(u)
 				}
 			}
-			master.removeTimeOutUser(user)
 		}
 	}, timeout, timeout / 2, TimeUnit.MILLISECONDS)
 
