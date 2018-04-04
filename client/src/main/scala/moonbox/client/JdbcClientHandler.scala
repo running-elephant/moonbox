@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelPromise}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.transport.model._
+import moonbox.common.message._
 
 class JdbcClientHandler extends ChannelInboundHandlerAdapter with MbLogging {
 

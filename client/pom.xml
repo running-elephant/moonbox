@@ -16,13 +16,13 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-grid_2.11</artifactId>
+            <artifactId>moonbox-common_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_2.11</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.0.43.Final</version>
         </dependency>
     </dependencies>
 

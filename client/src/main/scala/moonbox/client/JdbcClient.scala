@@ -6,13 +6,13 @@ import java.util.UUID
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 import io.netty.bootstrap.Bootstrap
+import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.channel._
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.transport.model.{EchoInbound, EchoOutbound, JdbcOutboundMessage}
+import moonbox.common.message.{EchoInbound, EchoOutbound, JdbcOutboundMessage}
 
 class JdbcClient(host: String, port: Int) extends MbLogging {
 

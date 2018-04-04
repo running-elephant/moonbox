@@ -1,5 +1,5 @@
 package moonbox.client
 
-import moonbox.grid.deploy.transport.model.OneWayMessage
+import moonbox.common.message.OneWayMessage
 
 case class OneWayMessageTest(msg: Any) extends OneWayMessage

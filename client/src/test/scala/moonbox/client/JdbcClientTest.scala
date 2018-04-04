@@ -2,8 +2,7 @@ package moonbox.client
 
 import java.util.UUID
 
-import moonbox.grid.deploy.transport.model.{EchoInbound, EchoOutbound, JdbcLoginInbound, JdbcLoginOutbound}
-import moonbox.grid.deploy.transport.server.JdbcServer
+import moonbox.common.message.{EchoInbound, EchoOutbound, JdbcLoginInbound, JdbcLoginOutbound}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
@@ -61,7 +60,7 @@ class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
   test("test login") {
     var count = 0
     while (count < 1000) {
-      val recv = client.sendAndReceive(JdbcLoginInbound(client.getMessageId(), client.clientId, "ROOT", "123456"), 5000)
+      val recv = client.sendAndReceive(JdbcLoginInbound(client.getMessageId(), client.clientId, "ROOT", "123456", "default"), 5000)
       assert(recv.isInstanceOf[JdbcLoginOutbound])
       count += 1
     }
