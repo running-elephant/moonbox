@@ -6,7 +6,7 @@ import java.sql.{Blob, Clob, Date, NClob, Ref, ResultSet, ResultSetMetaData, Row
 import java.util
 import java.util.Calendar
 
-import moonbox.grid.deploy.transport.model.{DataFetchInbound, DataFetchOutbound, DataFetchState, JdbcQueryOutbound}
+import moonbox.common.message.{DataFetchInbound, DataFetchOutbound, DataFetchState, JdbcQueryOutbound}
 import moonbox.util.SchemaUtil._
 
 class MoonboxResultSet(conn: MoonboxConnection,

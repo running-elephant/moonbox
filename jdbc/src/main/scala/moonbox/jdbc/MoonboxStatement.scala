@@ -2,7 +2,7 @@ package moonbox.jdbc
 
 import java.sql._
 
-import moonbox.grid.deploy.transport.model._
+import moonbox.common.message.{DataFetchOutbound, JdbcInboundMessage, JdbcQueryInbound, JdbcQueryOutbound}
 import moonbox.util.MoonboxJDBCUtils
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {

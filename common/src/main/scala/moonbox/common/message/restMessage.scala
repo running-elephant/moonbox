@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.rest
+package moonbox.common.message
 
 sealed trait RestEntity
 

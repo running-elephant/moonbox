@@ -6,7 +6,7 @@ import java.util.concurrent.Executor
 import java.{sql, util}
 
 import moonbox.client.JdbcClient
-import moonbox.grid.deploy.transport.model._
+import moonbox.common.message.{JdbcLoginInbound, JdbcLoginOutbound, JdbcLogoutInbound, JdbcLogoutOutbound}
 import org.apache.commons.codec.digest.DigestUtils
 
 class MoonboxConnection(url: String, props: Properties) extends java.sql.Connection {
@@ -36,7 +36,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     // create a jdbc client to transfer login message to server
     val client = new JdbcClient(host, port)
     val messageId = client.getMessageId()
-    val resp = client.sendAndReceive(JdbcLoginInbound(messageId, client.clientId, username, pwd), TIMEOUT)
+    val resp = client.sendAndReceive(JdbcLoginInbound(messageId, client.clientId, username, pwd, database), TIMEOUT)
     resp match {
       case msg: JdbcLoginOutbound =>
         msg.err match {

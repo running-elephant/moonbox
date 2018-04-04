@@ -1,7 +1,5 @@
 package moonbox.grid.deploy.rest
 
-import java.util.concurrent.ConcurrentHashMap
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -9,15 +7,16 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
+import moonbox.common.message._
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.deploy.MbService
 import moonbox.grid.config._
+import moonbox.grid.deploy.MbService
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 	implicit val akkaSystem: ActorSystem) extends JsonSerializer with MbLogging {

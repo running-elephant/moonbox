@@ -1,4 +1,4 @@
-package moonbox.server
+package moonbox.grid.deploy.master.transport
 
 import moonbox.grid.deploy.transport.server.JdbcServer
 import org.scalatest.{BeforeAndAfterAll, FunSuite}

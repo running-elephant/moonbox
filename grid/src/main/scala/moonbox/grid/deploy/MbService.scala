@@ -4,9 +4,9 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import moonbox.common.MbLogging
+import moonbox.common.message._
 import moonbox.grid.api.{ClosedSession, _}
 import moonbox.grid.deploy.authenticate.LoginManager
-import moonbox.grid.deploy.rest._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

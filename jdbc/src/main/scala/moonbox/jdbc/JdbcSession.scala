@@ -1,6 +1,5 @@
-package moonbox.grid.deploy.transport.model
+package moonbox.jdbc
 
-import java.io.Closeable
 import java.util.{Properties, UUID}
 
 import moonbox.client.JdbcClient

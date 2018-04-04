@@ -15,14 +15,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-grid_2.11</artifactId>
-            <version>${project.version}</version>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.8</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>

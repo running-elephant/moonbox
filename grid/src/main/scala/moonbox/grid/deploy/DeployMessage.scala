@@ -1,10 +1,9 @@
 package moonbox.grid.deploy
 
 import akka.actor.ActorRef
-import moonbox.common.util.Utils
-import moonbox.grid.{JobInfo, JobResult}
 import moonbox.grid.JobState.JobState
 import moonbox.grid.deploy.worker.WorkerInfo
+import moonbox.grid.{JobInfo, JobResult}
 
 sealed trait DeployMessage extends Serializable
 

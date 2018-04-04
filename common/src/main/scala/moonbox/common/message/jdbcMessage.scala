@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.transport.model
+package moonbox.common.message
 
 /**
   * jdbc client                                jdbc server                         moonbox grid

@@ -3,8 +3,8 @@ package moonbox.grid.deploy.transport.server
 import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
+import moonbox.common.message._
 import moonbox.grid.deploy.MbService
-import moonbox.grid.deploy.transport.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
