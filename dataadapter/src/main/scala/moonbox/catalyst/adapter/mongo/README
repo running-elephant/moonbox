@@ -1,0 +1,48 @@
+-----------------sql support-----
+SQL Select
+SQL Where
+SQL Order By
+SQL Group By
+SQL AND & OR
+SQL limit
+SQL In
+SQL Between
+SQL Aliases
+SQL Not Null
+SQL Nulls
+SQL avg()
+SQL count()
+SQL max()
+SQL min()
+SQL sum()
+SQL add()
+SQL sub()
+SQL mul()
+SQL div()
+SQL first()
+SQL last()
+SQL mod()
+
+----------------------array function support --------------
+array_exists
+select about from people where array_exists(about, "x='playing'")
+SELECT comments.name as aaa, comments.age as bbb from  people_nest where array_exists(comments.age, "x>19")
+
+array_filter
+SELECT array_filter(user.age, "x>20") as aaa , user.age as bbb from  nest_test_table
+
+array_map
+SELECT array_map(user.age, "x+100") as aaa , user.age as bbb from  nest_test_table
+
+-------------------- geo function support --------------------
+
+
+-----------------case example------------------
+--------url----or----properties---------
+Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
+val url = s"jdbc:mongo://localhost:27017,localhost1:27017/database?collection=name&user=username&password=pwd"
+val prop = new Properties
+prop.put("KEY_NAME", value)
+connection = DriverManager.getConnection(url, prop)
+val statement: Statement = connection.createStatement()
+val rs: ResultSet = statement.executeQuery(s""" sql here """)
