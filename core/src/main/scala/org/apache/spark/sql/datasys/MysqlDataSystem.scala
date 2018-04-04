@@ -24,6 +24,7 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 		classOf[Filter],
 		classOf[Aggregate],
 		classOf[Sort],
+		classOf[Join],
 		classOf[GlobalLimit],
 		classOf[LocalLimit],
 		classOf[Subquery],
