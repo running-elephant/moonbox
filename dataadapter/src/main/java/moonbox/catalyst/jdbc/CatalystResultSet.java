@@ -53,6 +53,7 @@ public class CatalystResultSet implements ResultSet {
     return 0;
   }
 
+  @Deprecated
   public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
     return null;
   }
@@ -77,6 +78,7 @@ public class CatalystResultSet implements ResultSet {
     return null;
   }
 
+  @Deprecated
   public InputStream getUnicodeStream(int columnIndex) throws SQLException {
     return null;
   }
@@ -117,6 +119,7 @@ public class CatalystResultSet implements ResultSet {
     return 0;
   }
 
+  @Deprecated
   public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
     return null;
   }
@@ -141,6 +144,7 @@ public class CatalystResultSet implements ResultSet {
     return null;
   }
 
+  @Deprecated
   public InputStream getUnicodeStream(String columnLabel) throws SQLException {
     return null;
   }

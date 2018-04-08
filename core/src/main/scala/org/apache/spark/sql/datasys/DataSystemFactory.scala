@@ -7,13 +7,15 @@ object DataSystemFactory {
 		require(props.contains("type"))
 		props("type").toLowerCase match {
 			case "mysql" => new MysqlDataSystem(props)(sparkSession)
+			case "presto" | "prestodb" => new PrestoDataSystem(props)(sparkSession)
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}
 
 	def typeToSparkDatasource(typ: String): String = {
 		typ match {
-			case "mysql" | "oracle" | "presto" | "jdbc" => "org.apache.spark.sql.execution.datasources.mbjdbc"
+			case "mysql" | "oracle" | "jdbc" => "org.apache.spark.sql.execution.datasources.mbjdbc"
+			case "presto" | "prestodb" => "org.apache.spark.sql.execution.datasources.presto"
 			case "hbase" => "org.apache.spark.sql.execution.datasources.hbase"
 			case "redis" => "org.apache.spark.sql.execution.datasources.redis"
 			case "mongo" | "mongodb" => "com.mongodb.spark.sql"
