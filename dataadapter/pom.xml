@@ -13,9 +13,5 @@
     <packaging>jar</packaging>
     <name>Moonbox Project Dataadapter</name>
 
-    <properties>
-        <esv5.version>5.3.2</esv5.version>
-        <esv5-spark.version>5.3.2</esv5-spark.version>
-    </properties>
 
 </project>
