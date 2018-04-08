@@ -33,7 +33,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def openSession(username: String, database: Option[String]): Future[OpenSessionOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(OpenSession(username, database)).flatMap {
+				askForCompute(OpenSession(username, database)).mapTo[OpenSessionResponse].flatMap {
 					case OpenedSession(sessionId) =>
 						Future(OpenSessionOutbound(Some(sessionId), None))
 					case OpenSessionFailed(error) =>
@@ -47,7 +47,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def closeSession(username: String, sessionId: String): Future[CloseSessionOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(CloseSession(sessionId)).flatMap {
+				askForCompute(CloseSession(sessionId)).mapTo[CloseSessionResponse].flatMap {
 					case ClosedSession => Future(CloseSessionOutbound(None))
 					case CloseSessionFailed(error) => Future(CloseSessionOutbound(Some(error)))
 				}
@@ -57,11 +57,11 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	}
 
 	def jobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
-		askForCompute(JobQuery(sessionId, sqls)).flatMap {
+		askForCompute(JobQuery(sessionId, sqls)).mapTo[JobResultResponse].flatMap {
 			case JobFailed(jobId, error) =>
 				Future(QueryOutbound(jobId, error = Some(error)))
 			case JobCompleteWithCachedData(jobId) =>
-				askForResult(FetchData(jobId, offset = 0, fetchSize)).map {
+				askForResult(FetchData(jobId, offset = 0, fetchSize)).mapTo[FetchDataResponse].map {
 					case FetchDataSuccess(id, schema, data, size) =>
 						QueryOutbound(id, schema = Some(schema), data = Some(data), size = Some(size))  //total size
 					case FetchDataFailed(id, error) =>
@@ -77,11 +77,11 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobSubmitSync(username: String, sqls: Seq[String]): Future[SubmitOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(JobSubmit(username, sqls, async = false)).flatMap {
+				askForCompute(JobSubmit(username, sqls, async = false)).mapTo[JobResultResponse].flatMap {
 					case JobFailed(jobId, error) =>
 						Future(SubmitOutbound(jobId = Some(jobId), error = Some(error)))
 					case JobCompleteWithCachedData(jobId) =>
-						askForResult(FetchData(jobId, offset = 0, size = 200)).map {
+						askForResult(FetchData(jobId, offset = 0, size = 200)).mapTo[FetchDataResponse].map {
 							case FetchDataSuccess(id, schema, data, size) =>  //TODO: 200 ???, size maybe be used if the data is part of data
 								SubmitOutbound(jobId = Some(id), schema = Some(schema), data = Some(data))
 							case FetchDataFailed(id, error) =>
@@ -100,7 +100,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobSubmitAsync(username: String, sqls: Seq[String]): Future[SubmitOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(JobSubmit(username, sqls, async = true)).map {
+				askForCompute(JobSubmit(username, sqls, async = true)).mapTo[JobHandleResponse].map {
 					case JobAccepted(jobId) =>
 						SubmitOutbound(jobId = Some(jobId))
 					case JobRejected(error) =>
@@ -114,7 +114,7 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobCancel(username: String, jobId: String): Future[CancelOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(JobCancel(jobId)).map {
+				askForCompute(JobCancel(jobId)).mapTo[JobCancelResponse].map {
 					case JobCancelSuccess(id) =>
 						CancelOutbound(jobId = jobId)
 					case JobCancelFailed(id, error) =>
@@ -128,8 +128,8 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobProgress(username: String, jobId: String): Future[ProgressOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForCompute(JobProgress(jobId)).map {
-					case JobProgressResponse(id, jobInfo) =>
+				askForCompute(JobProgress(jobId)).mapTo[JobProgressResponse].map {
+					case JobProgressState(id, jobInfo) =>
 						ProgressOutbound(id, error = jobInfo.errorMessage, status = Some(s"${jobInfo.status}"))
 				}
 			case false =>
@@ -140,8 +140,8 @@ class MbService(loginManager: LoginManager, master: ActorRef, resultGetter: Acto
 	def jobResult(username: String, jobId: String, offset: Long, size: Long): Future[ResultOutbound] = {
 		isLogin(username).flatMap {
 			case true =>
-				askForResult(FetchData(jobId, offset, size)).map {
-					case FetchDataSuccess(id, schema, data, size) =>  //TODO: size maybe be used if the data is part of data
+				askForResult(FetchData(jobId, offset, size)).mapTo[FetchDataResponse].map {
+					case FetchDataSuccess(id, schema, data, realSize) =>  //TODO: size maybe be used if the data is part of data
 						ResultOutbound(jobId = id, schema = Some(schema), data = Some(data))
 					case FetchDataFailed(id, error) =>
 						ResultOutbound(jobId = id, error = Some(error))
