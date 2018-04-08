@@ -2,14 +2,12 @@ package moonbox.repl
 
 import moonbox.common.MbLogging
 import moonbox.repl.adapter.{Connector, JdbcConnector, RestConnector}
-import moonbox.repl.syntax.Validation
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.terminal.TerminalBuilder
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
-import scala.util.Try
 
 object Main extends JsonSerializer with MbLogging {
 
@@ -101,7 +99,7 @@ object Main extends JsonSerializer with MbLogging {
         System.exit(0)
       case trimmedSql =>
         val sqlList = trimmedSql.split(";")
-        val illegal: Boolean = sqlList.map { sql =>
+        /*val illegal: Boolean = sqlList.map { sql =>
           val validate: Try[Boolean] = Validation.validate(sql)
           if (validate.isFailure) {
             System.out.println(validate.failed.get.getMessage)
@@ -112,7 +110,8 @@ object Main extends JsonSerializer with MbLogging {
         }.forall(_ == true)
         if (illegal) {
           connector.process(sqlList)
-        }
+        }*/
+		  connector.process(sqlList)
     }
   }
 

@@ -1,3 +1,4 @@
+/*
 package moonbox.repl.syntax
 
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -12,3 +13,4 @@ class SyntaxErrorListener extends BaseErrorListener {
 		throw new ParseCancellationException(s"line $line position $charPositionInLine : $msg")
 	}
 }
+*/

@@ -10,10 +10,11 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.rdd.MbJdbcRDD
-import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
+import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbPrestoDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.StructType
 
 class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) {
+
 	override val name: String = "presto"
 
 	override protected val supportedOperators: Seq[Class[_]] = Seq(
@@ -77,7 +78,7 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 	}
 
 	override def buildScan(plan: LogicalPlan): DataFrame = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, MbPrestoDialect)
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
@@ -96,7 +97,6 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 		val port = if (hostPort.length > 1) hostPort(1).toInt else 8080
 		(InetAddress.getByName(host).getHostAddress, port)
 	}
-
 
 	private def getConnection: () => Connection = {
 		val p = new Properties()

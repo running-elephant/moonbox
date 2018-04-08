@@ -78,6 +78,21 @@ object MbOracleDialect extends MbDialect {
 	override def maybeQuote(name: String): String = name
 }
 
+object MbPrestoDialect extends MbDialect {
+
+	override def relation(relation: LogicalRelation): String = {
+		relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
+	}
+
+	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("presto")
+
+	override def quote(name: String): String = name
+
+	override def explainSQL(sql: String): String = s"EXPLAIN $sql"
+
+	override def maybeQuote(name: String): String = name
+}
+
 
 
 

@@ -47,6 +47,9 @@
             <version>20160212</version>
         </dependency>
 
+
+
+        <!--
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
@@ -134,7 +137,7 @@
                     <artifactId>akka-cluster-tools_2.11</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
+        </dependency>-->
 
     </dependencies>
 
@@ -156,17 +159,6 @@
                                 </transformer>
                             </transformers>
                             <filters>
-                                <filter>
-                                    <artifact>edp.moonbox:moonbox-core_2.11</artifact>
-                                    <includes>
-                                        <include>moonbox/core/parser/**</include>
-                                    </includes>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
