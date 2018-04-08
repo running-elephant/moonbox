@@ -359,7 +359,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			)
 			jobInfo match {
 				case Some(job) =>
-					client ! JobProgressResponse(job.jobId, job)
+					client ! JobProgressState(job.jobId, job)
 				case None =>
 					client ! JobFailed(jobId, s"Job $jobId does not exist or has been removed.")
 			}
