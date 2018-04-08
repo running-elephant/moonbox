@@ -40,108 +40,15 @@
             <groupId>org.jline</groupId>
             <artifactId>jline</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20160212</version>
         </dependency>
 
-
-
-        <!--
-        <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>antlr4-runtime</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-core_2.11</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>redis.clients</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>mysql</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.kstyrc</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.elasticsearch</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.elasticsearch.plugin</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.h2database</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.pauldijou</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.lucene</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.spark</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.parquet</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.kafka</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.zookeeper</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.curator</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.mongodb</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.curator-frameworker</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.typesafe.akka</groupId>
-                    <artifactId>akka-cluster_2.11</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.typesafe.slick</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.typesafe.akka</groupId>
-                    <artifactId>akka-cluster-tools_2.11</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>-->
-
     </dependencies>
 
-    <build>
+    <!--<build>
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -158,6 +65,12 @@
                                     <resource>reference.conf</resource>
                                 </transformer>
                             </transformers>
+                            &lt;!&ndash;<artifactSet>
+                                <excludes>
+                                    <exclude>org.scalatest:scalatest_2.11</exclude>
+                                </excludes>
+                            </artifactSet>&ndash;&gt;
+
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -168,12 +81,12 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <!--<minimizeJar>true</minimizeJar>-->
+                            &lt;!&ndash;<minimizeJar>true</minimizeJar>&ndash;&gt;
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
-    </build>
+    </build>-->
 
 </project>
