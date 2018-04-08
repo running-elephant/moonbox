@@ -61,7 +61,7 @@ import scala.reflect.ClassTag
   * to the working and managing the life cycle of Connections.
  */
 @InterfaceAudience.Public
-class HBaseContext(@transient sc: SparkContext,
+class HBaseContext(@transient val sc: SparkContext,
                    @transient val config: Configuration,
                    val tmpHdfsConfgFile: String = null)
   extends Serializable with Logging {

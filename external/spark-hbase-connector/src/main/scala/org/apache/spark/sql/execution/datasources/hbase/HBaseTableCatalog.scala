@@ -291,10 +291,10 @@ object HBaseTableCatalog {
                       |}
                       |}""".stripMargin
    */
-  @deprecated("Please use new json format to define HBaseCatalog")
+  /*@deprecated("Please use new json format to define HBaseCatalog", "")*/
   // TODO: There is no need to deprecate since this is the first release.
   def convert(parameters: Map[String, String]): Map[String, String] = {
-    val tableName = parameters.get(TABLE_KEY).getOrElse(null)
+    val tableName = parameters.get(TABLE_KEY).orNull
     // if the hbase.table is not defined, we assume it is json format already.
     if (tableName == null) return parameters
     val schemaMappingString = parameters.getOrElse(SCHEMA_COLUMNS_MAPPING_KEY, "")

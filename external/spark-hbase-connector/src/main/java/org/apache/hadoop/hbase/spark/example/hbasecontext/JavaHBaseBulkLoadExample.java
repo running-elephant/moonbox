@@ -96,7 +96,7 @@ final public class JavaHBaseBulkLoadExample {
         return null;
       KeyFamilyQualifier kfq = new KeyFamilyQualifier(Bytes.toBytes(strs[0]), Bytes.toBytes(strs[1]),
           Bytes.toBytes(strs[2]));
-      return new Pair(kfq, Bytes.toBytes(strs[3]));
+      return new Pair<>(kfq, Bytes.toBytes(strs[3]));
     }
   }
 }
