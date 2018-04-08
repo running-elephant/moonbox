@@ -300,34 +300,35 @@ class EsRestClient(param: Map[String, String]) {
         if(data.isDefined) {  //parse geo info
             val geoValue = data.get
             if (geoType == "geo_point") {
-                if (geoValue.isInstanceOf[java.util.List[Any]]){
-                    val list = geoValue.asInstanceOf[java.util.List[Any]]
-                    val content = list.get(0)
-                    if(content.isInstanceOf[Double]){
-                        return Some("LON_LAT_ARRAY")
-                    }
-                }
-                else if (geoValue.isInstanceOf[String]) {
-                    val geoStr = geoValue.asInstanceOf[String]
-                    if(geoStr.contains(",")) {
-                        return Some("LAT_LON_STRING")
-                    }else{
-                        return Some("GEOHASH")
-                    }
-                }else if(geoValue.isInstanceOf[java.util.Map[String, Any]]){
-                    return Some("LAT_LON_OBJECT")
+                geoValue match {
+                    case l: java.util.List[_] =>
+                        l.get(0) match{
+                            case Double => Some("LON_LAT_ARRAY")
+                            case _ => None
+                        }
+                    case s: String =>
+                        if(s.contains(",")) {
+                            Some("LAT_LON_STRING")
+                        }else{
+                            Some("GEOHASH")
+                        }
+                    case m: java.util.Map[_, _] => Some("LAT_LON_OBJECT")
+                    case _ => None
                 }
             }
-
-            if (geoType == "geo_shape") {
-                if(geoValue.isInstanceOf[java.util.Map[String, Any]]) {
-                    val map = geoValue.asInstanceOf[java.util.Map[String, Any]]
-                    val typ = map.get("type").toString
-                    return Some(typ.toUpperCase)
+            else if (geoType == "geo_shape") {
+                geoValue match {
+                    case m: java.util.Map[_, _] =>
+                        val typ = m.get("type").toString
+                        Some(typ.toUpperCase)
+                    case _ => None
                 }
+            }else{
+                None
             }
+        }else{
+            None
         }
-        None
     }
 
 

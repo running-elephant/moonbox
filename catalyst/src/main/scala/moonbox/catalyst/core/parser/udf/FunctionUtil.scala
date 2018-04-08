@@ -9,7 +9,7 @@ import org.apache.spark.sql.udf.JaninoCodeGen
 object FunctionUtil extends MbLogging{
 
     private def getDataType(expression: Expression) = {
-        expression match {
+        expression.dataType match {
             case a: ArrayType => a.elementType
             case _ => expression.dataType
         }

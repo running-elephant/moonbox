@@ -196,8 +196,8 @@ class EsFilterExec(condition: Expression, child: CatalystPlan) extends FilterExe
             case a@ArrayExists(left, right)  => translateSparkFunction(a, context)
             case u@ScalaUDF(_, _, children, _, Some(name)) => translateESFunction(name, children)
 
-            case EqualTo(attribute: Expression, value: Literal) => handleEqualTo(attribute, value, isES50)
-            case EqualTo(attribute: Expression, value: Literal) => handleEqualTo(attribute, value, isES50)
+            //case EqualTo(attribute: Expression, value: Literal) => handleEqualTo(attribute, value, isES50)
+            //case EqualTo(value: Literal, attribute: Expression) => handleEqualTo(attribute, value, isES50)
 
             case EqualTo(attribute: Attribute, value: Literal) => handleEqualTo(attribute, value, isES50)
             case EqualTo(value: Literal, attribute: Attribute) => handleEqualTo(attribute, value, isES50)

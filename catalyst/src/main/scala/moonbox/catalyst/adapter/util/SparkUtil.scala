@@ -111,38 +111,38 @@ object SparkUtil extends MbLogging{
         import scala.collection.JavaConversions._
         //println(s"dataTypeConvert  ${value}, ${dataType}")
         (value, dataType) match {
-            case (a: java.util.ArrayList[Any], array: ArrayType) =>
+            case (a: java.util.ArrayList[_], array: ArrayType) =>
                  a.map(dataTypeConvert(_, array.elementType)).toArray
             case (a: Any, array: ArrayType) =>
                 val arraybuffer = new ArrayBuffer[Any]()
                 arraybuffer.add(dataTypeConvert(a, array.elementType))
                 arraybuffer.toArray
-            case (s: String, array: ArrayType) => Array(s)
-            case (a: java.util.ArrayList[Any], schema: StructType) =>   //TODO: config in param
+            //case (s: String, array: ArrayType) => Array(s)
+            case (a: java.util.ArrayList[_], schema: StructType) =>   //TODO: config in param
                 a.map{ x => dataTypeConvert(x, schema) }.toArray
             case (data: String, schema: StructType) => data //TODO:
-            case (a: java.util.ArrayList[Any], schema: IntegerType) =>   //select a+1 from tbl
+            case (a: java.util.ArrayList[_], schema: IntegerType) =>   //select a+1 from tbl
                 if(a.nonEmpty) {
                     a(0) match {
                         case d: Double => d.toInt
                         case i: Integer => i.intValue()
                     }
                 } else { java.lang.Integer.valueOf("0") }
-            case (a: java.util.ArrayList[Any], schema: DoubleType) =>   //TODO: config in param
+            case (a: java.util.ArrayList[_], schema: DoubleType) =>   //TODO: config in param
                 if(a.nonEmpty) {
                     a(0) match {
                         case d: Double => d.toDouble
                         case i: Integer => i.doubleValue()
                     }
                 } else { java.lang.Double.valueOf("0.0") }
-            case (a: java.util.ArrayList[Any], schema: ShortType) =>   //TODO: config in param
+            case (a: java.util.ArrayList[_], schema: ShortType) =>   //TODO: config in param
                 if(a.nonEmpty) {
                     a(0) match {
                         case d: Double => d.toShort
                         case i: Integer => i.shortValue()
                     }
                 } else { java.lang.Short.valueOf("0") }
-            case (a: java.util.ArrayList[Any], schema: LongType) =>
+            case (a: java.util.ArrayList[_], schema: LongType) =>
                 if(a.nonEmpty) {
                     a(0) match {
                         case d: Double => d.toLong
