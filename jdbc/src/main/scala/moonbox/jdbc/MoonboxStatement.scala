@@ -7,8 +7,8 @@ import moonbox.util.MoonboxJDBCUtils
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
-  var EXEUCTE_QUERY_TIMEOUT = 60000
   val DEFAULT_FETCH_SIZE = 200
+  var queryTimeout = 60000
 
   var dataFetchId: Long = _
   var totalRows: Long = _
@@ -26,7 +26,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     if (connection == null)
       throw new Exception("Exception while execute query, because the connection is null value")
     else {
-      connection.checkClosed
+      connection.checkClosed()
       if (jdbcSession != connection.getSession()) {
         jdbcSession = connection.getSession()
         true
@@ -39,8 +39,8 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     val client = jdbcSession.jdbcClient
     val messageId = client.getMessageId()
     val username = jdbcSession.user
-    val queryMessage = JdbcQueryInbound(messageId, client.clientId, username, getFetchSize, sql)
-    val resp = client.sendAndReceive(queryMessage, EXEUCTE_QUERY_TIMEOUT)
+    val queryMessage = JdbcQueryInbound(messageId, username, getFetchSize, sql)
+    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
     jdbcMessage2ResultSet(queryMessage, resp)
   }
 
@@ -101,10 +101,10 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def setEscapeProcessing(enable: Boolean) = {}
 
-  override def getQueryTimeout = EXEUCTE_QUERY_TIMEOUT
+  override def getQueryTimeout = queryTimeout
 
   override def setQueryTimeout(seconds: Int) = {
-    EXEUCTE_QUERY_TIMEOUT = seconds * 1000
+    queryTimeout = seconds * 1000
   }
 
   override def cancel() = {}

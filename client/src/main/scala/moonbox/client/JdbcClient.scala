@@ -11,24 +11,24 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
+import io.netty.util.concurrent.EventExecutorGroup
 import moonbox.common.MbLogging
 import moonbox.common.message.{EchoInbound, EchoOutbound, JdbcOutboundMessage}
 
 class JdbcClient(host: String, port: Int) extends MbLogging {
 
   private var channel: Channel = _
-  private var channelFuture: ChannelFuture = _
   private var handler: JdbcClientHandler = _
-  private val channelRef = new AtomicReference[Channel]
   private val messageId = new AtomicLong()
-  lazy val clientId = UUID.randomUUID().toString
+  private var ws: EventExecutorGroup = _
 
   connect()
 
   def connect(): Unit = {
-    val workerGroup = new NioEventLoopGroup
     try {
-      val b = new Bootstrap
+      val workerGroup = new NioEventLoopGroup()
+      ws = workerGroup
+      val b = new Bootstrap()
       handler = new JdbcClientHandler
       b.group(workerGroup)
         .channel(classOf[NioSocketChannel])
@@ -37,19 +37,19 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
         .handler(new ChannelInitializer[SocketChannel]() {
           override def initChannel(ch: SocketChannel) = {
             ch.pipeline.addLast(new ObjectEncoder, new ObjectDecoder(ClassResolvers.cacheDisabled(null)), handler)
-            channelRef.set(ch)
           }
         })
-      val cf = b.connect(host, port).sync
+      val cf = b.connect(host, port).syncUninterruptibly()
       if (!cf.await(JdbcClient.CONNECT_TIMEOUT))
         throw new IOException(s"Connecting to $host timed out (${JdbcClient.CONNECT_TIMEOUT} ms)")
       else if (cf.cause != null)
         throw new IOException(s"Failed to connect to $host", cf.cause)
       this.channel = cf.channel
-      this.channelFuture = cf
       logInfo(s"Connected to ${channel.remoteAddress()}")
     } catch {
-      case e: Exception => e.printStackTrace()
+      case e: Exception =>
+        logError(e.getMessage)
+        this.close()
     }
   }
 
@@ -66,16 +66,23 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   def sendWithCallback(msg: Any, callback: => JdbcOutboundMessage => Any) = handler.send(msg, callback)
 
-  def close() = if (channel != null) channel.close()
+  def close() = {
+    if (ws != null) {
+      ws.shutdownGracefully()
+    }
+    if (channel != null) {
+      channel.close()
+    }
+  }
 }
 
 object JdbcClient {
   val CONNECT_TIMEOUT = 5000
   val RESULT_RESPONSE_TIMEOUT = 5000
   val host = "localhost"
-  val port = 8080
+  val port = 10010
   val client = new JdbcClient(host, port)
-  val CYCLE_COUNT= 1000
+  val CYCLE_COUNT = 10
 
   def main(args: Array[String]): Unit = {
     var nullCounter: Long = 0
@@ -89,11 +96,12 @@ object JdbcClient {
       if (resp == null) {
         seq +:= ("null id: ", count)
         nullCounter += 1
-      }
-      println(s"message $msgId: $message,  response ${resp.asInstanceOf[EchoOutbound].messageId}: $resp")
+      } else
+        println(s"message $msgId: $message,  response ${resp.asInstanceOf[EchoOutbound].messageId}: $resp")
       count += 1
     }
     println(s"nullCounter = $nullCounter")
     seq.foreach(println)
+    client.close()
   }
 }

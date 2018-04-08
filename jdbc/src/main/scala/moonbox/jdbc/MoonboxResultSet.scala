@@ -35,9 +35,9 @@ class MoonboxResultSet(conn: MoonboxConnection,
   def sendNextDataFetch(): DataFetchOutbound = {
     val client = stat.jdbcSession.jdbcClient
     val messageId = client.getMessageId()
-    val dataFetchState = DataFetchState(messageId, client.clientId, fetchJobId, currentRowId + 1, FETCH_SIZE, stat.totalRows)
+    val dataFetchState = DataFetchState(messageId, fetchJobId, currentRowId + 1, FETCH_SIZE, stat.totalRows)
     val nextDataFetch = DataFetchInbound(dataFetchState, conn.getSession().user)
-    val resp = client.sendAndReceive(nextDataFetch, stat.EXEUCTE_QUERY_TIMEOUT)
+    val resp = client.sendAndReceive(nextDataFetch, stat.queryTimeout)
     resp match {
       case dataFetch: DataFetchOutbound => dataFetch
       case _ => throw new SQLException(s"data fetch error: $nextDataFetch")
@@ -85,7 +85,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
       resultSetMetaData = new MoonboxResultSetMetaData(this, dataFetch.schema)
   }
 
-  def checkClosed: Unit = {
+  def checkClosed(): Unit = {
     if (rows == null)
       throw new Exception("ResultSet is already closed")
     if (stat != null)

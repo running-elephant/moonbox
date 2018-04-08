@@ -60,7 +60,7 @@ class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
   test("test login") {
     var count = 0
     while (count < 1000) {
-      val recv = client.sendAndReceive(JdbcLoginInbound(client.getMessageId(), client.clientId, "ROOT", "123456", "default"), 5000)
+      val recv = client.sendAndReceive(JdbcLoginInbound(client.getMessageId(), "ROOT", "123456", "default"), 5000)
       assert(recv.isInstanceOf[JdbcLoginOutbound])
       count += 1
     }

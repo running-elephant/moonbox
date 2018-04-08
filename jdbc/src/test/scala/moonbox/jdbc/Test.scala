@@ -14,11 +14,11 @@ class Test extends FunSuite with BeforeAndAfterAll {
   var stmt: Statement = _
   var res: ResultSet = _
   var meta: ResultSetMetaData = _
-  val url = "jdbc:moonbox://localhost:8080/database"
-  val sql = "select * from aaa"
+  val url = "jdbc:moonbox://127.0.0.1:10010/default"
+  val sql = "select * from mysql_test_booklist"
   val prop = new Properties()
   prop.setProperty(MoonboxJDBCUtils.FETCH_SIZE, 200.toString)
-  prop.setProperty(MoonboxJDBCUtils.USER_KEY, "ROOT")
+  prop.setProperty(MoonboxJDBCUtils.USER_KEY, "sally")
   prop.setProperty(MoonboxJDBCUtils.PASSWORD_KEY, "123456")
 
   test("test") {
@@ -27,19 +27,26 @@ class Test extends FunSuite with BeforeAndAfterAll {
     val t2 = System.currentTimeMillis()
     stmt = conn.createStatement()
     val t3 = System.currentTimeMillis()
-    val count = 1000
-    for (i <- 0 until count) {
-      res = stmt.executeQuery(sql)
-    }
+    stmt.setFetchSize(10)
+    res = stmt.executeQuery(sql)
     val t4 = Platform.currentTime
     println(s"Get connection spend (${t2 - t1} ms)")
     println(s"Get statement spend (${t3 - t2} ms)")
-    println(s"Execute $count queries spend (${t4 - t3} ms)")
+    println(s"Execute query('$sql') spend (${t4 - t3} ms)")
+    printResultSet(res)
+    println("----------------------------------------")
+    stmt.setFetchSize(5)
+    val res2 = stmt.executeQuery(sql + " limit 5")
+    printResultSet(res2)
+  }
+
+  def printResultSet(res: ResultSet): Unit = {
     meta = res.getMetaData
     val fieldCount = meta.getColumnCount
     println(s"Column count: $fieldCount")
-    println(s"Column label: ${meta.getColumnLabel(1)}")
-    println(s"Column type: ${meta.getColumnType(1)}")
+    println(s"Column 1 label: ${meta.getColumnLabel(1)}")
+    println(s"Column 1 type: ${meta.getColumnType(1)}")
+    println(s"Column 1 typeName: ${meta.getColumnTypeName(1)}")
     while (res.next()) {
       var seq = Seq.empty[String]
       var index = 1

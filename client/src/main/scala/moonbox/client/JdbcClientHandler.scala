@@ -59,7 +59,7 @@ class JdbcClientHandler extends ChannelInboundHandlerAdapter with MbLogging {
               login.copy(password = "***")
             case other => other
           }
-          logInfo(s"Sending request $logMsg to ${getRemoteAddress(ctx.channel())} took $timeSpent ms")
+          logDebug(s"Sending request $logMsg to ${getRemoteAddress(ctx.channel())} took $timeSpent ms")
         case _ => throw new Exception("Unsupported message")
       }
     } catch {
@@ -123,7 +123,7 @@ class JdbcClientHandler extends ChannelInboundHandlerAdapter with MbLogging {
               login.copy(password = "***")
             case other => other
           }
-          logInfo(s"Sending request $logMsg to ${getRemoteAddress(ctx.channel())} took $timeSpent ms")
+          logDebug(s"Sending request $logMsg to ${getRemoteAddress(ctx.channel())} took $timeSpent ms")
         case _ => throw new Exception("Unsupported message")
       }
     } catch {

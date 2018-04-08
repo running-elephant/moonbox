@@ -13,7 +13,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   import moonbox.util.MoonboxJDBCUtils._
 
-  private val TIMEOUT = 5000
+  private var TIMEOUT = 10000
 
   private var jdbcSession: JdbcSession = _
   var statement: MoonboxStatement = _
@@ -36,11 +36,11 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     // create a jdbc client to transfer login message to server
     val client = new JdbcClient(host, port)
     val messageId = client.getMessageId()
-    val resp = client.sendAndReceive(JdbcLoginInbound(messageId, client.clientId, username, pwd, database), TIMEOUT)
+    val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database), TIMEOUT)
     resp match {
       case msg: JdbcLoginOutbound =>
         msg.err match {
-          case Some(err) => throw new Exception(s"Get connection error when checking username and password: ${err})")
+          case Some(err) => throw new Exception(s"Get connection error when checking username and password: $err)")
           case None => initSession(client, database, table, username, pwd, newProps)
         }
       case e => throw new Exception(s"Get MoonboxConnection error: $e")
@@ -139,13 +139,13 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   private def closeSession(jdbcSession: JdbcSession): Unit = {
     val messageId = jdbcSession.jdbcClient.getMessageId()
-    val clientId = jdbcSession.jdbcClient.clientId
-    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, clientId, jdbcSession.user), TIMEOUT)
+    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user), TIMEOUT)
     resp match {
       case r: JdbcLogoutOutbound =>
         if (r.err.isDefined) {
           throw new Exception(s"Jdbc connection close error: ${r.err.get}")
         } else {
+          jdbcSession.jdbcClient.close()
           jdbcSession.closed = true
         }
       case other => throw new SQLException(s"Jdbc connection close error: $other")
@@ -155,6 +155,10 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def close(): Unit = {
     statement = null
     closeSession(jdbcSession)
+    if (!jdbcSession.closed) {
+      jdbcSession.jdbcClient.close()
+      jdbcSession.closed = true
+    }
     jdbcSession = null
   }
 
@@ -164,7 +168,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def rollback(savepoint: Savepoint): Unit = {}
 
-  override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = {}
+  override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = {
+    TIMEOUT = milliseconds
+  }
 
   override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {}
 
@@ -176,7 +182,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def getSchema: String = null
 
-  override def getNetworkTimeout: Int = 0
+  override def getNetworkTimeout: Int = TIMEOUT
 
   override def isClosed: Boolean = jdbcSession.closed
 
