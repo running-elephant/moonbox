@@ -1606,7 +1606,7 @@ public final class SparkFilterProtos {
       public Builder addAllValueFromQueryArray(
           Iterable<? extends com.google.protobuf.ByteString> values) {
         ensureValueFromQueryArrayIsMutable();
-        super.addAll(values, valueFromQueryArray_);
+        addAll(values, valueFromQueryArray_);
         onChanged();
         return this;
       }
@@ -1762,7 +1762,7 @@ public final class SparkFilterProtos {
           Iterable<? extends SQLPredicatePushDownCellToColumnMapping> values) {
         if (cellToColumnMappingBuilder_ == null) {
           ensureCellToColumnMappingIsMutable();
-          super.addAll(values, cellToColumnMapping_);
+          addAll(values, cellToColumnMapping_);
           onChanged();
         } else {
           cellToColumnMappingBuilder_.addAllMessages(values);
