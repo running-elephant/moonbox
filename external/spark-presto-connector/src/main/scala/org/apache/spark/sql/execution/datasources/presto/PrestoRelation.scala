@@ -18,6 +18,8 @@ case class PrestoPartitioningInfo(
 
 case class PrestoRelation(parts: Array[Partition], props: Map[String, String])(@transient val sparkSession: SparkSession) extends BaseRelation with PrunedFilteredScan {
 
+	override def needConversion: Boolean = false
+
 	override def sqlContext: SQLContext = sparkSession.sqlContext
 
 	override def schema: StructType = PrestoRDD.resolveTable(props)
