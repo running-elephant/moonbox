@@ -2,6 +2,7 @@ package org.apache.spark.sql.sqlbuilder
 
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
+import org.apache.spark.sql.execution.datasources.presto.PrestoRelation
 
 
 abstract class MbDialect {
@@ -81,7 +82,7 @@ object MbOracleDialect extends MbDialect {
 object MbPrestoDialect extends MbDialect {
 
 	override def relation(relation: LogicalRelation): String = {
-		relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
+		relation.relation.asInstanceOf[PrestoRelation].props("dbtable")
 	}
 
 	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("presto")

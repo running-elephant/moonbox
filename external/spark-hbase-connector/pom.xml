@@ -25,6 +25,7 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
+            <scope>provided</scope>
         </dependency>
         <!-- we exclude jsr305 below and then expressly relist it as
              provided / optional to avoid dependency resolution possibly
@@ -35,14 +36,14 @@
             <artifactId>spark-core_${scala.library}</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
-            <exclusions>
+            <!--<exclusions>
                 <exclusion>
-                    <!-- make sure wrong scala version is not pulled in -->
+                    &lt;!&ndash; make sure wrong scala version is not pulled in &ndash;&gt;
                     <groupId>org.scala-lang</groupId>
                     <artifactId>scala-library</artifactId>
                 </exclusion>
                 <exclusion>
-                    <!-- make sure wrong scala version is not pulled in -->
+                    &lt;!&ndash; make sure wrong scala version is not pulled in &ndash;&gt;
                     <groupId>org.scala-lang</groupId>
                     <artifactId>scalap</artifactId>
                 </exclusion>
@@ -50,7 +51,7 @@
                     <groupId>com.google.code.findbugs</groupId>
                     <artifactId>jsr305</artifactId>
                 </exclusion>
-            </exclusions>
+            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
@@ -69,7 +70,7 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming_${scala.library}</artifactId>
             <version>${spark.version}</version>
-            <scope>provided</scope>
+            <!--<scope>provided</scope>-->
         </dependency>
         <!--
         hadoop-common-2.7.1 conflict with spark 2.0.0-> hadoop-common-2.2.0
@@ -95,28 +96,24 @@
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
             <version>1.1.2</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-protocol</artifactId>
             <version>1.1.2</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-common</artifactId>
             <version>1.1.2</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-server</artifactId>
             <version>1.1.2</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -149,6 +146,11 @@
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <!-- put your configurations here -->
+                    <artifactSet>
+                       <excludes>
+                           <exclude>org.apache.hadoop:*</exclude>
+                       </excludes>
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>
