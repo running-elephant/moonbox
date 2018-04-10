@@ -69,8 +69,14 @@
                 <include>redis.clients:jedis</include>
                 <include>mysql:mysql-connector-java</include>
                 <include>edp.moonbox:spark-hbase-connector</include>
+                <include>edp.moonbox:spark-presto-connector</include>
+                <include>com.lihaoyi:fastparse_2.11</include>
+                <include>com.lihaoyi:fastparse-utils_2.11</include>
+                <include>com.lihaoyi:sourcecode_2.11</include>
+                <include>com.facebook.presto:presto-jdbc</include>
+                <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
             </includes>
-            <outputDirectory>plugin</outputDirectory>
+            <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <unpack>false</unpack>
             <scope>runtime</scope>

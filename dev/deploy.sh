@@ -7,6 +7,7 @@ function clean_previous_package(){
     rm sbin -rf
     rm bin -rf
     rm plugin -rf
+    rm runtime -rf
     rm test-classes -rf
     rm maven-archiver -rf
     rm moonbox -rf
@@ -34,6 +35,7 @@ function sync_file_to_server(){
         ssh "${host}" "mkdir -p ${moonbox_home}/sbin"
         ssh "${host}" "mkdir -p ${moonbox_home}/plugin"
         ssh "${host}" "mkdir -p ${moonbox_home}/libs"
+        ssh "${host}" "mkdir -p ${moonbox_home}/runtime"
 
         ssh "${host}" "rm -f ${moonbox_home}/bin/*"
         scp bin/* root@${host}:${moonbox_home}/bin/
@@ -43,10 +45,12 @@ function sync_file_to_server(){
         scp plugin/* root@${host}:${moonbox_home}/plugin/
         ssh "${host}" "rm -f ${moonbox_home}/libs/*"
         scp libs/* root@${host}:${moonbox_home}/libs/
+        ssh "${host}" "rm -f ${moonbox_home}/runtime/*"
+        scp runtime/* root@${host}:${moonbox_home}/runtime/
     done
 }
 
-host_array=("zmaster1" "zslave1" "zslave2")
+host_array=("master" "slave1" "slave2")
 moonbox_home="/home/yxgly/moonbox2"
 
 

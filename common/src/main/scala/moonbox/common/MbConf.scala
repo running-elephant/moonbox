@@ -91,8 +91,6 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 		entry.readFrom(reader)
 	}
 
-	def systemAddJars = Utils.getPluginJars()
-
 	private def loadFromSystemProperties(): Unit = {
 		Utils.getSystemProperties.foreach { case (k, v) =>
 			if (k.startsWith("moonbox.")) {

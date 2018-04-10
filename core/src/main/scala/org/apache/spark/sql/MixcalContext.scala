@@ -3,6 +3,7 @@ package org.apache.spark.sql
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MbSession._
 import moonbox.core.config._
@@ -17,7 +18,7 @@ import scala.collection.JavaConversions._
 
 class MixcalContext(conf: MbConf) extends MbLogging {
 	import MixcalContext._
-	lazy val sparkSession = {
+	val sparkSession = {
 		SparkSession.clearDefaultSession()
 		SparkSession.builder().sparkContext(getSparkContext(conf)).getOrCreate()
 	}
@@ -70,7 +71,6 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 }
 
 object MixcalContext extends MbLogging {
-	private val resources = ConcurrentHashMap.newKeySet[String]()
 	private var sparkContext: SparkContext = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
@@ -84,14 +84,11 @@ object MixcalContext extends MbLogging {
 				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
 				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
 				logInfo("New a sparkContext instance.")
-				resources.foreach(sparkContext.addJar)
-				resources.clear()
+				Utils.getRuntimeJars().foreach(sparkContext.addJar)
 			} else {
 				logInfo("Using an exists sparkContext.")
 			}
 			sparkContext
 		}
 	}
-
-	def addJar(path: String): Unit = resources.add(path)
 }

@@ -32,14 +32,11 @@ if [ $# -ne 4 ]; then
 
     akka_port=`cat "${MOONBOX_HOME}/conf/nodes" | grep -v "^#"| grep "moonbox.gird.master" | grep "${local_host}:" | awk '{print $2}' | cut -d '/' -f 3 | awk '{print $1}' |cut -d ':' -f 2`
 
-    http_port=`cat "${MOONBOX_HOME}/conf/nodes" | grep -v "^#"| grep "moonbox.gird.master" | grep "${local_host}:" | awk '{print $3}'`
-    http_port=${http_port:-"0"}
-
-    echo "start MbMaster --host ${local_host} --port ${akka_port} --masters ${master_url} --restPort ${http_port}"
-    java -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.master.MbMaster --host ${local_host}  --port ${akka_port}  --masters ${master_url} --restPort ${http_port} 1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
+    echo "start MbMaster --host ${local_host} --port ${akka_port} --masters ${master_url}"
+    java -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.master.MbMaster --host ${local_host}  --port ${akka_port}  --masters ${master_url} 1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
 else
-    echo "start MbMaster --host ${1} --port ${2} --masters ${3} --restPort ${http_port}"
-    java -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.master.MbMaster --host ${1} --port ${2}  --masters ${3} --restPort ${4} 1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
+    echo "start MbMaster --host ${1} --port ${2} --masters ${3}"
+    java -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.master.MbMaster --host ${1} --port ${2}  --masters ${3}  1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
 fi
 
 if [ $? -eq 0 ]; then

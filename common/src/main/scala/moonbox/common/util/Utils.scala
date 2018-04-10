@@ -142,8 +142,8 @@ object Utils extends MbLogging {
 		}
 	}
 
-	def getPluginJars(env: Map[String, String] = sys.env): List[String] = {
-		val plginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map {t => s"$t${File.separator}plugin"})
+	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
+		val plginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map {t => s"$t${File.separator}runtime"})
 		if(plginDir.isEmpty) {
 			//TODO
 			throw new Exception("$MOONBOX_HOME does not exist")
