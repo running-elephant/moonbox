@@ -103,7 +103,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
   }
 
   override def wasNull = {
-    checkClosed
+    checkClosed()
     currentRow.wasNull
   }
 

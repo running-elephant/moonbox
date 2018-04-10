@@ -17,10 +17,12 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   private var jdbcSession: JdbcSession = _
   var statement: MoonboxStatement = _
+  var closed: Boolean = false
 
-  userCheck()
+  //  userCheck()
 
-  def userCheck(): Unit = {
+  def userCheck(): Boolean = {
+    var flag = false
     val newProps = parseURL(url, props)
     val username = newProps.getProperty(USER_KEY)
     val pwd = newProps.getProperty(PASSWORD_KEY)
@@ -33,18 +35,28 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     // TODO: Support cluster?
     // use the first host and port pair to get a JdbcClient
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
-    // create a jdbc client to transfer login message to server
-    val client = new JdbcClient(host, port)
-    val messageId = client.getMessageId()
-    val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database), TIMEOUT)
-    resp match {
-      case msg: JdbcLoginOutbound =>
-        msg.err match {
-          case Some(err) => throw new Exception(s"Get connection error when checking username and password: $err)")
-          case None => initSession(client, database, table, username, pwd, newProps)
+    val client = new JdbcClient(host, port, getNetworkTimeout)
+    client.connect()
+    if (client.isConnected()){
+      val messageId = client.getMessageId()
+      val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database), getNetworkTimeout)
+      resp match {
+        case msg: JdbcLoginOutbound =>
+          msg.err match {
+            case Some(err) =>
+              client.close()
+              throw new Exception(s"Get connection error when checking username and password: $err)")
+            case None =>
+              flag = true
+              initSession(client, database, table, username, pwd, newProps)
+          }
+        case e => {
+          client.close()
+          throw new Exception(s"Get MoonboxConnection error: $e")
         }
-      case e => throw new Exception(s"Get MoonboxConnection error: $e")
+      }
     }
+    flag
   }
 
   private def initSession(jdbcClient: JdbcClient, database: String, table: String, username: String, pwd: String, props: Properties): Unit = {
@@ -139,7 +151,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   private def closeSession(jdbcSession: JdbcSession): Unit = {
     val messageId = jdbcSession.jdbcClient.getMessageId()
-    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user), TIMEOUT)
+    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user), getNetworkTimeout)
     resp match {
       case r: JdbcLogoutOutbound =>
         if (r.err.isDefined) {
@@ -153,6 +165,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   }
 
   override def close(): Unit = {
+    if (!statement.isClosed) {
+      statement.close()
+    }
     statement = null
     closeSession(jdbcSession)
     if (!jdbcSession.closed) {
@@ -160,6 +175,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       jdbcSession.closed = true
     }
     jdbcSession = null
+    closed = true
   }
 
   override def createNClob(): NClob = null
@@ -174,7 +190,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {}
 
-  override def isValid(timeout: Int): Boolean = false
+  override def isValid(timeout: Int): Boolean = true
 
   override def getAutoCommit: Boolean = false
 
@@ -184,7 +200,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def getNetworkTimeout: Int = TIMEOUT
 
-  override def isClosed: Boolean = jdbcSession.closed
+  override def isClosed: Boolean = closed
 
   override def getTransactionIsolation: Int = 0
 

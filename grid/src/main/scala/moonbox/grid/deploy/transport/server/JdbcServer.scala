@@ -27,7 +27,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
       .childHandler(
         new ChannelInitializer[SocketChannel]() {
           override def initChannel(ch: SocketChannel) = {
-            ch.pipeline.addLast("decode", new ObjectDecoder(ClassResolvers.cacheDisabled(null)))
+            ch.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
             ch.pipeline.addLast("encode", new ObjectEncoder)
             ch.pipeline.addLast("handler", new JdbcServerHandler(channel2SessionIdAndUser, mbService))
           }
@@ -63,9 +63,4 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
   }
 }
 
-object JdbcServer {
-  def main(args: Array[String]): Unit = {
-    new JdbcServer("localhost", 10010, new MbConf(), null).start()
-  }
-}
 

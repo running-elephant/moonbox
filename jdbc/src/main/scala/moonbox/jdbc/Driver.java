@@ -37,7 +37,12 @@ public class Driver implements java.sql.Driver {
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        return new MoonboxConnection(url, info);
+        MoonboxConnection conn = new MoonboxConnection(url, info);
+        if (conn.userCheck()) {
+            return conn;
+        } else {
+            throw new SQLException("User check error");
+        }
     }
 
     @Override

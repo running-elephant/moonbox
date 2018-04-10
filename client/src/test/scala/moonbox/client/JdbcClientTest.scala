@@ -20,6 +20,7 @@ class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
 //    }.start()
 //    Thread.sleep(1000)
     client = new JdbcClient(host, port)
+    client.connect()
   }
 
   override def afterAll() {

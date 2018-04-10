@@ -7,7 +7,7 @@ import moonbox.util.MoonboxJDBCUtils
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
-  val DEFAULT_FETCH_SIZE = 200
+  var fetchSize = 200
   var queryTimeout = 60000
 
   var dataFetchId: Long = _
@@ -16,6 +16,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   var jdbcSession: JdbcSession = connection.getSession()
   var resultSet: MoonboxResultSet = _
   var maxRows: Int = 0
+  var closed: Boolean = false
 
   /**
     * Check if the statement is closed.
@@ -79,8 +80,12 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def executeUpdate(sql: String) = 0
 
   override def close() = {
+    if (!resultSet.isClosed) {
+      resultSet.close()
+    }
     resultSet = null
     jdbcSession = null
+    closed = true
   }
 
   override def getMaxFieldSize = maxFieldSize
@@ -131,13 +136,12 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     checkClosed
     if (rows > 0 && maxRows > 0 && rows > maxRows)
       throw new SQLException("fetchSize may not larger than maxRows")
-    val props = jdbcSession.connectionProperties
-    props.setProperty(MoonboxJDBCUtils.FETCH_SIZE, rows.toString)
+    fetchSize = rows
   }
 
   override def getFetchSize = {
     checkClosed
-    jdbcSession.connectionProperties.getProperty(MoonboxJDBCUtils.FETCH_SIZE, DEFAULT_FETCH_SIZE.toString).toInt
+    fetchSize
   }
 
   override def getResultSetConcurrency = 0
@@ -173,7 +177,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def getResultSetHoldability = 0
 
-  override def isClosed = false
+  override def isClosed = closed
 
   override def setPoolable(poolable: Boolean) = {}
 
