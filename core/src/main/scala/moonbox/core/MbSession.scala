@@ -81,7 +81,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				val options = getCatalogTable(insert.table.table, insert.table.database).properties
 				sql(insert.query).write.format(options("type"))
 					.options(options)
-					.mode(SaveMode.Overwrite)
+					.mode(SaveMode.Append)
 					.save()
 			case _ => throw new Exception("Unsupported command.")
 		}
