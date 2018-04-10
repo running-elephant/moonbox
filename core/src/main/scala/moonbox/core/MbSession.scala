@@ -2,7 +2,7 @@ package moonbox.core
 
 
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog.CatalogSession
+import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -78,10 +78,9 @@ class MbSession(conf: MbConf) extends MbLogging {
 					.save()
 				jobId
 			case insert: InsertInto => // external
-				// TODO insert to external system
-				sql(insert.query).write.format("redis")
-					.option("key", "")
-					.option("server", "")
+				val options = getCatalogTable(insert.table.table, insert.table.database).properties
+				sql(insert.query).write.format(options("type"))
+					.options(options)
 					.mode(SaveMode.Overwrite)
 					.save()
 			case _ => throw new Exception("Unsupported command.")
@@ -97,6 +96,17 @@ class MbSession(conf: MbConf) extends MbLogging {
 			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
 		} else optimizedLogicalPlan
 		mixcal.treeToDF(lastLogicalPlan)
+	}
+
+
+	private def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
+		database match {
+			case None =>
+				catalog.getTable(catalogSession.databaseId, table)
+			case Some(databaseName) =>
+				val database = catalog.getDatabase(catalogSession.organizationId, databaseName)
+				catalog.getTable(database.id.get, table)
+		}
 	}
 
 	private def registerTable(plan: LogicalPlan): Unit = {
@@ -132,13 +142,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		tables.diff(logicalTables).filterNot(tableIdent =>
 			mixcal.sparkSession.catalog.tableExists(tableIdent.database.orNull, tableIdent.table)
 		).foreach { case TableIdentifier(table, db) =>
-			val catalogTable = db match {
-				case None =>
-					catalog.getTable(catalogSession.databaseId, table)
-				case Some(databaseName) =>
-					val database = catalog.getDatabase(catalogSession.organizationId, db.get)
-					catalog.getTable(database.id.get, table)
-			}
+			val catalogTable = getCatalogTable(table, db)
 			val props = catalogTable.properties.+("alias" -> table)
 			val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 			val typ = props("type")
