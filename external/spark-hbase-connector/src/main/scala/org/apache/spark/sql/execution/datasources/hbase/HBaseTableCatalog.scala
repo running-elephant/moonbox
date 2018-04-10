@@ -131,7 +131,7 @@ case class RowKey(k: String) {
 }
 // The map between the column presented to Spark and the HBase field
 @InterfaceAudience.Private
-case class SchemaMap(map: mutable.HashMap[String, Field]) {
+case class SchemaMap(map: mutable.LinkedHashMap[String, Field]) {
   def toFields = map.map { case (name, field) =>
     StructField(name, field.dt)
   }.toSeq
@@ -253,7 +253,7 @@ object HBaseTableCatalog {
     val nSpace = tableMeta.get(nameSpace).getOrElse("default").asInstanceOf[String]
     val tName = tableMeta.get(tableName).get.asInstanceOf[String]
     val cIter = map.get(columns).get.asInstanceOf[Map[String, Map[String, String]]].toIterator
-    val schemaMap = mutable.HashMap.empty[String, Field]
+    val schemaMap = mutable.LinkedHashMap.empty[String, Field]  //for sequence order, change hashmap to linkedhashmap
     cIter.foreach { case (name, column) =>
       val sd = {
         column.get(serdes).asInstanceOf[Option[String]].map(n =>
