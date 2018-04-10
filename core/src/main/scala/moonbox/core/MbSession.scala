@@ -132,9 +132,9 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 		def traverseExpression(expr: Expression): Unit = {
 			expr.foreach {
-				case ScalarSubquery(plan, _, _) => traverseAll(plan)
-				case Exists(plan, _, _) => traverseAll(plan)
-				case ListQuery(plan, _, _) => traverseAll(plan)
+				case ScalarSubquery(child, _, _) => traverseAll(child)
+				case Exists(child, _, _) => traverseAll(child)
+				case ListQuery(child, _, _) => traverseAll(child)
 				case _ =>
 			}
 		}

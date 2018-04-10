@@ -228,7 +228,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					// do nothing
 			}
 		case Terminated(worker) =>
-			logInfo(s"Terminated ${worker}")
+			logInfo(s"Terminated $worker")
 			workerToRunningJobIds.get(worker) match {
 				case Some(jobIds) =>
 					jobIds.foreach { jobId =>
@@ -456,7 +456,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		val endpoint = akkaSystem.actorOf(singletonProps, SINGLETON_PROXY_NAME)
 		ClusterClientReceptionist(akkaSystem).registerService(endpoint)
-		logInfo(s"startMasterEndpoint ${endpoint}")
+		logInfo(s"startMasterEndpoint $endpoint")
 		endpoint
 	}
 }
@@ -478,7 +478,7 @@ object MbMaster {
 			ClusterSingletonManagerSettings(akkaSystem).withRole(ROLE)
 		)
 		val master = akkaSystem.actorOf(masterProp, MASTER_NAME)
-		println(s"start master ${master}")
+		println(s"start master $master")
 	}
 
 }
