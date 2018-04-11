@@ -15,6 +15,32 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.addListener(listener)
 	}
 
+	def isSa(userId: Long): Boolean = {
+		catalog.getUser(userId).isSA
+	}
+
+	def canDml(userId: Long): Boolean = true
+
+	def canDdl(userId: Long): Boolean = {
+		catalog.getUser(userId).ddl
+	}
+
+	def canAccount(userId: Long): Boolean = {
+		catalog.getUser(userId).account
+	}
+
+	def canGrantAccount(userId: Long): Boolean = {
+		catalog.getUser(userId).grantAccount
+	}
+
+	def canGrantDdl(userId: Long): Boolean = {
+		catalog.getUser(userId).grantDdl
+	}
+
+	def canGrantDmlOn(userId: Long): Boolean = {
+		catalog.getUser(userId).grantDmlOn
+	}
+
 	def createOrganization(
 		orgDefinition: CatalogOrganization,
 		ignoreIfExists: Boolean): Unit = {
