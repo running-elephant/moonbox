@@ -2,13 +2,10 @@ package moonbox.grid.deploy.worker
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.cache.RedisCache
-import moonbox.core.command.{InsertInto, MQLQuery, MbCommand}
-import moonbox.core.config.CACHE_SERVERS
-import moonbox.core.{MbSession, MbTableIdentifier}
+import moonbox.core.MbSession
 import moonbox.grid._
 import moonbox.grid.deploy.DeployMessages._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.Row
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

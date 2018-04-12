@@ -1,6 +1,7 @@
 package moonbox.grid.deploy.master
 
 import akka.actor.Actor
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.cache.RedisCache
 import moonbox.grid.api._
@@ -19,7 +20,7 @@ class ResultGetter(conf: MbConf) extends Actor with MbLogging {
         val redis = new RedisCache(conf.get(CACHE_SERVERS))
         val totalSize = redis.size(jobId)
         val schema = redis.get[String, String, String]("SCHEMA", jobId)
-        val dat = redis.get[String, Any, Seq[Any]](jobId, offset, offset + size - 1).toSeq
+        val dat = redis.getRange[String,Seq[Any]](jobId, offset, offset + size - 1 )
         (totalSize, schema, dat)
       }
       dataFuture.onComplete {

@@ -1,5 +1,8 @@
 package moonbox.core.cache
 
+import java.util
+
+import moonbox.common.util.Utils
 import moonbox.localservice.LocalRedis
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
@@ -14,7 +17,20 @@ class RedisCacheSuite extends FunSuite with BeforeAndAfterAll {
 		redisCache = new RedisCache("localhost:6379")
 	}
 
-	test("cache string") {
+	test("put") {
+		redisCache.put("abc", Seq("a"))
+		assert(redisCache.getRange("abc", 0, -1) == Seq(Seq("a")))
+
+	}
+
+	test("putRaw") {
+		redisCache.putRaw(Utils.serialize[String]("abc"), Utils.serialize[Seq[String]](Seq("b")))
+		val list = redisCache.getRawRange(Utils.serialize[String]("abc"), 0, -1).toList.head
+		val expected = Utils.serialize[Seq[String]](Seq("b"))
+		assert(util.Arrays.equals(list, expected))
+	}
+
+	/*test("cache string") {
 		redisCache.put("abc", Seq("a", "b", "c"))
 		redisCache.put("abc", Seq("d", "e", "f"))
 		redisCache.bulkPut[String, String, Seq[String]]("abc", Seq(Seq("g", "h", "i"), Seq("j", "k", "l")))
@@ -48,7 +64,7 @@ class RedisCacheSuite extends FunSuite with BeforeAndAfterAll {
 		redisCache.put("user", "age", age1)
 		val age2 = redisCache.get[String, String, Long]("user", "age")
 		assert(age2==age1)
-	}
+	}*/
 
 	override protected def afterAll(): Unit = {
 		localServer.stop()
