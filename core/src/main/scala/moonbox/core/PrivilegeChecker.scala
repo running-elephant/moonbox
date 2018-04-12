@@ -4,8 +4,8 @@ import moonbox.common.MbLogging
 import moonbox.core.catalog.CatalogSession
 import moonbox.core.command._
 
-class PrivilegeChecker(catalog: CatalogContext, session: CatalogSession) extends MbLogging {
-	def intercept(cmd: MbCommand): Boolean = {
+object PrivilegeChecker extends MbLogging {
+	def intercept(cmd: MbCommand, catalog: CatalogContext, session: CatalogSession): Boolean = {
 		cmd match {
 			case dml: DML => catalog.canDml(session.userId)
 			case ddl: DDL => catalog.canDdl(session.userId)

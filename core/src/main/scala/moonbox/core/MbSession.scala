@@ -18,7 +18,6 @@ class MbSession(conf: MbConf) extends MbLogging {
 	implicit private  var catalogSession: CatalogSession = _
 	val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val catalog = new CatalogContext(conf)
-	val privilegeChecker = new PrivilegeChecker(catalog, catalogSession)
 	val mixcal = new MixcalContext(conf)
 
 
@@ -59,7 +58,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def execute(jobId: String, cmd: MbCommand): Any = {
-		privilegeChecker.intercept(cmd) match {
+		PrivilegeChecker.intercept(cmd, catalog, catalogSession) match {
 			case false => throw new Exception("Permission denied.")
 			case true =>
 				cmd match {
