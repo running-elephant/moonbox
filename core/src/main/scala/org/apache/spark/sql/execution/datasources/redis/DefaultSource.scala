@@ -46,7 +46,10 @@ case class RedisRelation(props: Map[String, String], userSchema: StructType)
 		redisClient.put[String, String, String]("SCHEMA", jobId, data.schema.json)
 		data.foreachPartition { partition =>
 			val redis = new RedisCache(servers)
-			redis.put[String, Row](jobId, partition)
+			partition.foreach { row =>
+				// TODO decimal
+				redis.put(jobId, row.toSeq)
+			}
 		}
 	}
 }

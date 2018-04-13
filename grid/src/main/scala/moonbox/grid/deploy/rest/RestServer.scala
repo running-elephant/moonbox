@@ -37,17 +37,12 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[LoginInbound]) { in =>
 					complete {
-						service.isLogin(in.username).flatMap {
+						service.login(in.username, in.password).map {
 							case true =>
-								Future(LoginOutbound(None, Some(s"User '${in.username}' has already logged in.")))
+								val token = tokenManager.encode(in.username)
+								LoginOutbound(Some(token), None)
 							case false =>
-								service.login(in.username, in.password).map {
-									case true =>
-										val token = tokenManager.encode(in.username)
-										LoginOutbound(Some(token), None)
-									case false =>
-										LoginOutbound(None, Some(s"User '${in.username}' does not exist or password is incorrect."))
-								}
+								LoginOutbound(None, Some(s"User '${in.username}' does not exist or password is incorrect."))
 						}
 					}
 				}

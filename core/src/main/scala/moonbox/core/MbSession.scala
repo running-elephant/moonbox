@@ -20,6 +20,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
+
 	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
 		this.catalogSession = {
 			catalog.getUserOption(username) match {
@@ -57,33 +58,37 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def execute(jobId: String, cmd: MbCommand): Any = {
-		cmd match {
-			case runnable: MbRunnableCommand => // direct
-				runnable.run(this)
-			case createTempView: CreateTempView =>
-				val df = sql(createTempView.query)
-				if (createTempView.isCache) {
-					df.cache()
+		PrivilegeChecker.intercept(cmd, catalog, catalogSession) match {
+			case false => throw new Exception("Permission denied.")
+			case true =>
+				cmd match {
+					case runnable: MbRunnableCommand => // direct
+						runnable.run(this)
+					case createTempView: CreateTempView =>
+						val df = sql(createTempView.query)
+						if (createTempView.isCache) {
+							df.cache()
+						}
+						if (createTempView.replaceIfExists) {
+							df.createOrReplaceTempView(createTempView.name)
+						} else {
+							df.createTempView(createTempView.name)
+						}
+					case mbQuery: MQLQuery => // cached
+						sql(mbQuery.query).write
+							.format("org.apache.spark.sql.execution.datasources.redis")
+							.option("jobId", jobId)
+							.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
+							.save()
+						jobId
+					case insert: InsertInto => // external
+						val options = getCatalogTable(insert.table.table, insert.table.database).properties
+						sql(insert.query).write.format(options("type"))
+							.options(options)
+							.mode(SaveMode.Append)
+							.save()
+					case _ => throw new Exception("Unsupported command.")
 				}
-				if (createTempView.replaceIfExists) {
-					df.createOrReplaceTempView(createTempView.name)
-				} else {
-					df.createTempView(createTempView.name)
-				}
-			case mbQuery: MQLQuery => // cached
-				sql(mbQuery.query).write
-					.format("org.apache.spark.sql.execution.datasources.redis")
-					.option("jobId", jobId)
-					.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
-					.save()
-				jobId
-			case insert: InsertInto => // external
-				val options = getCatalogTable(insert.table.table, insert.table.database).properties
-				sql(insert.query).write.format(options("type"))
-					.options(options)
-					.mode(SaveMode.Append)
-					.save()
-			case _ => throw new Exception("Unsupported command.")
 		}
 	}
 
@@ -132,9 +137,9 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 		def traverseExpression(expr: Expression): Unit = {
 			expr.foreach {
-				case ScalarSubquery(plan, _, _) => traverseAll(plan)
-				case Exists(plan, _, _) => traverseAll(plan)
-				case ListQuery(plan, _, _) => traverseAll(plan)
+				case ScalarSubquery(child, _, _) => traverseAll(child)
+				case Exists(child, _, _) => traverseAll(child)
+				case ListQuery(child, _, _) => traverseAll(child)
 				case _ =>
 			}
 		}

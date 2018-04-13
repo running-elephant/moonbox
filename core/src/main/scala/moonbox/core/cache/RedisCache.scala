@@ -11,13 +11,7 @@ class RedisCache(servers: String) extends Cache with MbLogging { self =>
 	val (host, port) = ParseUtils.parseAddresses(servers).head
 	val jedis = new Jedis(host, port.getOrElse(6379))
 
-	override def put[K, F, E](key: K, field: F, value: E): Long = {
-		jedis.hset(serialize(key), serialize(field), serialize(value))
-	}
-
-	override def get[K, F, E](key: K, field: F): E = {
-		deserialize[E](jedis.hget(serialize(key), serialize(field)))
-	}
+	/*
 
 	override def put[K, E](key: K, value: TraversableOnce[E]): Unit = {
 		jedis.rpush(serialize(key), serialize[TraversableOnce[E]](value))
@@ -55,7 +49,7 @@ class RedisCache(servers: String) extends Cache with MbLogging { self =>
 				jedis.lrange(serialize[K](key), currentStart, currentEnd).iterator()
 			}
 		}
-	}
+	}*/
 
 	override def size[K](key: K): Long = {
 		jedis.llen(serialize[K](key))
@@ -67,4 +61,35 @@ class RedisCache(servers: String) extends Cache with MbLogging { self =>
 		}
 	}
 
+	override def put[K, E](key: K, value: E): Long = {
+		jedis.rpush(serialize[K](key), serialize[E](value))
+	}
+
+	override def putRaw(key: Array[Byte], value: Array[Byte]): Long = {
+		jedis.rpush(key, value)
+	}
+
+	override def getRawRange(key: Array[Byte], start: Long, end: Long): Seq[Array[Byte]] = {
+		jedis.lrange(key, start, end).asScala
+	}
+
+	override def getRange[K, E](key: K, start: Long, end: Long): Seq[E] = {
+		jedis.lrange(serialize[K](key), start, end).asScala.map(deserialize[E])
+	}
+
+	override def put[K, F, E](key: K, field: F, value: E): Long = {
+		jedis.hset(serialize(key), serialize(field), serialize(value))
+	}
+
+	override def putRaw(key: Array[Byte], field: Array[Byte], value: Array[Byte]): Long = {
+		jedis.hset(key, field, value)
+	}
+
+	override def get[K, F, E](key: K, field: F): E = {
+		deserialize[E](jedis.hget(serialize(key), serialize(field)))
+	}
+
+	override def getRaw(key: Array[Byte], field: Array[Byte]): Array[Byte] = {
+		jedis.hget(key, field)
+	}
 }
