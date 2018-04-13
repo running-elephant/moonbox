@@ -15,7 +15,7 @@ class MoonboxResultSetTest extends FunSuite with BeforeAndAfterAll {
   var url: String = _
 
   override def beforeAll() {
-    Class.forName("moonbox.jdbc.Driver")
+    Class.forName("moonbox.jdbc.MbDriver")
     url = "jdbc:moonbox://localhost:8080/database"
     sql = "select * from aaa"
     val prop = new Properties()

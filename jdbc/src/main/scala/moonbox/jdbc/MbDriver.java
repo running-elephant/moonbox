@@ -6,12 +6,12 @@ import java.sql.*;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-public class Driver implements java.sql.Driver {
+public class MbDriver implements java.sql.Driver {
     static {
         try {
-            DriverManager.registerDriver(new Driver());
+            DriverManager.registerDriver(new MbDriver());
         } catch (SQLException e) {
-            throw new RuntimeException("Can't register Driver!");
+            throw new RuntimeException("Can't register MbDriver!");
         }
     }
 

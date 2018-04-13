@@ -59,7 +59,7 @@ class Test extends FunSuite with BeforeAndAfterAll {
   }
 
   override protected def beforeAll() = {
-    Class.forName("moonbox.jdbc.Driver")
+    Class.forName("moonbox.jdbc.MbDriver")
   }
 
   override protected def afterAll() = {

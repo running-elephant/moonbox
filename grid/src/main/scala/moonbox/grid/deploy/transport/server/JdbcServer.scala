@@ -34,7 +34,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
         })
       .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 128)
       .childOption[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
-      .childOption[java.lang.Integer](ChannelOption.SO_SNDBUF, 1024)
+      .childOption[java.lang.Integer](ChannelOption.SO_SNDBUF, 10240)
       .childOption[java.lang.Integer](ChannelOption.SO_RCVBUF, 1024)
 
     // Bind and start to accept incoming connections.
@@ -48,18 +48,19 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
     channelFuture.channel.closeFuture.addListener(new ChannelFutureListener {
       override def operationComplete(future: ChannelFuture) = {
         channel2SessionIdAndUser.clear()
+        stop()
       }
     })
     channelFuture.channel().localAddress().asInstanceOf[InetSocketAddress].getPort
   }
 
   def stop(): Unit = {
-    if (bossGroup != null)
-      bossGroup.shutdownGracefully()
-    if (workerGroup != null)
-      workerGroup.shutdownGracefully()
     if (channel != null)
       channel.close()
+    if (bossGroup != null)
+    bossGroup.shutdownGracefully()
+    if (workerGroup != null)
+    workerGroup.shutdownGracefully()
   }
 }
 

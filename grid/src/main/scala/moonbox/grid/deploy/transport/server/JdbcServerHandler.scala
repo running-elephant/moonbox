@@ -134,24 +134,23 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
         }
       case query: JdbcQueryInbound =>
         logInfo(s"Received message: $query")
-        // default fetchSize is 200
         if (channel2SessionIdAndUser.containsKey(ctx.channel())) {
-          mbService.jobQuery(channel2SessionIdAndUser.get(ctx.channel())._1, Seq(query.sql), query.fetchSize).onComplete {
+          val sqls = query.sql.split(";").toSeq
+          // default fetchSize is 200
+          mbService.jobQuery(channel2SessionIdAndUser.get(ctx.channel())._1, sqls, query.fetchSize).onComplete {
             case Success(v) =>
-              if (v.error.isDefined) {
-                logInfo(s"sql query error: ${v.error.get}")
-                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Option(v.error.get), null, null))
-              } else if (v.size.isEmpty) {
-                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, None, v.data.get, v.schema.orNull))
-              } else {
-                logInfo(s"sql query '$query' succeed")
+              if (v.error.isEmpty) {
+                logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed")
                 // 1. return JdbcQueryOutbound  2.return DataFetchOutbound,  according to the result data size
-                if (v.data.get.size >= v.size.get)
-                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, None, v.data.orNull, v.schema.orNull))
-                else {
+                if (v.size.isDefined && v.data.isDefined && v.data.get.size < v.size.get) {
                   val fetchState = DataFetchState(query.messageId, v.jobId, 0, v.data.get.size, v.size.get)
-                  ctx.writeAndFlush(DataFetchOutbound(fetchState, None, v.data.get, v.schema.get))
+                  ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data.get, v.schema.get))
+                } else {
+                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data.orNull, v.schema.orNull))
                 }
+              } else {
+                logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed with error: ${v.error.orNull}")
+                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data.orNull, v.schema.orNull))
               }
             case Failure(e) =>
               logInfo(e.getMessage)
@@ -184,7 +183,7 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
         remainSize
       }
     }
-    mbService.jobResult(inbound.user, inbound.dataFetchState.jobId, offset,requestSize).onComplete {
+    mbService.jobResult(inbound.user, inbound.dataFetchState.jobId, offset, requestSize).onComplete {
       case Success(v) =>
         if (v.error.isDefined) {
           logInfo(v.error.get)

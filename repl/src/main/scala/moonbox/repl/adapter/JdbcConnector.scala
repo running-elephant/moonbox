@@ -7,7 +7,7 @@ class JdbcConnector extends Connector {
   var connection: Connection = _
   override def prepare(host: String, port:Int, user: String, pwd: String, db: String): Boolean = {
     try {
-      Class.forName("moonbox.jdbc.Driver")
+      Class.forName("moonbox.jdbc.MbDriver")
       val url = s"jdbc:moonbox://${host}:${port}/default"
       val prop = new Properties()
       prop.setProperty("user", user)

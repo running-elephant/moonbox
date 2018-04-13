@@ -25,7 +25,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   var FETCH_SIZE: Int = stat.getFetchSize
   var fetchJobId: String = _
-  var currentRow: MoonboxJdbcRow = _
+  var currentRow: Array[Any] = _
   lazy val index2SqlType: Map[Int, Int] = schema2SqlType(parsedSchema).map(_._2).zipWithIndex.map(p => (p._2 + 1) -> p._1).toMap
   lazy val columnLabel2Index: Map[String, Int] = parsedSchema.map(_._1).zipWithIndex.map(p => p._1 -> (p._2 + 1)).toMap
   var resultSetMetaData: ResultSetMetaData = _
@@ -48,7 +48,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     var flag = false
     if (!closed && currentRowId < currentRowEnd) {
       currentRowId += 1
-      currentRow = new MoonboxJdbcRow(rows((currentRowId - currentRowStart).toInt): _*)
+      currentRow = rows((currentRowId - currentRowStart).toInt).toArray
       flag = true
     } else if (!closed && currentRowId < totalRows - 1) {
       val resp = sendNextDataFetch()
@@ -104,34 +104,34 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def wasNull = {
     checkClosed()
-    currentRow.wasNull
+    currentRow == null || currentRow.isEmpty
   }
 
-  override def getString(columnIndex: Int) = currentRow.getString(columnIndex - 1)
+  override def getString(columnIndex: Int) = get(columnIndex).toString
 
-  override def getBoolean(columnIndex: Int) = currentRow.getBoolean(columnIndex - 1)
+  override def getBoolean(columnIndex: Int) = get(columnIndex).asInstanceOf[Boolean]
 
-  override def getByte(columnIndex: Int) = currentRow.getByte(columnIndex - 1)
+  override def getByte(columnIndex: Int) = get(columnIndex).asInstanceOf[Byte]
 
-  override def getShort(columnIndex: Int) = currentRow.getShort(columnIndex - 1)
+  override def getShort(columnIndex: Int) = get(columnIndex).asInstanceOf[Short]
 
-  override def getInt(columnIndex: Int) = currentRow.getInt(columnIndex - 1)
+  override def getInt(columnIndex: Int) = get(columnIndex).asInstanceOf[Int]
 
-  override def getLong(columnIndex: Int) = currentRow.getLong(columnIndex - 1)
+  override def getLong(columnIndex: Int) = get(columnIndex).asInstanceOf[Long]
 
-  override def getFloat(columnIndex: Int) = currentRow.getFloat(columnIndex - 1)
+  override def getFloat(columnIndex: Int) = get(columnIndex).asInstanceOf[Float]
 
-  override def getDouble(columnIndex: Int) = currentRow.getDouble(columnIndex - 1)
+  override def getDouble(columnIndex: Int) = get(columnIndex).asInstanceOf[Double]
 
-  override def getBigDecimal(columnIndex: Int, scale: Int) = currentRow.getAs[java.math.BigDecimal](columnIndex - 1).setScale(scale)
+  override def getBigDecimal(columnIndex: Int, scale: Int) = getAs[java.math.BigDecimal](columnIndex - 1).setScale(scale)
 
-  override def getBytes(columnIndex: Int) = currentRow.getAs[Array[Byte]](columnIndex - 1)
+  override def getBytes(columnIndex: Int) = getAs[Array[Byte]](columnIndex - 1)
 
-  override def getDate(columnIndex: Int) = new Date(currentRow.getLong(columnIndex - 1))
+  override def getDate(columnIndex: Int) = get(columnIndex).asInstanceOf[Date]
 
-  override def getTime(columnIndex: Int) = new Time(currentRow.getLong(columnIndex - 1))
+  override def getTime(columnIndex: Int) = new Time(getTimestamp(columnIndex).getTime)
 
-  override def getTimestamp(columnIndex: Int) = new Timestamp(currentRow.getLong(columnIndex - 1))
+  override def getTimestamp(columnIndex: Int) = get(columnIndex).asInstanceOf[Timestamp]
 
   override def getAsciiStream(columnIndex: Int) = null
 
@@ -179,7 +179,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getMetaData = resultSetMetaData
 
-  override def getObject(columnIndex: Int) = currentRow.getAs[AnyRef](columnIndex - 1)
+  override def getObject(columnIndex: Int) = getAs[AnyRef](columnIndex - 1)
 
   override def getObject(columnLabel: String) = getObject(columnLabel2Index(columnLabel))
 
@@ -189,7 +189,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getCharacterStream(columnLabel: String) = getCharacterStream(columnLabel2Index(columnLabel))
 
-  override def getBigDecimal(columnIndex: Int) = currentRow.getAs[java.math.BigDecimal](columnIndex - 1)
+  override def getBigDecimal(columnIndex: Int) = getAs[java.math.BigDecimal](columnIndex - 1)
 
   override def getBigDecimal(columnLabel: String) = getBigDecimal(columnLabel2Index(columnLabel))
 
@@ -366,59 +366,59 @@ class MoonboxResultSet(conn: MoonboxConnection,
   override def rowDeleted = false
 
   override def updateNull(columnIndex: Int) = {
-    currentRow.values(columnIndex - 1) = null
+    currentRow(columnIndex - 1) = null
   }
 
   override def updateBoolean(columnIndex: Int, x: Boolean) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateByte(columnIndex: Int, x: Byte) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateShort(columnIndex: Int, x: Short) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateInt(columnIndex: Int, x: Int) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateLong(columnIndex: Int, x: Long) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateFloat(columnIndex: Int, x: Float) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateDouble(columnIndex: Int, x: Double) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateBigDecimal(columnIndex: Int, x: BigDecimal) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateString(columnIndex: Int, x: String) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateBytes(columnIndex: Int, x: scala.Array[Byte]) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateDate(columnIndex: Int, x: Date) = {
-    currentRow.values(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = x.getTime
   }
 
   override def updateTime(columnIndex: Int, x: Time) = {
-    currentRow.values(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = x.getTime
   }
 
   override def updateTimestamp(columnIndex: Int, x: Timestamp) = {
-    currentRow.values(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = x.getTime
   }
 
   override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Int) = {}
@@ -430,7 +430,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
   override def updateObject(columnIndex: Int, x: Any, scaleOrLength: Int) = {}
 
   override def updateObject(columnIndex: Int, x: Any) = {
-    currentRow.values(columnIndex - 1) = x
+    currentRow(columnIndex - 1) = x
   }
 
   override def updateNull(columnLabel: String) = {
@@ -539,7 +539,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
   override def getClob(columnIndex: Int) = null
 
   override def getArray(columnIndex: Int) = {
-    val arr = currentRow.get(columnIndex - 1).asInstanceOf[Array[Any]]
+    val arr = get(columnIndex).asInstanceOf[Array[Any]]
     new JdbcArray(arr)
   }
 
@@ -688,4 +688,9 @@ class MoonboxResultSet(conn: MoonboxConnection,
   override def unwrap[T](iface: Class[T]) = throw new SQLException("unsupported unwrap")
 
   override def isWrapperFor(iface: Class[_]) = false
+
+  // private funcs
+  private def get(i: Int): Any = currentRow(i - 1)
+
+  private def getAs[T](i: Int): T = get(i).asInstanceOf[T]
 }

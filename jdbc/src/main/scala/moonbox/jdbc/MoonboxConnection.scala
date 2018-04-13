@@ -12,9 +12,6 @@ import org.apache.commons.codec.digest.DigestUtils
 class MoonboxConnection(url: String, props: Properties) extends java.sql.Connection {
 
   import moonbox.util.MoonboxJDBCUtils._
-
-  private var TIMEOUT = 10000
-
   private var jdbcSession: JdbcSession = _
   var statement: MoonboxStatement = _
   var closed: Boolean = false
@@ -35,11 +32,12 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     // TODO: Support cluster?
     // use the first host and port pair to get a JdbcClient
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
-    val client = new JdbcClient(host, port, getNetworkTimeout)
+    val startTime = System.currentTimeMillis()
+    val client = new JdbcClient(host, port)
     client.connect()
-    if (client.isConnected()){
+    if (client.isConnected()) {
       val messageId = client.getMessageId()
-      val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database), getNetworkTimeout)
+      val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database))
       resp match {
         case msg: JdbcLoginOutbound =>
           msg.err match {
@@ -151,7 +149,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   private def closeSession(jdbcSession: JdbcSession): Unit = {
     val messageId = jdbcSession.jdbcClient.getMessageId()
-    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user), getNetworkTimeout)
+    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user))
     resp match {
       case r: JdbcLogoutOutbound =>
         if (r.err.isDefined) {
@@ -165,12 +163,12 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   }
 
   override def close(): Unit = {
-    if (!statement.isClosed) {
+    if (statement != null && !statement.isClosed) {
       statement.close()
     }
     statement = null
     closeSession(jdbcSession)
-    if (!jdbcSession.closed) {
+    if (jdbcSession != null && !jdbcSession.closed) {
       jdbcSession.jdbcClient.close()
       jdbcSession.closed = true
     }
@@ -184,9 +182,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def rollback(savepoint: Savepoint): Unit = {}
 
-  override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = {
-    TIMEOUT = milliseconds
-  }
+  override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = throw new SQLException("unsupported")
 
   override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {}
 
@@ -198,7 +194,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def getSchema: String = null
 
-  override def getNetworkTimeout: Int = TIMEOUT
+  override def getNetworkTimeout: Int = throw new SQLException("unsupported")
 
   override def isClosed: Boolean = closed
 

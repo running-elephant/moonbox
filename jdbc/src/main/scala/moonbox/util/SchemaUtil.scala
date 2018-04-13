@@ -31,7 +31,7 @@ object SchemaUtil {
         else t._2 match {
           case "array" => ARRAY
           case "binary" => BINARY
-          case "boolean" => BOOLEAN
+          case "boolean" => BIT
           case "date" => DATE
           case "char" => VARCHAR
           case "varchar" => VARCHAR
@@ -46,8 +46,8 @@ object SchemaUtil {
           case "null" => NULL
           case "object" => JAVA_OBJECT
           case "struct" => STRUCT
-          case "calendarinterval" => OTHER // CalendarIntervalType in spark
-          case "map" => OTHER // MapType in spark
+          case "calendarinterval" => JAVA_OBJECT // CalendarIntervalType in spark
+          case "map" => JAVA_OBJECT // MapType in spark
           case _ => JAVA_OBJECT // user defined type in spark
         }
       (t._1, sqlType, t._3)

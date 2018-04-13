@@ -3,12 +3,11 @@ package moonbox.jdbc
 import java.sql._
 
 import moonbox.common.message.{DataFetchOutbound, JdbcInboundMessage, JdbcQueryInbound, JdbcQueryOutbound}
-import moonbox.util.MoonboxJDBCUtils
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
-  var fetchSize = 200
-  var queryTimeout = 60000
+  var fetchSize = 1000
+  var queryTimeout = 1000 * 60 * 3
 
   var dataFetchId: Long = _
   var totalRows: Long = _
@@ -80,7 +79,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def executeUpdate(sql: String) = 0
 
   override def close() = {
-    if (!resultSet.isClosed) {
+    if (resultSet != null && !resultSet.isClosed) {
       resultSet.close()
     }
     resultSet = null
@@ -120,7 +119,18 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def setCursorName(name: String) = {}
 
-  override def execute(sql: String) = false
+  override def execute(sql: String) = {
+    checkClosed
+    val client = jdbcSession.jdbcClient
+    val messageId = client.getMessageId()
+    val username = jdbcSession.user
+    val queryMessage = JdbcQueryInbound(messageId, username, getFetchSize, sql)
+    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
+    resp match {
+      case r: JdbcQueryOutbound => if (r.err.isDefined) false else true
+      case _ => false
+    }
+  }
 
   override def getResultSet = resultSet
 

@@ -7,26 +7,23 @@ import java.util.concurrent.atomic.AtomicLong
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.oio.OioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.channel.socket.oio.OioSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
-import io.netty.util.concurrent.{DefaultThreadFactory, EventExecutorGroup}
+import io.netty.util.concurrent.EventExecutorGroup
 import moonbox.common.MbLogging
 import moonbox.common.message.JdbcOutboundMessage
 
-class JdbcClient(host: String, port: Int, timeout: Int = 10000) extends MbLogging {
+class JdbcClient(host: String, port: Int) extends MbLogging {
 
   private var channel: Channel = _
   private var handler: JdbcClientHandler = _
   private val messageId = new AtomicLong()
   private var ws: EventExecutorGroup = _
   var connected: Boolean = _
+  val DEFAULT_TIMEOUT = 1000 * 15 //ms
 
-  //  connect()
-
-  def connect(): Unit = {
+  def connect(timeout: Int = DEFAULT_TIMEOUT): Unit = {
     try {
       val workerGroup = new NioEventLoopGroup()
       ws = workerGroup
@@ -36,6 +33,7 @@ class JdbcClient(host: String, port: Int, timeout: Int = 10000) extends MbLoggin
         .channel(classOf[NioSocketChannel])
         .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
         .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
+        .option[java.lang.Integer](ChannelOption.SO_RCVBUF, 10240)
         .handler(new ChannelInitializer[SocketChannel]() {
           override def initChannel(ch: SocketChannel) = {
             ch.pipeline.addLast(new ObjectEncoder, new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)), handler)
@@ -65,18 +63,18 @@ class JdbcClient(host: String, port: Int, timeout: Int = 10000) extends MbLoggin
 
   def sendOneWayMessage(msg: Any) = handler.send(msg)
 
-  def sendAndReceive(msg: Any, timeout: Long): JdbcOutboundMessage = handler.sendAndReceive(msg, timeout)
+  def sendAndReceive(msg: Any, timeout: Long = DEFAULT_TIMEOUT): JdbcOutboundMessage = handler.sendAndReceive(msg, timeout)
 
   def sendWithCallback(msg: Any, callback: => JdbcOutboundMessage => Any) = handler.send(msg, callback)
 
   def isConnected(): Boolean = connected
 
   def close() = {
-    if (ws != null) {
-      ws.shutdownGracefully()
-    }
     if (channel != null) {
       channel.close()
+    }
+    if (ws != null) {
+      ws.shutdownGracefully()
     }
   }
 }
