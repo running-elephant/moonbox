@@ -12,11 +12,10 @@ import org.apache.commons.codec.digest.DigestUtils
 class MoonboxConnection(url: String, props: Properties) extends java.sql.Connection {
 
   import moonbox.util.MoonboxJDBCUtils._
+
   private var jdbcSession: JdbcSession = _
   var statement: MoonboxStatement = _
-  var closed: Boolean = false
-
-  //  userCheck()
+  var closed: Boolean = _
 
   def userCheck(): Boolean = {
     var flag = false
@@ -62,6 +61,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       jdbcSession = JdbcSession(jdbcClient, database, table, username, DigestUtils.md5Hex(pwd), props)
     else
       jdbcSession = JdbcSession(jdbcClient, database, table, username, pwd, props)
+    closed = false
   }
 
   def getSession(): JdbcSession = jdbcSession
@@ -113,17 +113,17 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     statement
   }
 
-  override def createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = null
+  override def createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = createStatement() // TODO: createStatement(resultSetType: Int, resultSetConcurrency: Int)
 
-  override def createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = null
+  override def createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = createStatement() // TODO: createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int)
 
-  override def abort(executor: Executor): Unit = {}
+  override def abort(executor: Executor): Unit = {} // TODO: abort
 
-  override def setAutoCommit(autoCommit: Boolean): Unit = {}
+  override def setAutoCommit(autoCommit: Boolean): Unit = {} // TODO: setAutoCommit
 
-  override def getMetaData: DatabaseMetaData = null
+  override def getMetaData: DatabaseMetaData = null // TODO: getMetaData: DatabaseMetaData
 
-  override def setReadOnly(readOnly: Boolean): Unit = {}
+  override def setReadOnly(readOnly: Boolean): Unit = {} // TODO: setReadOnly
 
   override def prepareCall(sql: String): CallableStatement = null
 
@@ -186,7 +186,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {}
 
-  override def isValid(timeout: Int): Boolean = true
+  override def isValid(timeout: Int): Boolean = if (jdbcSession == null || isClosed) false else true
 
   override def getAutoCommit: Boolean = false
 
