@@ -25,7 +25,8 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
-            <scope>provided</scope>
+            <!--Notice: if provided, shade do not have it in package finally-->
+            <!--<scope>provided</scope>-->
         </dependency>
         <!-- we exclude jsr305 below and then expressly relist it as
              provided / optional to avoid dependency resolution possibly
@@ -147,9 +148,9 @@
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <!-- put your configurations here -->
                     <artifactSet>
-                       <excludes>
-                           <exclude>org.apache.hadoop:*</exclude>
-                       </excludes>
+                        <excludes>
+                            <exclude>org.apache.hadoop:*</exclude>
+                        </excludes>
                     </artifactSet>
                 </configuration>
                 <executions>
@@ -163,4 +164,52 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>hbase</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactSet>
+                                        <includes>
+                                            <include>org.scala-lang:scala-library</include>
+                                        </includes>
+                                    </artifactSet>
+                                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <filters>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/*.SF</exclude>
+                                                <exclude>META-INF/*.DSA</exclude>
+                                                <exclude>META-INF/*.RSA</exclude>
+                                                <exclude>org/apache/hadoop/hbase/spark/example/**</exclude>
+                                            </excludes>
+                                        </filter>
+                                    </filters>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
+
+
 </project>
