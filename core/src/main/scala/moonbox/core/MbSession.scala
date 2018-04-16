@@ -13,6 +13,7 @@ import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.{DataFrame, MixcalContext, SaveMode}
 
 import scala.collection.mutable
+import scala.concurrent.Future
 
 class MbSession(conf: MbConf) extends MbLogging {
 	implicit private  var catalogSession: CatalogSession = _
@@ -75,18 +76,35 @@ class MbSession(conf: MbConf) extends MbLogging {
 							df.createTempView(createTempView.name)
 						}
 					case mbQuery: MQLQuery => // cached
-						sql(mbQuery.query).write
-							.format("org.apache.spark.sql.execution.datasources.redis")
-							.option("jobId", jobId)
-							.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
-							.save()
+						try {
+							sql(mbQuery.query).write
+								.format("org.apache.spark.sql.execution.datasources.redis")
+								.option("jobId", jobId)
+								.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
+								.save()
+						} catch {
+							case e: Exception =>
+								mixcal.sqlToDF(mbQuery.query).write
+									.format("org.apache.spark.sql.execution.datasources.redis")
+									.option("jobId", jobId)
+									.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
+									.save()
+						}
 						jobId
 					case insert: InsertInto => // external
 						val options = getCatalogTable(insert.table.table, insert.table.database).properties
-						sql(insert.query).write.format(options("type"))
-							.options(options)
-							.mode(SaveMode.Append)
-							.save()
+						try {
+							sql(insert.query).write.format(options("type"))
+								.options(options)
+								.mode(SaveMode.Append)
+								.save()
+						} catch {
+							case e: Exception =>
+								mixcal.sqlToDF(insert.query).write.format(options("type"))
+									.options(options)
+									.mode(SaveMode.Append)
+									.save()
+						}
 					case _ => throw new Exception("Unsupported command.")
 				}
 		}
