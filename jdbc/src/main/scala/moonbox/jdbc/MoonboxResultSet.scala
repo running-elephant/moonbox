@@ -123,9 +123,9 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getDouble(columnIndex: Int) = get(columnIndex).asInstanceOf[Double]
 
-  override def getBigDecimal(columnIndex: Int, scale: Int) = getAs[java.math.BigDecimal](columnIndex - 1).setScale(scale)
+  override def getBigDecimal(columnIndex: Int, scale: Int) = getAs[java.math.BigDecimal](columnIndex).setScale(scale)
 
-  override def getBytes(columnIndex: Int) = getAs[Array[Byte]](columnIndex - 1)
+  override def getBytes(columnIndex: Int) = getAs[Array[Byte]](columnIndex )
 
   override def getDate(columnIndex: Int) = get(columnIndex).asInstanceOf[Date]
 
@@ -179,7 +179,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getMetaData = resultSetMetaData
 
-  override def getObject(columnIndex: Int) = getAs[AnyRef](columnIndex - 1)
+  override def getObject(columnIndex: Int) = getAs[AnyRef](columnIndex)
 
   override def getObject(columnLabel: String) = getObject(columnLabel2Index(columnLabel))
 
@@ -189,7 +189,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getCharacterStream(columnLabel: String) = getCharacterStream(columnLabel2Index(columnLabel))
 
-  override def getBigDecimal(columnIndex: Int) = getAs[java.math.BigDecimal](columnIndex - 1)
+  override def getBigDecimal(columnIndex: Int) = getAs[java.math.BigDecimal](columnIndex)
 
   override def getBigDecimal(columnLabel: String) = getBigDecimal(columnLabel2Index(columnLabel))
 
@@ -410,15 +410,15 @@ class MoonboxResultSet(conn: MoonboxConnection,
   }
 
   override def updateDate(columnIndex: Int, x: Date) = {
-    currentRow(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = new Date(x.getTime)
   }
 
   override def updateTime(columnIndex: Int, x: Time) = {
-    currentRow(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = new Time(x.getTime)
   }
 
   override def updateTimestamp(columnIndex: Int, x: Timestamp) = {
-    currentRow(columnIndex - 1) = x.getTime
+    currentRow(columnIndex - 1) = new Timestamp(x.getTime)
   }
 
   override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Int) = {}
