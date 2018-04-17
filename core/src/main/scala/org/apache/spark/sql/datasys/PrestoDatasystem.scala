@@ -101,7 +101,9 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 	private def getConnection: () => Connection = {
 		val p = new Properties()
 		p.put("user", props("user"))
-		p.put("password", props("password"))
+		if (props.contains("password")) {
+			p.put("password", props.get("password"))
+		}
 		((url: String, props: Properties) => {
 			() => {
 				Class.forName("com.facebook.presto.jdbc.PrestoDriver")
