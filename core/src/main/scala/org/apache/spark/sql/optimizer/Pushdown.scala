@@ -8,7 +8,11 @@ import org.apache.spark.sql.datasys.{DataSystemFactory, SparkDataSystem}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import scala.collection.mutable
 
-case class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
+object Pushdown {
+	def apply(sparkSession: SparkSession): Pushdown = new Pushdown(sparkSession)
+}
+
+class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 	override def apply(plan: LogicalPlan): LogicalPlan = {
 		val graph = buildDataSystemTree(plan)
 		val points = findReplacePoint(graph)

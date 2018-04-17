@@ -10,16 +10,21 @@ import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, LogicalPlan, SubqueryAlias, With}
 import org.apache.spark.sql.datasys.DataSystemFactory
+import org.apache.spark.sql.pruner.MbPruner
 import org.apache.spark.sql.{DataFrame, MixcalContext, SaveMode}
 
 import scala.collection.mutable
 import scala.concurrent.Future
 
 class MbSession(conf: MbConf) extends MbLogging {
-	implicit private  var catalogSession: CatalogSession = _
-	val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
+	implicit var catalogSession: CatalogSession = _
+	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
+	private val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
+
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
+
+	private lazy val mbPruner = new MbPruner(this)
 
 
 	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
@@ -112,15 +117,17 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 	def sql(sqlText: String): DataFrame = {
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
+		val prunedLogicalPlan = if (columnPermission) {
+			mbPruner.execute(parsedLogicalPlan)
+		} else parsedLogicalPlan
 		registerTable(parsedLogicalPlan)
-		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
+		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(prunedLogicalPlan)
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 		val lastLogicalPlan = if (pushdown) {
 			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
 		} else optimizedLogicalPlan
 		mixcal.treeToDF(lastLogicalPlan)
 	}
-
 
 	private def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
 		database match {

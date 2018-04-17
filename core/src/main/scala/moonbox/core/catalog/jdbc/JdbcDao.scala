@@ -311,6 +311,12 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
+	def getUsers(userIds: Seq[Long]): Future[Seq[CatalogUser]] = {
+		query[CatalogUser, CatalogUserTable](
+			catalogUsers, t =>  t.id.inSet(userIds)
+		)
+	}
+
 	def userExists(user: String): Future[Boolean] = {
 		exists[CatalogUser, CatalogUserTable](catalogUsers, _.name === user)
 	}
@@ -563,7 +569,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	// -----------------------------------------------------------------
 
 	def createColumns(columns: Seq[CatalogColumn]): Future[Seq[Long]] = {
-		require(Utils.allEquals(columns.map(_.tableId)))
+		require(Utils.allEquals(columns.map(_.tableId).toList))
 		insertMultiple[CatalogColumn, CatalogColumnTable](columns, catalogColumns)
 	}
 
@@ -603,11 +609,11 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
-	/*def getColumns(tableId: Long, columns: Seq[Long]): Future[Seq[CatalogColumn]] = {
+	def getColumns(columns: Seq[Long]): Future[Seq[CatalogColumn]] = {
 		query[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId && t.id.inSet(columns)
+			catalogColumns, t => t.id.inSet(columns)
 		)
-	}*/
+	}
 
 	def getColumns(tableId: Long, columns: Seq[String]): Future[Seq[CatalogColumn]] = {
 		query[CatalogColumn, CatalogColumnTable](
