@@ -88,6 +88,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 								.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
 								.save()
 						} catch {
+							// TODO fallback call sql() with pushdown parameter false
 							case e: Exception =>
 								mixcal.sqlToDF(mbQuery.query).write
 									.format("org.apache.spark.sql.execution.datasources.redis")
