@@ -20,7 +20,7 @@ import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.authenticate.LoginManager
 import moonbox.grid.deploy.master.MbMasterMessages.ScheduleJob
-import moonbox.grid.deploy.rest.RestServer
+import moonbox.grid.deploy.rest.{RestServer, TokenManager}
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.deploy.worker.{MbWorker, WorkerInfo}
 import moonbox.grid.deploy.{DeployMessage, MbService}
@@ -88,7 +88,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		catalogContext = new CatalogContext(conf)
 
-		loginManager = new LoginManager(catalogContext, this)
+		loginManager = new LoginManager(catalogContext, new TokenManager(conf))
 
 		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
 			FiniteDuration(0, MILLISECONDS),

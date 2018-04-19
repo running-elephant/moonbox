@@ -8,11 +8,11 @@ import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 
 class TokenManager(conf: MbConf) {
 
-	private lazy val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM.key, JWT_ALGORITHM.defaultValueString)
-	private lazy val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get)
-	private lazy val _JWT_SECRET = conf.get(JWT_SECRET.key, JWT_SECRET.defaultValueString)
+	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM.key, JWT_ALGORITHM.defaultValueString)
+	private val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get)
+	private val _JWT_SECRET = conf.get(JWT_SECRET.key, JWT_SECRET.defaultValueString)
 
-	private lazy val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
+	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 
 	def encode(username: String): String = {
 		val jwtClaim: JwtClaim = JwtClaim() + ("username", username)
@@ -26,5 +26,9 @@ class TokenManager(conf: MbConf) {
 		}.getOrElse(None).map(_.username)
 	}
 
-	case class Username(username: String)
+	def isvalid(token: String): Boolean = {
+		Jwt.isValid(token)
+	}
+
+	private case class Username(username: String)
 }
