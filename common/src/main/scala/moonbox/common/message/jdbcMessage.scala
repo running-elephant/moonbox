@@ -33,13 +33,13 @@ case class DataFetchState(messageId: Long, jobId: String, startRowIndex: Long, f
 case class JdbcLoginInbound(messageId: Long, user: String, password: String, database: String) extends JdbcInboundMessage
 case class JdbcLoginOutbound(messageId: Long, err: Option[String], message: Option[String]) extends JdbcOutboundMessage
 
-case class JdbcLogoutInbound(messageId: Long,  user: String) extends JdbcInboundMessage
+case class JdbcLogoutInbound(messageId: Long,  token: String) extends JdbcInboundMessage
 case class JdbcLogoutOutbound(messageId: Long,  err: Option[String], message: Option[String]) extends JdbcOutboundMessage
 
-case class JdbcQueryInbound(messageId: Long, user: String, fetchSize: Int, sql: String) extends JdbcInboundMessage // specify the data fetch size, default is 0
+case class JdbcQueryInbound(messageId: Long, token: String, fetchSize: Int, sql: String) extends JdbcInboundMessage // specify the data fetch size, default is 0
 case class JdbcQueryOutbound(messageId: Long, err: Option[String], data: Seq[Seq[Any]], schema: String) extends JdbcOutboundMessage
 
-case class DataFetchInbound(dataFetchState: DataFetchState, user: String) extends JdbcInboundMessage
+case class DataFetchInbound(dataFetchState: DataFetchState, token: String) extends JdbcInboundMessage
 case class DataFetchOutbound(dataFetchState: DataFetchState, err: Option[String], data: Seq[Seq[Any]], schema: String) extends JdbcOutboundMessage
 
 case class EchoInbound(messageId: Long, content: Any) extends JdbcInboundMessage

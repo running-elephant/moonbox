@@ -71,30 +71,28 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
       case login: JdbcLoginInbound =>
         logInfo(s"Received message: ${login.copy(password = "***")}")
         mbService.login(login.user, login.password).onComplete {
-          case Success(v) =>
-            if (v) {
-              logInfo(s"User: ${login.user} login succeed")
-              //open session
-              logInfo(s"Opening session for user: ${login.user}")
-              mbService.openSession(login.user, Some(login.database)).onComplete {
-                case Success(v) =>
-                  if (v.error.isEmpty && v.sessionId.isDefined) {
-                    channel2SessionIdAndUser.put(ctx.channel(), (v.sessionId.get, login.user))
-                    logInfo(s"Open session succeed, sessionId=${v.sessionId}")
-//                    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
-                    ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, None, Option("open session succeed")))
-                  } else {
-                    logInfo(s"Open session failed, error: ${v.error}")
-                    ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, v.error, Option("open session failed")))
-                  }
-                case Failure(e) =>
-                  logInfo(e.getMessage)
-                  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Option(e.getMessage), Option("open session failed")))
-              }
-            } else {
-              logInfo(s"Login failed user: ${login.user}")
-              ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, err = Option("Login failed"), None))
-            }
+          case Success(Some(token)) =>
+			  logInfo(s"User: ${login.user} login succeed")
+			  //open session
+			  logInfo(s"Opening session for user: ${login.user}")
+			  mbService.openSession(token, Some(login.database)).onComplete {
+				  case Success(v) =>
+					  if (v.error.isEmpty && v.sessionId.isDefined) {
+						  channel2SessionIdAndUser.put(ctx.channel(), (v.sessionId.get, login.user))
+						  logInfo(s"Open session succeed, sessionId=${v.sessionId}")
+						  //                    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
+						  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, None, Option("open session succeed")))
+					  } else {
+						  logInfo(s"Open session failed, error: ${v.error}")
+						  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, v.error, Option("open session failed")))
+					  }
+				  case Failure(e) =>
+					  logInfo(e.getMessage)
+					  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Option(e.getMessage), Option("open session failed")))
+			  }
+		  case Success(None) =>
+			  logInfo(s"Login failed user: ${login.user}")
+			  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, err = Option("Login failed"), None))
           case Failure(e) =>
             logInfo(e.getMessage)
             ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Option(e.getMessage), None))
