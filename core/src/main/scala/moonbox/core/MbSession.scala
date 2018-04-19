@@ -6,15 +6,17 @@ import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, CatalogTable => SparkCatalogTable}
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, LogicalPlan, SubqueryAlias, With}
 import org.apache.spark.sql.datasys.DataSystemFactory
+import org.apache.spark.sql.execution.datasources.DataSource
 import org.apache.spark.sql.pruner.MbPruner
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, MixcalContext, SaveMode}
 
 import scala.collection.mutable
-import scala.concurrent.Future
 
 class MbSession(conf: MbConf) extends MbLogging {
 	implicit var catalogSession: CatalogSession = _
@@ -170,17 +172,29 @@ class MbSession(conf: MbConf) extends MbLogging {
 			}
 		}
 		traverseAll(plan)
-		tables.diff(logicalTables).filterNot(tableIdent =>
-			mixcal.sparkSession.catalog.tableExists(tableIdent.database.orNull, tableIdent.table)
-		).foreach { case TableIdentifier(table, db) =>
-			val catalogTable = getCatalogTable(table, db)
-			val props = catalogTable.properties.+("alias" -> table)
-			val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
+
+		tables.diff(logicalTables).foreach { tableIdentifier =>
+			val catalogTable = getCatalogTable(tableIdentifier.table, tableIdentifier.database)
+			val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
 			val typ = props("type")
-			// TODO create table use catalog
-			val registerTable = s"create table $table using ${DataSystemFactory.typeToSparkDatasource(typ)} options($propsString)"
-			logInfo(registerTable)
-			mixcal.sqlToDF(registerTable)
+			val storage = DataSource.buildStorageFormatFromOptions(props)
+			val tableType = if (storage.locationUri.isDefined) {
+				CatalogTableType.EXTERNAL
+			} else {
+				CatalogTableType.MANAGED
+			}
+			val tableDesc = SparkCatalogTable(
+				identifier = TableIdentifier(tableIdentifier.table, tableIdentifier.database),
+				tableType = tableType,
+				storage = storage,
+				schema = new StructType,
+				provider = Some(DataSystemFactory.typeToSparkDatasource(typ))
+			)
+			if (mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)) {
+				mixcal.sparkSession.sessionState.catalog.alterTable(tableDesc)
+			} else {
+				mixcal.sparkSession.sessionState.catalog.createTable(tableDesc, ignoreIfExists = true)
+			}
 		}
 	}
 
