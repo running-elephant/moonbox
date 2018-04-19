@@ -20,7 +20,9 @@ class ResultGetter(conf: MbConf) extends Actor with MbLogging {
         val redis = new RedisCache(conf.get(CACHE_SERVERS))
         val totalSize = redis.size(jobId)
         val schema = redis.get[String, String, String]("SCHEMA", jobId)
-        val dat = redis.getRange[String,Seq[Any]](jobId, offset, offset + size - 1 )
+        val end = if(size < 0) { size }  // -1 no need to change
+        else { offset + size - 1  }
+        val dat = redis.getRange[String,Seq[Any]](jobId, offset, end )
         (totalSize, schema, dat)
       }
       dataFuture.onComplete {
