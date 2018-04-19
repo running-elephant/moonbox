@@ -163,7 +163,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 
 }
 
-object MbWorker {
+object MbWorker extends MbLogging {
 	val ROLE = "worker"
 	val WORKER_NAME = "mbworker"
 	val WORKER_PATH = s"/user/$WORKER_NAME"
@@ -174,14 +174,20 @@ object MbWorker {
 
 		val akkaSystem = ActorSystem(param.clusterName, ConfigFactory.parseMap(param.akkaConfig.asJava))
 
-		val worker = akkaSystem.actorOf(
-			Props(
-				classOf[MbWorker],
-				param,
-				startMasterEndpoint(akkaSystem)),
-			WORKER_NAME
-		)
-		println(s"start worker ${worker}")
+		try {
+			val worker = akkaSystem.actorOf(
+				Props(
+					classOf[MbWorker],
+					param,
+					startMasterEndpoint(akkaSystem)),
+				WORKER_NAME
+			)
+			logInfo(s"MbWorker $worker start successfully.")
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				akkaSystem.terminate()
+		}
 	}
 
 	private def startMasterEndpoint(akkaSystem: ActorSystem): ActorRef = {

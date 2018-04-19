@@ -135,6 +135,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def getUsers(organizationId: Long, users: Seq[String]): Seq[CatalogUser]
 
+	def getUsers(userIds: Seq[Long]): Seq[CatalogUser]
+
 	def getUser(user: Long): CatalogUser
 
 	def getUserOption(username: String): Option[CatalogUser]
@@ -336,7 +338,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Column -- belong to table
 	// ----------------------------------------------------------------------------
 
-	protected def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Unit
+	protected def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long]
 
 	protected def dropColumn(tableId: Long, column: String, ignoreIfNotExists: Boolean): Unit
 
@@ -352,7 +354,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def getColumnOption(column: Long): Option[CatalogColumn]
 
-	//def getColumns(tableId: Long, columns: Seq[Long]): Seq[CatalogColumn]
+	def getColumns(columns: Seq[Long]): Seq[CatalogColumn]
 
 	def getColumns(tableId: Long, columns: Seq[String]): Seq[CatalogColumn]
 

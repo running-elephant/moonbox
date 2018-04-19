@@ -115,6 +115,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getUsers(organizationId, users)
 	}
 
+	def getUsers(userIds: Seq[Long]): Seq[CatalogUser] = {
+		catalog.getUsers(userIds)
+	}
+
 	def listUsers(organizationId: Long): Seq[CatalogUser] = {
 		catalog.listUsers(organizationId)
 	}
@@ -365,5 +369,25 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 
 	def clearUserGroupRels(groupId: Long): Unit = {
 		catalog.clearUserGroupRels(groupId)
+	}
+
+	def createUserTableRel(userTableRel: CatalogUserTableRel, user: String, organization: String, db: String, table: String, columns: Seq[String], ignoreIfExists: Boolean): Unit = {
+		catalog.createUserTableRel(userTableRel, ignoreIfExists)(user, organization, db, table, columns)
+	}
+
+	def getUserTableRel(userId: Long, tableId: Long) = {
+		catalog.getUserTableRel(userId, tableId)
+	}
+
+	def dropUserTableRel(userTableRelDefinition: CatalogUserTableRel, user: String, organization: String, db: String, table: String, columns: Seq[String], ignoreIfNotExists: Boolean) = {
+		catalog.dropUserTableRel(userTableRelDefinition, ignoreIfNotExists)(user, organization, db, table, columns)
+	}
+
+	def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean) = {
+		catalog.createColumns(columnDefinition, ignoreIfExists)
+	}
+
+	def getColumns(columns: Seq[Long]): Seq[CatalogColumn] = {
+		catalog.getColumns(columns)
 	}
 }

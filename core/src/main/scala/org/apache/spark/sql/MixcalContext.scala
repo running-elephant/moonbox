@@ -10,6 +10,7 @@ import moonbox.core.config._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.pruner.MbPruner
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 

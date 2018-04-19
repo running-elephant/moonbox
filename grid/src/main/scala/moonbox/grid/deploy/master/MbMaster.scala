@@ -461,7 +461,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	}
 }
 
-object MbMaster {
+object MbMaster extends MbLogging {
 	val ROLE = "master"
 	val RECEPTIONIST_PATH = "/system/receptionist"
 	val MASTER_NAME = "mbmaster"
@@ -477,8 +477,14 @@ object MbMaster {
 			PoisonPill,
 			ClusterSingletonManagerSettings(akkaSystem).withRole(ROLE)
 		)
-		val master = akkaSystem.actorOf(masterProp, MASTER_NAME)
-		println(s"start master $master")
+		try {
+			val master = akkaSystem.actorOf(masterProp, MASTER_NAME)
+			logInfo(s"MbMaster $master start successfully.")
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				akkaSystem.terminate()
+		}
 	}
 
 }

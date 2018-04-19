@@ -41,6 +41,9 @@ package object config {
 	val MIXCAL_PUSHDOWN_ENABLE = ConfigBuilder("moonbox.mixcal.pushdown.enable")
 	    .booleanConf
 	    .createWithDefault(true)
+	val MIXCAL_COLUMN_PERMISSION_ENABLE = ConfigBuilder("moonbox.mixcal.column.permission.enable")
+	    .booleanConf
+	    .createWithDefault(false)
 	val MIXCAL_SPARK_MASTER = ConfigBuilder("moonbox.mixcal.spark.master")
 		.stringConf
 		.createWithDefaultString("local[*]")

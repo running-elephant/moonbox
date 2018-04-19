@@ -1,7 +1,7 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.catalog.{CatalogGroup, CatalogSession}
+import moonbox.core.catalog._
 import moonbox.core.{MbColumnIdentifier, MbSession}
 import org.apache.spark.sql.Row
 
@@ -274,6 +274,34 @@ case class GrantDmlOnToUser(
 	columns: Seq[MbColumnIdentifier],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val tableToColumns = columns.groupBy(col => (col.database, col.table))
+		tableToColumns.keys.foreach { key =>
+				val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
+				val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
+				val catalogColumns = tableToColumns(key).map { col =>
+					CatalogColumn(
+						name = col.column,
+						dataType = "string",
+						readOnly = false,
+						tableId = table.id.get,
+						createBy = ctx.userId,
+						updateBy = ctx.userId
+					)
+				}
+			val columnIds = mbSession.catalog.createColumns(catalogColumns, ignoreIfExists = true)
+			mbSession.catalog.getUsers(ctx.organizationId, users).foreach { catalogUser =>
+				mbSession.catalog.createUserTableRel(
+					CatalogUserTableRel(
+						userId = catalogUser.id.get,
+						tableId = table.id.get,
+						columns = columnIds,
+						createBy = ctx.userId,
+						updateBy = ctx.userId
+					), catalogUser.name, ctx.organizationName, database.map(_.name).getOrElse(ctx.databaseName),
+					table.name, catalogColumns.map(_.name), ignoreIfExists = true
+				)
+			}
+		}
 		Seq.empty[Row]
 	}
 }
@@ -282,6 +310,39 @@ case class GrantDmlOnToGroup(
 	columns: Seq[MbColumnIdentifier],
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).map { catalogGroup =>
+			mbSession.catalog.getUserGroupRel(catalogGroup.id.get)
+		}
+		val tableToColumns = columns.groupBy(col => (col.database, col.table))
+		tableToColumns.keys.foreach { key =>
+			val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
+			val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
+			val catalogColumns = tableToColumns(key).map { col =>
+				CatalogColumn(
+					name = col.column,
+					dataType = "string",
+					readOnly = false,
+					tableId = table.id.get,
+					createBy = ctx.userId,
+					updateBy = ctx.userId
+				)
+			}
+			val columnIds = mbSession.catalog.createColumns(catalogColumns, ignoreIfExists = true)
+			userGroupRel.foreach { rel =>
+				mbSession.catalog.getUsers(rel.users).foreach { catalogUser =>
+					mbSession.catalog.createUserTableRel(
+						CatalogUserTableRel(
+							userId = catalogUser.id.get,
+							tableId = table.id.get,
+							columns = columnIds,
+							createBy = ctx.userId,
+							updateBy = ctx.userId
+						), catalogUser.name, ctx.organizationName, database.map(_.name).getOrElse(ctx.databaseName),
+						table.name, catalogColumns.map(_.name), ignoreIfExists = true
+					)
+				}
+			}
+		}
 		Seq.empty[Row]
 	}
 }

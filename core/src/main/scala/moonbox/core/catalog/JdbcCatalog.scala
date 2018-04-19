@@ -304,6 +304,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		jdbcDao.getUsers(organizationId, users)
 	}
 
+	override def getUsers(userIds: Seq[Long]): Seq[CatalogUser] = await {
+		jdbcDao.getUsers(userIds)
+	}
+
 	override def getUser(user: Long): CatalogUser = await {
 		jdbcDao.getUser(user).map {
 			case Some(u) => u
@@ -684,12 +688,12 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Column -- belong to table
 	// ----------------------------------------------------------------------------
 
-	override def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Unit = await {
+	override def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long] = await {
 		val groupedColumns = columnDefinition.groupBy(col => columnExists(col.tableId, col.name))
 		groupedColumns.get(true) match {
 			case Some(exists) =>
 				ignoreIfExists match {
-					case true => Future(Unit)
+					case true => Future(Seq())
 					case false => throw new ColumnExistsException(
 						getTable(exists.head.tableId).name, exists.head.name)
 				}
@@ -744,6 +748,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	override def getColumns(tableId: Long, columns: Seq[String]): Seq[CatalogColumn] = await {
 		jdbcDao.getColumns(tableId, columns)
+	}
+
+	override def getColumns(columns: Seq[Long]): Seq[CatalogColumn] = await {
+		jdbcDao.getColumns(columns)
 	}
 
 	override def columnExists(tableId: Long, column: String): Boolean = await {
