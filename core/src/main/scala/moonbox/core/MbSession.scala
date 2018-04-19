@@ -176,8 +176,14 @@ class MbSession(conf: MbConf) extends MbLogging {
 		tables.diff(logicalTables).foreach { tableIdentifier =>
 			val catalogTable = getCatalogTable(tableIdentifier.table, tableIdentifier.database)
 			val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
+			val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 			val typ = props("type")
-			val storage = DataSource.buildStorageFormatFromOptions(props)
+			if (mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)) {
+				mixcal.sparkSession.sessionState.catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
+			}
+			val createTableSql = s"create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)} using ${DataSystemFactory.typeToSparkDatasource(typ)} options($propsString)"
+			mixcal.sqlToDF(createTableSql)
+			/*val storage = DataSource.buildStorageFormatFromOptions(props)
 			val tableType = if (storage.locationUri.isDefined) {
 				CatalogTableType.EXTERNAL
 			} else {
@@ -187,14 +193,14 @@ class MbSession(conf: MbConf) extends MbLogging {
 				identifier = TableIdentifier(tableIdentifier.table, tableIdentifier.database),
 				tableType = tableType,
 				storage = storage,
-				schema = new StructType,
+				schema = null,
 				provider = Some(DataSystemFactory.typeToSparkDatasource(typ))
 			)
 			if (mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)) {
 				mixcal.sparkSession.sessionState.catalog.alterTable(tableDesc)
 			} else {
 				mixcal.sparkSession.sessionState.catalog.createTable(tableDesc, ignoreIfExists = true)
-			}
+			}*/
 		}
 	}
 

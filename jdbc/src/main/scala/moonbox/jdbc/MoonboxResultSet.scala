@@ -62,9 +62,10 @@ class MoonboxResultSet(conn: MoonboxConnection,
     /** update rows, currentRowStart, currentRowEnd, currentRowId, totalRows, closed, resultSetMetaData */
     rows = result.data.orNull
     currentRowStart = 0
-    currentRowEnd = result.data.size - 1
+    totalRows = result.data.map(_.size.toLong).getOrElse(0)
+    currentRowEnd = totalRows - 1
     currentRowId = currentRowStart - 1
-    totalRows = result.data.size
+
     closed = false
     if (result.schema != null && resultSetMetaData == null)
       resultSetMetaData = new MoonboxResultSetMetaData(this, result.schema.orNull)

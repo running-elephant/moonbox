@@ -27,7 +27,7 @@ class TokenManager(conf: MbConf) {
 	}
 
 	def isvalid(token: String): Boolean = {
-		Jwt.isValid(token)
+		Jwt.isValid(token, _JWT_SECRET, JwtAlgorithm.allHmac())
 	}
 
 	private case class Username(username: String)
