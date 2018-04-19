@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 
 import java.util.concurrent.ConcurrentHashMap
 
-class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (String, String)], mbService: MbService) extends ChannelInboundHandlerAdapter with MbLogging {
+class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (String, String)], mbService: MbService) extends ChannelInboundHandlerAdapter with MbLogging {
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
     try {
@@ -27,34 +27,34 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
   }
 
   override def channelInactive(ctx: ChannelHandlerContext) = {
-    if (channel2SessionIdAndUser.containsKey(ctx.channel())) {
-      val sessionId = channel2SessionIdAndUser.get(ctx.channel())._1
-      val username = channel2SessionIdAndUser.get(ctx.channel())._2
-//      logDebug(s"Cleaning session and logging out for user: $username ...")
+    if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
+      val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
+      val token = channel2SessionIdAndToken.get(ctx.channel())._2
       logInfo(s"Closing session: sessionId=$sessionId ...")
-      mbService.closeSession(username, sessionId).onComplete {
+      mbService.closeSession(token, sessionId).onComplete {
         case Success(v) =>
           if (v.error.isDefined) {
-            logInfo(s"Close session error: ${v.error.get}")
+            logWarning(s"Close session success with error message: ${v.error.get}")
           } else {
-            logInfo("Session closed ...")
-//            mbService.logout(username).onComplete {
-//              case Success(v) =>
-//                if (v.error.isDefined) {
-//                  logInfo(s"User($username) logout error")
-//                } else {
-//                  logInfo(s"User($username) logout succeed")
-//                }
-//              case Failure(e) =>
-//                logInfo(s"User($username) logout failed")
-//            }
+            logInfo("Session closed, logging out ...")
+            mbService.logout(token).onComplete {
+              case Success(v) =>
+                if (v.error.isDefined) {
+                  logWarning(s"Token($token) logout succeed with error message: ${v.error.get}")
+                } else {
+                  logInfo(s"Logout succeed: Token($token)")
+                }
+              case Failure(e) =>
+                logError(s"Logout failed: Token($token)")
+                throw new Exception(s"Logout failed: Token($token)")
+            }
           }
         case Failure(e) =>
-          logInfo(s"Close session error: $e")
+          logError(s"Close session SessionId($sessionId) failed: ${e.getMessage}")
+          throw new Exception(s"Close session SessionId($sessionId) failed: ${e.getMessage}")
       }
-      channel2SessionIdAndUser.remove(ctx.channel())
+      channel2SessionIdAndToken.remove(ctx.channel())
     }
-//    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
     super.channelInactive(ctx)
   }
 
@@ -66,97 +66,95 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
     msg match {
       case echo: EchoInbound =>
         logInfo(s"Received message: $echo")
-        //        channel2SessionIdAndUser.put(ctx.channel(), (echo.messageId.toString, "root"))
-        ctx.writeAndFlush(EchoOutbound(echo.messageId, echo.content))
+        //        channel2SessionIdAndToken.put(ctx.channel(), (echo.messageId.toString, "root"))
+        ctx.writeAndFlush(EchoOutbound(echo.messageId, Some(echo.content)))
       case login: JdbcLoginInbound =>
         logInfo(s"Received message: ${login.copy(password = "***")}")
         mbService.login(login.user, login.password).onComplete {
           case Success(Some(token)) =>
-			  logInfo(s"User: ${login.user} login succeed")
-			  //open session
-			  logInfo(s"Opening session for user: ${login.user}")
-			  mbService.openSession(token, Some(login.database)).onComplete {
-				  case Success(v) =>
-					  if (v.error.isEmpty && v.sessionId.isDefined) {
-						  channel2SessionIdAndUser.put(ctx.channel(), (v.sessionId.get, login.user))
-						  logInfo(s"Open session succeed, sessionId=${v.sessionId}")
-						  //                    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
-						  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, None, Option("open session succeed")))
-					  } else {
-						  logInfo(s"Open session failed, error: ${v.error}")
-						  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, v.error, Option("open session failed")))
-					  }
-				  case Failure(e) =>
-					  logInfo(e.getMessage)
-					  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Option(e.getMessage), Option("open session failed")))
-			  }
-		  case Success(None) =>
-			  logInfo(s"Login failed user: ${login.user}")
-			  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, err = Option("Login failed"), None))
+            logInfo(s"User: ${login.user} login succeed")
+            //open session
+            logInfo(s"Opening session for user: ${login.user}")
+            mbService.openSession(token, Some(login.database)).onComplete {
+              case Success(v) =>
+                if (v.error.isEmpty && v.sessionId.isDefined) {
+                  channel2SessionIdAndToken.put(ctx.channel(), (v.sessionId.get, token))
+                  logInfo(s"Open session succeed, sessionId=${v.sessionId}")
+                  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, None, Some(token)))
+                } else {
+                  logWarning(s"Open session succeed with error message: ${v.error}")
+                  ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, v.error, Some(token)))
+                }
+              case Failure(e) =>
+                logError(s"Open session failed: ${e.getMessage}")
+                ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Some(e.getMessage), Some("open session failed")))
+            }
+          case Success(None) =>
+            logWarning(s"User(${login.user}) login success with Token($None)")
+            ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, err = Some("Login failed"), None))
           case Failure(e) =>
-            logInfo(e.getMessage)
-            ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Option(e.getMessage), None))
+            logError(s"User(${login.user}) login failed: ${e.getMessage}")
+            ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, Some(e.getMessage), None))
         }
       case logout: JdbcLogoutInbound =>
         logInfo(s"Received message: $logout")
-        val sessionId = channel2SessionIdAndUser.get(ctx.channel())._1
-        val username = channel2SessionIdAndUser.get(ctx.channel())._2
-        if (username == logout.user) {
-          logInfo("Closing session ...")
-          mbService.closeSession(logout.user, sessionId).onComplete {
-            case Success(v) =>
-              if (v.error.isDefined) {
-                logInfo(s"Close session error: ${v.error.get}")
-                ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Option("Close session error")))
-              } else {
-                logInfo("Session closed, logging out ...")
-                mbService.logout(logout.user).onComplete {
-                  case Success(v) =>
-                    if (v.error.isDefined) {
-                      logInfo("Logout error")
-                      ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Option(s"User: ${logout.user} logout error")))
-                    } else {
-                      logInfo("Logout succeed")
-                      channel2SessionIdAndUser.remove(ctx.channel())
-                      ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, None, Option("Session closed")))
-                    }
-                  case Failure(e) =>
-                    logInfo("Logout failed")
-                    ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Option(e.getMessage), Option(s"User: ${logout.user} logout failed")))
-                }
+        val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
+        val token = channel2SessionIdAndToken.get(ctx.channel())._2
+        logInfo("Closing session ...")
+        mbService.closeSession(token, sessionId).onComplete {
+          case Success(v) =>
+            if (v.error.isDefined) {
+              logInfo(s"Close session error: ${v.error.get}")
+              ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Some("Close session error")))
+            } else {
+              logInfo("Session closed, logging out ...")
+              mbService.logout(token).onComplete {
+                case Success(v) =>
+                  if (v.error.isDefined) {
+                    logInfo(s"Logout error: ${v.error.get}")
+                    ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Some(s"Logout error: ${v.error.get}")))
+                  } else {
+                    logInfo("Logout succeed")
+                    channel2SessionIdAndToken.remove(ctx.channel())
+                    ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Some("Logout succeed")))
+                  }
+                case Failure(e) =>
+                  logInfo("Logout failed")
+                  ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Some(e.getMessage), Some(s"Logout error: ${v.error.get}")))
               }
-            case Failure(e) =>
-              logInfo(s"Close session error: $e")
-              ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Option(e.getMessage), Option("Close session error")))
-          }
+            }
+          case Failure(e) =>
+            logInfo(s"Close session error: $e")
+            ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Some(e.getMessage), Some("Close session error")))
         }
       case query: JdbcQueryInbound =>
         logInfo(s"Received message: $query")
-        if (channel2SessionIdAndUser.containsKey(ctx.channel())) {
+        if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
+          val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
+          val token = channel2SessionIdAndToken.get(ctx.channel())._2
           val sqls = query.sql.split(";").toSeq
-          // default fetchSize is 200
-          mbService.jobQuery(channel2SessionIdAndUser.get(ctx.channel())._1, sqls, query.fetchSize).onComplete {
+          mbService.jobQuery(token, sessionId, sqls, query.fetchSize).onComplete {
             case Success(v) =>
               if (v.error.isEmpty) {
                 logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed")
                 // 1. return JdbcQueryOutbound  2.return DataFetchOutbound,  according to the result data size
                 if (v.size.isDefined && v.data.isDefined && v.data.get.size < v.size.get) {
                   val fetchState = DataFetchState(query.messageId, v.jobId, 0, v.data.get.size, v.size.get)
-                  ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data.get, v.schema.get))
+                  ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data, v.schema))
                 } else {
-                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data.orNull, v.schema.orNull))
+                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema))
                 }
               } else {
                 logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed with error: ${v.error.orNull}")
-                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data.orNull, v.schema.orNull))
+                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema))
               }
             case Failure(e) =>
-              logInfo(e.getMessage)
-              ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Option(e.getMessage), null, null))
+              logInfo(s"SQLs(${sqls.mkString("; ")}) query failed: ${e.getMessage}")
+              ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some(e.getMessage), None, None))
           }
         } else {
-          logInfo(s"User: ${query.user} have not login yet")
-          ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Option("User did not login, login first"), null, null))
+          logInfo(s"User have not login yet")
+          ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some("User did not login, login first"), None, None))
         }
       case dataFetch: DataFetchInbound =>
         logInfo(s"Received message: $dataFetch")
@@ -168,33 +166,40 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
   }
 
   def doDataFetch(ctx: ChannelHandlerContext, inbound: DataFetchInbound): Unit = {
-    val dataFetch = inbound.dataFetchState
-    val offset = dataFetch.startRowIndex
-    val requestSize = {
-      val remainSize = dataFetch.totalRows - dataFetch.startRowIndex
-      if (remainSize <= 0) {
-        throw new Exception("No data to fetch")
-      }
-      if (remainSize > dataFetch.fetchSize) {
-        dataFetch.fetchSize
-      } else {
-        remainSize
-      }
-    }
-    mbService.jobResult(inbound.user, inbound.dataFetchState.jobId, offset, requestSize).onComplete {
-      case Success(v) =>
-        if (v.error.isDefined) {
-          logInfo(v.error.get)
-          // Return error to client, or retry several times delivered to client
-          ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, v.error, null, null))
-        } else {
-          val dataFetchState = inbound.dataFetchState.copy(fetchSize = v.data.get.size)
-          ctx.writeAndFlush(DataFetchOutbound(dataFetchState, None, v.data.get, v.schema.get))
+    if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
+      val token = channel2SessionIdAndToken.get(ctx.channel())._2
+      val dataFetch = inbound.dataFetchState
+      val offset = dataFetch.startRowIndex
+      val requestSize = {
+        val remainSize = dataFetch.totalRows - dataFetch.startRowIndex
+        if (remainSize <= 0) {
+          throw new Exception("No data to fetch")
         }
-      case Failure(e) =>
-        logInfo(e.getMessage)
-        ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, Option(e.getMessage), null, null))
+        if (remainSize > dataFetch.fetchSize) {
+          dataFetch.fetchSize
+        } else {
+          remainSize
+        }
+      }
+      mbService.jobResult(token, inbound.dataFetchState.jobId, offset, requestSize).onComplete {
+        case Success(v) =>
+          if (v.error.isDefined) {
+            logInfo(s"Do dataFetch error: ${v.error.get}")
+            // Return error to client, or retry several times delivered to client
+            ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, v.error, None, None))
+          } else {
+            val dataFetchState = inbound.dataFetchState.copy(fetchSize = v.data.get.size)
+            ctx.writeAndFlush(DataFetchOutbound(dataFetchState, None, v.data, v.schema))
+          }
+        case Failure(e) =>
+          logInfo(s"Do dataFetch failed: ${e.getMessage}")
+          ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, Some(e.getMessage), None, None))
+      }
+    } else {
+      logInfo("Do dataFetch error, login first")
+      ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, Some("Do dataFetch error, login first"), None, None))
     }
+
   }
 
 }

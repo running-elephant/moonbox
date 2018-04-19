@@ -146,20 +146,20 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def setSavepoint(name: String): Savepoint = null
 
-  private def closeSession(jdbcSession: JdbcSession): Unit = {
-    val messageId = jdbcSession.jdbcClient.getMessageId()
-    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId, jdbcSession.user))
-    resp match {
-      case r: JdbcLogoutOutbound =>
-        if (r.err.isDefined) {
-          throw new SQLException(s"Jdbc connection close error: ${r.err.get}")
-        } else {
-          jdbcSession.jdbcClient.close()
-          jdbcSession.closed = true
-        }
-      case other => throw new SQLException(s"Jdbc connection close error: $other")
-    }
-  }
+//  private def closeSession(jdbcSession: JdbcSession): Unit = {
+//    val messageId = jdbcSession.jdbcClient.getMessageId()
+//    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId))
+//    resp match {
+//      case r: JdbcLogoutOutbound =>
+//        if (r.err.isDefined) {
+//          throw new SQLException(s"Jdbc connection close error: ${r.err.get}")
+//        } else {
+//          jdbcSession.jdbcClient.close()
+//          jdbcSession.closed = true
+//        }
+//      case other => throw new SQLException(s"Jdbc connection close error: $other")
+//    }
+//  }
 
   override def close(): Unit = {
     if (statement != null && !statement.isClosed) {

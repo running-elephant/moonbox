@@ -38,8 +38,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     checkClosed
     val client = jdbcSession.jdbcClient
     val messageId = client.getMessageId()
-    val username = jdbcSession.user
-    val queryMessage = JdbcQueryInbound(messageId, username, getFetchSize, sql)
+    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
     val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
     jdbcMessage2ResultSet(queryMessage, resp)
   }
@@ -52,8 +51,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           throw new SQLException(s"sql query error: ${resp.err.get}")
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
-          val data = resp.data
-          resultSet = new MoonboxResultSet(connection, this, data, resp.schema)
+          resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
           resultSet.updateResultSet(resp)
           resultSet
         }
@@ -63,11 +61,10 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           throw new SQLException(s"sql query error: ${dataFetch.err.get}")
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
-          val data = dataFetch.data
           val fetchState = dataFetch.dataFetchState
           dataFetchId = fetchState.messageId
           totalRows = fetchState.totalRows
-          resultSet = new MoonboxResultSet(connection, this, data, dataFetch.schema)
+          resultSet = new MoonboxResultSet(connection, this, dataFetch.data.orNull, dataFetch.schema.orNull)
           resultSet.updateResultSet(dataFetch)
           resultSet
         }
@@ -123,8 +120,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     checkClosed
     val client = jdbcSession.jdbcClient
     val messageId = client.getMessageId()
-    val username = jdbcSession.user
-    val queryMessage = JdbcQueryInbound(messageId, username, getFetchSize, sql)
+    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
     val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
     resp match {
       case r: JdbcQueryOutbound => if (r.err.isDefined) false else true

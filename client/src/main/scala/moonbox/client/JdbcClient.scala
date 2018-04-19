@@ -10,7 +10,6 @@ import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
-import io.netty.util.concurrent.EventExecutorGroup
 import moonbox.common.MbLogging
 import moonbox.common.message._
 
@@ -18,9 +17,8 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   private var channel: Channel = _
   private val messageId = new AtomicLong()
-  private var ws: EventExecutorGroup = _
   var connected: Boolean = _
-  val DEFAULT_TIMEOUT = 1000 * 15 //ms
+  val DEFAULT_TIMEOUT = 1000 * 15 //time unit: ms
 
   private val promises: ConcurrentHashMap[Long, ChannelPromise] = new ConcurrentHashMap[Long, ChannelPromise]
   private val responses: ConcurrentHashMap[Long, JdbcOutboundMessage] = new ConcurrentHashMap[Long, JdbcOutboundMessage]
@@ -28,11 +26,8 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   def connect(timeout: Int = DEFAULT_TIMEOUT): Unit = {
     try {
-//      val workerGroup = new NioEventLoopGroup(0, new DefaultThreadFactory(this.getClass, true))
       val workerGroup = SingleEventLoopGroup.daemonNioEventLoopGroup
-      ws = workerGroup
       val b = new Bootstrap()
-
       b.group(workerGroup)
         .channel(classOf[NioSocketChannel])
         .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
@@ -76,9 +71,6 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
     if (channel != null) {
       channel.close()
     }
-//    if (ws != null) {
-//      ws.shutdownGracefully()
-//    }
   }
 
   // return null if it throws an exception
@@ -114,7 +106,6 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   def send(msg: Any) = {
     try {
-//      if (ctx == null) throw new IllegalStateException("ChannelHandlerContext is null")
       msg match {
         case inboundMessage: JdbcInboundMessage =>
           val promise = channel.newPromise()
@@ -150,7 +141,6 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   def send(msg: Any, callback: => JdbcOutboundMessage => Any): Unit = {
     try {
-//      if (ctx == null) throw new IllegalStateException("ChannelHandlerContext is null")
       msg match {
         case inboundMessage: JdbcInboundMessage =>
           inboundMessage match {

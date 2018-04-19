@@ -36,7 +36,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     val client = stat.jdbcSession.jdbcClient
     val messageId = client.getMessageId()
     val dataFetchState = DataFetchState(messageId, fetchJobId, currentRowId + 1, FETCH_SIZE, stat.totalRows)
-    val nextDataFetch = DataFetchInbound(dataFetchState, conn.getSession().user)
+    val nextDataFetch = DataFetchInbound(dataFetchState)
     val resp = client.sendAndReceive(nextDataFetch, stat.queryTimeout)
     resp match {
       case dataFetch: DataFetchOutbound => dataFetch
@@ -60,19 +60,19 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   def updateResultSet(result: JdbcQueryOutbound): Unit = {
     /** update rows, currentRowStart, currentRowEnd, currentRowId, totalRows, closed, resultSetMetaData */
-    rows = result.data
+    rows = result.data.orNull
     currentRowStart = 0
     currentRowEnd = result.data.size - 1
     currentRowId = currentRowStart - 1
     totalRows = result.data.size
     closed = false
     if (result.schema != null && resultSetMetaData == null)
-      resultSetMetaData = new MoonboxResultSetMetaData(this, result.schema)
+      resultSetMetaData = new MoonboxResultSetMetaData(this, result.schema.orNull)
   }
 
   def updateResultSet(dataFetch: DataFetchOutbound): Unit = {
     /** update fetchJobId, rows, currentRowStart, currentRowEnd, currentRowId, totalRows, closed, resultSetMetaData */
-    rows = dataFetch.data
+    rows = dataFetch.data.orNull
     if (fetchJobId == null)
       fetchJobId = dataFetch.dataFetchState.jobId
     currentRowStart = dataFetch.dataFetchState.startRowIndex
@@ -82,7 +82,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
       totalRows = dataFetch.dataFetchState.totalRows
     closed = false
     if (dataFetch.schema != null && resultSetMetaData == null)
-      resultSetMetaData = new MoonboxResultSetMetaData(this, dataFetch.schema)
+      resultSetMetaData = new MoonboxResultSetMetaData(this, dataFetch.schema.orNull)
   }
 
   def checkClosed(): Unit = {

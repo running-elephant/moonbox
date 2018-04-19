@@ -14,7 +14,7 @@ import moonbox.grid.deploy.MbService
 
 class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) extends MbLogging {
   var channel: Channel = _
-  var channel2SessionIdAndUser = new ConcurrentHashMap[Channel, (String, String)]
+  var channel2SessionIdAndToken = new ConcurrentHashMap[Channel, (String, String)]
   var bossGroup: NioEventLoopGroup = _
   var workerGroup: NioEventLoopGroup = _
 
@@ -29,7 +29,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
           override def initChannel(ch: SocketChannel) = {
             ch.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
             ch.pipeline.addLast("encode", new ObjectEncoder)
-            ch.pipeline.addLast("handler", new JdbcServerHandler(channel2SessionIdAndUser, mbService))
+            ch.pipeline.addLast("handler", new JdbcServerHandler(channel2SessionIdAndToken, mbService))
           }
         })
       .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 1024)
@@ -47,7 +47,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
     channel = channelFuture.channel()
     channelFuture.channel.closeFuture.addListener(new ChannelFutureListener {
       override def operationComplete(future: ChannelFuture) = {
-        channel2SessionIdAndUser.clear()
+        channel2SessionIdAndToken.clear()
         stop()
       }
     })

@@ -47,7 +47,7 @@ class LoginManager(catalogContext: CatalogContext, val tokenManager: TokenManage
 	}
 
 	def isLogin(token: String): Option[String] = {
-		if (tokenToLastActiveTime.contains(token)) {
+		if (tokenToLastActiveTime.containsKey(token)) {
 			tokenToLastActiveTime.update(token, System.currentTimeMillis())
 			tokenManager.decode(token)
 		} else None
