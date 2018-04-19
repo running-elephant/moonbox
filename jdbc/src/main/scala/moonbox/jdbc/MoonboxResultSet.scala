@@ -87,7 +87,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   def checkClosed(): Unit = {
     if (rows == null)
-      throw new Exception("ResultSet is already closed")
+      throw new SQLException("ResultSet is already closed")
     if (stat != null)
       stat.checkClosed
     if (conn != null)
@@ -509,9 +509,9 @@ class MoonboxResultSet(conn: MoonboxConnection,
     updateObject(columnLabel2Index(columnLabel), x)
   }
 
-  override def insertRow() = {}
+  override def insertRow() = {} // update the underlying database
 
-  override def updateRow() = {}
+  override def updateRow() = {} // update the underlying database
 
   override def deleteRow() = {}
 

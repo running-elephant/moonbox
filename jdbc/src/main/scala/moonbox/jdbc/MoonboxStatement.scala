@@ -24,7 +24,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     */
   def checkClosed: Boolean = {
     if (connection == null)
-      throw new Exception("Exception while execute query, because the connection is null value")
+      throw new SQLException("Exception while execute query, because the connection is null value")
     else {
       connection.checkClosed()
       if (jdbcSession != connection.getSession()) {
@@ -71,8 +71,8 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           resultSet.updateResultSet(dataFetch)
           resultSet
         }
-      case null => throw new Exception("sql query error or timeout")
-      case _ => throw new Exception("Response message type error for sql query") // TODO: retry or not ?
+      case null => throw new SQLException("sql query error or timeout")
+      case _ => throw new SQLException("Response message type error for sql query") // TODO: retry or not ?
     }
   }
 

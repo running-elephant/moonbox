@@ -31,7 +31,6 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     // TODO: Support cluster?
     // use the first host and port pair to get a JdbcClient
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
-    val startTime = System.currentTimeMillis()
     val client = new JdbcClient(host, port)
     client.connect()
     if (client.isConnected()) {
@@ -42,14 +41,14 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
           msg.err match {
             case Some(err) =>
               client.close()
-              throw new Exception(s"Get connection error when checking username and password: $err)")
+              throw new SQLException(s"Get connection error when checking username and password: $err)")
             case None =>
               flag = true
               initSession(client, database, table, username, pwd, newProps)
           }
         case e => {
           client.close()
-          throw new Exception(s"Get MoonboxConnection error: $e")
+          throw new SQLException(s"Get MoonboxConnection error: $e")
         }
       }
     }
@@ -102,9 +101,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   def checkClosed(): Unit = {
     if (jdbcSession == null)
-      throw new Exception("Exception while create a statement, because the JdbcSession is null value")
+      throw new SQLException("Exception while create a statement, because the JdbcSession is null value")
     else if (isClosed)
-      throw new Exception("Exception while create a statement, because the connection is already closed.")
+      throw new SQLException("Exception while create a statement, because the connection is already closed.")
   }
 
   override def createStatement(): Statement = {
@@ -153,7 +152,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     resp match {
       case r: JdbcLogoutOutbound =>
         if (r.err.isDefined) {
-          throw new Exception(s"Jdbc connection close error: ${r.err.get}")
+          throw new SQLException(s"Jdbc connection close error: ${r.err.get}")
         } else {
           jdbcSession.jdbcClient.close()
           jdbcSession.closed = true
@@ -167,7 +166,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       statement.close()
     }
     statement = null
-    closeSession(jdbcSession)
+//    closeSession(jdbcSession)
     if (jdbcSession != null && !jdbcSession.closed) {
       jdbcSession.jdbcClient.close()
       jdbcSession.closed = true

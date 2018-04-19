@@ -32,7 +32,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
             ch.pipeline.addLast("handler", new JdbcServerHandler(channel2SessionIdAndUser, mbService))
           }
         })
-      .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 128)
+      .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 1024)
       .childOption[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
       .childOption[java.lang.Integer](ChannelOption.SO_SNDBUF, 10240)
       .childOption[java.lang.Integer](ChannelOption.SO_RCVBUF, 1024)

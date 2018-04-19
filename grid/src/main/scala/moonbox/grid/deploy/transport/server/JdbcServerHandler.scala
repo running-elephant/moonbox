@@ -30,31 +30,31 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
     if (channel2SessionIdAndUser.containsKey(ctx.channel())) {
       val sessionId = channel2SessionIdAndUser.get(ctx.channel())._1
       val username = channel2SessionIdAndUser.get(ctx.channel())._2
-      logDebug(s"Cleaning session and logging out for user: $username ...")
+//      logDebug(s"Cleaning session and logging out for user: $username ...")
       logInfo(s"Closing session: sessionId=$sessionId ...")
       mbService.closeSession(username, sessionId).onComplete {
         case Success(v) =>
           if (v.error.isDefined) {
             logInfo(s"Close session error: ${v.error.get}")
           } else {
-            logInfo("Session closed, logging out ...")
-            mbService.logout(username).onComplete {
-              case Success(v) =>
-                if (v.error.isDefined) {
-                  logInfo(s"User($username) logout error")
-                } else {
-                  logInfo(s"User($username) logout succeed")
-                }
-              case Failure(e) =>
-                logInfo(s"User($username) logout failed")
-            }
+            logInfo("Session closed ...")
+//            mbService.logout(username).onComplete {
+//              case Success(v) =>
+//                if (v.error.isDefined) {
+//                  logInfo(s"User($username) logout error")
+//                } else {
+//                  logInfo(s"User($username) logout succeed")
+//                }
+//              case Failure(e) =>
+//                logInfo(s"User($username) logout failed")
+//            }
           }
         case Failure(e) =>
           logInfo(s"Close session error: $e")
       }
       channel2SessionIdAndUser.remove(ctx.channel())
     }
-    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
+//    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
     super.channelInactive(ctx)
   }
 
@@ -81,7 +81,7 @@ class JdbcServerHandler(channel2SessionIdAndUser: ConcurrentHashMap[Channel, (St
                   if (v.error.isEmpty && v.sessionId.isDefined) {
                     channel2SessionIdAndUser.put(ctx.channel(), (v.sessionId.get, login.user))
                     logInfo(s"Open session succeed, sessionId=${v.sessionId}")
-                    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
+//                    logInfo("Remain active (sessionId, user)s: " + channel2SessionIdAndUser.asScala.values.mkString(" | "))
                     ctx.writeAndFlush(JdbcLoginOutbound(login.messageId, None, Option("open session succeed")))
                   } else {
                     logInfo(s"Open session failed, error: ${v.error}")
