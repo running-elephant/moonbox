@@ -25,7 +25,9 @@ package object config {
 	val LOGIN_TIMEOUT = ConfigBuilder("moonbox.login.timeout")
 	    .timeConf
 	    .createWithDefaultString("60m")
-
+	val LOGIN_SINGLE_CONTROL_ENABLE = ConfigBuilder("moonbox.login.single.enable")
+	    .booleanConf
+	    .createWithDefault(false)
 	val LOGIN_LDAP_READ_TIMEOUT = ConfigBuilder("moonbox.login.ldap.read.timeout")
 		.timeConf
 		.createWithDefaultString("5s")
