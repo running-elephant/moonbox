@@ -372,7 +372,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.createUserTableRel(userTableRel)(user, organization, db, table, columns)
 	}
 
-	def getUserTableRel(userId: Long, tableId: Long) = {
+	def getUserTableRel(userId: Long, tableId: Long): Seq[CatalogUserTableRel] = {
 		catalog.getUserTableRel(userId, tableId)
 	}
 

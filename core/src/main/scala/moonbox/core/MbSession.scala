@@ -28,7 +28,6 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 	private lazy val mbPruner = new MbPruner(this)
 
-
 	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
 		this.catalogSession = {
 			catalog.getUserOption(username) match {
@@ -90,9 +89,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 								.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
 								.save()
 						} catch {
-							// TODO fallback call sql() with pushdown parameter false
 							case e: Exception =>
-								mixcal.sqlToDF(mbQuery.query).write
+								sql(mbQuery.query, pushdown = false).write
 									.format("org.apache.spark.sql.execution.datasources.redis")
 									.option("jobId", jobId)
 									.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
@@ -108,7 +106,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 								.save()
 						} catch {
 							case e: Exception =>
-								mixcal.sqlToDF(insert.query).write.format(options("type"))
+								sql(insert.query, pushdown = false).write.format(options("type"))
 									.options(options)
 									.mode(SaveMode.Append)
 									.save()
@@ -118,12 +116,12 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	def sql(sqlText: String): DataFrame = {
+	def sql(sqlText: String, pushdown: Boolean = this.pushdown): DataFrame = {
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
+		registerDataSourceTable(collectDataSourceTable(parsedLogicalPlan):_*)
 		val prunedLogicalPlan = if (columnPermission) {
 			mbPruner.execute(parsedLogicalPlan)
 		} else parsedLogicalPlan
-		registerDataSourceTable(collectDataSourceTable(parsedLogicalPlan):_*)
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(prunedLogicalPlan)
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 		val lastLogicalPlan = if (pushdown) {
