@@ -72,7 +72,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 					case runnable: MbRunnableCommand => // direct
 						runnable.run(this)
 					case createTempView: CreateTempView =>
-						val df = sql(createTempView.query)
+						// pushdown optimize later
+						val df = sql(createTempView.query, pushdown = false)
 						if (createTempView.isCache) {
 							df.cache()
 						}
