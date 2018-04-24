@@ -15,11 +15,8 @@ class ColumnPrune(mbSession: MbSession) extends Rule[LogicalPlan] {
 				val table = mbSession.catalog.getTable(databaseId, tableIdentifier.table)
 				val userTableRel = mbSession.catalog.getUserTableRel(session.userId, table.id.get)
 
-				/*val columns = mbSession.catalog.getColumns(userTableRel.map(_.columnId))
-				Project(columns.map(col => UnresolvedAttribute(col.name)), relation)*/
-				// TODO
 				if (userTableRel.isEmpty) {
-					throw new Exception("Permission denied.")
+					throw new ColumnPrivilegeException("Permission denied.")
 				} else {
 					val columns = mbSession.catalog.getColumns(userTableRel.map(_.columnId))
 					Project(columns.map(col => UnresolvedAttribute(col.name)), relation)

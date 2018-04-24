@@ -12,7 +12,7 @@ import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery,
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, LogicalPlan, SubqueryAlias, With}
 import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.execution.datasources.DataSource
-import org.apache.spark.sql.pruner.MbPruner
+import org.apache.spark.sql.pruner.{ColumnPrivilegeException, MbPruner}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, MixcalContext, SaveMode}
 
@@ -89,6 +89,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 								.options(conf.getAll.filter(_._1.startsWith("moonbox.cache.")))
 								.save()
 						} catch {
+							case e: ColumnPrivilegeException =>
+								throw e
 							case e: Exception =>
 								sql(mbQuery.query, pushdown = false).write
 									.format("org.apache.spark.sql.execution.datasources.redis")
@@ -105,6 +107,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 								.mode(SaveMode.Append)
 								.save()
 						} catch {
+							case e: ColumnPrivilegeException =>
+								throw e
 							case e: Exception =>
 								sql(insert.query, pushdown = false).write.format(options("type"))
 									.options(options)
