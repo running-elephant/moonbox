@@ -3,6 +3,7 @@ package moonbox.core.catalog
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.core.config._
+import org.apache.spark.sql.types.StructType
 import org.scalatest.FunSuite
 
 class CatalogContextSuite extends FunSuite with MbLogging {
@@ -265,7 +266,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			isStream = false,
 			createBy = 1,
 			updateBy = 1
-		), "org1", "db1", ignoreIfExists = true)
+		), new StructType(),  "org1", "db1", ignoreIfExists = true)
 
 		val table = catalog.getTable(db1.id.get, "table")
 		assert(table.name == "table")
@@ -284,7 +285,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				isStream = false,
 				createBy = 1,
 				updateBy = 1
-			), "org1", "db1", ignoreIfExists = false)
+			),new StructType(), "org1", "db1", ignoreIfExists = false)
 		}
 
 		catalog.renameTable(db1.id.get, "org1", "db1","table", "table1", 2)
@@ -315,7 +316,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			isStream = false,
 			createBy = 1,
 			updateBy = 1
-		), "org1", "db1", ignoreIfExists = true)
+		), new StructType(), "org1", "db1", ignoreIfExists = true)
 
 		intercept[NonEmptyException] {
 			catalog.dropDatabase(1, "org1", "db1", ignoreIfNotExists = true, cascade = false)

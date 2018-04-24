@@ -123,7 +123,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		val prunedLogicalPlan = if (columnPermission) {
 			mbPruner.execute(parsedLogicalPlan)
 		} else parsedLogicalPlan
-		registerTable(parsedLogicalPlan)
+		registerDataSourceTable(collectDataSourceTable(parsedLogicalPlan):_*)
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(prunedLogicalPlan)
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 		val lastLogicalPlan = if (pushdown) {
@@ -142,7 +142,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	private def registerTable(plan: LogicalPlan): Unit = {
+	private def collectDataSourceTable(plan: LogicalPlan): Seq[TableIdentifier] = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
 
@@ -172,8 +172,11 @@ class MbSession(conf: MbConf) extends MbLogging {
 			}
 		}
 		traverseAll(plan)
+		tables.diff(logicalTables).toSeq
+	}
 
-		tables.diff(logicalTables).foreach { tableIdentifier =>
+	def registerDataSourceTable(dataSourceTables: TableIdentifier*): Unit = {
+		dataSourceTables.foreach { tableIdentifier =>
 			val catalogTable = getCatalogTable(tableIdentifier.table, tableIdentifier.database)
 			val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
 			val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")

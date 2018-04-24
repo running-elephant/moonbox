@@ -122,7 +122,7 @@ case class CatalogUserTableRel(
 	id: Option[Long] = None,
 	userId: Long,
 	tableId: Long,
-	columns: Seq[Long],
+	columnId: Long,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
@@ -131,7 +131,7 @@ case class CatalogUserTableRel(
 case class CatalogUserGroupRel(
 	id: Option[Long] = None,
 	groupId: Long,
-	users: Seq[Long],
+	userId: Long,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,

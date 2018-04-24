@@ -168,15 +168,15 @@ trait EntityComponent extends DatabaseComponent {
 	class CatalogUserTableRelTable(tag: Tag) extends BaseTable[CatalogUserTableRel](tag, "user_table_rel") {
 		def userId = column[Long]("userId")
 		def tableId = column[Long]("tableId")
-		def columns = column[Seq[Long]]("columns")
-		override def * = (id.?, userId, tableId, columns,
+		def columnId = column[Long]("columnId")
+		override def * = (id.?, userId, tableId, columnId,
 			createBy, createTime, updateBy, updateTime) <> (CatalogUserTableRel.tupled, CatalogUserTableRel.unapply)
 	}
 
 	class CatalogUserGroupRelTable(tag: Tag) extends BaseTable[CatalogUserGroupRel](tag, "user_group_rel") {
 		def groupId = column[Long]("groupId")
-		def users = column[Seq[Long]]("users")
-		override def * = (id.?, groupId, users, createBy, createTime,
+		def userId = column[Long]("userId")
+		override def * = (id.?, groupId, userId, createBy, createTime,
 			updateBy, updateTime) <> (CatalogUserGroupRel.tupled, CatalogUserGroupRel.unapply)
 	}
 }

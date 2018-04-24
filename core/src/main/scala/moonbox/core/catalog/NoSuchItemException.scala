@@ -33,8 +33,8 @@ class NoSuchGroupException(group: String)
 class NoSuchUserGroupRelException(group: String)
 	extends Exception(s"User Group Relationship '$group' not found")
 
-class NoSuchUserTableRelException(user: String, table: String)
-	extends Exception(s"Relationship of User '$user' and Table '$table' not found")
+class NoSuchUserTableRelException(user: String, table: String, column: String)
+	extends Exception(s"Relationship of User '$user' and Column '$column' in Table '$table' not found")
 
 class NoSuchOrganizationException(org: String)
 	extends Exception(s"Organization '$org' not found")

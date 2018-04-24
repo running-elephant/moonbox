@@ -192,25 +192,22 @@ case class AlterGroupSetUser(
 		def addUsersToGroup() = {
 			val users: Seq[CatalogUser] = mbSession.catalog.getUsers(ctx.organizationId, addUsers)
 			require(addUsers.size == users.size, s"User does not exist: '${addUsers.diff(users.map(_.name)).mkString(", ")}' ")
-			val catalogUserGroupRel = CatalogUserGroupRel(
-				groupId = groupId,
-				users = users.map(_.id.get),
-				createBy = ctx.userId,
-				updateBy = ctx.userId
-			)
-			mbSession.catalog.createUserGroupRel(catalogUserGroupRel, ctx.organizationName, name, addUsers)
+
+			val catalogUserGroupRels = users.map { user =>
+				CatalogUserGroupRel(
+					groupId = groupId,
+					userId = user.id.get,
+					createBy = ctx.userId,
+					updateBy = ctx.userId
+				)
+			}
+			mbSession.catalog.createUserGroupRel(catalogUserGroupRels, ctx.organizationName, name, addUsers)
 		}
 
 		def removeUsersFromGroup() = {
 			val users: Seq[CatalogUser] = mbSession.catalog.getUsers(ctx.organizationId, removeUsers)
 			require(removeUsers.size == users.size, s"User does not exist: '${removeUsers.diff(users.map(_.name)).mkString(", ")}' ")
-			val catalogUserGroupRel = CatalogUserGroupRel(
-				groupId = groupId,
-				users = users.map(_.id.get),
-				createBy = ctx.userId,
-				updateBy = ctx.userId
-			)
-			mbSession.catalog.dropUserGroupRel(catalogUserGroupRel, ctx.organizationName, name, removeUsers)
+			mbSession.catalog.dropUserGroupRel(groupId, users.map(_.id.get), ctx.organizationName, name, removeUsers)
 		}
 
 		if (addFirst) {

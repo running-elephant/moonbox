@@ -1,6 +1,7 @@
 package moonbox.core.catalog
 
 import moonbox.common.util.ListenerBus
+import org.apache.spark.sql.types.StructType
 
 abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, CatalogEvent] {
 
@@ -294,13 +295,13 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
 
-	final def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+	final def createTable(tableDefinition: CatalogTable, columns: StructType, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
 		val table = tableDefinition.name
 		postToAll(CreateTablePreEvent(organization, db, table))
-		doCreateTable(tableDefinition, ignoreIfExists)
+		doCreateTable(tableDefinition, columns, ignoreIfExists)
 		postToAll(CreateTableEvent(organization, db, table))
 	}
-	protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit
+	protected def doCreateTable(tableDefinition: CatalogTable, columns: StructType, ignoreIfExists: Boolean): Unit
 
 	final def dropTable(databaseId: Long, organization: String, db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
 		postToAll(DropTablePreEvent(organization, db, table))
@@ -357,6 +358,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def getColumns(columns: Seq[Long]): Seq[CatalogColumn]
 
 	def getColumns(tableId: Long, columns: Seq[String]): Seq[CatalogColumn]
+
+	def getColumns(tableId: Long): Seq[CatalogColumn]
 
 	def columnExists(tableId: Long, column: String): Boolean
 
@@ -456,54 +459,71 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// UserGroupRel --   the relation of user - group
 	// ----------------------------------------------------------------------------
 
-	final def createUserGroupRel(userGroupRels: CatalogUserGroupRel, organization: String, group: String, users: Seq[String]): Unit = {
+	final def createUserGroupRel(userGroupRels: CatalogUserGroupRel*)(organization: String, group: String, users: Seq[String]): Unit = {
 		postToAll(CreateUserGroupRelPreEvent(organization, group, users))
-		doCreateUserGroupRel(userGroupRels)
+		doCreateUserGroupRel(userGroupRels:_*)
 		postToAll(CreateUserGroupRelEvent(organization, group, users))
 	}
 
-	protected def doCreateUserGroupRel(userGroupRels: CatalogUserGroupRel): Unit
+	protected def doCreateUserGroupRel(userGroupRels: CatalogUserGroupRel*): Unit
 
-	final def dropUserGroupRel(userGroupRels: CatalogUserGroupRel, organization: String, group: String, users: Seq[String]): Unit = {
+	final def dropUserGroupRelByGroup(groupId: Long, organization: String, group: String, users: Seq[String]): Unit = {
+		postToAll(DropUserGroupRelByGroupPreEvent(organization, group, users))
+		doDropUserGroupRelByGroup(groupId)
+		postToAll(DropUserGroupRelByGroupEvent(organization, group, users))
+	}
+
+	protected def doDropUserGroupRelByGroup(groupId: Long): Unit
+
+	final def dropUserGroupRelByUser(userId: Long, organization: String, user: String, groups: Seq[String]): Unit = {
+		postToAll(DropUserGroupRelByUserPreEvent(organization, user, groups))
+		doDropUserGroupRelByUser(userId)
+		postToAll(DropUserGroupRelByUserEvent(organization, user, groups))
+	}
+
+	protected def doDropUserGroupRelByUser(userId: Long): Unit
+
+	final def dropUserGroupRel(groupId: Long, userIds: Seq[Long], organization: String, group: String, users: Seq[String]): Unit = {
 		postToAll(DropUserGroupRelPreEvent(organization, group, users))
-		doDropUserGroupRel(userGroupRels)
+		doDropUserGroupRel(groupId, userIds)
 		postToAll(DropUserGroupRelPreEvent(organization, group, users))
 	}
 
-	protected def doDropUserGroupRel(userGroupRels: CatalogUserGroupRel): Unit
+	protected def doDropUserGroupRel(groupId: Long, userIds: Seq[Long]): Unit
 
-	def getUserGroupRels(groupId: Long): CatalogUserGroupRel
+	def getUserGroupRelsByGroup(groupId: Long): Seq[CatalogUserGroupRel]
 
-	def clearUserGroupRels(groupId: Long): Unit
+	def getUserGroupRelsByUser(userId: Long): Seq[CatalogUserGroupRel]
 
 
 	// ----------------------------------------------------------------------------
 	// UserTableRel --   the relation of user - table - column
 	// ----------------------------------------------------------------------------
 
-	final def createUserTableRel(userTableRelDefinition: CatalogUserTableRel, ignoreIfExists: Boolean)(
+	final def createUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel])(
 								  user: String, organization: String, db: String, table: String, columnNames: Seq[String]): Unit = {
 		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columnNames))
-		doCreateUserTableRel(userTableRelDefinition, ignoreIfExists)
+		doCreateUserTableRel(userTableRelDefinition)
 		postToAll(CreateUserTableRelEvent(organization, user, db, table, columnNames))
 	}
 
-	protected def doCreateUserTableRel(userTableRelDefinition: CatalogUserTableRel, ignoreIfExists: Boolean): Unit
+	protected def doCreateUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel]): Unit
 
-	final def dropUserTableRel(userTableRelDefinition: CatalogUserTableRel, ignoreIfNotExists: Boolean)
+
+	final def dropUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long])
 							   (user: String, organization: String, db: String, table: String, columnNames: Seq[String]): Unit = {
 		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columnNames))
-		doDropUserTableRel(userTableRelDefinition, ignoreIfNotExists)
+		doDropUserTableRels(userId, tableId, columnIds)
 		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columnNames))
 	}
 
-	protected def doDropUserTableRel(userTableRelDefinition: CatalogUserTableRel, ignoreIfNotExists: Boolean): Unit
+	protected def doDropUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long]): Unit
 
-	def getUserTableRel(userId: Long, tableId: Long): CatalogUserTableRel
-
-	def getUserTableRelOption(userId: Long, tableId: Long): Option[CatalogUserTableRel]
+	def getUserTableRel(userId: Long, tableId: Long): Seq[CatalogUserTableRel]
 
 	def userTableRelExists(userId: Long, tableId: Long): Boolean
+
+
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)

@@ -319,9 +319,11 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
 		case JobQuery(sessionId, sqls) =>
 			val client = sender()
-			var jobInfo: JobInfo = null
+			val now = Utils.now
+			val date = new Date(now)
+			val jobId = newJobId(date)
 			try {
-				jobInfo = createJob(None, Some(sessionId), sqls, client)
+				val jobInfo = createJob(jobId, None, Some(sessionId), sqls, now, client)
 				sessionIdToWorker.get(sessionId) match {
 					case Some(worker) =>
 						runningJobs.put(jobInfo.jobId, jobInfo)
@@ -331,14 +333,16 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				}
 			} catch {
 				case e: Exception =>
-					client ! JobFailed(jobInfo.jobId, e.getMessage)
+					client ! JobFailed(jobId, e.getMessage)
 			}
 
 		case JobSubmit(username, sqls, async) =>
 			val client = sender()
-			var jobInfo: JobInfo = null
+			val now = Utils.now
+			val date = new Date(now)
+			val jobId = newJobId(date)
 			try {
-				jobInfo = createJob(Some(username), None, sqls, client)
+				val jobInfo = createJob(jobId, Some(username), None, sqls, now, client)
 				waitingJobs.enqueue(jobInfo)
 				persistenceEngine.addJob(jobInfo)
 				if (async) {
@@ -346,7 +350,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				}
 			} catch {
 				case e: Exception =>
-					client ! JobFailed(jobInfo.jobId, e.getMessage)
+					client ! JobFailed(jobId, e.getMessage)
 			}
 		case JobProgress(jobId) =>
 			val client = sender()
@@ -423,19 +427,17 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		}
 	}
 
-	private def createJob(username: Option[String], sessionId: Option[String], sqls: Seq[String], client: ActorRef): JobInfo = {
+	private def createJob(jobId: String, username: Option[String], sessionId: Option[String], sqls: Seq[String], createTime: Long, client: ActorRef): JobInfo = {
 		val commands = sqls.map(mbParser.parsePlan)
-		val now = Utils.now
-		val date = new Date(now)
 		JobInfo(
-			jobId = newJobId(date),
+			jobId = jobId,
 			sessionId = sessionId,
 			cmds = commands,
 			status = JobState.WAITING,
 			errorMessage = None,
 			username = username,
-			submitTime = now,
-			updateTime = now,
+			submitTime = createTime,
+			updateTime = createTime,
 			client = client
 		)
 	}

@@ -169,9 +169,8 @@ case class DropUserTableRelEvent(
 	columns: Seq[String]) extends UserTableRelEvent
 
 
-trait UserGroupRelEvent extends CatalogEvent {
-	val group: String
-}
+trait UserGroupRelEvent extends CatalogEvent
+
 case class CreateUserGroupRelPreEvent(
 	organization: String,
 	group: String,
@@ -190,5 +189,23 @@ case class DropUserGroupRelEvent(
 	organization: String,
 	group: String,
 	removeUsers: Seq[String]) extends UserGroupRelEvent
+case class DropUserGroupRelByGroupPreEvent(
+	organization: String,
+	group: String,
+	removeUsers: Seq[String]) extends UserGroupRelEvent
+case class DropUserGroupRelByGroupEvent(
+	organization: String,
+	group: String,
+	removeUsers: Seq[String]) extends UserGroupRelEvent
+
+case class DropUserGroupRelByUserPreEvent(
+	organization: String,
+	user: String,
+	affectedGroups: Seq[String]) extends UserGroupRelEvent
+case class DropUserGroupRelByUserEvent(
+	organization: String,
+	user: String,
+	affectedGroups: Seq[String]) extends UserGroupRelEvent
+
 
 

@@ -2,6 +2,7 @@ package moonbox.core
 
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog._
+import org.apache.spark.sql.types.StructType
 
 
 object CatalogContext {
@@ -227,8 +228,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listDatabases(organizationId, pattern)
 	}
 
-	def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createTable(tableDefinition, organization, db, ignoreIfExists)
+	def createTable(tableDefinition: CatalogTable, columns: StructType, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+		catalog.createTable(tableDefinition, columns, organization, db, ignoreIfExists)
 	}
 
 	def alterTable(tableDefinition: CatalogTable): Unit = {
@@ -355,33 +356,30 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listApplications(organizationId, pattern)
 	}
 
-	def createUserGroupRel(userGroupRel: CatalogUserGroupRel, organization: String, group: String, users: Seq[String]): Unit = {
-		catalog.createUserGroupRel(userGroupRel, organization, group, users)
+	def createUserGroupRel(userGroupRels: Seq[CatalogUserGroupRel], organization: String, group: String, users: Seq[String]): Unit = {
+		catalog.createUserGroupRel(userGroupRels:_*)(organization, group, users)
 	}
 
-	def dropUserGroupRel(userGroupRel: CatalogUserGroupRel, organization: String, group: String, users: Seq[String]): Unit = {
-		catalog.dropUserGroupRel(userGroupRel, organization, group, users)
+	def dropUserGroupRel(groupId: Long, userIds: Seq[Long], organization: String, group: String, users: Seq[String]): Unit = {
+		catalog.dropUserGroupRel(groupId, userIds, organization, group, users)
 	}
 
-	def getUserGroupRel(groupId: Long): CatalogUserGroupRel = {
-		catalog.getUserGroupRels(groupId)
+	def getUserGroupRelsByGroup(groupId: Long): Seq[CatalogUserGroupRel] = {
+		catalog.getUserGroupRelsByGroup(groupId)
 	}
 
-	def clearUserGroupRels(groupId: Long): Unit = {
-		catalog.clearUserGroupRels(groupId)
-	}
-
-	def createUserTableRel(userTableRel: CatalogUserTableRel, user: String, organization: String, db: String, table: String, columns: Seq[String], ignoreIfExists: Boolean): Unit = {
-		catalog.createUserTableRel(userTableRel, ignoreIfExists)(user, organization, db, table, columns)
+	def createUserTableRel(userTableRel: Seq[CatalogUserTableRel], user: String, organization: String, db: String, table: String, columns: Seq[String]): Unit = {
+		catalog.createUserTableRel(userTableRel)(user, organization, db, table, columns)
 	}
 
 	def getUserTableRel(userId: Long, tableId: Long) = {
 		catalog.getUserTableRel(userId, tableId)
 	}
 
-	def dropUserTableRel(userTableRelDefinition: CatalogUserTableRel, user: String, organization: String, db: String, table: String, columns: Seq[String], ignoreIfNotExists: Boolean) = {
-		catalog.dropUserTableRel(userTableRelDefinition, ignoreIfNotExists)(user, organization, db, table, columns)
+	def dropUserTableRel(userId: Long, tableId: Long, columnIds: Seq[Long], user: String, organization: String, db: String, table: String, columns: Seq[String]) = {
+		catalog.dropUserTableRels(userId, tableId, columnIds)(user, organization, db, table, columns)
 	}
+
 
 	def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean) = {
 		catalog.createColumns(columnDefinition, ignoreIfExists)
@@ -389,5 +387,9 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 
 	def getColumns(columns: Seq[Long]): Seq[CatalogColumn] = {
 		catalog.getColumns(columns)
+	}
+
+	def getColumns(tableId: Long): Seq[CatalogColumn] = {
+		catalog.getColumns(tableId)
 	}
 }
