@@ -234,3 +234,18 @@ case class SetConfiguration(key: String, value: String) extends MbRunnableComman
 
 case class MQLQuery(query: String) extends MbCommand with DML
 
+case class CreateTempView(
+	name: String,
+	query: String,
+	isCache: Boolean,
+	replaceIfExists: Boolean) extends MbCommand with DML
+
+case class CreateTempFunction(
+	name: String,
+	props: Map[String, String],
+	replaceIfExists: Boolean) extends MbCommand with DML
+
+case class InsertInto(
+	table: MbTableIdentifier,
+	query: String,
+	overwrite: Boolean) extends MbCommand with DML

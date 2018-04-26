@@ -61,21 +61,21 @@ class MbService(val loginManager: LoginManager, master: ActorRef, resultGetter: 
 			case Some(username) =>
 				askForCompute(JobQuery(sessionId, sqls)).mapTo[JobResultResponse].flatMap {
 					case JobFailed(jobId, error) =>
-						Future(QueryOutbound(jobId, error = Some(error)))
+						Future(QueryOutbound(Some(jobId), error = Some(error)))
 					case JobCompleteWithCachedData(jobId) =>
 						askForResult(FetchData(jobId, offset = 0, fetchSize)).mapTo[FetchDataResponse].map {
 							case FetchDataSuccess(id, schema, data, size) =>
-								QueryOutbound(id, schema = Some(schema), data = Some(data), size = Some(size))  //total size
+								QueryOutbound(Some(id), schema = Some(schema), data = Some(data), size = Some(size))  //total size
 							case FetchDataFailed(id, error) =>
-								QueryOutbound(id, error = Some(error))
+								QueryOutbound(Some(id), error = Some(error))
 						}
 					case JobCompleteWithExternalData(jobId, message) =>
-						Future(QueryOutbound(jobId))
+						Future(QueryOutbound(Some(jobId)))
 					case JobCompleteWithDirectData(jobId, data) =>
-						Future(QueryOutbound(jobId, data = Some(data)))
+						Future(QueryOutbound(Some(jobId), data = Some(data)))
 				}
 			case None =>
-				Future(QueryOutbound("", error = Some("Please login first.")))
+				Future(QueryOutbound(None, error = Some("Please login first.")))
 		}
 	}
 

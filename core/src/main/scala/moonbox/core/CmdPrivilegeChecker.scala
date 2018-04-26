@@ -4,7 +4,7 @@ import moonbox.common.MbLogging
 import moonbox.core.catalog.CatalogSession
 import moonbox.core.command._
 
-object PrivilegeChecker extends MbLogging {
+object CmdPrivilegeChecker extends MbLogging {
 	def intercept(cmd: MbCommand, catalog: CatalogContext, session: CatalogSession): Boolean = {
 		cmd match {
 			case dml: DML => catalog.canDml(session.userId)

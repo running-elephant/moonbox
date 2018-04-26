@@ -1,3 +1,3 @@
-package org.apache.spark.sql.pruner
+package moonbox.core
 
 class ColumnPrivilegeException(message: String) extends Exception(message)

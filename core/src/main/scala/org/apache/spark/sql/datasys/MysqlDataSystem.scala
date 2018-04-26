@@ -63,8 +63,7 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 	)
 
 	override val beGoodAtOperators: Seq[Class[_]] = Seq(
-		classOf[Project],
-		classOf[Filter],
+		classOf[Join],
 		classOf[GlobalLimit],
 		classOf[LocalLimit],
 		classOf[Aggregate]

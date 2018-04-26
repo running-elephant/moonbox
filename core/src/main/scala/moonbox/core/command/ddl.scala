@@ -545,18 +545,3 @@ case class DropApplication(
 	}
 }
 
-case class CreateTempView(
-	name: String,
-	query: String,
-	isCache: Boolean,
-	replaceIfExists: Boolean) extends MbCommand with DDL
-
-case class CreateTempFunction(
-	name: String,
-	props: Map[String, String],
-	replaceIfExists: Boolean) extends MbCommand
-
-case class InsertInto(
-	table: MbTableIdentifier,
-	query: String,
-	overwrite: Boolean) extends MbCommand with DDL

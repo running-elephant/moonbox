@@ -139,7 +139,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
                 logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed")
                 // 1. return JdbcQueryOutbound  2.return DataFetchOutbound,  according to the result data size
                 if (v.size.isDefined && v.data.isDefined && v.data.get.size < v.size.get) {
-                  val fetchState = DataFetchState(query.messageId, v.jobId, 0, v.data.get.size, v.size.get)
+                  val fetchState = DataFetchState(query.messageId, v.jobId.orNull, 0, v.data.get.size, v.size.get)
                   ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data, v.schema))
                 } else {
                   ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema))
