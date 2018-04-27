@@ -17,7 +17,7 @@ import scala.collection.mutable
 class MbSession(conf: MbConf) extends MbLogging {
 	implicit var catalogSession: CatalogSession = _
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
-	private val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
+	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
 
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
@@ -139,7 +139,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 			(table, getCatalogTable(table.table, table.database))
 		}.toMap
 		tableIdentifierToCatalogTable.foreach {
-			case (table, catalogTable) => registerDataSrouceTable(table, catalogTable)
+			case (table, catalogTable) => registerDataSourceTable(table, catalogTable)
 		}
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
@@ -203,10 +203,15 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}.toSeq
 	}
 
-	private def registerDataSrouceTable(tableIdentifier: TableIdentifier, catalogTable: CatalogTable): Unit = {
+	private def registerDataSourceTable(tableIdentifier: TableIdentifier, catalogTable: CatalogTable): Unit = {
 		val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
 		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 		val typ = props("type")
+		tableIdentifier.database.foreach { db =>
+			if (!mixcal.sparkSession.sessionState.catalog.databaseExists(db)) {
+				mixcal.sqlToDF(s"create database $db")
+			}
+		}
 		if (mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)) {
 			mixcal.sparkSession.sessionState.catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
 		}
