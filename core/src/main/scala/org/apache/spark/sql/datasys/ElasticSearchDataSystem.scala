@@ -8,7 +8,7 @@ import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}
 import moonbox.common.MbLogging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, AttributeReference, Divide, EqualNullSafe, EqualTo, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Multiply, Not, Or, Subtract}
+import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, AttributeReference, Divide, EqualNullSafe, EqualTo, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Literal, Multiply, Not, Or, Subtract}
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -37,7 +37,7 @@ class ElasticSearchDataSystem(@transient props: Map[String, String])(@transient 
 	)
 
 	override protected val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[AttributeReference], classOf[Alias],
+		classOf[Literal], classOf[AttributeReference], classOf[Alias],
 		classOf[IsNull], classOf[IsNotNull],
 		classOf[Average], classOf[Count], classOf[Max], classOf[Min], classOf[Sum],
 		classOf[Add], classOf[Subtract], classOf[Multiply], classOf[Divide],
