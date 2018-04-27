@@ -22,4 +22,6 @@ trait CatalystQueryExecutor {
   def execute[T](plan: LogicalPlan, convert: (Option[StructType], Seq[Any]) => T): Iterator[T]
 
   def adaptorFunctionRegister(udf: UDFRegistration)
+
+  def translate(plan: LogicalPlan): Seq[String] = Seq()
 }
