@@ -24,7 +24,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test1") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/shape_geo?type=doc"
+        val url = "jdbc:es://testserver1:9200/shape_geo?table=doc"
         val prop = EsUtilTest.url2Prop(url)
 
         connection = DriverManager.getConnection(url, prop)
@@ -40,7 +40,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test2") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/my_locations?type=location"
+        val url = "jdbc:es://testserver1:9200/my_locations?table=location"
         val prop = EsUtilTest.url2Prop(url)
 
         connection = DriverManager.getConnection(url, prop)
@@ -56,13 +56,13 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test3") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/attractions?type=restaurant"
+        val url = "jdbc:es://testserver1:9200/attractions?table=restaurant"
         val prop = EsUtilTest.url2Prop(url)
         connection = DriverManager.getConnection(url, prop)
         val statement: Statement = connection.createStatement()
-        val rs: ResultSet = statement.executeQuery("select name , location  from attractions")
+        val rs: ResultSet = statement.executeQuery("select name as aaa, location  from attractions")
         while (rs.next()) {
-            val ida = rs.getString("name")
+            val ida = rs.getString("aaa")
             val idb = rs.getString("location")
             println(s"id -> $ida , v -> $idb ")
         }
@@ -71,15 +71,15 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("basic sql type test, col name") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/test_mb_100?type=my_table"
+        val url = "jdbc:es://testserver1:9200/test_mb_100?table=my_table"
         val prop = EsUtilTest.url2Prop(url)
 
         connection = DriverManager.getConnection(url, prop)
         val statement: Statement = connection.createStatement()
         //val rs: ResultSet = statement.executeQuery("select max(event_id) as aaa, min(col_int_a) as bbb from test_mb_100 group by event_id")
-        val rs: ResultSet = statement.executeQuery("select event_id, col_int_a, col_long_c, col_double_d, col_bool_e, col_float_g, col_str_h, col_time_b, col_int_f   from test_mb_100 where event_id < 10 order by event_id")
+        val rs: ResultSet = statement.executeQuery("select event_id as id, col_int_a, col_long_c, col_double_d, col_bool_e, col_float_g, col_str_h, col_time_b, col_int_f   from test_mb_100 where event_id < 10 order by event_id")
         while (rs.next()) {
-            val event_id = rs.getLong("event_id")
+            val event_id = rs.getLong("id")
             val col_int_a = rs.getInt("col_int_a")
             val col_long_c = rs.getLong("col_long_c")
             val col_double_d = rs.getDouble("col_double_d")
@@ -98,7 +98,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("basic sql type, col seq num") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/test_mb_100?type=my_table"
+        val url = "jdbc:es://testserver1:9200/test_mb_100?table=my_table"
         val prop = EsUtilTest.url2Prop(url)
 
         connection = DriverManager.getConnection(url, prop)
@@ -130,7 +130,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test4") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/nest_table2?type=my_type"
+        val url = "jdbc:es://testserver1:9200/nest_table2?table=my_type"
 
         val prop = EsUtilTest.url2Prop(url)
         prop.put("es.read.field.as.array.include", "user")
@@ -150,7 +150,36 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test5") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/people_nest?type=blogpost"
+        val url = "jdbc:es://testserver1:9200/nest_test_table?table=my_type"
+        val prop = EsUtilTest.url2Prop(url)
+
+        prop.put("es.read.field.as.array.include", "user")   //comments is array or nest ???
+        connection = DriverManager.getConnection(url, prop)
+        val statement: Statement = connection.createStatement()
+        //val rs: ResultSet = statement.executeQuery("""select group as bbb, user.first as aaa  from nest_test_table where array_exists(user.age, "x>45") """)
+        //val rs: ResultSet = statement.executeQuery("""select group from nest_test_table where array_exists(user.age, "x>45") """)
+        val rs: ResultSet = statement.executeQuery(""" select user as aaa, user.age as bbb from nest_test_table where array_exists(user.age, "x<=80 and x>=55") """) //
+        while (rs.next()) {
+            val ida = rs.getString("bbb")
+            val idb = rs.getString("aaa")
+            println(s"id -> $ida , v -> $idb ")
+
+            val arr1 = rs.getObject("bbb")
+            val arr2 = rs.getObject("aaa")
+            printA(arr1)
+            print("|")
+            printA(arr2)
+            println("||")
+            //val array = rs.getArray("ccc").asInstanceOf[Array[Any]]
+            //array.foreach(e => println("array= " + e))
+        }
+        connection.close()
+    }
+
+
+    test("test5-2") {
+        var connection: Connection = null
+        val url = "jdbc:es://testserver1:9200/people_nest?table=blogpost"
         val prop = EsUtilTest.url2Prop(url)
 
         prop.put("es.read.field.as.array.include", "comments")   //comments is array or nest ???
@@ -176,9 +205,10 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
         connection.close()
     }
 
+
     test("test6") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/nest_test_table?type=my_type"
+        val url = "jdbc:es://testserver1:9200/nest_test_table?table=my_type"
         val prop = EsUtilTest.url2Prop(url)
 
         prop.put("es.read.field.as.array.include", "user")
@@ -202,7 +232,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test7") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/nest_test_table?type=my_type"
+        val url = "jdbc:es://testserver1:9200/nest_test_table?table=my_type"
         val prop = EsUtilTest.url2Prop(url)
 
         prop.put("es.read.field.as.array.include", "user")
@@ -222,7 +252,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("test8") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/attractions?type=restaurant"
+        val url = "jdbc:es://testserver1:9200/attractions?table=restaurant"
         val prop = EsUtilTest.url2Prop(url)
 
         //prop.put("es.read.field.as.array.include", "user")
@@ -242,7 +272,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("prop has type user pwd") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/people?type=employee"
+        val url = "jdbc:es://testserver1:9200/people?table=employee"
         val prop = EsUtilTest.url2Prop(url)
 
         prop.put("es.read.field.as.array.include", "about")
@@ -264,7 +294,7 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     test("url has type user pwd") {
         var connection: Connection = null
-        val url = "jdbc:es://testserver1:9200/people?type=employee&user=root&password=123456&es.read.field.as.array.include=about"
+        val url = "jdbc:es://testserver1:9200/people?table=employee&user=root&password=123456&es.read.field.as.array.include=about"
         val prop = EsUtilTest.url2Prop(url)
 
         connection = DriverManager.getConnection(url, prop)

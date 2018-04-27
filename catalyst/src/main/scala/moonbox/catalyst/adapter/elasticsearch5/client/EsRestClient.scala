@@ -37,7 +37,11 @@ class EsRestClient(param: Map[String, String]) {
     val restClient: RestClient = {
         val httpHost: Array[HttpHost] = nodes.map{node =>
             val array: Array[String] = node.split(":")
-            new HttpHost(array(0), Integer.valueOf(array(1)), "http")
+            if(array.length > 1) {
+                new HttpHost(array(0), Integer.valueOf(array(1)), "http")
+            }else {
+                new HttpHost(array(0), 9200, "http")
+            }
         }
 
         //https://www.elastic.co/guide/en/elasticsearch/client/java-rest/5.3/_basic_authentication.html

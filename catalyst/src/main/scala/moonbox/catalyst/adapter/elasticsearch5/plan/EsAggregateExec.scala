@@ -3,12 +3,11 @@ package moonbox.catalyst.adapter.elasticsearch5.plan
 import moonbox.catalyst.adapter.util.SparkUtil._
 import moonbox.catalyst.adapter.util.{FieldName, SparkUtil}
 import moonbox.catalyst.core.plan.{AggregateExec, CatalystPlan}
-import moonbox.catalyst.core.{CatalystContext, ProjectElement}
+import moonbox.catalyst.core.CatalystContext
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, Expression, NamedExpression}
 import org.apache.spark.sql.types.{DataType, StringType}
 
-import scala.collection.mutable
 
 class EsAggregateExec(groupingExpressions: Seq[Expression],
                       aggregateExpressions: Seq[NamedExpression],
@@ -24,13 +23,12 @@ class EsAggregateExec(groupingExpressions: Seq[Expression],
         aggregateExpressions.zipWithIndex.foreach{ case (e, idx)=>
             parseAggExpression(e, "", idx)
         }
-        context.aggElementMap = aggFieldMap.toMap
+        //context.aggElementMap = aggFieldMap.toMap
         context.hasAgg = true
         seq ++ Seq(toJson)
     }
 
-    //-------body---------
-    val aggFieldMap: mutable.Map[Int, ProjectElement] = mutable.Map.empty[Int, ProjectElement]
+    var aggFieldSeq: Seq[(String, String)] = Seq.empty[(String, String)]
     var aggFunSeq: Seq[String] = Seq.empty[String]
     var groupBySeq: Seq[String] = Seq.empty[String]
 
@@ -86,7 +84,7 @@ class EsAggregateExec(groupingExpressions: Seq[Expression],
             case AggregateExpression(aggFunc, _, isDistinct, _) =>
                 val (funcJson, dtype)  = parseFunToJson(aggFunc, alias, isDistinct)
                 aggFunSeq = aggFunSeq :+ funcJson
-                aggFieldMap.put(idx, ProjectElement(alias, "", alias, false))  //TODO: no used now
+                aggFieldSeq = aggFieldSeq :+ (alias, alias)
             case _ => println("ERROR")
         }
     }

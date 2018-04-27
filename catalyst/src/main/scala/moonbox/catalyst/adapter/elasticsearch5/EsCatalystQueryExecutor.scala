@@ -14,7 +14,7 @@ import moonbox.common.MbLogging
 import org.apache.spark.sql.UDFRegistration
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types._
-
+import moonbox.catalyst.adapter.util.SparkUtil._
 
 class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor with MbLogging{
 
@@ -33,7 +33,9 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
     }
     val version = client.getVersion()
     val (schema: StructType, nestFieldSet: Set[String]) = client.getSchema(index, typ)
-
+    val context: CatalystContext = new CatalystContext()
+    context.nestFields = nestFieldSet
+    context.version = version
 
     override def adaptorFunctionRegister(udf: UDFRegistration) = {
         udf.register("geo_distance", geo_distance _)
@@ -54,21 +56,20 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
       * plan is parsed by internal JDBC, API interface
       */
     override def execute4Jdbc(plan: LogicalPlan): (Iterator[JdbcRow], Map[Int, Int], Map[String, Int]) = {
-        executeInternal[JdbcRow](plan, SparkUtil.resultListToJdbcRow)
+        val json = translate(plan).head //logical plan to json string
+        val mapping = getColumnMapping()  // alias name(save in local name) : column name(send to server name)
+        executeInternal[JdbcRow](json, plan.schema, mapping, SparkUtil.resultListToJdbcRow)
+
     }
 
     /***
       * plan is parsed by SPARK, API interface
       */
-    override def execute[T](plan: LogicalPlan, convert: (Option[StructType], Seq[Any]) => T): Iterator[T] = {
-        executeInternal[T](plan, convert)._1
+    def execute[T](json: String, schema: StructType, mapping: Seq[(String, String)], convert: (Option[StructType], Seq[Any]) => T): Iterator[T] = {
+        executeInternal[T](json, schema, mapping, convert)._1
     }
 
-    def executeInternal[T](plan: LogicalPlan, convert: (Option[StructType], Seq[Any]) => T): (Iterator[T], Map[Int, Int], Map[String, Int]) = {
-        val context = new CatalystContext()
-        context.nestFields = nestFieldSet
-        context.version = version
-
+    override def translate(plan: LogicalPlan): Seq[String] = {
         val iterator: Iterator[CatalystPlan] = planner.plan(plan)
 
         val json: String = if (iterator.hasNext) {
@@ -78,8 +79,19 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
         } else {
             "{}"
         }
+        Seq(json)
+    }
 
-        val schema = plan.schema
+    def getColumnMapping(): Seq[(String, String)] = {
+        if(context.hasAgg) {  context.aggElementSeq }
+        else { context.projectElementSeq }
+    }
+
+    /*
+    seq: (Alias Name, Source Name)
+     */
+    def executeInternal[T](json: String, schema: StructType, mapping: Seq[(String, String)], convert: (Option[StructType], Seq[Any]) => T): (Iterator[T], Map[Int, Int], Map[String, Int]) = {
+
         if(log.isInfoEnabled()) { //print json, and schema
             logInfo("json" + json)
             logInfo("infer schema:" + schema.toString())
@@ -89,10 +101,10 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
         }
 
         val response = client.performScrollRequest(index, typ, json, context.hasLimited)
-        val data: Seq[Seq[Any]] = response.getResult(schema, context.colId2colNameMap)
+        val data: Seq[Seq[Any]] = response.getResult(schema, colId2colNameMap(mapping))
 
         val projectPipeLine: Seq[Seq[Any]] = FunctionUtil.doProjectFunction(data, schema, context.projectFunctionSeq)  //doProjectFunction
-        val filterPipeLine: Seq[Seq[Any]] = FunctionUtil.doFilterFunction(projectPipeLine, context.colName2colIdMap, context.filterFunctionSeq)
+        val filterPipeLine: Seq[Seq[Any]] = FunctionUtil.doFilterFunction(projectPipeLine, colName2colIdMap(mapping), context.filterFunctionSeq)
 
         val rowsIter :Iterator[T] = filterPipeLine.map{ elem => convert(Some(schema), elem)}.iterator
         (rowsIter, struct2Type(schema), struct2Name(schema))

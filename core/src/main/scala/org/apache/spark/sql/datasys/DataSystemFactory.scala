@@ -8,6 +8,7 @@ object DataSystemFactory {
 		props("type").toLowerCase match {
 			case "mysql" => new MysqlDataSystem(props)(sparkSession)
 			case "presto" | "prestodb" => new PrestoDataSystem(props)(sparkSession)
+			case "es" | "elasticsearch" => new ElasticSearchDataSystem(props)(sparkSession)
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}
@@ -19,6 +20,7 @@ object DataSystemFactory {
 			case "hbase" => "org.apache.spark.sql.execution.datasources.hbase"
 			case "redis" => "org.apache.spark.sql.execution.datasources.redis"
 			case "mongo" | "mongodb" => "com.mongodb.spark.sql"
+			case "es" | "elasticsearch" => "org.elasticsearch.spark.sql"
 			case "parquet" => "parquet"
 			case "json" => "json"
 			case "csv" => "csv"

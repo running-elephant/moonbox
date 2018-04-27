@@ -2,7 +2,7 @@ package moonbox.catalyst.adapter.util
 
 import java.sql.{Date, Timestamp}
 
-import moonbox.catalyst.adapter.elasticsearch5.rdd.EsRow
+
 import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.common.MbLogging
 import org.apache.spark.sql.Row
@@ -47,6 +47,20 @@ object SparkUtil extends MbLogging{
                 throw new Exception("unknown expression in parseLeafExpression")
         }
     }
+
+    def colId2aliasMap(mapping: Seq[(String, String)]): Map[Int, String] = {
+        mapping.zipWithIndex.map{ case (data, index) => (index, data._1)}.toMap  //alias name, send name
+    }
+
+    def colId2colNameMap(mapping: Seq[(String, String)]): Map[Int, String] = {
+        //aggElementMap.map { elem => (elem._1, elem._2.colName) }
+        mapping.zipWithIndex.map{ case (data, index) => (index, data._2)}.toMap
+    }
+
+    def colName2colIdMap(mapping: Seq[(String, String)]): Map[String, Int] = {
+        colId2colNameMap(mapping).map(elem => (elem._2, elem._1))
+    }
+
 
     def literalToSQL(value: Any, dataType: DataType): String = (value, dataType) match {
         case (_, NullType | _: ArrayType | _: MapType | _: StructType) if value == null => "NULL"

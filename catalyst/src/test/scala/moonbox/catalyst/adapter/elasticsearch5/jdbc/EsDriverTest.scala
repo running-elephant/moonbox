@@ -98,10 +98,13 @@ class EsDriverTest extends FunSuite{
         doQuery("attractions", "restaurant", """select name , location  from attractions""")
     }
 
+    test("select mul column and alias"){
+        doQuery("nest_test_table", "my_type", """select user, user.first, user.age, user as aaa, user.first as bbb, user.last as ccc  from nest_test_table where array_exists(user.age, "x>=45")""", Map("es.read.field.as.array.include" -> "user"))
+    }
+
     test("select array element1"){
         doQuery("nest_table2", "my_type", """select group, user.first  from nest_table2""", Map("es.read.field.as.array.include" -> "user"))
     }
-
 
     test("select array element2"){
         doQuery("nest_table2", "my_type", """select group, user.first as aaa  from nest_table2""", Map("es.read.field.as.array.include" -> "user"))
@@ -113,6 +116,10 @@ class EsDriverTest extends FunSuite{
 
     test("select array element4"){
         doQuery("nest_table2", "my_type", """select group, user from nest_table2""", Map("es.read.field.as.array.include" -> "user"))
+    }
+
+    test("array exist0"){
+        doQuery("people_nest", "blogpost", """SELECT comments.name as aaa from  people_nest """, Map("es.read.field.as.array.include" -> "user"))
     }
 
     test("array exist1"){
@@ -152,6 +159,10 @@ class EsDriverTest extends FunSuite{
         doQuery("attractions", "restaurant", "select * from attractions where geo_distance('1km', 40.715, -73.988) and name='Pala Pizza'" )
     }
 
+    test("geo2  select "){
+        doQuery("shape_geo", "doc", "select * from shape_geo" )
+    }
+
     test("geo2 shape and filter"){
         doQuery("shape_geo", "doc", "select name,location from shape_geo where geo_shape('envelope', 13.0, 53.0, 14.0, 52.0, 'within')" )
     }
@@ -183,6 +194,11 @@ class EsDriverTest extends FunSuite{
     test("col 100w of lines"){
         //doQuery("test_mb_100w", "my_table", "select * from test_mb_100w order by event_id asc" )
     }
+
+    test("col + nothing"){
+        doQuery("test_mb_100", "my_table", "select col_int_f, col_int_f  from test_mb_100 " )
+    }
+
 
     test("col + literal"){
         doQuery("test_mb_100", "my_table", "select col_int_f + 1 from test_mb_100 " )
@@ -324,7 +340,7 @@ class EsDriverTest extends FunSuite{
         import scala.collection.JavaConversions._
         var connection: Connection = null
         try {
-            val url = s"jdbc:es://${server}:9200/$tbl?type=$mtype"
+            val url = s"jdbc:es://${server}:9200/$tbl?table=$mtype"
             //val url = s"jdbc:es://slave1:9200,slave2:9200/$tbl"
             val prop = EsUtilTest.url2Prop(url)
 

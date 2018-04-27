@@ -6,11 +6,12 @@ import moonbox.catalyst.adapter.elasticsearch5.client.EsRestClient
 import moonbox.catalyst.core.CatalystContext
 import moonbox.catalyst.core.parser.udf.FunctionUtil
 import org.apache.spark.sql.types.StructType
-
+import moonbox.catalyst.adapter.util.SparkUtil._
 
 class EsIterator[T](client: EsRestClient,
                     properties: Properties,
                     json: String,
+                    mapping: Seq[(String, String)],
                     schema: StructType,
                     context: CatalystContext,
                     mapRow: (Option[StructType], Seq[Any]) => T) extends scala.collection.Iterator[T] {
@@ -45,9 +46,9 @@ class EsIterator[T](client: EsRestClient,
     if (fsize == 0) {  //get nothing, return
       finished = true
     } else{
-      val data :Seq[Seq[Any]] = response.getResult(schema, context.colId2colNameMap)
+      val data :Seq[Seq[Any]] = response.getResult(schema, colId2colNameMap(mapping))
       val pipeLine :Seq[Seq[Any]] = FunctionUtil.doProjectFunction(data, schema, context.projectFunctionSeq) //doProjectFunction
-      val pipeLine2 :Seq[Seq[Any]] = FunctionUtil.doFilterFunction(pipeLine, context.colName2colIdMap, context.filterFunctionSeq)
+      val pipeLine2 :Seq[Seq[Any]] = FunctionUtil.doFilterFunction(pipeLine, colName2colIdMap(mapping), context.filterFunctionSeq)
 
       scrollIter = pipeLine2.map(elem => mapRow(Some(schema), elem)).iterator
     }
@@ -68,9 +69,9 @@ class EsIterator[T](client: EsRestClient,
       println(s"getSeqQuery ${fsize}")
       finished = true
     }else {
-      val data :Seq[Seq[Any]] = response.getResult(schema, context.colId2colNameMap)
+      val data :Seq[Seq[Any]] = response.getResult(schema, colId2colNameMap(mapping))
       val pipeLine :Seq[Seq[Any]] = FunctionUtil.doProjectFunction(data, schema, context.projectFunctionSeq) //doProjectFunction
-      val pipeLine2 :Seq[Seq[Any]] = FunctionUtil.doFilterFunction(pipeLine, context.colName2colIdMap, context.filterFunctionSeq)
+      val pipeLine2 :Seq[Seq[Any]] = FunctionUtil.doFilterFunction(pipeLine, colName2colIdMap(mapping), context.filterFunctionSeq)
 
       scrollIter = pipeLine2.map(elem => mapRow(Some(schema), elem)).iterator
     }

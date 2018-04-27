@@ -3,94 +3,73 @@ package moonbox.catalyst.adapter.elasticsearch5.plan
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}
 import moonbox.catalyst.core.plan.{CatalystPlan, ProjectExec}
-import moonbox.catalyst.core.{CatalystContext, ProjectElement}
+import moonbox.catalyst.core.CatalystContext
 import org.apache.spark.sql.catalyst.expressions.{Add, Alias, AttributeReference, BinaryArithmetic, Divide, Expression, GetArrayStructFields, GetStructField, If, Literal, Multiply, NamedExpression, Subtract}
 import org.apache.spark.sql.types.StructType
 
 
 class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) extends ProjectExec(projectList, child) {
-
+    var catalystContext: CatalystContext = _
     override def translate(context: CatalystContext): Seq[String] = {
+        catalystContext = context
         val seq: Seq[String] = child.translate(context)
-        //to source include list
-        projectList.zipWithIndex.map{case (expression, index) => translateProject(expression, context, "", true, index)}
-        context.projectElementMap = projectElementMap.toMap
 
-        appendExtraCol2Project(context)  //NOTE: add extra filter col to project
-
-        seq ++ Seq(toJson:_*)
-    }
-    //-----------body-----------
-    val projectElementMap: scala.collection.mutable.Map[Int, ProjectElement] = scala.collection.mutable.Map.empty[Int, ProjectElement]
-
-    def appendExtraCol2Project(context: CatalystContext)={
-        //TODO: add filter exist colname if it not in the project list
-        val filterSet = context.filterFunctionSeq
-                .filter{elem => elem.isInstanceOf[ArrayExists]}
-                .map{ case ArrayExists(left, right) => SparkUtil.parseLeafExpression(left).name }.toSet
-        val projectSet = context.projectElementMap.filter(!_._2.colName.isEmpty).map{_._2.colName}.toSet
-        val extraColNameSet = filterSet -- projectSet
-
-        val sz = projectElementMap.size
-        extraColNameSet.zipWithIndex.foreach{ case (elem, index) =>
-            projectElementMap.put(sz + index, ProjectElement(elem, "", "", false))  //padding to tail
+        var aliasColumnSeq = Seq.empty[String]
+        var sourceColumnSeq = Seq.empty[String]
+        catalystContext.projectElementSeq = projectList.zipWithIndex.map {
+            case (_@Alias(children, alias), index) =>
+                children match {
+                    case _: BinaryArithmetic | _ : Literal =>
+                        aliasColumnSeq = aliasColumnSeq :+ s"""|"$alias": {
+                            |    "script" : {
+                            |        "lang" : "expression",
+                            |        "inline" : "${translateProject(children, true, index)}"
+                            |    }
+                            |}""".stripMargin
+                        (alias, alias)
+                    case _ =>
+                        val column = s"""${translateProject(children, false, index)}"""
+                        sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
+                        (alias, column)
+                }
+            case (e: Expression, index) =>
+                val column = s"""${translateProject(e, false, index)}"""
+                sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
+                (column, column)
         }
+        val aliasColumn = aliasColumnSeq.mkString(",")
+        val sourceColumn = sourceColumnSeq.mkString(",")
+
+        val a: String = s"""|"script_fields": {
+              |$aliasColumn
+              |} """.stripMargin
+        val b: String =  s""" |"_source":{
+               |"includes": [$sourceColumn], "excludes": []
+               |} """.stripMargin
+        seq :+b :+ a
     }
 
-    def toJson: Seq[String] = {
-        var seq: Seq[String] = Seq.empty[String]
+    def mkColumnInSource(col: String): String = { s"""|$col""".stripMargin }
+    def mkColumnInScript(col: String): String = { s"""|doc['$col']""".stripMargin }
 
-        val field = projectElementMap.filter(!_._2.pushDown).map{ elem =>
-            if(!elem._2.pushDown) {
-                s""" "${elem._2.colName}" """
-            }
-        }.mkString(",")
-        seq = seq :+ s""""_source": {"includes": [$field], "excludes": [] }"""
-
-        val script = projectElementMap.filter(_._2.pushDown).map{elem =>
-                s""" "${elem._2.aliasName}": { "script": { "lang": "expression", "inline": "${elem._2.colJson}" } } """
-        }.mkString(",")
-        seq = seq :+ s""" "script_fields" : { $script } """
-        seq
-    }
-
-    def translateProject(e: Expression, context: CatalystContext, alias: String="", store: Boolean = true, index: Int): String = {
+    def translateProject(e: Expression, script: Boolean = false, index: Int): String = {
         e match {
             case a@ArrayFilter(left, right) =>
-                context.projectFunctionSeq :+= (a, index)
-                val colName = SparkUtil.parseLeafExpression(left).name
+                catalystContext.projectFunctionSeq :+= (a, index)
+                translateProject(left, script, index)
 
-                projectElementMap.put(index, ProjectElement(colName, "", alias, false))
-                ""
             case a@ArrayMap(left, right) =>
-                context.projectFunctionSeq :+= (a, index)
-                val colName = SparkUtil.parseLeafExpression(left).name
-                projectElementMap.put(index, ProjectElement(colName, "", alias, false))
-                ""
-            case a@Alias(child, name) =>
-                translateProject(child, context, name, true, index)
+                catalystContext.projectFunctionSeq :+= (a, index)
+                translateProject(left, script, index)
+
             case a: AttributeReference =>
-                val colName = a.name
-                if(store) {
-                    projectElementMap.put(index, ProjectElement(colName, "", alias, false))
-                    if(alias.isEmpty) {
-                        s"$colName"
-                    }
-                    else {  //TODO
-                        s"doc['${colName}']"
-                    }
-                } else {
-                    if(alias.isEmpty) {
-                        s"$colName"
-                    }
-                    else {
-                        s"doc['$colName']"  //TODO: select a + 1
-                    }
-                }
+                if(script) { mkColumnInScript(a.name) }
+                else { mkColumnInSource(a.name) }
+
             case b: BinaryArithmetic =>
                 def mkBinaryString(lchild: Expression,rchild: Expression, op: String): String = {
-                    val left = translateProject(lchild, context, alias, false, index)
-                    val right = translateProject(rchild, context, alias, false, index)
+                    val left = translateProject(lchild, script, index)
+                    val right = translateProject(rchild, script, index)
                     s"""($left $op $right)"""
                 }
 
@@ -100,18 +79,12 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
                     case m@Multiply(lchild, rchild) => mkBinaryString(lchild, rchild, "*")
                     case d@Divide(lchild, rchild) => mkBinaryString(lchild, rchild, "/")
                 }
-                if(store) {
-                    projectElementMap.put(index, ProjectElement(alias, colContext, alias, true))  //TODO: no colName here
-                }
                 s"""$colContext"""
 
-            case literal@Literal(v, t) =>
+            case _@Literal(v, t) =>
                 val literal: String = SparkUtil.literalToSQL(v, t)
-                if(store) {     //select 1 from table
-                    projectElementMap.put(index, ProjectElement(alias, literal, alias, true))
-                }
                 literal
-            case If(predicate, trueValue, falseValue) => ""
+
             case g@GetStructField(child, ordinal, _) =>  //select user.name from nest_table
                 val childSchema = child.dataType.asInstanceOf[StructType]
                 val fieldName =  childSchema(ordinal).name
@@ -119,19 +92,15 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
                     case a: AttributeReference => a.name
                     case e: Expression => e.toString()
                 }
-                if(store) {
-                    val nestName = s"$childName.${g.name.getOrElse(fieldName)}"
-                    projectElementMap.put(index, ProjectElement(nestName, "", alias, false))
-                    nestName
-                } else ""
+                s"$childName.${g.name.getOrElse(fieldName)}"
+
             case g@GetArrayStructFields(child, field, _, _, _) =>
-                val parentName = translateProject(child, context, "", false, index)
+                val parentName = translateProject(child, false, index)
                 val colName = s"$parentName.${field.name}"
-                if(store) {
-                    //NOTE: es do not support A.B as C in doc value field
-                    projectElementMap.put(index, ProjectElement(colName, "", alias, false))
-                }
-                s"$colName"
+
+                if(script) { mkColumnInScript(colName) }
+                else { mkColumnInSource(colName) }
+
             case _ => println("ERROR translateProject")
                 ""
         }
@@ -153,4 +122,5 @@ object EsProjectExec{
     def apply(projectList: Seq[NamedExpression], child: CatalystPlan): EsProjectExec = {
         new EsProjectExec(projectList, child)
     }
+
 }

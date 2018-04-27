@@ -1,5 +1,8 @@
-package moonbox.catalyst.adapter.elasticsearch5.rdd
+package org.apache.spark.sql.rdd
 
+import java.util.Properties
+
+import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
 import moonbox.catalyst.adapter.util.SparkUtil
 import org.apache.spark.sql.udf.UdfUtil
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -14,20 +17,57 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
     }
 
 
-    def createDF(sql: String, map: Map[String, String]): DataFrame = {
+    def createDF(properties: Properties, sql: String, map: () => Properties): DataFrame = {
         val parsed = spark.sessionState.sqlParser.parsePlan(sql)
         val analyzed = spark.sessionState.analyzer.execute(parsed)
         val optimized = spark.sessionState.optimizer.execute(analyzed)
 
-        val rdd = new MbElasticSearchRDD[Row](spark.sparkContext, optimized, 1, map, SparkUtil.resultListToJdbcRow)
+        val executor = new EsCatalystQueryExecutor(properties)
+        val json = executor.translate(optimized).head
+        val mapping = executor.getColumnMapping()
+        val rdd = new MbElasticSearchRDD[Row](spark.sparkContext, json, mapping, optimized.schema, 1, map(), SparkUtil.resultListToJdbcRow)
 
         val df = spark.createDataFrame(rdd, optimized.schema)
         df
     }
 
+
+    test("esRdd4") {
+        //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "test_mb_100", "table" -> "my_table")
+        val properities = new Properties()
+        properities.setProperty("nodes", "slave1:9200")
+        properities.setProperty("database", "test_mb_1000")
+        properities.setProperty("table", "my_table")
+
+        val df1 = spark.read.format("org.elasticsearch.spark.sql")
+          .option("es.resource", "test_mb_1000")
+          //.option("es.cluster", "edp-es")
+          //.option("es.mapping.date.rich", "false")
+          //.option("es.read.field.as.array.include", "user")
+          .option("es.nodes", "http://slave1:9200").load()
+
+        //spark.sql("create table test_mb_1000 using org.elasticsearch.spark.sql options(es.nodes 'slave1', es.resource 'test_mb_1000/my_table')")
+
+        df1.createOrReplaceTempView("test_mb_1000")
+
+        val sql = "select count(*) from test_mb_1000"
+        //val df2 = spark.sql(sql)
+        //df2.show(false)
+        val df3 = createDF(properities, sql, () => properities)
+        df3.show(false)
+
+        //assert(df2.collect().sameElements(df3.collect()))
+
+    }
+
     test("esRdd") {
         //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
-        val map = Map("nodes"->"testserver1:9200", "database" -> "test_mb_100", "type" -> "my_table")
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "test_mb_100", "table" -> "my_table")
+        val properities = new Properties()
+        properities.setProperty("nodes", "testserver1:9200")
+        properities.setProperty("database", "test_mb_100")
+        properities.setProperty("table", "my_table")
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "test_mb_100")
@@ -41,17 +81,19 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         val sql = "select avg(col_int_f) as aaa, max(col_float_g) as ccc, count(col_float_g) as bbb, count(col_int_a) from test_mb_100"
         val df2 = spark.sql(sql)
         df2.show(false)
-        val df3 = createDF(sql, map)
+        val df3 = createDF(properities, sql, () => properities)
         df3.show(false)
 
         assert(df2.collect().sameElements(df3.collect()))
 
     }
 
-
     test("default Rdd") {
-
-        val map = Map("nodes"->"testserver1:9200", "database" -> "nest_test_table", "type" -> "my_type")
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "nest_test_table", "table" -> "my_type")
+        val properities = new Properties()
+        properities.setProperty("nodes", "testserver1:9200")
+        properities.setProperty("database", "nest_test_table")
+        properities.setProperty("table", "my_type")
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "nest_test_table")
@@ -67,7 +109,7 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         df2.show(false)
         println(df2.schema)
 
-        val df3 = createDF(sql, map)
+        val df3 = createDF(properities, sql, () => properities)
         df3.show(false)
 
         assert(df2.collect().sameElements(df3.collect()))
@@ -75,7 +117,11 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
 
 
     test("default Rdd2") {
-        val map = Map("nodes"->"slave1:9200",  "database" -> "basic_info_mix_index", "type" -> "basic_info_mix_type")
+        //val map = Map("nodes"->"slave1:9200",  "database" -> "basic_info_mix_index", "table" -> "basic_info_mix_type")
+        val properities = new Properties()
+        properities.setProperty("nodes", "slave1:9200")
+        properities.setProperty("database", "basic_info_mix_index")
+        properities.setProperty("table", "basic_info_mix_type")
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "basic_info_mix_index")
@@ -91,7 +137,7 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         df2.show(false)
         println(df2.schema)
 
-        val df3 = createDF(sql, map)
+        val df3 = createDF(properities, sql, () => properities)
         df3.show(false)
 
         assert(df2.collect().sameElements(df3.collect()))
@@ -99,7 +145,11 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
 
     test("nest filter") {
         //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
-        val map = Map("nodes"->"testserver1:9200", "database" -> "people_nest", "type" -> "blogpost")
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "people_nest", "table" -> "blogpost")
+        val properities = new Properties()
+        properities.setProperty("nodes", "testserver1:9200")
+        properities.setProperty("database", "people_nest")
+        properities.setProperty("table", "blogpost")
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "people_nest")
@@ -115,10 +165,41 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         df2.show(false)
         println(df2.schema)
 
-        val df3 = createDF(sql, map)
+        val df3 = createDF(properities, sql, () => properities)
         df3.show(false)
 
-        assert(df2.collect().sameElements(df3.collect()))
+        val rows1 = df2.collect().toSet
+        val rows2 = df3.collect().toSet
+        assert(rows1.diff(rows2).isEmpty)
+    }
+
+    test("shape geo") {
+        //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "people_nest", "table" -> "blogpost")
+        val properities = new Properties()
+        properities.setProperty("nodes", "testserver1:9200")
+        properities.setProperty("database", "shape_geo")
+        properities.setProperty("table", "doc")
+
+        val df1 = spark.read.format("org.elasticsearch.spark.sql")
+          .option("es.resource", "shape_geo")
+          .option("es.cluster", "edp-es")
+          .option("es.mapping.date.rich", "false")
+          //.option("es.read.field.as.array.include", "comments")  //nest type is not array
+          .option("es.nodes", "http://testserver1:9200").load()
+
+        df1.createOrReplaceTempView("shape_geo_table")
+
+        val sql = """SELECT * from shape_geo_table"""
+        val df2 = spark.sql(sql)
+        df2.show(false)
+        println(df2.schema)
+
+        val df3 = createDF(properities, sql, () => properities)
+        df3.show(false)
+        val rows1 = df2.collect().toSet
+        val rows2 = df3.collect().toSet
+        assert(rows1.diff(rows2).size == 0)
     }
 
 }

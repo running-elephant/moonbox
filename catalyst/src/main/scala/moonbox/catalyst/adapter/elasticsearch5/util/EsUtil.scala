@@ -15,7 +15,7 @@ object EsUtil {
 
     val DB_NAME = "database"
     val INDEX_NAME = "index"
-    val TYPE_NAME = "type"
+    val TYPE_NAME = "table"
 
     def buildRequest(context: CatalystContext, element: Seq[String], info: Properties): String = {
 
