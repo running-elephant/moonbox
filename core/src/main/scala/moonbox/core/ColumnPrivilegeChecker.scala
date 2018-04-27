@@ -17,8 +17,12 @@ object ColumnPrivilegeChecker {
 					case Some(catalogTable) =>
 						val table = tableIdentifierToCatalogTable.get(catalogTable.identifier)
 						require(table.isDefined)
-						val columnIds = catalog.getUserTableRel(catalogSession.userId, table.get.id.get).map(_.columnId)
-						val columnNames = catalog.getColumns(columnIds).map(_.name)
+						val columnNames = if (table.get.createBy == catalogSession.userId) {
+							catalog.getColumns(table.get.id.get).map(_.name)
+						} else {
+							val columnIds = catalog.getUserTableRel(catalogSession.userId, table.get.id.get).map(_.columnId)
+							catalog.getColumns(columnIds).map(_.name)
+						}
 						logicalRelation.references.filter(attr => columnNames.contains(attr.name))
 					case None =>
 						Seq()

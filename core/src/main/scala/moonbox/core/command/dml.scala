@@ -17,6 +17,7 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
+		mbSession.mixcal.sqlToDF(s"use ${ctx.databaseName}")
 		Seq.empty[Row]
 	}
 }
@@ -152,9 +153,13 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
-		val userTableRels = mbSession.catalog.getUserTableRel(ctx.userId, catalogTable.id.get)
-		val catalogColumns = mbSession.catalog.getColumns(userTableRels.map(_.columnId))
-
+		val catalogColumns =
+			if (catalogTable.createBy == ctx.userId || !mbSession.columnPermission) {
+				mbSession.catalog.getColumns(catalogTable.id.get)
+			} else {
+				val userTableRels = mbSession.catalog.getUserTableRel(ctx.userId, catalogTable.id.get)
+				mbSession.catalog.getColumns(userTableRels.map(_.columnId))
+			}
 		result.append(Row("Table Name", catalogTable.name))
 		result.append(Row("Description", catalogTable.description.getOrElse("")))
 		result.append(Row("IsStream", catalogTable.isStream))
