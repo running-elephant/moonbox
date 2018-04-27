@@ -147,12 +147,13 @@ class MbSession(conf: MbConf) extends MbLogging {
 			case (table, catalogTable) => registerDataSourceTable(table, catalogTable)
 		}
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
-		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
-
 		if (columnPermission) {
-			ColumnPrivilegeChecker.intercept(optimizedLogicalPlan,
+			ColumnPrivilegeChecker.intercept(analyzedLogicalPlan,
 				tableIdentifierToCatalogTable, catalog, catalogSession)
 		}
+		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+
+
 
 		val lastLogicalPlan = if (pushdown) {
 			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
@@ -184,6 +185,10 @@ class MbSession(conf: MbConf) extends MbLogging {
 					logicalTables.add(TableIdentifier(alias))
 				case UnresolvedRelation(indent) =>
 					tables.add(indent)
+				case project: Project =>
+					project.projectList.foreach(traverseExpression)
+				case aggregate: Aggregate =>
+					aggregate.aggregateExpressions.foreach(traverseExpression)
 				case Filter(condition, child) =>
 					traverseExpression(condition)
 				case _ => // do nothing

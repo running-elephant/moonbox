@@ -2,9 +2,11 @@ package moonbox.core
 
 import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
-import org.apache.spark.sql.catalyst.plans.logical.{Filter, LogicalPlan, SubqueryAlias, With}
+import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+
+import scala.collection.mutable.ArrayBuffer
 
 object ColumnPrivilegeChecker {
 	def intercept(plan: LogicalPlan,
@@ -28,13 +30,21 @@ object ColumnPrivilegeChecker {
 						Seq()
 				}
 			}
-			val unavailableColumns = plan.references -- availableColumns
+			val attributeSet = new ArrayBuffer[AttributeSet]()
+
+			plan.transformAllExpressions {
+				case expression =>
+					attributeSet.append(expression.references)
+					attributeSet.reduce(_ ++ _)
+					expression
+			}
+			val unavailableColumns = attributeSet.reduce(_ ++ _) -- availableColumns
 			if (unavailableColumns.nonEmpty)
 				throw new ColumnPrivilegeException(
 					s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)
-
 		}
 	}
+
 
 	private def collectLogicalRelation(plan: LogicalPlan): Seq[LogicalRelation] = {
 
@@ -48,6 +58,10 @@ object ColumnPrivilegeChecker {
 		}
 		plan.collect {
 			case l: LogicalRelation => Seq(l)
+			case project: Project =>
+				project.projectList.flatMap(traverseExpression)
+			case aggregate: Aggregate =>
+				aggregate.aggregateExpressions.flatMap(traverseExpression)
 			case With(_, cteRelations) =>
 				cteRelations.flatMap {
 					case (_, SubqueryAlias(_, child)) => collectLogicalRelation(child)
