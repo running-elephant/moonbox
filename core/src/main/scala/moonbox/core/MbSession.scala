@@ -47,6 +47,11 @@ class MbSession(conf: MbConf) extends MbLogging {
 					throw new Exception(s"$username does not exist.")
 			}
 		}
+		catalog.listDatabase(catalogSession.organizationId).map { catalogDatabase =>
+			if (!mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
+				mixcal.sqlToDF(s"create database ${catalogDatabase.name}")
+			}
+		}
 		this
 	}
 
@@ -207,11 +212,6 @@ class MbSession(conf: MbConf) extends MbLogging {
 		val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
 		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 		val typ = props("type")
-		tableIdentifier.database.foreach { db =>
-			if (!mixcal.sparkSession.sessionState.catalog.databaseExists(db)) {
-				mixcal.sqlToDF(s"create database $db")
-			}
-		}
 		if (mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)) {
 			mixcal.sparkSession.sessionState.catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
 		}
