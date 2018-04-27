@@ -17,6 +17,13 @@ formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.formatter = formatter  # 也可以直接给formatter赋值
 logger.addHandler(console_handler)
+
+timeout = "60"
+
+def setTimeout(ts):
+    global timeout
+    timeout = ts
+
 def setLevel(debug):
     if debug == "True":
         logger.setLevel(logging.INFO)
@@ -42,29 +49,34 @@ def critical(*str):
 def print_result(schema, data):
     #print(schema)
     #print(data)
-    
+    print("")
+    print("------ [schema] -------")
     jobject = json.loads(schema)
     for obj in jobject['fields']:
-        print "%s"% (obj['metadata']['name']+ "(" + obj['type'] + ")"), #print "%-8.8s"%(...)
+        print "%s"% (obj['name']+ "(" + obj['type'] + ")"), #print "%-8.8s"%(...)
         print " | ",
     print("")
-    
+    print("")
+    print("------- [data] ------")
+
+    num = 0
     for row in data:
         for item in row:
             print "%-.12s"%item ,
             print" | ",
+        num += 1
         print ""
-    print ""
+    print "-------[total num: %d ]-------" % num
     
     
 def mkSql(sqls):
-    msqls=""
+    msqls=[]
     mlist = sqls.split(';')
     for i in range(len(mlist)):
-        msqls+='"' + mlist[i] + '"'
-        if i + 1 < len(mlist):
-            msqls += ','
-    return msqls
+        if mlist[i] != "":
+            msqls.append('"' + mlist[i] + '"')
+
+    return ",".join(msqls)
     
     
 def sendToService(req_url, msg_data):
@@ -74,13 +86,16 @@ def sendToService(req_url, msg_data):
         request = urllib2.Request(req_url, msg_data)
  
         request.get_method = lambda: 'POST'
-        rsp_msg = urllib2.urlopen(request, timeout=5)
+        rsp_msg = urllib2.urlopen(request, timeout=float(timeout))
         rsp_body = rsp_msg.read()
         info(rsp_body)
         info(rsp_msg.code)
         s = json.loads(rsp_body)
-         # print s["created"]
-        return rsp_msg.code, s
+        if 'error' in s:
+            error('Error Return:', s['error'])
+            raise 404, Exception(s['error'])
+        else:
+            return rsp_msg.code, s
     except URLError as rsp_msg:
         if hasattr(rsp_msg, 'reason'):
             error('We failed to reach a server.', req_url, msg_data)

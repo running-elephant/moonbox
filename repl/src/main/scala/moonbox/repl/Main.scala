@@ -30,9 +30,9 @@ object Main extends JsonSerializer with MbLogging {
     do {
       checkParameters()
       connector = if(method == "rest" || method == "r") {
-        new RestConnector()
+        new RestConnector(timeout)
       }else{
-        new JdbcConnector()
+        new JdbcConnector(timeout)
       }
       repl()
     } while (retryTimes > 0)

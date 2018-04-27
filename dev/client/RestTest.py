@@ -32,7 +32,8 @@ def main():
       -M METHOD, --method=METHOD   ;method
       -d DEBUG, --debug=DEBUG  ;debug
     '''
-    print("begin to communicate server ... ")
+    start_time = datetime.datetime.now()
+    print("begin to communicate server %s ... " % start_time)
 
     parser = OptionParser()
     parser.add_option("-s", "--server", type="string", dest="server", default="localhost", help="server")
@@ -43,7 +44,8 @@ def main():
     parser.add_option("-m", "--mode", type="string", dest="mode", default="sync", help="mode")
     parser.add_option("-M", "--method", type="string", dest="method", default="batch", help="method")
     parser.add_option("-d", "--debug",  type="string", dest="debug", default="False", help="debug")
-    
+    parser.add_option("-t", "--timeout",  type="string", dest="timeout", default="60", help="timeout")
+
     (options, args) = parser.parse_args(args=None, values=None)
     
     
@@ -55,7 +57,9 @@ def main():
     mode = options.mode
     method = options.method
     debug = options.debug
+    ts = options.timeout
     setLevel(debug)
+    setTimeout(ts)
     #server = "master" #port = "18090"   #user = "sally"  #password = "123456"  #sql = "select * from mysql_test_booklist"  #mode = "async"  #method= "adhoc"
     
     
@@ -65,8 +69,9 @@ def main():
         client = AdhocClient(server, port, user, password, debug)
     
     client.process(sql)
-    
-    print("end to communicate server ... ")
+
+    end_time = datetime.datetime.now()
+    print("end to communicate server %s, Elapse [ %d ] ms ... " %(end_time, (end_time - start_time).microseconds / 1000))
     
     
 if __name__ == "__main__":

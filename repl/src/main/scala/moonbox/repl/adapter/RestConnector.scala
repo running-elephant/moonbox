@@ -16,9 +16,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.language.implicitConversions
 
-class RestConnector() extends Connector with JsonSerializer  {
+class RestConnector(timeout: Int) extends Connector with JsonSerializer  {
 
-  val timeout = 300
   var mode: QueryMode = Batch
   var isLogin = false
   implicit val formats = DefaultFormats

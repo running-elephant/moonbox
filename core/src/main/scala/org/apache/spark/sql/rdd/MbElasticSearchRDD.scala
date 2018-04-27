@@ -12,16 +12,16 @@ import org.apache.spark.{Partition, SparkContext, TaskContext}
 import scala.reflect.ClassTag
 
 
-object MbEsv5RDD {
+object MbElasticSearchRDD {
 
 }
 
 
-class MbEsv5RDD[T: ClassTag](sc: SparkContext,
-                             plan: LogicalPlan,
-                             numPartitions: Int = 1,
-                             info: Map[String, String],
-                             mapRow: (Option[StructType], Seq[Any]) => T)
+class MbElasticSearchRDD[T: ClassTag](sc: SparkContext,
+                                      plan: LogicalPlan,
+                                      numPartitions: Int = 1,
+                                      info: Map[String, String],
+                                      mapRow: (Option[StructType], Seq[Any]) => T)
         extends RDD[T](sc, Nil) {
 
     @DeveloperApi

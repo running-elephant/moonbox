@@ -3,6 +3,7 @@ package org.apache.spark.sql.execution.datasources.redis
 import moonbox.core.cache.RedisCache
 import moonbox.core.config._
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 
@@ -23,8 +24,16 @@ class DefaultSource extends SchemaRelationProvider with CreatableRelationProvide
 		redisClient.put[String, String, String]("SCHEMA", jobId, data.schema.json)
 		data.foreachPartition { partition =>
 			val redis = new RedisCache(servers)
+			def parse(raw: Seq[Any]): Seq[Any] = {
+				raw.map {
+						case schemaRow: GenericRowWithSchema => parse(schemaRow.values)
+						case row: Row => parse(row.toSeq)
+						case array: Seq[_] => parse(array)
+						case elem => elem
+					}
+			}
 			partition.foreach { row =>
-				redis.put[String, Any](jobId, row.toSeq)
+				redis.put[String, Any](jobId, parse(row.toSeq))
 			}
 		}
 		RedisRelation(parameters, data.schema)(sqlContext)

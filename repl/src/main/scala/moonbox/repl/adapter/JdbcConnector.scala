@@ -3,7 +3,7 @@ package moonbox.repl.adapter
 import java.sql.{Connection, DriverManager, ResultSetMetaData}
 import java.util.Properties
 
-class JdbcConnector extends Connector {
+class JdbcConnector(timeout: Int) extends Connector {
   var connection: Connection = _
   override def prepare(host: String, port:Int, user: String, pwd: String, db: String): Boolean = {
     try {
@@ -12,7 +12,7 @@ class JdbcConnector extends Connector {
       val prop = new Properties()
       prop.setProperty("user", user)
       prop.setProperty("password", pwd)
-      prop.setProperty("fetchsize", 200.toString)
+      /*prop.setProperty("fetchsize", 200.toString)*/
       connection = DriverManager.getConnection(url, prop)
       true
     }catch{
@@ -24,6 +24,8 @@ class JdbcConnector extends Connector {
 
   override def process(sqls: Seq[String]): Unit = {
     val stmt = connection.createStatement()
+    stmt.setQueryTimeout(timeout)
+    stmt.setFetchSize(200)
     sqls.foreach { sql =>
       val rs = stmt.executeQuery(sql)
       val metaData: ResultSetMetaData = rs.getMetaData

@@ -19,7 +19,7 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         val analyzed = spark.sessionState.analyzer.execute(parsed)
         val optimized = spark.sessionState.optimizer.execute(analyzed)
 
-        val rdd = new MbEsv5RDD[Row](spark.sparkContext, optimized, 1, map, SparkUtil.resultListToJdbcRow)
+        val rdd = new MbElasticSearchRDD[Row](spark.sparkContext, optimized, 1, map, SparkUtil.resultListToJdbcRow)
 
         val df = spark.createDataFrame(rdd, optimized.schema)
         df
@@ -28,7 +28,6 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
     test("esRdd") {
         //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
         val map = Map("nodes"->"testserver1:9200", "database" -> "test_mb_100", "type" -> "my_table")
-        val sys: MbEsv5DataSys = new MbEsv5DataSys(map)
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "test_mb_100")
@@ -53,7 +52,6 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
     test("default Rdd") {
 
         val map = Map("nodes"->"testserver1:9200", "database" -> "nest_test_table", "type" -> "my_type")
-        val sys: MbEsv5DataSys = new MbEsv5DataSys(map)
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "nest_test_table")
@@ -78,7 +76,6 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
 
     test("default Rdd2") {
         val map = Map("nodes"->"slave1:9200",  "database" -> "basic_info_mix_index", "type" -> "basic_info_mix_type")
-        val sys: MbEsv5DataSys = new MbEsv5DataSys(map)
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "basic_info_mix_index")
@@ -103,7 +100,6 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
     test("nest filter") {
         //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
         val map = Map("nodes"->"testserver1:9200", "database" -> "people_nest", "type" -> "blogpost")
-        val sys: MbEsv5DataSys = new MbEsv5DataSys(map)
 
         val df1 = spark.read.format("org.elasticsearch.spark.sql")
                 .option("es.resource", "people_nest")

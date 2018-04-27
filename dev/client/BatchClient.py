@@ -64,7 +64,7 @@ class BatchClient(MbClient):
             job_id = self.submit(token, sqls)
             job_id, status = self.progress(token, job_id)
             while status == "WAITING" or status == "RUNNING":
-                time.sleep(1)
+                time.sleep(2)
                 job_id, status = self.progress(token, job_id)
 
             if status == "SUCCESS":
