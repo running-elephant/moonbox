@@ -1098,6 +1098,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitDescGroup(MqlBaseParser.DescGroupContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code explain}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterExplain(MqlBaseParser.ExplainContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code explain}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitExplain(MqlBaseParser.ExplainContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setConfiguration}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree

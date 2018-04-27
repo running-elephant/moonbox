@@ -10,7 +10,6 @@ import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.datasys.DataSystemFactory
-import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.{DataFrame, MixcalContext, Row, SaveMode}
 
 import scala.collection.mutable
@@ -166,8 +165,6 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-
-
 	private def collectDataSourceTable(plan: LogicalPlan): Seq[TableIdentifier] = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
@@ -193,7 +190,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				case ScalarSubquery(child, _, _) => traverseAll(child)
 				case Exists(child, _, _) => traverseAll(child)
 				case ListQuery(child, _, _) => traverseAll(child)
-				case a => a.children.map(traverseExpression)
+				case a => a.children.foreach(traverseExpression)
 			}
 		}
 		traverseAll(plan)

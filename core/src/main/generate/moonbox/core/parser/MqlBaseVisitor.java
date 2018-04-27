@@ -647,6 +647,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDescGroup(MqlBaseParser.DescGroupContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code explain}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExplain(MqlBaseParser.ExplainContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setConfiguration}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree

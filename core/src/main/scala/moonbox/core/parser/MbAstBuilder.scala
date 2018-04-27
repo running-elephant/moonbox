@@ -814,4 +814,13 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		key -> value
 		SetConfiguration(key, value)
 	}
+
+	override def visitExplain(ctx: ExplainContext): MbCommand = {
+		val query = visitQuery(ctx.query())
+		if (ctx.EXTENDED() != null) {
+			Explain(query.query, extended = true)
+		} else {
+			Explain(query.query)
+		}
+	}
 }

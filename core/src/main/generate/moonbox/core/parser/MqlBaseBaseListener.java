@@ -1108,6 +1108,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterExplain(MqlBaseParser.ExplainContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitExplain(MqlBaseParser.ExplainContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetConfiguration(MqlBaseParser.SetConfigurationContext ctx) { }
 	/**
 	 * {@inheritDoc}

@@ -119,6 +119,7 @@ mql
     | (DESC | DESCRIBE) USER name=identifier                                                    # descUser
     | (DESC | DESCRIBE) GROUP name=identifier                                                   # descGroup
 
+    | EXPLAIN EXTENDED? PLAN? query                                                             # explain
     | SET property                                                                              # setConfiguration
 
     | query                                                                                     # mqlQuery
@@ -317,6 +318,7 @@ DROP: 'DROP';
 EQ: '=' | '==';
 NEQ: '<>';
 EXISTS: 'EXISTS';
+EXPLAIN: 'EXPLAIN';
 EXTENDED: 'EXTENDED';
 FROM: 'FROM';
 FUNCTION: 'FUNCTION';
@@ -339,6 +341,7 @@ OR: 'OR';
 ORG: 'ORG';
 ORGANIZATION: 'ORGANIZATION';
 OVERWRITE: 'OVERWRITE';
+PLAN: 'PLAN';
 REMOVE: 'REMOVE';
 RENAME: 'RENAME';
 REPLACE: 'REPLACE';

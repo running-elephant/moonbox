@@ -44,7 +44,7 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 	}
 
 	private def failureCallback(jobId: String, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
-		e.printStackTrace()
+		logError(e.getStackTrace.map(_.toString).mkString("\n"))
 		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(e.getMessage))
 		if (shutdown) self ! PoisonPill
 	}

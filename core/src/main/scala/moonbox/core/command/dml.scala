@@ -4,6 +4,9 @@ import moonbox.common.util.Utils
 import moonbox.core.catalog.{CatalogGroup, CatalogSession, CatalogUser}
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.errors.TreeNodeException
+
+import scala.collection.mutable.ArrayBuffer
 
 sealed trait DML
 
@@ -144,20 +147,31 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val result = new ArrayBuffer[Row]()
+
 		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
-		val result = Row("Table Name", catalogTable.name) ::
-			Row("Description", catalogTable.description.getOrElse("")) ::
-			Row("IsStream", catalogTable.isStream) :: Nil
+		val userTableRels = mbSession.catalog.getUserTableRel(ctx.userId, catalogTable.id.get)
+		val catalogColumns = mbSession.catalog.getColumns(userTableRels.map(_.columnId))
+
+		result.append(Row("Table Name", catalogTable.name))
+		result.append(Row("Description", catalogTable.description.getOrElse("")))
+		result.append(Row("IsStream", catalogTable.isStream))
+
 		if (extended) {
 			val properties = if (catalogTable.properties.isEmpty) {
 				""
 			} else {
-				catalogTable.properties.toSeq.mkString("(", ", ", ")")
+				catalogTable.properties.filterNot { case (key, value) =>
+					key.equalsIgnoreCase("user") ||
+					key.equalsIgnoreCase("username") ||
+					key.equalsIgnoreCase("password")
+				}.toSeq.mkString("(", ", ", ")")
 			}
-			result :+ Row("Properties", properties)
+			result.append(Row("Properties", properties))
 		}
+		result.append(Row("Columns", catalogColumns.map(col => (col.name, col.dataType)).mkString(", ")))
 		result
 	}
 }
@@ -180,14 +194,18 @@ case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
 	extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val result = new ArrayBuffer[Row]()
+
 		val databaseId = function.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogFunction = mbSession.catalog.getFunction(databaseId, function.func)
-		val result = Row("Function Name", catalogFunction.name) ::
-			Row("Description", catalogFunction.description.getOrElse("")) :: Nil
+		result.append(
+			Row("Function Name", catalogFunction.name),
+			Row("Description", catalogFunction.description.getOrElse(""))
+		)
 		if (extended) {
 			// TODO
-			result :+ Row("Class", catalogFunction.className)
+			result.append( Row("Class", catalogFunction.className))
 		}
 		result
 	}
@@ -229,6 +247,21 @@ case class SetConfiguration(key: String, value: String) extends MbRunnableComman
 			)
 		)
 		Seq.empty[Row]
+	}
+}
+
+case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {
+		val queryExecution = mbSession.sql(query).queryExecution.executedPlan
+		val outputString =
+			if (extended) {
+				queryExecution.toString()
+			} else {
+				queryExecution.simpleString
+			}
+		Seq(Row(outputString))
+	} catch { case e: TreeNodeException[_] =>
+		("Error occurred during query planning: \n" + e.getMessage).split("\n").map(Row(_))
 	}
 }
 
