@@ -16,7 +16,7 @@ import org.apache.spark.sql.rdd.MbElasticSearchRDD
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import scala.collection.JavaConversions._
-class ElasticSearchDataSystem(@transient props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with MbLogging{
+class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with MbLogging{
 	require(contains("es.nodes", "es.resource"))
 
 	override val name: String = "elasticsearch"

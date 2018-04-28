@@ -17,7 +17,7 @@ object MbElasticSearchRDD {
 }
 
 
-class MbElasticSearchRDD[T: ClassTag](@transient sc: SparkContext,
+class MbElasticSearchRDD[T: ClassTag](@transient val sc: SparkContext,
                                       json: String,
                                       mapping: Seq[(String, String)],
                                       schema: StructType,
