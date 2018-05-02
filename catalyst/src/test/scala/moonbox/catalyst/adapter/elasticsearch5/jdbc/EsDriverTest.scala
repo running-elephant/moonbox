@@ -247,8 +247,20 @@ class EsDriverTest extends FunSuite{
         doQuery("test_mb_100", "my_table", "select max(col_int_f) as aaa, avg(col_int_a) as bbb from test_mb_100" )
     }
 
-    test("select max avg groupby"){
-        doQuery("test_mb_100", "my_table", "select max(col_int_f), avg(col_int_a) from test_mb_100 group by col_int_f, col_int_a" )
+    test("select max avg groupby 0 col"){
+        doQuery("test_mb_100", "my_table", "select max(col_int_f), avg(col_int_f) from test_mb_100" )
+    }
+
+    test("select max avg groupby 1 col no select group by"){
+        doQuery("test_mb_100", "my_table", "select max(col_int_f), avg(col_int_f) from test_mb_100 group by col_int_a" )
+    }
+
+    test("select max avg groupby 1 col select group by"){
+        doQuery("test_mb_100", "my_table", "select max(col_int_f), avg(col_int_f), col_int_a from test_mb_100 group by col_int_a" )
+    }
+
+    test("select max avg groupby 2 col"){
+        doQuery("test_mb_100", "my_table", "select max(col_int_f), avg(col_int_f), avg(col_int_a), col_int_f, col_int_a  from test_mb_100 group by col_int_f, col_int_a" )
     }
 
     test("avg max count alias filter"){
@@ -285,7 +297,7 @@ class EsDriverTest extends FunSuite{
     }
 
     test("query avg group by having") {
-        doQuery("test_mb_100", "my_table", "select avg(event_id) from test_mb_100 group by col_int_f having col_int_f < 5" )
+        doQuery("test_mb_100", "my_table", "select avg(event_id), col_int_f from test_mb_100 group by col_int_f having col_int_f < 5" )
     }
 
     test("query avg group by having max") {  //TODO: having aggfun, not support yet

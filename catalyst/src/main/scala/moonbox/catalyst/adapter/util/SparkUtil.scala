@@ -176,11 +176,11 @@ object SparkUtil extends MbLogging{
                     s.replace("/", "-") + " 00:00:00"
                 }
                 else s
-                //NOTICE: timestamp => LONG
-                java.sql.Timestamp.valueOf(ns.replace("T", " ").replace("Z", " ")).getTime
+                //NOTICE: spark need the raw type(timestamp), not convert it to  => LONG
+                java.sql.Timestamp.valueOf(ns.replace("T", " ").replace("Z", " "))  //.getTime
             case (s: String, DateType) =>
-                //NOTICE: timestamp => LONG
-                java.sql.Date.valueOf(s.replace("T", " ").replace("Z", " ")).getTime
+                //NOTICE: spark need the raw type(date), not convert it to  => LONG
+                java.sql.Date.valueOf(s.replace("T", " ").replace("Z", " "))  //.getTime
             case (f: Float, DoubleType) => f.toDouble
             case (f: Float, FloatType) => f
             case (f: Float, LongType) => f.toLong
@@ -209,6 +209,8 @@ object SparkUtil extends MbLogging{
             case (l: Long, TimestampType) => new Timestamp(l).getTime
             case (l: Long, DateType) => new Date(l).getTime
             case (b: Boolean, BooleanType) => b
+            case (i: Int, BooleanType) => if(i == 1) true else false
+            case (l: Long, BooleanType) => if(l == 1L) true else false
             case (data: java.util.HashMap[String@unchecked, Any@unchecked], schema: StructType) =>
                 val complex = schema.fields.map { field =>
                     dataTypeConvert(data.get(field.name), field.dataType)
@@ -256,7 +258,9 @@ object SparkUtil extends MbLogging{
                     }
 
                 new JdbcRow(complex:_*)
-            case (null, _) => null
+            case (null, _) =>
+                null
+
             case (a: Any, b: Any) =>  a
             case _ =>
                 throw new Exception(s"Cannot cast $value to a $dataType")

@@ -486,7 +486,29 @@ class EsRestClient(param: Map[String, String]) {
     }
 
 
+    /*****************
+     aggregation: {
+        group1:{
+            bucket1:[{
+                key: xx
+                group2:{
+                    bucket2:[
+                       { key: yy
+                        name1: { value: $},
+                        namex: { valuex: $}},
+                       { key: yy,
+                        name1: { value: $ },
+                        namex: { valuex: $}}
+                    ]
+                }
+            }
+        }
+     }
+     ***************/
+
     def handleResponse(response: String, action: ActionResponse): Long = {
+        import scala.collection.JavaConversions._
+
         var fetchSize: Long = 0
         val jsonObject = new JSONObject(response)
 
@@ -498,34 +520,35 @@ class EsRestClient(param: Map[String, String]) {
             if(aggregationsMap == null) {
                 aggregationsMap = jsonObject.getJSONObject("aggs")
             }
-            import scala.collection.JavaConversions._
-            val map = scala.collection.mutable.Map.empty[String, AnyRef]
-            var aggIsSimple = false
-            for (key <- aggregationsMap.keySet) {
-                val aggResult = aggregationsMap.getJSONObject(key)
-                if (aggResult.has("buckets")) { // Multi-bucket aggregations
-                    val buckets = aggResult.getJSONArray("buckets").iterator
-                    map.clear()
-                    while ( buckets.hasNext) {
-                        val bucketValue = buckets.next.asInstanceOf[JSONObject]
-                        getBucketValue(bucketValue, key, map)  //recv get value
-                        fetchSize += map.size
-                        action.addAggregation(
-                            new AggWrapper(AggregationType.MULTI_BUCKETS, bucketValue.toString, Map.empty[String, AnyRef] ++ map))
-                    }
+
+            val seq = scala.collection.mutable.ArrayBuffer.empty[Map[String, AnyRef]]
+            val stack = scala.collection.mutable.Stack[(String, AnyRef)]()
+
+            var aggIsSimple = true
+            for(key <- aggregationsMap.keySet()){
+                if(aggregationsMap.getJSONObject(key).has("buckets")){
+                    aggIsSimple = false
                 }
-                else {
+            }
+
+            if(aggIsSimple) {  //no bucket in agg, no group by in agg, select in one line
+                val map = scala.collection.mutable.Map.empty[String, AnyRef]
+                for (key <- aggregationsMap.keySet()) {
+                    val aggResult = aggregationsMap.getJSONObject(key)
                     val value: AnyRef = getAggValue(aggResult)
                     map +=(key -> value)
-                    aggIsSimple = true
+                }
+                action.addAggregation( new AggWrapper(AggregationType.MULTI_BUCKETS, "", Map.empty[String, AnyRef] ++ map))
 
-                }//Keep only one aggregation
+            }else {  // simple bucket or multi-bucket, receive get the content,
+                for (key <- aggregationsMap.keySet()) {
+                    getInColumn(key, aggregationsMap.getJSONObject(key), stack, seq)
+                    fetchSize += seq.size
+                    seq.foreach { elem =>
+                        action.addAggregation(new AggWrapper(AggregationType.MULTI_BUCKETS, key, elem))
+                    }
+                }
             }
-            if(aggIsSimple) {  //add in one line for simple agg, select count(x), max(y) from from table
-                fetchSize += map.size
-                action.addAggregation(new AggWrapper(AggregationType.SIMPLE, aggregationsMap.toString, Map.empty[String, AnyRef] ++ map))
-            }
-
         }
         else {
             val hits = getFieldAsArray(jsonObject, "hits/hits")
@@ -573,7 +596,7 @@ class EsRestClient(param: Map[String, String]) {
 
         val rsp: ActionResponse = new ActionResponse()
         if(isSucceeded(response)){
-
+            import scala.collection.JavaConversions._
             val total = getFieldAsLong(jsonObject, "hits/total")
             rsp.totalHits(total)
 
@@ -582,34 +605,38 @@ class EsRestClient(param: Map[String, String]) {
                 if(aggregationsMap == null) {
                     aggregationsMap = jsonObject.getJSONObject("aggs")
                 }
-                import scala.collection.JavaConversions._
-                val map = scala.collection.mutable.Map.empty[String, AnyRef]
-                var aggIsSimple = false
-                for (key <- aggregationsMap.keySet) {
-                    val aggResult = aggregationsMap.getJSONObject(key)
-                    if (aggResult.has("buckets")) { // Multi-bucket aggregations
-                        val buckets = aggResult.getJSONArray("buckets").iterator
-                        map.clear()
-                        while ( buckets.hasNext) {
-                            val bucketValue = buckets.next.asInstanceOf[JSONObject]
-                            getBucketValue(bucketValue, key, map)  //recv get value
-                            rsp.addAggregation(  new AggWrapper(AggregationType.MULTI_BUCKETS, bucketValue.toString, Map.empty[String, AnyRef] ++ map))
-                        }
+
+                val seq = scala.collection.mutable.ArrayBuffer.empty[Map[String, AnyRef]]
+                val stack = scala.collection.mutable.Stack[(String, AnyRef)]()
+
+                var aggIsSimple = true
+                for(key <- aggregationsMap.keySet()){
+                    if(aggregationsMap.getJSONObject(key).has("buckets")){
+                        aggIsSimple = false
                     }
-                    else {
+                }
+
+                if(aggIsSimple) {  //no bucket in agg, no group by in agg, select in one line
+                    val map = scala.collection.mutable.Map.empty[String, AnyRef]
+                    for (key <- aggregationsMap.keySet()) {
+                        val aggResult = aggregationsMap.getJSONObject(key)
                         val value: AnyRef = getAggValue(aggResult)
                         map +=(key -> value)
-                        aggIsSimple = true
+                    }
+                    rsp.addAggregation( new AggWrapper(AggregationType.MULTI_BUCKETS, "", Map.empty[String, AnyRef] ++ map))
 
-                    }//Keep only one aggregation
-                }
-                if(aggIsSimple) {  //add in one line for simple agg, select count(x), max(y) from from table
-                    rsp.addAggregation(new AggWrapper(AggregationType.SIMPLE, aggregationsMap.toString, Map.empty[String, AnyRef] ++ map))
+                }else {  // simple bucket or multi-bucket, receive get the content,
+                    for (key <- aggregationsMap.keySet()) {
+                        getInColumn(key, aggregationsMap.getJSONObject(key), stack, seq)
+                        seq.foreach { elem =>
+                            rsp.addAggregation(new AggWrapper(AggregationType.MULTI_BUCKETS, key, elem))
+                        }
+                    }
                 }
 
             }
             else {
-                import scala.collection.JavaConversions._
+
                 val hits = getFieldAsArray(jsonObject, "hits/hits")
                 val iter = hits.iterator
                 val map = scala.collection.mutable.Map.empty[String, AnyRef]
@@ -691,30 +718,92 @@ class EsRestClient(param: Map[String, String]) {
         }
     }
 
-
-    def getBucketValue(result: JSONObject, jsonKey: String, map: scala.collection.mutable.Map[String, AnyRef]): Unit = {
-        import scala.collection.JavaConversions._
-        for(key <- result.keySet()) {
-            val value = result.get(key)
-            value match {
-                case j: JSONObject =>
-                    val jsonObject = result.getJSONObject(key)
-                    if(jsonObject.has("buckets")){
-                        val buckets = jsonObject.getJSONArray("buckets").iterator()
-                        while(buckets.hasNext){
-                            val bucketValue = buckets.next().asInstanceOf[JSONObject]
-                            getBucketValue(bucketValue, key, map)
-                        }
-                    }else if(jsonObject.has("value")) {
-                        map += (key -> jsonObject.get("value"))
+/************************
+    sql: select avg(col_int_a), col_int_f, col_int_a  from test_mb_100 group by col_int_f, col_int_a
+    {
+        "aggregations": {
+            "col_int_f": {
+                "doc_count_error_upper_bound": 0,
+                "sum_other_doc_count": 0,
+                "buckets": [{
+                    "key": 4,
+                    "doc_count": 15,
+                    "col_int_a": {
+                        "doc_count_error_upper_bound": 0,
+                        "sum_other_doc_count": 0,
+                        "buckets": [{
+                                "key": 50,
+                                "doc_count": 1,
+                                "avg(col_int_a)": {
+                                    "value": 50
+                                }
+                            },
+                            {
+                                "key": 134,
+                                "doc_count": 1,
+                                "avg(col_int_a)": {
+                                    "value": 134
+                                }
+                            }]
                     }
-                case _ => if(key == "key") {  //select distinct column from table
-                    map += (jsonKey -> value) }
+                }]
             }
+         }
+      }
+************************/
 
+
+    def getInBucket(highLevelKey: String, bucketObject: JSONObject, stack: scala.collection.mutable.Stack[(String, AnyRef)], seq: mutable.ArrayBuffer[Map[String, AnyRef]]): Unit = {
+        import scala.collection.JavaConversions._
+        //iterate all value, except doc count,
+        //  if columnObject has bucket, do
+        //    getInColumn(columnName, columnObject)
+        //    stack .pop()
+        //  else if columnObject has no bucket, do
+        //    save (columnName, value) and stack value
+
+        var shouldGetValue: Boolean = false
+        val value: AnyRef = bucketObject.get("key")
+        stack.push((highLevelKey, value))
+
+        for (name <- bucketObject.keySet()) {
+            //TODO: it may be has other exclude element name
+            if (name != "key" && name != "doc_count" && name != "key_as_string") {
+                val columnObject = bucketObject.getJSONObject(name)
+                if (! columnObject.has("buckets")) { // no bucket, sould get value at once
+                    shouldGetValue = true
+                }
+            }
         }
 
+        if (shouldGetValue) {
+            val map: Map[String, AnyRef] = bucketObject.keySet().filter(elem => elem != "key" && elem != "doc_count" && elem != "key_as_string").map { elem =>
+                (elem, bucketObject.getJSONObject(elem).get("value"))
+            }.toMap ++ stack.toMap
+            seq.add(map)
 
+        }else{  //child have buckets
+
+            bucketObject.keySet().filter(elem => elem != "key" && elem != "doc_count" && elem != "key_as_string").foreach{ elem =>
+                val columnObject = bucketObject.getJSONObject(elem)
+                getInColumn(elem, columnObject, stack, seq)
+
+            }
+        }
+        stack.pop //
+    }
+
+    def getInColumn(columnName: String, columnObject: JSONObject, stack: scala.collection.mutable.Stack[(String, AnyRef)], seq: mutable.ArrayBuffer[Map[String, AnyRef]]): Unit = {
+        //if has "buckets", do
+        //    get "buckets" value, iterate it, for every
+        //    getBucket(key, bucketObject)
+        if(columnObject.has("buckets")){
+            val iter = columnObject.getJSONArray("buckets").iterator()
+            while(iter.hasNext){
+                val obj = iter.next().asInstanceOf[JSONObject]
+                getInBucket(columnName, obj, stack, seq)
+            }
+        }
     }
 
 

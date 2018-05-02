@@ -313,6 +313,48 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
         connection.close()
     }
 
+
+    test("agg group by ") {
+        var connection: Connection = null
+        val url = "jdbc:es://testserver1:9200/test_mb_100?table=my_table"
+        val prop = EsUtilTest.url2Prop(url)
+
+        connection = DriverManager.getConnection(url, prop)
+        val statement: Statement = connection.createStatement()
+        val rs: ResultSet = statement.executeQuery("select max(col_int_f) as aaa, avg(col_int_f) as bbb, avg(col_int_a) , col_int_f, col_int_a, col_bool_e  from test_mb_100 group by col_int_f, col_int_a, col_bool_e")
+        while (rs.next()) {
+            val ida = rs.getString("aaa")
+            val idb = rs.getString("bbb")
+            val idc = rs.getString("avg(col_int_a)")
+            val ide = rs.getString("col_int_f")
+            val idf = rs.getString("col_int_a")
+            val idg = rs.getString("col_bool_e")
+            println(s"max(col_int_f) -> $ida , avg(col_int_f) -> $idb , avg(col_int_a) -> $idc, col_int_f-> $ide, col_int_a-> $idf, col_bool_e-> $idg")
+        }
+        connection.close()
+    }
+
+
+    test("agg no group by ") {
+        var connection: Connection = null
+        val url = "jdbc:es://testserver1:9200/test_mb_100?table=my_table"
+        val prop = EsUtilTest.url2Prop(url)
+
+        connection = DriverManager.getConnection(url, prop)
+        val statement: Statement = connection.createStatement()
+        val rs: ResultSet = statement.executeQuery("select max(col_int_f) as aaa, avg(col_int_f) as bbb, min(col_int_a) as ccc, sum(col_int_f), count(col_int_a) from test_mb_100")
+        while (rs.next()) {
+            val ida = rs.getString("aaa")
+            val idb = rs.getString("bbb")
+            val idc = rs.getString("ccc")
+            val idd = rs.getString("sum(col_int_f)")
+            val ide = rs.getString("count(col_int_a)")
+            println(s"max(col_int_f) -> $ida , avg(col_int_f) -> $idb, min(col_int_a) ->$idc, sum(col_int_f)->$idd, count(col_int_a) ->$ide ")
+        }
+        connection.close()
+    }
+
+
     def printA(a: Any): Unit = {
         a match {
             case a: Array[Any] => printArray(a)
