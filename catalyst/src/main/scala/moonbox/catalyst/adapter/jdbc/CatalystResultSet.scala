@@ -74,7 +74,7 @@ class CatalystResultSet(iterator: Iterator[JdbcRow], index2SqlType: Map[Int, Int
 
   @throws[SQLException]
   override def getTimestamp(columnIndex: Int) = {
-    new Timestamp(currentRow.getLong(columnIndex - 1))
+    currentRow(columnIndex - 1).asInstanceOf[Timestamp]
   }
 
   @throws[SQLException]
