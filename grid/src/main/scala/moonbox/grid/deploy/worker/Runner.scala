@@ -24,6 +24,7 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		case CancelJob(jobId) =>
 			session.cancelJob(jobId)
 		case KillRunner =>
+			self ! PoisonPill
 	}
 
 	def run(jobInfo: JobInfo): Future[Any] = {
