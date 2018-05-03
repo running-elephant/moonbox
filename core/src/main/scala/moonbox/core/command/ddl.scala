@@ -545,3 +545,7 @@ case class DropApplication(
 	}
 }
 
+case class CreateScheduler(
+
+) extends MbRunnableCommand with DDL
+

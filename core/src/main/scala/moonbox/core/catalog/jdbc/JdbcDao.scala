@@ -469,6 +469,57 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	// -----------------------------------------------------------------
+	// scheduler
+	// -----------------------------------------------------------------
+	def createScheduler(scheduler: CatalogScheduler) = {
+		insert(scheduler, catalogSchedulers)
+	}
+
+	def deleteScheduler(schedulerId: Long) = {
+		delete[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, _.id === schedulerId
+		)
+	}
+
+	def renameScheduler(organizationId: Long, scheduler: String, newScheduler: String)(updateBy: Long) = {
+		update[CatalogScheduler, CatalogSchedulerTable,
+			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
+			(String, Long, Long)](
+			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler,
+			t => (t.name, t.updateBy, t.updateTime), (newScheduler, updateBy, Utils.now))
+	}
+
+	def updateScheduler(schedulerDefinition: CatalogScheduler) = {
+		updateEntity[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.id === schedulerDefinition.id.get, schedulerDefinition
+		)
+	}
+
+	def getScheduler(organizationId: Long, scheduler: String) = {
+		queryOneOption[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+		)
+	}
+
+	def schedulerExists(organizationId: Long, scheduler: String) = {
+		exists[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+		)
+	}
+
+	def listSchedulers(organizationId: Long) = {
+		query[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.organizationId === organizationId
+		)
+	}
+
+	def listSchedulers(organizationId: Long, pattern: String) = {
+		query[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.organizationId === organizationId && t.name.like(pattern)
+		)
+	}
+
+	// -----------------------------------------------------------------
 	// Database
 	// -----------------------------------------------------------------
 
