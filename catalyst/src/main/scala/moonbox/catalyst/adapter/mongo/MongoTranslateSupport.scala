@@ -2,7 +2,7 @@ package moonbox.catalyst.adapter.mongo
 
 import org.apache.spark.sql.catalyst.analysis.UnresolvedAttribute
 import org.apache.spark.sql.catalyst.expressions.aggregate._
-import org.apache.spark.sql.catalyst.expressions.{Abs, Add, Alias, And, AttributeReference, BinaryArithmetic, BinaryComparison, BinaryExpression, Cast, Divide, Expression, GetStructField, IsNotNull, IsNull, LeafExpression, Literal, Multiply, Not, Or, Pmod, SortOrder, Subtract, UnaryExpression}
+import org.apache.spark.sql.catalyst.expressions.{Abs, Add, Alias, And, AtLeastNNonNulls, AttributeReference, BinaryArithmetic, BinaryComparison, BinaryExpression, BinaryOperator, CaseWhen, CaseWhenBase, CaseWhenCodegen, Cast, Concat, Contains, Conv, DayOfMonth, DayOfYear, Divide, EndsWith, EqualNullSafe, EqualTo, Exists, Expression, Factorial, GetStructField, GreaterThan, GreaterThanOrEqual, Hour, In, InSet, IsNaN, IsNotNull, IsNull, LeafExpression, LessThan, LessThanOrEqual, Literal, Lower, Minute, Month, Multiply, Not, Or, Pmod, RegExpExtract, RegExpReplace, Second, SortOrder, StartsWith, StringLPad, StringLocate, StringRPad, StringToMap, StringTranslate, Substring, SubstringIndex, Subtract, TernaryExpression, UnaryExpression, Upper, WeekOfYear, Year}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan}
 import org.apache.spark.sql.types.StringType
 
@@ -23,28 +23,32 @@ trait MongoTranslateSupport {
   // TODO: $year,$month,$week,$dayOfMonth,dayOfWeek,$dayOfYear,$hour,$minute,$second
   def symbolToBson(symobl: String, reverse: Boolean = false): String = {
     // TODO: not capture the Type "EqualNullSafe"
-    symobl match {
+    symobl.toLowerCase match {
       case ">" => if (!reverse) "$gt" else "$lt"
       case ">=" => if (!reverse) "$gte" else "$lte"
       case "<" => if (!reverse) "$lt" else "$gt"
       case "<=" => if (!reverse) "$lte" else "$gte"
       case "=" => "$eq"
       case "!=" => "$ne"
-      case "max" | "MAX" => "$max"
-      case "min" | "MIN" => "$min"
+      case "max" => "$max"
+      case "min" => "$min"
       case "avg" | "average" => "$avg"
-      case "count" | "COUNT" => "$count"
-      case "sum" | "SUM" => "$sum"
-      case "first" | "FIRST" => "$first"
-      case "last" | "LAST" => "$last"
-      case "limit" | "LIMIT" => "$limit"
-      case "sort" | "SORT" => "$sort"
-      case "abs" | "ABS" => "$abs"
-      case "+" | "add" | "ADD" => "$add"
-      case "-" | "subtract" | "SUBTRACT" => "$subtract"
-      case "*" | "multiply" | "MULTIPLY" => "$multiply"
-      case "/" | "divide" | "DIVIDE" => "$divide"
-      case "pmod" | "mod" | "MOD" => "$mod"
+      case "count" => "$count"
+      case "sum" => "$sum"
+      case "first" => "$first"
+      case "last" => "$last"
+      case "limit" => "$limit"
+      case "sort" => "$sort"
+      case "abs" => "$abs"
+      case "+" | "add" => "$add"
+      case "-" | "subtract" => "$subtract"
+      case "*" | "multiply" => "$multiply"
+      case "/" | "divide" => "$divide"
+      case "pmod" | "mod" => "$mod"
+      case "&" | "&&" | "and" => "$and"
+      case "|" | "||" | "or" => "$or"
+      case "in" => "$in"
+      case "not" => "$not"
     }
   }
 
@@ -152,6 +156,20 @@ trait MongoTranslateSupport {
         nestedDocumentToBson(g)
       case c: Cast =>
         expressionToBson(c.child)
+      //computing
+      case Factorial(child) => throw new Exception("Unsupported yet")
+      //string
+      case Lower(child) => "{$toLower: " + withQuotesAndDollar(child) + "}"
+      case Upper(child) => "{$toUpper: " + withQuotesAndDollar(child) + "}"
+      //time
+      case Hour(child, timeZoneId) => "{$hour: " + withQuotesAndDollar(child) + "}"
+      case Minute(child, timeZoneId) => "{$minute: " + withQuotesAndDollar(child) + "}"
+      case Second(child, timeZoneId) => "{$second: " + withQuotesAndDollar(child) + "}"
+      case DayOfMonth(child) => "{$dayOfMonth: " + withQuotesAndDollar(child) + "}"
+      case DayOfYear(child) => "{$dayOfYear: " + withQuotesAndDollar(child) + "}"
+      case WeekOfYear(child) => "{$week: " + withQuotesAndDollar(child) + "}"
+      case Month(child) => "{$month: " + withQuotesAndDollar(child) + "}"
+      case Year(child) => "{$year: " + withQuotesAndDollar(child) + "}"
     }
   }
 
@@ -176,8 +194,77 @@ trait MongoTranslateSupport {
   //    }
   //  }
 
+  def ternaryExpression(t: TernaryExpression): String = {
+    t match {
+      case Substring(str, pos, len) =>
+        "{$substr: [" + withQuotesAndDollar(str) + s", ${expressionToBson(pos)}, ${expressionToBson(len)}]}"
+      case Conv(numExpr, fromBaseExpr, toBaseExpr) => throw new Exception("Unsupported yet")
+      case RegExpExtract(subject, regexp, idx) => throw new Exception("Unsupported yet")
+      case RegExpReplace(subject, regexp, rep) => throw new Exception("Unsupported yet")
+      case StringLocate(substr, str, start) => throw new Exception("Unsupported yet")
+      case StringLPad(str, len, pad) => throw new Exception("Unsupported yet")
+      case StringRPad(str, len, pad) => throw new Exception("Unsupported yet")
+      case StringToMap(text, pairDelim, keyValueDelim) => throw new Exception("Unsupported yet")
+      case StringTranslate(srcExpr, matchingExpr, replaceExpr) => throw new Exception("Unsupported yet")
+      case SubstringIndex(strExpr, delimExpr, countExpr) => throw new Exception("Unsupported yet")
+    }
+  }
+
+  // TODO:
+  def predicateToBson(e: Expression): String = {
+    e match {
+      case IsNotNull(child) =>
+        s"{${symbolToBson("!=")}: [${withQuotesAndDollar(child)}, null]}"
+      case IsNull(child) =>
+        s"{${symbolToBson("=")}: [${withQuotesAndDollar(child)}, null]}"
+      case AtLeastNNonNulls(n, children) => throw new Exception("Unsupported yet")
+      case _: Exists => throw new Exception("Unsupported yet")
+      case In(value, list) => throw new Exception("Unsupported yet")
+      case InSet(child, hset) => throw new Exception("Unsupported yet")
+      case IsNaN(child) => throw new Exception("Unsupported yet")
+      case Not(child) =>
+        "{$not:[" + expressionToBson(child) + "]}"
+      //string predicate
+      case Contains(left, right) => throw new Exception("Unsupported yet")
+      case EndsWith(left, right) => throw new Exception("Unsupported yet")
+      case StartsWith(left, right) => throw new Exception("Unsupported yet")
+      case b: BinaryOperator =>
+        val symbol = e match {
+          case And(left, right) => "and"
+          case Or(left, right) => "or"
+          case EqualTo(left, right) => "="
+          case EqualNullSafe(left, right) => "="
+          case GreaterThan(left, right) => ">"
+          case GreaterThanOrEqual(left, right) => ">="
+          case LessThan(left, right) => "<"
+          case LessThanOrEqual(left, right) => "<="
+        }
+        s"{${symbolToBson(symbol)}: [" + predicateToBson(b.left) + ", " + predicateToBson(b.right) + "]}"
+      case a: AttributeReference =>
+        withQuotesAndDollar(a)
+      case u: UnresolvedAttribute =>
+        withQuotesAndDollar(u)
+      case l: Literal =>
+        l.value.toString
+    }
+  }
+
+  def caseWhenToBson(c: CaseWhenBase): String = {
+    val (branches, elseValue) = c match {
+      case CaseWhen(b, e) => (b, e)
+      case CaseWhenCodegen(b, e) => (b, e)
+    }
+    if (elseValue.isDefined) {
+      branches.map(f => s"{case: ${predicateToBson(f._1)}, then: ${expressionToBson(f._2)}}").mkString("{$switch: {branches:[", ", ", s"], default: ${expressionToBson(elseValue.get)}}}")
+    } else {
+      throw new Exception("ElseValue unspecified in case when clause")
+    }
+  }
+
   def expressionToBson(expression: Expression): String = {
     expression match {
+      case t: TernaryExpression =>
+        ternaryExpression(t)
       case b: BinaryExpression =>
         binaryExpressionToBson(b)
       case u: UnaryExpression =>
@@ -199,6 +286,10 @@ trait MongoTranslateSupport {
       // TODO: ScalaUDF support
       //      case s: ScalaUDF =>
       //        scalaUDFToBson(s)
+      case Concat(children) =>
+        "{$concat: [" + children.map(v => if (v.isInstanceOf[AttributeReference]) withQuotesAndDollar(v) else expressionToBson(v)).mkString(", ") + "]}"
+      case c: CaseWhenBase =>
+        caseWhenToBson(c)
       case other =>
         throw new Exception(s"unsupported expression: ${other}")
     }

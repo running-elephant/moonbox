@@ -1,6 +1,6 @@
 package moonbox.catalyst.adapter.mongo.util
 
-import java.sql.Types
+import java.sql.{Timestamp, Types}
 
 import org.apache.spark.sql.types._
 import org.bson.BsonValue
@@ -46,7 +46,7 @@ object MongoJDBCUtils {
     } else if (bsonValue.isBoolean) {
       bsonValue.asBoolean().getValue
     } else if (bsonValue.isDateTime) {
-      bsonValue.asDateTime().getValue
+      new Timestamp(bsonValue.asDateTime().getValue)
     } else if (bsonValue.isDBPointer) {
       /** For DBPointer mongo type, return the namespace */
       /** deprecated */
