@@ -1,5 +1,7 @@
 package moonbox.grid.deploy.rest
 
+import java.util.UUID
+
 import moonbox.common.MbConf
 import moonbox.grid.config._
 import org.json4s.DefaultFormats
@@ -15,7 +17,7 @@ class TokenManager(conf: MbConf) {
 	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 
 	def encode(username: String): String = {
-		val jwtClaim: JwtClaim = JwtClaim() + ("username", username)
+		val jwtClaim: JwtClaim = JwtClaim() + ("username", username) + ("seed", UUID.randomUUID().toString)
 		Jwt.encode(jwtHeader, jwtClaim.expiresIn(_JWT_TIMEOUT), _JWT_SECRET)
 	}
 
@@ -30,5 +32,5 @@ class TokenManager(conf: MbConf) {
 		Jwt.isValid(token, _JWT_SECRET, JwtAlgorithm.allHmac())
 	}
 
-	private case class Username(username: String)
+	private case class Username(username: String, seed: String)
 }
