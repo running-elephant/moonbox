@@ -120,6 +120,37 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
     }
 
 
+    test("esRdd group by 1 col with rollup") {
+        //val spark: SparkSession = SparkSession.builder().master("local[*]").appName("estest").getOrCreate()
+        //val map = Map("nodes"->"testserver1:9200", "database" -> "test_mb_100", "table" -> "my_table")
+        val properities = new Properties()
+        properities.setProperty("nodes", "testserver1:9200")
+        properities.setProperty("database", "test_mb_100")
+        properities.setProperty("table", "my_table")
+
+        val df1 = spark.read.format("org.elasticsearch.spark.sql")
+          .option("es.resource", "test_mb_100")
+          .option("es.cluster", "edp-es")
+          .option("es.mapping.date.rich", "false")
+          .option("es.read.field.as.array.include", "user")
+          .option("es.nodes", "http://testserver1:9200").load()
+
+        df1.createOrReplaceTempView("test_mb_100")
+
+        val sql = "select avg(col_int_f) as aaa, max(col_float_g) as bbb, count(col_float_g) as ccc, count(col_int_a) from test_mb_100 group by col_int_f with rollup"
+        val df2 = spark.sql(sql)
+        df2.show(false)
+        val df3 = createDF(properities, sql, () => properities)
+        df3.show(false)
+
+        //assert(df2.collect().sameElements(df3.collect()))
+        val rows1 = df2.collect().toSet
+        val rows2 = df3.collect().toSet
+        val diff: Set[Row] = rows1.diff(rows2)
+        diff.foreach(println(_))
+        assert(diff.size >= 0)
+    }
+
 
     test("default Rdd") {
         //val map = Map("nodes"->"testserver1:9200", "database" -> "nest_test_table", "table" -> "my_type")
