@@ -69,7 +69,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     sql = "select _id, mydate from date limit 20"
     res = stmt.executeQuery(sql)
     while (res.next()) {
-      println(s"_id: ${res.getObject(1)}, date: " + s"${res.getDate(2)}")
+      println(s"_id: ${res.getObject(1)}, date: " + s"${res.getTimestamp(2)}")
     }
   }
 
@@ -180,6 +180,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     println("----------------------------------")
     if (exceptionSqls.nonEmpty)
       println(s"exception sqls: ${exceptionSqls.mkString(", ")}")
+    assert(exceptionSqls.isEmpty)
   }
 
   test("sql23"){
@@ -204,6 +205,27 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
+  test("array_filter in mongo"){
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
+    stmt = connection.createStatement()
+    sql = "select authorname, age, books.price, array_filter(books.price, value => value > 2) from author_withArray"
+    res = stmt.executeQuery(sql)
+    println("-------------------test array_filter in mongo-------------------")
+    while (res.next()) {
+      println(s"authorname: ${res.getString(1)}, age: ${res.getDouble(2)}, books.price: ${res.getArray(3).getArray.asInstanceOf[Array[Any]].map(_.asInstanceOf[Double]).mkString(", ")}, array_map: ${res.getArray(4).getArray.asInstanceOf[Array[Any]].map(_.toString).mkString(", ")}")
+    }
+  }
+
+//  test("array_exists in mongo"){
+//    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
+//    stmt = connection.createStatement()
+//    sql = "select authorname, age, books.price, array_filter(books.price, value => value > 2) from author_withArray where array_exists(books.price, value => value = 2)"
+//    res = stmt.executeQuery(sql)
+//    println("-------------------test array_exists in mongo-------------------")
+//    while (res.next()) {
+//      println(s"authorname: ${res.getString(1)}, age: ${res.getDouble(2)}, books.price: ${res.getArray(3).getArray.asInstanceOf[Array[Any]].map(_.asInstanceOf[Double]).mkString(", ")}, array_map: ${res.getArray(4).getArray.asInstanceOf[Array[Any]].map(_.toString).mkString(", ")}")
+//    }
+//  }
 
   test("other driver by reflection") {
     url = "jdbc:other://localhost:27017/test?collection=books"
@@ -215,6 +237,61 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     res = stmt.executeQuery(sql)
     while (res.next()){
       println(s"name: ${res.getString(1)}, price: ${res.getInt(2)}, author: ${res.getString(3)}, pages: ${res.getInt(4)} ")
+    }
+  }
+
+  test("data type test in mongo"){
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test")
+    stmt = connection.createStatement()
+    sql = "select * from data_type_test"
+    res = stmt.executeQuery(sql)
+    println("-------------------data type test in mongo-------------------")
+    while (res.next()) {
+      println(s"objectId: ${res.getObject(1)}, BsonTimestamp: ${res.getObject(2)}, java.sql.Timestamp: ${res.getTimestamp(3).getTime}, java BigDecimal: ${res.getBigDecimal(4)}")
+    }
+  }
+
+  test("test for adding mongo operators: string related"){
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+    stmt = connection.createStatement()
+    sql = "select substr(name, 0, 3), lower(name), upper(name), concat(name, '_', author) from books"
+    res = stmt.executeQuery(sql)
+    println("-------------------test for adding mongo operators: string related-------------------")
+    while (res.next()) {
+      println(res.getObject(1))
+      println(res.getObject(2))
+      println(res.getObject(3))
+      println(res.getObject(4))
+    }
+  }
+
+  test("test for adding mongo operators: time related"){
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test")
+    stmt = connection.createStatement()
+    sql = "select year(datetime), month(datetime), dayOfMonth(datetime), Hour(datetime), minute(datetime), second(datetime), dayOfYear(datetime), weekOfYear(datetime), datetime from data_type_test"
+    res = stmt.executeQuery(sql)
+    println("-------------------test for adding mongo operators: time related-------------------")
+    while (res.next()) {
+      println(res.getObject(1))
+      println(res.getObject(2))
+      println(res.getObject(3))
+      println(res.getObject(4))
+      println(res.getObject(5))
+      println(res.getObject(6))
+      println(res.getObject(7))
+      println(res.getObject(8))
+      println(res.getObject(9))
+    }
+  }
+
+  test("test for adding mongo operators: case when"){
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+    stmt = connection.createStatement()
+    sql = "select (case when price < 20 and 15 < price then 0 when price >50 then 2 else 1 end) as aaa from books"
+    res = stmt.executeQuery(sql)
+    println("-------------------test for adding mongo operators: case when-------------------")
+    while (res.next()) {
+      println(res.getObject(1))
     }
   }
 

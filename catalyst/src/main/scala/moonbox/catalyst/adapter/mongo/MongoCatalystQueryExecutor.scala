@@ -61,7 +61,6 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
   }
 
   override def execute4Jdbc(plan: LogicalPlan): (Iterator[JdbcRow], Map[Int, Int], Map[String, Int]) = {
-
     val (iter, outputSchema, context) = getBsonIterator(plan, new CatalystContext)
     val newIterator = bsonIteratorConverter(iter, context.index2FieldName, (_, in: Seq[Any]) => new JdbcRow(in: _*))
     val columnLabel2Index = context.index2FieldName.map(e => e._2 -> e._1).toMap
@@ -82,6 +81,10 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
     val next: CatalystPlan = planner.plan(plan).next()
     logInfo(s"output schema: ${next.schema}")
     (next.translate(context), next.schema)
+  }
+
+  override def translate(plan: LogicalPlan): Seq[String] = {
+    planner.plan(plan).next().translate(new CatalystContext)
   }
 
   private def recordFieldNames(logicalPlan: LogicalPlan, context: CatalystContext): Unit = {
@@ -147,6 +150,7 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
   def adaptorFunctionRegister(udf: UDFRegistration): Unit = {
     import moonbox.catalyst.adapter.mongo.function.UDFunctions._
     udf.register("geo_near", geoNear _)
+    udf.register("geo_near", (a: Int, b: Int) => a + b)
     udf.register("index_stats", indexStats _)
   } // TODO:
 
