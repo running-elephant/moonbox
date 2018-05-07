@@ -104,6 +104,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
         builder.option(k, v)
     }
     val pipeline = new MongoCatalystQueryExecutor(newProps).translate(plan).map(BsonDocument.parse)
+    logInfo(pipeline.map(_.toJson).mkString("\n"))
     val schema = plan.schema
     builder.pipeline(pipeline).build().toDF(schema)
   }
