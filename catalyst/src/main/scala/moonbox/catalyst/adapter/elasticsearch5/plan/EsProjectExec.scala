@@ -1,11 +1,11 @@
 package moonbox.catalyst.adapter.elasticsearch5.plan
 
-import moonbox.catalyst.adapter.util.SparkUtil
+import moonbox.catalyst.adapter.util.SparkUtil._
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}
 import moonbox.catalyst.core.plan.{CatalystPlan, ProjectExec}
 import moonbox.catalyst.core.CatalystContext
-import org.apache.spark.sql.catalyst.expressions.{Add, Alias, AttributeReference, BinaryArithmetic, Divide, Expression, GetArrayStructFields, GetStructField, If, Literal, Multiply, NamedExpression, Subtract}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, Attribute, AttributeReference, BinaryArithmetic, CaseWhenCodegen, Cast, Divide, EqualTo, Expression, GetArrayStructFields, GetStructField, GreaterThan, GreaterThanOrEqual, If, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Literal, Multiply, NamedExpression, Or, Round, Substring, Subtract}
+import org.apache.spark.sql.types._
 
 
 class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) extends ProjectExec(projectList, child) {
@@ -19,13 +19,12 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
         catalystContext.projectElementSeq = projectList.zipWithIndex.map {
             case (_@Alias(children, alias), index) =>
                 children match {
-                    case _: BinaryArithmetic | _ : Literal =>
+                    case _: BinaryArithmetic | _ : Literal | _ : Substring | _: Round | _: Cast | _: CaseWhenCodegen  =>
                         aliasColumnSeq = aliasColumnSeq :+ s"""|"$alias": {
-                            |    "script" : {
-                            |        "lang" : "expression",
-                            |        "inline" : "${translateProject(children, true, index)}"
-                            |    }
-                            |}""".stripMargin
+                           |    "script" : {
+                           |        "inline" : "${translateProject(children, true, index)}"
+                           |    }
+                           |}""".stripMargin
                         (alias, alias)
                     case _ =>
                         val column = s"""${translateProject(children, false, index)}"""
@@ -50,7 +49,8 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
     }
 
     def mkColumnInSource(col: String): String = { s"""|$col""".stripMargin }
-    def mkColumnInScript(col: String): String = { s"""|doc['$col']""".stripMargin }
+    def mkColumnInScript(col: String): String = { s"""|doc['$col'].value""".stripMargin }
+
 
     def translateProject(e: Expression, script: Boolean = false, index: Int): String = {
         e match {
@@ -61,6 +61,34 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
             case a@ArrayMap(left, right) =>
                 catalystContext.projectFunctionSeq :+= (a, index)
                 translateProject(left, script, index)
+
+            case s@Substring(str, pos, len) =>
+                val field = translateProject(str, script, index)
+                val start = translateProject(pos, script, index)
+                val length = translateProject(len, script, index)
+                s"""$field.substring($start,$length)"""
+
+            case Round(child, scale) =>
+                def pow(m: Int, n: Int): Int =  {
+                    var result: Int = 1
+                    for(i <- 0 until n){result = result * m}
+                    result
+                }
+                val exponent = translateProject(scale, script, index)
+                val number = pow(10, java.lang.Integer.valueOf(exponent).intValue() )
+                s"""Math.round(${translateProject(child, script, index)}) * $number / $number.0"""
+
+            case Cast(child, dataType, _) =>
+                val param = translateProject(child, script, index)
+                s"""${scriptTypeConvert(dataType, param)}"""
+
+            case c@CaseWhenCodegen(branches, elseValue) =>
+                val ifPart = s"""if(${parsePredictExpression(branches(0)._1)})"""
+                val returnPart = s"{return ${translateProject(branches(0)._2, script, index)};}"
+                val elsePart = if(elseValue.isDefined){
+                    s"""else {return ${translateProject(elseValue.get, script, index)};}"""
+                } else ""
+                s"""$ifPart $returnPart $elsePart"""
 
             case a: AttributeReference =>
                 if(script) { mkColumnInScript(a.name) }
@@ -82,7 +110,7 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
                 s"""$colContext"""
 
             case _@Literal(v, t) =>
-                val literal: String = SparkUtil.literalToSQL(v, t)
+                val literal: String = literalToSQL(v, t)
                 literal
 
             case g@GetStructField(child, ordinal, _) =>  //select user.name from nest_table

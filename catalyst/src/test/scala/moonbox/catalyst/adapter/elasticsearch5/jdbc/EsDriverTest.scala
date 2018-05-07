@@ -199,6 +199,75 @@ class EsDriverTest extends FunSuite{
         doQuery("test_mb_100", "my_table", "select col_int_f, col_int_f  from test_mb_100 " )
     }
 
+    //case when, substring, round, cast
+    test("col + substring"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select substring(col_str_k, 0, 2) from test_mb_1000 " )
+    }
+
+    test("col + case when 1"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select case when col_long_a >50 then 1 else 0 end from test_mb_1000 " )
+    }
+
+    test("col + case when 2"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select case when col_long_a >50 and col_long_a<70 then 1 else 0 end from test_mb_1000 " )
+    }
+
+    test("col + case when 3"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select case when col_str_k in ('xlOquLuKjH', 'uTQrFXPOoc', 'RgTcVREWxMpI') then 1 else 0 end from test_mb_1000 " )
+    }
+
+    test("col + case when 4"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select case when col_str_k in ('xlOquLuKjH', 'uTQrFXPOoc', 'RgTcVREWxMpI') and col_long_a >50 then 1 else 0 end from test_mb_1000 " )
+    }
+
+    test("col + round"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select round(col_float_g) from test_mb_1000 " )
+    }
+
+    test("col + cast"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select cast(col_float_g as double) from test_mb_1000 " )
+    }
+
+    test("col + sum + case when 1"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when col_long_a >50 and col_long_a<70 then 1 else 0 end) as aaa from test_mb_1000 " )
+    }
+
+    test("col + sum + case when 2"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when col_long_a >50 and col_long_a<70 then 1 else 0 end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e " )
+    }
+
+    test("col + sum + case when 3"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when col_str_k > 'AB' then 1 else 0 end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + sum + case when 4"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when substring(col_str_k, 0, 2) > 'AB' then 1 else 0 end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + sum + case when 5"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when substring(col_str_k, 0, 2) >= 'AB' and substring(col_str_l, 0, 2) <= 'DF' and col_int_f >10  then 1 else 0 end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + sum + case when 6"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select sum(case when substring(col_str_k, 0, 2) >= 'AB'  and col_int_f in (1, 2, 3, 4, 5, 6, 7)  then 1 else 0 end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + count + case when 1"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select count(case when col_str_k is not null then col_int_f  end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + count + distinct case when 2"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select count(distinct case when  col_str_k is not null then col_int_f  end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + count + distinct case when 3"){  //mb_100 can not substring
+        doQuery("test_mb_1000", "my_table", "select count(distinct case when  col_int_f + 1 > 1  then col_int_f  end) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
+    test("col + if "){  //mb_100 can not substring
+        //doQuery("test_mb_1000", "my_table", "select if(count(distinct col_int_f)>100, 0, 1) as aaa, col_int_f, col_bool_e  from test_mb_1000 group by col_int_f, col_bool_e ") //, Map("es.mapping.date.rich" -> "false")
+    }
+
 
     test("col + literal"){
         doQuery("test_mb_100", "my_table", "select col_int_f + 1 from test_mb_100 " )

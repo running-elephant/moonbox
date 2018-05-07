@@ -8,7 +8,7 @@ import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}
 import moonbox.common.MbLogging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, AttributeReference, Divide, EqualNullSafe, EqualTo, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Literal, Multiply, Not, Or, Subtract}
+import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, AttributeReference, CaseWhenCodegen, Divide, EqualNullSafe, EqualTo, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Literal, Multiply, Not, Or, Round, Substring, Subtract}
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -43,7 +43,8 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 		classOf[Add], classOf[Subtract], classOf[Multiply], classOf[Divide],
 		classOf[Like], classOf[And], classOf[In], classOf[Not],
 		classOf[Or], classOf[EqualNullSafe], classOf[EqualTo], classOf[GreaterThan],
-		classOf[GreaterThanOrEqual], classOf[LessThan], classOf[LessThanOrEqual], classOf[Not]
+		classOf[GreaterThanOrEqual], classOf[LessThan], classOf[LessThanOrEqual], classOf[Not],
+		classOf[Substring], classOf[Round], classOf[CaseWhenCodegen]
 		//,classOf[ArrayMap], classOf[ArrayFilter], classOf[ArrayExists]
 	)
 

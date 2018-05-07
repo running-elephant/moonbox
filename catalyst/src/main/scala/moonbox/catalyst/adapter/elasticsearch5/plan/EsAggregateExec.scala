@@ -46,30 +46,59 @@ class EsAggregateExec(groupingExpressions: Seq[Expression],
         }
     }
 
-    def parseFunToJson(func: AggregateFunction, alias: String="", isDistinct:Boolean=false): (String, DataType )= {
+    def parseFunToJson(func: AggregateFunction, alias: String="", isDistinct:Boolean=false): String = {
         func match {
             case f: Average =>
-                val param = func.children.map(parseLeafExpression).headOption.getOrElse(FieldName("", alias, StringType))
-                (s""""${alias}":{"avg": {"field": "${param.name}"}}""", param.dtype)
-            case f: Sum =>
-                val param = func.children.map(parseLeafExpression).headOption.getOrElse(FieldName("", alias, StringType))
-                (s""""${alias}":{"sum": {"field": "${param.name}"}}""", param.dtype)
-            case f: Max =>
-                val param = func.children.map(parseLeafExpression).headOption.getOrElse(FieldName("", alias, StringType))
-                (s""""${alias}":{"max": {"field": "${param.name}"}}""", param.dtype)
-            case f: Min =>
-                val param = func.children.map(parseLeafExpression).headOption.getOrElse(FieldName("", alias, StringType))
-                (s""""${alias}":{"min": {"field": "${param.name}"}}""", param.dtype)
-            case f: Count =>
-                val param = func.children.map(parseLeafExpression).headOption.getOrElse(FieldName("", alias, StringType))
-                if(isDistinct) {  //distinct
-                    (s""""${alias}":{"value_count": {"field": "${param.name}"}}""", param.dtype)
+                val param = func.children.map(parseLeafExpression(_)).head
+                if(param.inScript) {
+                    s""""$alias":{"avg": {"script": {"inline": "${param.name}"}}}"""
+                }else{
+                    s""""$alias":{"avg": {"field": "${param.name}"}}"""
                 }
-                else {  //count
-                    if(param.name == "*" || param.isLiteral){  //spark parse * to 1, select count(*) from tbl => select count(1) from tbl
-                        (s""""${alias}":{"value_count": {"field": "_index"}}""", param.dtype)
-                    }else{
-                        (s""""${alias}":{"value_count": {"field": "${param.name}"}}""", param.dtype)
+            case f: Sum =>
+                val param = func.children.map(parseLeafExpression(_)).head
+                if(param.inScript) {
+                    s""""$alias":{"sum": {"script": {"inline": "${param.name}"}}}"""
+                }else {
+                    s""""$alias":{"sum": {"field": "${param.name}"}}"""
+                }
+            case f: Max =>
+                val param = func.children.map(parseLeafExpression(_)).head
+                if(param.inScript) {
+                    s""""$alias":{"max": {"script": {"inline": "${param.name}"}}}"""
+                }else {
+                    s""""$alias":{"max": {"field": "${param.name}"}}"""
+                }
+            case f: Min =>
+                val param = func.children.map(parseLeafExpression(_)).head
+                if(param.inScript) {
+                    s""""$alias":{"min": {"script": {"inline": "${param.name}"}}}"""
+                }else{
+                    s""""$alias":{"min": {"field": "${param.name}"}}"""
+                }
+            case f: Count =>
+                val param = func.children.map(parseLeafExpression(_)).head
+                if(param.inScript) {
+                    if (isDistinct) { //distinct
+                        s""""$alias":{"value_count": {"script": {"inline": "${param.name}"}}}"""
+                    }
+                    else { //count
+                        if (param.name == "*" || param.isLiteral) { //spark parse * to 1, select count(*) from tbl => select count(1) from tbl
+                            s""""$alias":{"value_count": {"field": "_index"}}"""
+                        } else {
+                            s""""$alias":{"value_count": {"script": {"inline": "${param.name}"}}}"""
+                        }
+                    }
+                }else{
+                    if (isDistinct) { //distinct
+                        s""""$alias":{"value_count": {"field": "${param.name}"}}"""
+                    }
+                    else { //count
+                        if (param.name == "*" || param.isLiteral) { //spark parse * to 1, select count(*) from tbl => select count(1) from tbl
+                            s""""$alias":{"value_count": {"field": "_index"}}"""
+                        } else {
+                            s""""$alias":{"value_count": {"field": "${param.name}"}}"""
+                        }
                     }
                 }
         }
@@ -82,7 +111,7 @@ class EsAggregateExec(groupingExpressions: Seq[Expression],
                 parseAggExpression(child, name, idx)
             case a: AttributeReference =>
             case AggregateExpression(aggFunc, _, isDistinct, _) =>
-                val (funcJson, dtype)  = parseFunToJson(aggFunc, alias, isDistinct)
+                val funcJson = parseFunToJson(aggFunc, alias, isDistinct)
                 aggFunSeq = aggFunSeq :+ funcJson
                 aggFieldSeq = aggFieldSeq :+ (alias, alias)
             case _ => println("ERROR")

@@ -2,11 +2,9 @@ package moonbox.catalyst.adapter.util
 
 import java.sql.{Date, Timestamp}
 
-
 import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.common.MbLogging
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, Cast, Expression, GetArrayStructFields, GetStructField, Literal}
+import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, Attribute, AttributeReference, BinaryArithmetic, CaseWhenCodegen, Cast, Divide, EqualTo, Expression, GetArrayStructFields, GetStructField, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Literal, Multiply, Or, Round, Substring, Subtract}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
@@ -15,22 +13,26 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
 
 
-case class FieldName(name: String, alias: String, dtype: DataType, isLiteral: Boolean = false)
+case class FieldName(name: String, isLiteral: Boolean, inScript: Boolean=false)
 
 object SparkUtil extends MbLogging{
-
-    def parseLeafExpression(e: Expression): FieldName = {
+    /*
+    inScript: if string should in script, use doc['value'] else use value
+     */
+    def parseLeafExpression(e: Expression, inScript:Boolean=false): FieldName = {
         e match {
             case a: AttributeReference =>
                 //val qualifierPrefix = a.qualifier.map(_ + ".").getOrElse("")
-                FieldName(s"${a.name}", "", a.dataType, false)
+                if(inScript){ FieldName(s"doc['${a.name}'].value", false, false) }
+                else { FieldName(s"${a.name}", false, false) }
+
             case literal@Literal(v, t) =>
-                FieldName(literalToSQL(v, t), "", literal.dataType, true)
+                FieldName(literalToSQL(v, t), true, false)
+
             case Alias(exp, alias) =>
-                val value = parseLeafExpression(exp)
-                FieldName(s"""${value.name}""", alias, value.dtype, false)
-            case c@Cast(child, _, _) =>
-                parseLeafExpression(child)
+                val value = parseLeafExpression(exp, inScript)
+                FieldName(s"""${value.name}""", false, false)
+
             case g@GetStructField(child, ordinal, _) =>  //select user.name from nest_table
                 val childSchema = child.dataType.asInstanceOf[StructType]
                 val fieldName =  childSchema(ordinal).name
@@ -39,14 +41,144 @@ object SparkUtil extends MbLogging{
                     case a: AttributeReference => a.name
                     case e: Expression => e.toString()
                 }
-                FieldName(s"$childName.${g.name.getOrElse(fieldName)}", "",  fieldType, false)
+                FieldName(s"$childName.${g.name.getOrElse(fieldName)}", false, false)
+
             case g@GetArrayStructFields(child, field, _, _, _) =>
                 val parentName = parseLeafExpression(child)
-                FieldName(s"""${parentName.name}.${field.name}""", "", field.dataType, false)
+                FieldName(s"""${parentName.name}.${field.name}""", false, false)
+
+            case s@Substring(str, pos, len) =>
+                val field = parseLeafExpression(str, true).name  //should in doc script
+                val start = parseLeafExpression(pos, inScript).name
+                val length = parseLeafExpression(len,inScript).name
+                FieldName(s"""${field}.substring($start,$length)""", false, true)
+
+            case Round(child, scale) =>
+                def pow(m: Int, n: Int): Int =  {
+                    var result: Int = 1
+                    for(i <- 0 until n){result = result * m}
+                    result
+                }
+                val exponent = parseLeafExpression(scale).name
+                val number = pow(10, java.lang.Integer.valueOf(exponent).intValue() )
+                FieldName(s"""Math.round(${parseLeafExpression(child, true).name}) * $number / $number.0""", false, true)
+
+            case Cast(child, dataType, _) =>
+                val param = parseLeafExpression(child, inScript)
+                FieldName(s"""${scriptTypeConvert(dataType, param.name, inScript)}""", param.isLiteral, param.inScript)  // may in or not in script
+
+            case c@CaseWhenCodegen(branches, elseValue) =>
+                val ifPart = s"""if(${parseLeafExpression(branches(0)._1, true).name})"""       //should in doc script
+                val returnPart = s"{return ${parseLeafExpression(branches(0)._2, true).name};}" //should in doc script
+                val elsePart = if(elseValue.isDefined){
+                    s"""else {return ${parseLeafExpression(elseValue.get, true).name};}"""      //should in doc script
+                } else ""
+                FieldName(s"""$ifPart $returnPart $elsePart""", false, true)
+
+            case b: BinaryArithmetic =>
+                def mkBinaryString(lchild: Expression,rchild: Expression, op: String): String = {
+                    val left = parseLeafExpression(lchild, inScript).name
+                    val right = parseLeafExpression(rchild, inScript).name
+                    s"""($left $op $right)"""
+                }
+
+                val colContext = b match {
+                    case a@Add(lchild, rchild) => mkBinaryString(lchild, rchild, "+")
+                    case s@Subtract(lchild, rchild) => mkBinaryString(lchild, rchild, "-")
+                    case m@Multiply(lchild, rchild) => mkBinaryString(lchild, rchild, "*")
+                    case d@Divide(lchild, rchild) => mkBinaryString(lchild, rchild, "/")
+                }
+                FieldName(s"""$colContext""", false, true)
+
+            case GreaterThan(left: Expression, right: Expression)   =>
+                if(left.dataType == StringType){
+                    FieldName(s"""${parseLeafExpression(left, inScript).name}.compareTo(${parseLeafExpression(right, inScript).name}) > 0""", false, false)
+                }else{
+                    FieldName(s"""${parseLeafExpression(left, inScript).name} > ${parseLeafExpression(right, inScript).name}""", false, false)
+                }
+            case EqualTo(left: Expression, right: Expression)   =>
+                if(left.dataType == StringType){
+                    FieldName(s"""${parseLeafExpression(left, inScript).name}.compareTo(${parseLeafExpression(right, inScript).name}) == 0""", false, false)
+                }else{
+                    FieldName(s"""${parseLeafExpression(left, inScript).name} == ${parseLeafExpression(right, inScript).name}""", false, false)
+                }
+            case GreaterThanOrEqual(left: Expression, right: Expression)    =>
+                if(left.dataType == StringType){
+                    FieldName(s"""${parseLeafExpression(left, inScript).name}.compareTo(${parseLeafExpression(right, inScript).name}) >= 0""", false, false)
+                }else{
+                    FieldName(s"""${parseLeafExpression(left, inScript).name} >= ${parseLeafExpression(right, inScript).name}""", false, false)
+                }
+            case LessThan(left: Expression, right: Expression)  =>
+                if(left.dataType == StringType){
+                    FieldName(s"""${parseLeafExpression(left, inScript).name}.compareTo(${parseLeafExpression(right, inScript).name}) < 0""", false, false)
+                }else{
+                    FieldName(s"""${parseLeafExpression(left, inScript).name} < ${parseLeafExpression(right, inScript).name}""", false, false)
+                }
+            case LessThanOrEqual(left: Expression, right: Expression)   =>
+                if(left.dataType == StringType){
+                    FieldName(s"""${parseLeafExpression(left, inScript).name}.compareTo(${parseLeafExpression(right, inScript).name}) <= 0""", false, false)
+                }else{
+                    FieldName(s"""${parseLeafExpression(left, inScript).name} <= ${parseLeafExpression(right, inScript).name}""", false, false)
+                }
+            case IsNotNull(child: Expression) => FieldName(s"""${parseLeafExpression(child, inScript).name} != null""", false, false)
+            case And(left, right)       => FieldName(s"""(${parseLeafExpression(left, inScript).name}) && (${parseLeafExpression(right, inScript).name})""", false, false)
+            case Or(left, right)        => FieldName(s"""(${parseLeafExpression(left, inScript).name}) || (${parseLeafExpression(right, inScript).name})""", false, false)
+            case In(value: Expression, list: Seq[Expression])  =>
+                val name = list.map{expression =>
+                    if(value.dataType == StringType){
+                        s"""${parseLeafExpression(expression, inScript).name}.compareTo(${parseLeafExpression(value, inScript).name}) == 0"""
+                    }else{
+                        s"""${parseLeafExpression(expression, inScript).name} == ${parseLeafExpression(value, inScript).name}"""
+                    }}.mkString("||")
+                FieldName(name, false, false)
             case _ =>
                 throw new Exception("unknown expression in parseLeafExpression")
         }
     }
+
+
+    def parsePredictExpression(e: Expression): String = {
+        e match {
+            case EqualTo(attribute: Attribute, _@Literal(v, t))            => s"""doc['${attribute.name}'].value == ${SparkUtil.literalToSQL(v, t)}"""
+            case EqualTo(_@Literal(v, t), attribute: Attribute)            => s"""doc['${attribute.name}'].value == ${SparkUtil.literalToSQL(v, t)}"""
+            case GreaterThan(attribute: Attribute, _@Literal(v, t))        => s"""doc['${attribute.name}'].value > ${SparkUtil.literalToSQL(v, t)}"""
+            case GreaterThan(_@Literal(v, t), attribute: Attribute)        => s"""doc['${attribute.name}'].value < ${SparkUtil.literalToSQL(v, t)}"""
+            case GreaterThanOrEqual(attribute: Attribute, _@Literal(v, t)) => s"""doc['${attribute.name}'].value >= ${SparkUtil.literalToSQL(v, t)}"""
+            case GreaterThanOrEqual(_@Literal(v, t), attribute: Attribute) => s"""doc['${attribute.name}'].value >= ${SparkUtil.literalToSQL(v, t)}"""
+            case LessThan(attribute: Attribute, _@Literal(v, t))           => s"""doc['${attribute.name}'].value < ${SparkUtil.literalToSQL(v, t)}"""
+            case LessThan(_@Literal(v, t), attribute: Attribute)           => s"""doc['${attribute.name}'].value > ${SparkUtil.literalToSQL(v, t)}"""
+            case LessThanOrEqual(attribute: Attribute, _@Literal(v, t))    => s"""doc['${attribute.name}'].value <= ${SparkUtil.literalToSQL(v, t)}"""
+            case LessThanOrEqual(_@Literal(v, t), attribute: Attribute)    => s"""doc['${attribute.name}'].value >= ${SparkUtil.literalToSQL(v, t)}"""
+            case IsNull(attribute: Attribute)                              =>  s"""doc['${attribute.name}'].value == null"""
+            case IsNotNull(attribute: Attribute)                           =>  s"""doc['${attribute.name}'].value != null"""
+            case And(left, right)                                          => s"""(${parsePredictExpression(left)}) && (${parsePredictExpression(right)})"""
+            case Or(left, right)                                           => s"""(${parsePredictExpression(left)}) || (${parsePredictExpression(right)})"""
+            case In(attribute: Attribute, list)  =>
+                list.map{case _@Literal(v, t) => s"(doc['${attribute.name}'].value == ${SparkUtil.literalToSQL(v, t)})"}.mkString("||")
+        }
+    }
+
+    def scriptTypeConvert(d: DataType, str: String, inScript:Boolean=true): String = {
+        if(!inScript){  //not in script, do not add anything
+            str
+        }else {
+            val newType = d match {
+                case IntegerType => s"(int)"
+                case DoubleType => s"(double)"
+                case LongType => s"(long)"
+                case FloatType => s"(float)"
+                case ShortType => s"(short)"
+                case StringType => s"String.valueOf" //TODO: how string cast here
+            }
+            if (str.indexOf("return") != -1) {
+                str.replace("return", newType)
+            } else {
+                s"""$newType($str)"""
+            }
+        }
+    }
+
+    //--------------
 
     def colId2aliasMap(mapping: Seq[(String, String)]): Map[Int, String] = {
         mapping.zipWithIndex.map{ case (data, index) => (index, data._1)}.toMap  //alias name, send name
@@ -161,6 +293,13 @@ object SparkUtil extends MbLogging{
                     a(0) match {
                         case d: Double => d.toLong
                         case i: Integer => i.longValue()
+                    }
+                } else { java.lang.Short.valueOf("0") }
+            case (a: java.util.ArrayList[_], schema: FloatType) =>
+                if(a.nonEmpty) {
+                    a(0) match {
+                        case d: Double => d.toFloat
+                        case i: Integer => i.floatValue()
                     }
                 } else { java.lang.Short.valueOf("0") }
             case (s: String, BooleanType) => s.toBoolean
