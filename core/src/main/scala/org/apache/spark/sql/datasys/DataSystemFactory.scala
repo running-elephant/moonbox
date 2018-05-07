@@ -9,6 +9,7 @@ object DataSystemFactory {
 			case "mysql" => new MysqlDataSystem(props)(sparkSession)
 			case "presto" | "prestodb" => new PrestoDataSystem(props)(sparkSession)
 			case "es" | "elasticsearch" => new ElasticSearchDataSystem(props)(sparkSession)
+			case "mongo" | "mongodb" => new MongoDataSystem(props)(sparkSession)
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}
@@ -21,6 +22,7 @@ object DataSystemFactory {
 			case "redis" => "org.apache.spark.sql.execution.datasources.redis"
 			case "mongo" | "mongodb" => "com.mongodb.spark.sql"
 			case "es" | "elasticsearch" => "org.elasticsearch.spark.sql"
+			case "cas"| "cassandra"  => "org.apache.spark.sql.cassandra"
 			case "parquet" => "parquet"
 			case "json" => "json"
 			case "csv" => "csv"
