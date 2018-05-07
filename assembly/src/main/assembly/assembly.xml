@@ -41,12 +41,9 @@
             <excludes>
                 <exclude>org.elasticsearch:elasticsearch</exclude>
                 <exclude>org.elasticsearch.client:transport</exclude>
-                <exclude>org.elasticsearch:elasticsearch-spark-20_2.11</exclude>
                 <exclude>org.elasticsearch:elasticsearch-spark_2.11</exclude>
                 <exclude>org.mongodb:mongodb-driver-core</exclude>
-                <exclude>org.mongodb:mongo-java-driver</exclude>
                 <exclude>org.mongodb:mongodb-driver</exclude>
-                <exclude>org.mongodb.spark:mongo-spark-connector_2.11</exclude>
                 <exclude>io.netty:netty-common</exclude>
                 <exclude>io.netty:netty-handler</exclude>
                 <exclude>io.netty:netty-resolver</exclude>
@@ -75,6 +72,21 @@
                 <include>com.lihaoyi:sourcecode_2.11</include>
                 <include>com.facebook.presto:presto-jdbc</include>
                 <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
+                <!-- cassandra need from here -->
+                <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
+                <!-- mongo need from here -->
+                <include>org.mongodb:mongo-java-driver</include>
+                <include>org.mongodb.spark:mongo-spark-connector_2.11</include>
+                <!-- elasticsearch need from here -->
+                <include>edp.moonbox:moonbox-catalyst_2.11</include>
+                <include>org.elasticsearch:elasticsearch-spark-20_2.11</include>
+                <include>org.elasticsearch.client:rest</include>
+                <include>org.apache.httpcomponents:httpasyncclient</include>
+                <include>org.apache.httpcomponents:httpclient</include>
+                <include>org.apache.httpcomponents:httpcore-nio</include>
+                <include>org.apache.httpcomponents:httpcore</include>
+                <include>commons-codec:commons-codec</include>
+                <include>org.json:json</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>

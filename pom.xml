@@ -47,6 +47,7 @@
         <akka-http.version>10.0.1</akka-http.version>
         <json4s-jackson.version>3.2.11</json4s-jackson.version>
         <akka-http-json4s.version>1.11.0</akka-http-json4s.version>
+        <cassandra-connector.version>2.0.7</cassandra-connector.version>
     </properties>
 
     <dependencyManagement>
@@ -186,6 +187,12 @@
                 <groupId>org.json4s</groupId>
                 <artifactId>json4s-native_2.11</artifactId>
                 <version>${json4s-jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.datastax.spark</groupId>
+                <artifactId>spark-cassandra-connector_2.11</artifactId>
+                <version>${cassandra-connector.version}</version>
             </dependency>
 
             <!-- repl -->
