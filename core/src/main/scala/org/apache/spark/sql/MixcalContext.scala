@@ -71,6 +71,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 }
 
 object MixcalContext extends MbLogging {
+	// TODO SparkContext.getOrCreate()
 	private var sparkContext: SparkContext = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
