@@ -50,8 +50,9 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 							_ <- jdbcDao.deleteGroups(catalogOrganization.id.get);
 							_ <- jdbcDao.deleteDatabases(catalogOrganization.id.get);
 							_ <- jdbcDao.deleteUsers(catalogOrganization.id.get);
-							_ <- jdbcDao.deleteApplications(catalogOrganization.id.get)
-						) yield jdbcDao.deleteOrganization(org)
+							_ <- jdbcDao.deleteApplications(catalogOrganization.id.get);
+							_ <- jdbcDao.deleteOrganization(org)
+						) yield ()
 					)
 				} else {
 					jdbcDao.action(
@@ -252,8 +253,9 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				jdbcDao.actionTransactionally(
 					for (
 						_ <- jdbcDao.deleteUserGroupRelByUser(catalogUser.id.get);
-						_ <- jdbcDao.deleteUserTableRelsByUser(catalogUser.id.get)
-					) yield jdbcDao.deleteUser(catalogUser.id.get)
+						_ <- jdbcDao.deleteUserTableRelsByUser(catalogUser.id.get);
+						jdbcDao.deleteUser(catalogUser.id.get)
+					) yield ()
 				)
 			case None =>
 				ignoreIfNotExists match {
@@ -511,21 +513,20 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 						for (
 							x <- jdbcDao.deleteViews(db.id.get);
 							y <- jdbcDao.deleteFunctions(db.id.get);
-							z <- jdbcDao.deleteTables(db.id.get)
-						) yield jdbcDao.deleteDatabase(organizationId, database)
+							z <- jdbcDao.deleteTables(db.id.get);
+							jdbcDao.deleteDatabase(organizationId, database)
+						) yield ()
 					)
 				} else {
 					jdbcDao.actionTransactionally(
 						for (
 							tables <- jdbcDao.listTables(db.id.get);
 							views <- jdbcDao.listViews(db.id.get);
-							functions <- jdbcDao.listFunctions(db.id.get)
-						) yield {
-							if (tables.isEmpty && views.isEmpty && functions.isEmpty) {
+							functions <- jdbcDao.listFunctions(db.id.get);
+							_ <- if (tables.isEmpty && views.isEmpty && functions.isEmpty) {
 								jdbcDao.deleteDatabase(organizationId, database)
-							}
-							else throw new NonEmptyException(s"Database $database")
-						}
+							} else throw new NonEmptyException(s"Database $database")
+						) yield ()
 					)
 				}
 			case None =>
@@ -637,8 +638,9 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				jdbcDao.actionTransactionally(
 					for (
 						_ <- jdbcDao.deleteUserTableRelsByTable(catalogTable.id.get);
-						_ <- jdbcDao.deleteColumns(catalogTable.id.get)
-					) yield jdbcDao.deleteTable(databaseId, table)
+						_ <- jdbcDao.deleteColumns(catalogTable.id.get);
+						_ <- jdbcDao.deleteTable(databaseId, table)
+					) yield ()
 				)
 			case None =>
 				ignoreIfNotExists match {
