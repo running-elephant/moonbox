@@ -107,6 +107,20 @@ case class CatalogApplication(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
+case class CatalogScheduler(
+	id: Option[Long] = None,
+	name: String,
+	organizationId: Long,
+	definer: Long,
+	scheduler: String,
+	enable: Boolean,
+	description: Option[String] = None,
+	application: Long,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem
+
 case class CatalogColumn(
 	id: Option[Long] = None,
 	name: String,

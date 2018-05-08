@@ -4,7 +4,9 @@ import java.util.Locale
 
 import moonbox.common.exception.UnsupportedException
 
-abstract class FunctionResourceType(val `type`: String)
+abstract class FunctionResourceType(val `type`: String) {
+	override def toString: String = `type`
+}
 
 object JarResource extends FunctionResourceType("jar")
 object FileResource extends FunctionResourceType("file")

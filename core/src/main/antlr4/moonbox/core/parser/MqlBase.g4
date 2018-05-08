@@ -101,6 +101,15 @@ mql
     | ALTER APPLICATION name=identifier AS appCmds                                              # setApplicationQuerys
     | DROP APPLICATION (IF EXISTS)? name=identifier                                             # dropApplication
 
+    | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT schedule
+        (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL app=identifier                    # createEvent
+    | RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
+    | ALTER DEFINER definer EVENT name=identifier                                               # setDefiner
+    | ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
+    | ALTER EVENT name=identifier ON SCHEDULE AT schedule                                       # setEventSchedule
+    | ALTER EVENT name=identifier (ENABLE | DISABLE)                                            # setEventEnable
+    | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
+
     | SHOW SYSINFO                                                                              # showSysInfo
     | SHOW DATASOURCES (LIKE pattern=STRING)?                                                   # showDatasources
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
@@ -129,6 +138,17 @@ mql
     | createTemporaryFunctionCmd                                                                # createTemporaryFunction
     ;
 
+
+definer
+    : EQ user = identifier | CURRENT_USER
+    ;
+
+schedule
+    : starOrInteger starOrInteger starOrInteger starOrInteger starOrInteger starOrInteger
+    ;
+starOrInteger
+    : STAR | INTEGER_VALUE
+    ;
 appCmds
     : (nonLastCmdList ',')? lastCmd
     ;
@@ -294,29 +314,37 @@ ALTER: 'ALTER';
 APPLICATION: 'APPLICATION';
 APPLICATIONS: 'APPLICATIONS';
 ARRAY: 'ARRAY';
+AT: 'AT';
 MAP: 'MAP';
 STRUCT: 'STRUCT';
 AS: 'AS';
 BY: 'BY';
 CACHE: 'CACHE';
+CALL: 'CALL';
 CASCADE: 'CASCADE';
 COLUMN: 'COLUMN';
 COLUMNS: 'COLUMNS';
 COMMENT: 'COMMENT';
 CHANGE: 'CHANGE';
 CREATE: 'CREATE';
+CURRENT_USER: 'CURRENT_USER';
 DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATASOURCE: 'DATASOURCE';
 DATASOURCES: 'DATASOURCES';
 DDL: 'DDL';
+DEFINER: 'DEFINER';
 DESC: 'DESC';
 DESCRIBE: 'DESCRIBE';
+DISABLE: 'DISABLE';
+DO: 'DO';
 DML: 'DML';
 DMLON: 'DMLON';
 DROP: 'DROP';
+ENABLE: 'ENABLE';
 EQ: '=' | '==';
 NEQ: '<>';
+EVENT: 'EVENT';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
 EXTENDED: 'EXTENDED';
@@ -347,6 +375,7 @@ RENAME: 'RENAME';
 REPLACE: 'REPLACE';
 REVOKE: 'REVOKE';
 SA: 'SA';
+SCHEDULE: 'SCHEDULE';
 SELECT: 'SELECT';
 SET: 'SET';
 SHOW: 'SHOW';
