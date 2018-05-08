@@ -254,7 +254,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 					for (
 						_ <- jdbcDao.deleteUserGroupRelByUser(catalogUser.id.get);
 						_ <- jdbcDao.deleteUserTableRelsByUser(catalogUser.id.get);
-						jdbcDao.deleteUser(catalogUser.id.get)
+						_ <- jdbcDao.deleteUser(catalogUser.id.get)
 					) yield ()
 				)
 			case None =>
@@ -514,7 +514,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 							x <- jdbcDao.deleteViews(db.id.get);
 							y <- jdbcDao.deleteFunctions(db.id.get);
 							z <- jdbcDao.deleteTables(db.id.get);
-							jdbcDao.deleteDatabase(organizationId, database)
+							_ <- jdbcDao.deleteDatabase(organizationId, database)
 						) yield ()
 					)
 				} else {
