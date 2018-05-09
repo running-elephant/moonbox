@@ -11,8 +11,8 @@ import moonbox.common.message._
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.MbService
-import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization
+import org.json4s.{CustomSerializer, DefaultFormats, JString, JInt}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -25,7 +25,14 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 	private var bindingFuture: Future[ServerBinding] = _
 	private val tokenManager = service.loginManager.tokenManager
 	implicit val materializer = ActorMaterializer()
-	implicit val formats = DefaultFormats
+	implicit val formats = DefaultFormats +   //add custom special serializer
+		new CustomSerializer[java.sql.Date]( _ =>
+			(	{ case JInt(s) => new java.sql.Date(s.longValue())},
+				{ case x: java.sql.Date => JString(x.toString)})) +
+		new CustomSerializer[java.math.BigDecimal]( _ =>
+			(	{ case JString(s) => new java.math.BigDecimal(s) },
+				{ case b: java.math.BigDecimal => JString(b.toString)}))
+
 	implicit val serialization = Serialization
 	implicit val shouldWritePretty = ShouldWritePretty.True
 
