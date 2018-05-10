@@ -30,8 +30,8 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     classOf[AttributeReference], classOf[Alias], classOf[Literal],
     classOf[Abs], classOf[Not], classOf[And], classOf[Or], classOf[EqualTo], classOf[Max], classOf[Min], classOf[Average], classOf[Count], classOf[Add], classOf[Subtract], classOf[Multiply], classOf[Divide],
     classOf[Sum], classOf[GreaterThan], classOf[GreaterThanOrEqual], classOf[LessThan], classOf[LessThanOrEqual], classOf[Not],
-    classOf[ArrayMap],classOf[ArrayFilter],classOf[IsNull], classOf[IsNotNull],classOf[Lower],classOf[Upper],classOf[Substring],classOf[Hour],classOf[Second],classOf[Month],classOf[Minute],
-    classOf[Year],classOf[WeekOfYear],classOf[CaseWhen],classOf[DayOfYear],classOf[Concat],classOf[DayOfMonth]
+    classOf[ArrayMap], classOf[ArrayFilter], classOf[IsNull], classOf[IsNotNull], classOf[Lower], classOf[Upper], classOf[Substring], classOf[Hour], classOf[Second], classOf[Month], classOf[Minute],
+    classOf[Year], classOf[WeekOfYear], classOf[CaseWhen], classOf[DayOfYear], classOf[Concat], classOf[DayOfMonth], classOf[CaseWhenCodegen]
     //--------------------
     /* classOf[Least], classOf[NullIf],
     classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],

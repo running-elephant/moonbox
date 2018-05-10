@@ -10,7 +10,7 @@ object SchemaUtil {
 
   // name, type, nullable
   def parse(json: String): Array[(String, String, Boolean)] = {
-    val schemaObject = new JSONObject(json)
+    val schemaObject = new JSONObject(json.toLowerCase)
     schemaObject.getJSONArray("fields").asScala.map {
       case elem: JSONObject =>
         val columnName = elem.getString("name")

@@ -1,5 +1,7 @@
 package moonbox.grid.deploy.transport.server
 
+import java.util.concurrent.ConcurrentHashMap
+
 import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
@@ -8,9 +10,6 @@ import moonbox.grid.deploy.MbService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
-import scala.collection.JavaConverters._
-
-import java.util.concurrent.ConcurrentHashMap
 
 class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (String, String)], mbService: MbService) extends ChannelInboundHandlerAdapter with MbLogging {
 
@@ -72,7 +71,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
         logInfo(s"Received message: ${login.copy(password = "***")}")
         mbService.login(login.user, login.password).onComplete {
           case Success(Some(token)) =>
-            logInfo(s"User: ${login.user} login succeed")
+            logInfo(s"User: ${login.user} login succeed: Token=$token")
             //open session
             logInfo(s"Opening session for user: ${login.user}")
             mbService.openSession(token, Some(login.database)).onComplete {
@@ -119,12 +118,12 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
                     ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, v.error, Some("Logout succeed")))
                   }
                 case Failure(e) =>
-                  logInfo("Logout failed")
+                  logError("Logout failed")
                   ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Some(e.getMessage), Some(s"Logout error: ${v.error.get}")))
               }
             }
           case Failure(e) =>
-            logInfo(s"Close session error: $e")
+            logError(s"Close session error: $e")
             ctx.writeAndFlush(JdbcLogoutOutbound(logout.messageId, Some(e.getMessage), Some("Close session error")))
         }
       case query: JdbcQueryInbound =>
@@ -141,20 +140,35 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
                 if (v.size.isDefined && v.data.isDefined && v.data.get.size < v.size.get) {
                   val fetchState = DataFetchState(query.messageId, v.jobId.orNull, 0, v.data.get.size, v.size.get)
                   ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data, v.schema))
+                } else if (v.data.isDefined && v.schema.isEmpty) {
+                  //for some queries without schema: e.g. "show tables; show databases; desc table aaa; desc user sally"
+                  val schema: Option[String] = {
+                    val firstRow = v.data.get.head
+                    if (firstRow != null && firstRow.nonEmpty) {
+                      val buf = collection.mutable.ArrayBuffer.empty[String]
+                      firstRow.indices.foreach { i =>
+                        buf += s"{name: column_$i, type: string, nullable: true}"
+                      }
+                      Some(buf.mkString("{type: struct, fields: [", ", ", "]}"))
+                    } else {
+                      None
+                    }
+                  }
+                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, schema, v.size))
                 } else {
-                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema))
+                  ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema, v.size))
                 }
               } else {
                 logInfo(s"SQLs(${sqls.mkString("; ")}) query succeed with error: ${v.error.orNull}")
-                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema))
+                ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, v.error, v.data, v.schema, v.size))
               }
             case Failure(e) =>
-              logInfo(s"SQLs(${sqls.mkString("; ")}) query failed: ${e.getMessage}")
-              ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some(e.getMessage), None, None))
+              logError(s"SQLs(${sqls.mkString("; ")}) query failed: ${e.getMessage}")
+              ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some(e.getMessage), None, None, None))
           }
         } else {
           logInfo(s"User have not login yet")
-          ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some("User did not login, login first"), None, None))
+          ctx.writeAndFlush(JdbcQueryOutbound(query.messageId, Some("User did not login, login first"), None, None, None))
         }
       case dataFetch: DataFetchInbound =>
         logInfo(s"Received message: $dataFetch")
@@ -192,7 +206,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
             ctx.writeAndFlush(DataFetchOutbound(dataFetchState, None, v.data, v.schema))
           }
         case Failure(e) =>
-          logInfo(s"Do dataFetch failed: ${e.getMessage}")
+          logError(s"Do dataFetch failed: ${e.getMessage}")
           ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, Some(e.getMessage), None, None))
       }
     } else {

@@ -287,7 +287,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   test("test for adding mongo operators: case when"){
     connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
     stmt = connection.createStatement()
-    sql = "select (case when price < 20 and 15 < price then 0 when price >50 then 2 else 1 end) as aaa from books"
+    sql = "select (case when price+2 < 20 and 15 < price then 0 when price >50 then 2 else 1 end) as aaa from books"
     res = stmt.executeQuery(sql)
     println("-------------------test for adding mongo operators: case when-------------------")
     while (res.next()) {

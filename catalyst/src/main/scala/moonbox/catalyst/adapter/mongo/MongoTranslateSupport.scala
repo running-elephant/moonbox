@@ -229,23 +229,30 @@ trait MongoTranslateSupport {
       case EndsWith(left, right) => throw new Exception("Unsupported yet")
       case StartsWith(left, right) => throw new Exception("Unsupported yet")
       case b: BinaryOperator =>
-        val symbol = e match {
-          case And(left, right) => "and"
-          case Or(left, right) => "or"
-          case EqualTo(left, right) => "="
-          case EqualNullSafe(left, right) => "="
-          case GreaterThan(left, right) => ">"
-          case GreaterThanOrEqual(left, right) => ">="
-          case LessThan(left, right) => "<"
-          case LessThanOrEqual(left, right) => "<="
+        b match {
+          case arith: BinaryArithmetic =>
+            binaryArithmeticToBson(arith)
+          case _ =>
+            val symbol = b match {
+              case And(left, right) => "and"
+              case Or(left, right) => "or"
+              case EqualTo(left, right) => "="
+              case EqualNullSafe(left, right) => "="
+              case GreaterThan(left, right) => ">"
+              case GreaterThanOrEqual(left, right) => ">="
+              case LessThan(left, right) => "<"
+              case LessThanOrEqual(left, right) => "<="
+            }
+            s"{${symbolToBson(symbol)}: [" + predicateToBson(b.left) + ", " + predicateToBson(b.right) + "]}"
         }
-        s"{${symbolToBson(symbol)}: [" + predicateToBson(b.left) + ", " + predicateToBson(b.right) + "]}"
       case a: AttributeReference =>
         withQuotesAndDollar(a)
       case u: UnresolvedAttribute =>
         withQuotesAndDollar(u)
       case l: Literal =>
         l.value.toString
+      case other =>
+        expressionToBson(other)
     }
   }
 

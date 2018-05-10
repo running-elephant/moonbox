@@ -15,7 +15,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   var jdbcSession: JdbcSession = connection.getSession()
   var resultSet: MoonboxResultSet = _
   var maxRows: Int = 0
+  var updateCount: Int = 0
   var closed: Boolean = false
+  var isResultSet: Boolean = true
 
   /**
     * Check if the statement is closed.
@@ -51,6 +53,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           throw new SQLException(s"sql query error: ${resp.err.get}")
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
+          if (resp.dataSize.isEmpty)
+            isResultSet = false
+
           resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
           resultSet.updateResultSet(resp)
           resultSet
@@ -118,19 +123,21 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def execute(sql: String) = {
     checkClosed
-    val client = jdbcSession.jdbcClient
-    val messageId = client.getMessageId()
-    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
-    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
-    resp match {
-      case r: JdbcQueryOutbound => if (r.err.isDefined) false else true
-      case _ => false
-    }
+    executeQuery(sql)
+    if (isResultSet) true else false
+    //    val client = jdbcSession.jdbcClient
+    //    val messageId = client.getMessageId()
+    //    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
+    //    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
+    //    resp match {
+    //      case r: JdbcQueryOutbound => if (r.err.isDefined) false else true
+    //      case _ => false
+    //    }
   }
 
   override def getResultSet = resultSet
 
-  override def getUpdateCount = 0
+  override def getUpdateCount = updateCount
 
   override def getMoreResults = false
 

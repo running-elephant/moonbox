@@ -37,7 +37,7 @@ case class JdbcLogoutInbound(messageId: Long) extends JdbcInboundMessage
 case class JdbcLogoutOutbound(messageId: Long,  err: Option[String], message: Option[String]) extends JdbcOutboundMessage
 
 case class JdbcQueryInbound(messageId: Long, fetchSize: Int, sql: String) extends JdbcInboundMessage // specify the data fetch size, default is 0
-case class JdbcQueryOutbound(messageId: Long, err: Option[String], data: Option[Seq[Seq[Any]]], schema: Option[String]) extends JdbcOutboundMessage
+case class JdbcQueryOutbound(messageId: Long, err: Option[String], data: Option[Seq[Seq[Any]]], schema: Option[String], dataSize: Option[Long]) extends JdbcOutboundMessage
 
 case class DataFetchInbound(dataFetchState: DataFetchState) extends JdbcInboundMessage
 case class DataFetchOutbound(dataFetchState: DataFetchState, err: Option[String], data: Option[Seq[Seq[Any]]], schema: Option[String]) extends JdbcOutboundMessage
