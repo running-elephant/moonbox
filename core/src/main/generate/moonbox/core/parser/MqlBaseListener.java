@@ -906,6 +906,90 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitDropApplication(MqlBaseParser.DropApplicationContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code createEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterCreateEvent(MqlBaseParser.CreateEventContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code createEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitCreateEvent(MqlBaseParser.CreateEventContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setDefiner}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetDefiner(MqlBaseParser.SetDefinerContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setDefiner}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetDefiner(MqlBaseParser.SetDefinerContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetEventName(MqlBaseParser.SetEventNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetEventName(MqlBaseParser.SetEventNameContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setEventSchedule}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetEventSchedule(MqlBaseParser.SetEventScheduleContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setEventSchedule}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetEventSchedule(MqlBaseParser.SetEventScheduleContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setEventEnable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetEventEnable(MqlBaseParser.SetEventEnableContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setEventEnable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetEventEnable(MqlBaseParser.SetEventEnableContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code dropEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterDropEvent(MqlBaseParser.DropEventContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code dropEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitDropEvent(MqlBaseParser.DropEventContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code showSysInfo}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -1181,6 +1265,36 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#definer}.
+	 * @param ctx the parse tree
+	 */
+	void enterDefiner(MqlBaseParser.DefinerContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#definer}.
+	 * @param ctx the parse tree
+	 */
+	void exitDefiner(MqlBaseParser.DefinerContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#schedule}.
+	 * @param ctx the parse tree
+	 */
+	void enterSchedule(MqlBaseParser.ScheduleContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#schedule}.
+	 * @param ctx the parse tree
+	 */
+	void exitSchedule(MqlBaseParser.ScheduleContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#starOrInteger}.
+	 * @param ctx the parse tree
+	 */
+	void enterStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#starOrInteger}.
+	 * @param ctx the parse tree
+	 */
+	void exitStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#appCmds}.
 	 * @param ctx the parse tree

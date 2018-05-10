@@ -75,7 +75,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 					case mbQuery: MQLQuery => // cached
 						executeQuery(mbQuery, jobId)
 					case insert: InsertInto => // external
-						createInsertInto(insert)
+						executeInsertInto(insert)
 					case _ => throw new Exception("Unsupported command.")
 				}
 		}
@@ -118,7 +118,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		jobId
 	}
 
-	private def createInsertInto(insert: InsertInto): Unit = {
+	private def executeInsertInto(insert: InsertInto): Unit = {
 		val options = getCatalogTable(insert.table.table, insert.table.database).properties
 		val saveMode = if (insert.overwrite) SaveMode.Overwrite else SaveMode.Append
 		try {

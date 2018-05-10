@@ -112,7 +112,7 @@ case class CatalogScheduler(
 	name: String,
 	organizationId: Long,
 	definer: Long,
-	scheduler: String,
+	schedule: String,
 	enable: Boolean,
 	description: Option[String] = None,
 	application: Long,

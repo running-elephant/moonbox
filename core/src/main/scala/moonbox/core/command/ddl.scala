@@ -545,3 +545,85 @@ case class DropApplication(
 	}
 }
 
+
+case class CreateScheduler(
+	name: String,
+	definer: Option[String],
+	schedule: String,
+	description: Option[String],
+	app: String,
+	enable: Boolean,
+	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
+
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val definerId = definer.map(user => mbSession.catalog.getUser(ctx.organizationId, user).id.get).getOrElse(ctx.userId)
+		val appId = mbSession.catalog.getApplication(ctx.organizationId, app).id.get
+		mbSession.catalog.createScheduler(
+			CatalogScheduler(
+				name = name,
+				organizationId = ctx.organizationId,
+				definer = definerId,
+				schedule = schedule,
+				enable = enable,
+				description = description,
+				application = appId,
+				createBy = ctx.userId,
+				updateBy = ctx.userId
+			), ctx.organizationName, ignoreIfExists
+		)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterSchedulerSetName(
+	name: String, newName: String) extends MbRunnableCommand with DDL {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		mbSession.catalog.renameScheduler(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterSchedulerSetDefiner(
+	name: String,
+	definer: String) extends MbRunnableCommand with DDL {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val existsScheduler = mbSession.catalog.getScheduler(ctx.organizationId, name)
+		val newDefinerId = mbSession.catalog.getUser(ctx.organizationId, definer).id.get
+		mbSession.catalog.alterScheduler(
+			existsScheduler.copy(definer = newDefinerId)
+		)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterSchedulerSetSchedule(
+	name: String, schedule: String) extends MbRunnableCommand with DDL {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val existsScheduler = mbSession.catalog.getScheduler(ctx.organizationId, name)
+		mbSession.catalog.alterScheduler(
+			existsScheduler.copy(schedule = schedule)
+		)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterSchedulerSetEnable(
+	name: String, enable: Boolean) extends MbRunnableCommand with DDL {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val existsScheduler = mbSession.catalog.getScheduler(ctx.organizationId, name)
+		mbSession.catalog.alterScheduler(
+			existsScheduler.copy(enable = enable)
+		)
+		Seq.empty[Row]
+	}
+}
+
+case class DropScheduler(
+	name: String,
+	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		mbSession.catalog.dropScheduler(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
+		Seq.empty[Row]
+	}
+}
+

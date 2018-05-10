@@ -162,12 +162,12 @@ trait EntityComponent extends DatabaseComponent {
 		def name = column[String]("name")
 		def organizationId = column[Long]("organizationId")
 		def definer = column[Long]("definer")
-		def scheduler = column[String]("scheduler")
+		def schedule = column[String]("schedule")
 		def enable = column[Boolean]("enable")
 		def description = column[Option[String]]("description")
 		def application = column[Long]("application")
 
-		override def * = (id.?, name, organizationId, definer, scheduler, enable, description, application, createBy,
+		override def * = (id.?, name, organizationId, definer, schedule, enable, description, application, createBy,
 			createTime, updateBy, updateTime) <> (CatalogScheduler.tupled, CatalogScheduler.unapply)
 	}
 
