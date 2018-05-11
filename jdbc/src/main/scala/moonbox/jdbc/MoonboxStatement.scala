@@ -53,9 +53,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           throw new SQLException(s"sql query error: ${resp.err.get}")
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
-          if (resp.dataSize.isEmpty)
-            isResultSet = false
-
+          // TODO:
+//          if (resp.data.isEmpty)
+//            isResultSet = false
           resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
           resultSet.updateResultSet(resp)
           resultSet
