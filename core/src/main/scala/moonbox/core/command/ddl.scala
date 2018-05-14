@@ -585,10 +585,10 @@ case class AlterSchedulerSetName(
 
 case class AlterSchedulerSetDefiner(
 	name: String,
-	definer: String) extends MbRunnableCommand with DDL {
+	definer: Option[String]) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val existsScheduler = mbSession.catalog.getScheduler(ctx.organizationId, name)
-		val newDefinerId = mbSession.catalog.getUser(ctx.organizationId, definer).id.get
+		val newDefinerId = mbSession.catalog.getUser(ctx.organizationId, definer.getOrElse(ctx.userName)).id.get
 		mbSession.catalog.alterScheduler(
 			existsScheduler.copy(definer = newDefinerId)
 		)
