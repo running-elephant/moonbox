@@ -48,6 +48,7 @@
         <json4s-jackson.version>3.2.11</json4s-jackson.version>
         <akka-http-json4s.version>1.11.0</akka-http-json4s.version>
         <cassandra-connector.version>2.0.7</cassandra-connector.version>
+        <kudu.version>1.6.0</kudu.version>
     </properties>
 
     <dependencyManagement>
@@ -200,6 +201,17 @@
                 <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>3.3.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.kudu</groupId>
+                <artifactId>kudu-spark2_2.11</artifactId>
+                <version>1.6.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kudu</groupId>
+                <artifactId>kudu-client</artifactId>
+                <version>1.6.0</version>
             </dependency>
 
         </dependencies>

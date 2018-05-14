@@ -71,7 +71,6 @@
                 <include>com.lihaoyi:fastparse-utils_2.11</include>
                 <include>com.lihaoyi:sourcecode_2.11</include>
                 <include>com.facebook.presto:presto-jdbc</include>
-                <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
                 <!-- cassandra need from here -->
                 <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
                 <!-- mongo need from here -->
@@ -87,6 +86,12 @@
                 <include>org.apache.httpcomponents:httpcore</include>
                 <include>commons-codec:commons-codec</include>
                 <include>org.json:json</include>
+                <!-- kafka need from here-->
+                <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
+                <include>org.apache.kafka:kafka-clients</include>
+                <!--kudu-->
+                <include>org.apache.kudu:kudu-client</include>
+                <include>org.apache.kudu:kudu-spark2_2.11</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
