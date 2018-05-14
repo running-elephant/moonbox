@@ -15,6 +15,8 @@ public class MbDriver implements java.sql.Driver {
         }
     }
 
+    final String URL_PREFIX = "jdbc:moonbox:";
+
     @Override
     public int getMajorVersion() {
         return 0;
@@ -37,6 +39,10 @@ public class MbDriver implements java.sql.Driver {
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
+        if (!this.acceptsURL(url)) {
+            return null;
+        }
+
         MoonboxConnection conn = new MoonboxConnection(url, info);
         if (conn.userCheck()) {
             return conn;
@@ -49,7 +55,7 @@ public class MbDriver implements java.sql.Driver {
     public boolean acceptsURL(String url) throws SQLException {
         if (url == null)
             return false;
-        return MoonboxJDBCUtils.parseURL(url, null) != null;
+        return url.toLowerCase().startsWith(URL_PREFIX);
     }
 
     @Override

@@ -16,13 +16,13 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   private var jdbcSession: JdbcSession = _
   var statement: MoonboxStatement = _
   var closed: Boolean = _
-
+  var database: String = _
   def userCheck(): Boolean = {
     var flag = false
     val newProps = parseURL(url, props)
     val username = newProps.getProperty(USER_KEY)
     val pwd = newProps.getProperty(PASSWORD_KEY)
-    val database = newProps.getProperty(DB_NAME)
+    database = newProps.getProperty(DB_NAME)
     val table = {
       val tb = newProps.getProperty("table")
       if (tb != null) tb
@@ -97,7 +97,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def createSQLXML(): SQLXML = ???
 
-  override def getCatalog: String = ???
+  override def getCatalog: String = database
 
   override def createBlob(): Blob = ???
 
@@ -122,7 +122,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def setAutoCommit(autoCommit: Boolean): Unit = ??? // TODO: setAutoCommit
 
-  override def getMetaData: DatabaseMetaData = new MoonboxDatabaseMetaData() // TODO: getMetaData: DatabaseMetaData
+  override def getMetaData: DatabaseMetaData = ??? // TODO: getMetaData: DatabaseMetaData
 
   override def setReadOnly(readOnly: Boolean): Unit = ??? // TODO: setReadOnly
 
