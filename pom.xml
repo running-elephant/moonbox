@@ -213,6 +213,17 @@
                 <artifactId>kudu-client</artifactId>
                 <version>1.6.0</version>
             </dependency>
+            <dependency>
+                <artifactId>scala-reflect</artifactId>
+                <groupId>org.scala-lang</groupId>
+                <version>${scala.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-compiler</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>
