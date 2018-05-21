@@ -9,12 +9,13 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
   var session: SparkSession = _
+  var jarPath: String = _
 
   override def beforeAll: scala.Unit = {
     session = SparkSession.builder().master("local[2]").appName("udf").getOrCreate()
     //session.sparkContext.addJar(jarPath)
     val rootDir = System.getProperty("user.dir")
-    val url = getClass.getClassLoader.getResource(".")
+
     val df = session.read.json(s"${rootDir}/core/src/test/resources/temperatures.json")
     df.createOrReplaceTempView("citytemps")
 
@@ -23,6 +24,9 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
     val df2 = session.read.json(s"${rootDir}/core/src/test/resources/cities.json")
     df2.createOrReplaceTempView("cities")
+
+    jarPath = s"file:${rootDir}/core/src/test/resources/udfTest.jar"  //update jar path
+
   }
 
   test("scala test") {
@@ -83,26 +87,22 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
   }
 
   test("jar java udf file") {
-    val jarPath = "file:/root/my_project/tortoise-bak/target/tortoise-1.0-SNAPSHOT.jar"
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
       ScalaUDF(UdfHelper.generateFunction(1, "multiply", "", jarPath, "zoo.Panda", "jar"), DoubleType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
 
   test("jar scala udf file") {
-    val jarPath = "file:/root/my_project/tortoise-bak/target/tortoise-1.0-SNAPSHOT.jar"
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(UdfHelper.generateFunction(1, "multiply", "", jarPath, "zoo.Tiger$", "jar"), DoubleType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
 
   test("jar scala udaf file") {
-    val jarPath = "file:/root/my_project/tortoise-bak/target/tortoise-1.0-SNAPSHOT.jar"
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
       ScalaUDAF(e, UdfHelper.generateAggFunction(path=jarPath, className="zoo.Monkey", tpe="jar")))
     session.sql("SELECT Make, multiply(RetailValue, Stock) AS InventoryValuePerMake FROM inventory GROUP BY Make").show()
   }
   test("jar java udaf file") {
-    val jarPath = "file:/root/my_project/tortoise-bak/target/tortoise-1.0-SNAPSHOT.jar"
     session.sessionState.functionRegistry.registerFunction("fun", (e: Seq[Expression]) =>
       ScalaUDAF(e, UdfHelper.generateAggFunction(path=jarPath, className="zoo.Bear", tpe="jar")))
     session.sql("SELECT city , count['dominant'] as Dominant, count['Total'] as Total from(select city, fun(Female, Male) as count from cities group by (city)) temp").show()
