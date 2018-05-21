@@ -356,6 +356,38 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listApplications(organizationId, pattern)
 	}
 
+	def createScheduler(schedulerDefinition: CatalogScheduler, organization: String, ignoreIfExists: Boolean): Unit = {
+		catalog.createScheduler(schedulerDefinition, organization, ignoreIfExists)
+	}
+
+	def renameScheduler(organizationId: Long, organization: String, scheduler: String, newScheduler: String, updateBy: Long): Unit = {
+		catalog.renameScheduler(organizationId, organization, scheduler, newScheduler, updateBy)
+	}
+
+	def alterScheduler(schedulerDefinition: CatalogScheduler): Unit = {
+		catalog.alterScheduler(schedulerDefinition)
+	}
+
+	def schedulerExists(organizationId: Long, scheduler: String): Boolean = {
+		catalog.schedulerExists(organizationId, scheduler)
+	}
+
+	def dropScheduler(organizationId: Long, organization: String, scheduler: String, ignoreIfNotExists: Boolean): Unit = {
+		catalog.dropScheduler(organizationId, organization, scheduler, ignoreIfNotExists)
+	}
+
+	def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler = {
+		catalog.getScheduler(organizationId, scheduler)
+	}
+
+	def listSchedulers(organizationId: Long): Seq[CatalogScheduler] = {
+		catalog.listSchedulers(organizationId)
+	}
+
+	def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler] = {
+		catalog.listSchedulers(organizationId, pattern)
+	}
+
 	def createUserGroupRel(userGroupRels: Seq[CatalogUserGroupRel], organization: String, group: String, users: Seq[String]): Unit = {
 		catalog.createUserGroupRel(userGroupRels:_*)(organization, group, users)
 	}

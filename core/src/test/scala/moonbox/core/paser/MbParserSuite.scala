@@ -389,6 +389,40 @@ class MbParserSuite extends FunSuite {
 		)
 	}
 
+	test("event") {
+		assertEquals(
+			CreateScheduler("once", None, "* * * * * *", Some("for test"), "app1", enable = false, ignoreIfExists = false),
+			"CREATE EVENT once ON SCHEDULE AT * * * * * * COMMENT 'for test' DO CALL app1",
+			"CREATE DEFINER CURRENT_USER EVENT once ON SCHEDULE AT * * * * * * DISABLE COMMENT 'for test' DO CALL app1"
+		)
+
+		assertEquals(
+			AlterSchedulerSetName("once", "event1"),
+			"ALTER EVENT once RENAME TO event1",
+			"RENAME EVENT once TO event1"
+		)
+
+		assertEquals(
+			AlterSchedulerSetDefiner("once", Some("user1")),
+			"ALTER DEFINER = user1 EVENT once"
+		)
+
+		assertEquals(
+			AlterSchedulerSetSchedule("once", "* * * 23 2 18"),
+			"ALTER EVENT once ON SCHEDULE AT * * * 23 2 18"
+		)
+
+		assertEquals(
+			AlterSchedulerSetEnable("once", true),
+			"ALTER EVENT once ENABLE"
+		)
+
+		assertEquals(
+			DropScheduler("once", ignoreIfNotExists = true),
+			"DROP EVENT IF EXISTS once"
+		)
+	}
+
 	test("show sysinfo") {
 		assertEquals(
 			ShowSysInfo,

@@ -140,7 +140,7 @@ mql
 
 
 definer
-    : EQ user = identifier | CURRENT_USER
+    : EQ? (user = identifier | CURRENT_USER)
     ;
 
 schedule

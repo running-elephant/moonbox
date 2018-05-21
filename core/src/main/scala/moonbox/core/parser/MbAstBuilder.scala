@@ -551,6 +551,65 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		)._1
 	}
 
+	override def visitCreateEvent(ctx: CreateEventContext): MbCommand = {
+		val name = ctx.name.getText
+		val definer = if (ctx.DEFINER() != null) visitDefiner(ctx.definer()) else None
+		val scheduler = visitSchedule(ctx.schedule())
+		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
+		val application = ctx.app.getText
+		val enable = if (ctx.ENABLE() != null) true else false
+		val ignoreIfExists = ctx.EXISTS() != null
+		CreateScheduler(name, definer, scheduler, desc, application, enable, ignoreIfExists)
+	}
+
+	override def visitRenameEvent(ctx: RenameEventContext): MbCommand = {
+		val name = ctx.name.getText
+		val newName = ctx.newName.getText
+		AlterSchedulerSetName(name, newName)
+	}
+
+	override def visitSetDefiner(ctx: SetDefinerContext): MbCommand = {
+		val name = ctx.name.getText
+		val definer = visitDefiner(ctx.definer())
+		AlterSchedulerSetDefiner(name, definer)
+	}
+
+	override def visitSetEventName(ctx: SetEventNameContext): MbCommand = {
+		val name = ctx.name.getText
+		val newName = ctx.newName.getText
+		AlterSchedulerSetName(name, newName)
+	}
+
+	override def visitSetEventSchedule(ctx: SetEventScheduleContext): MbCommand = {
+		val name = ctx.name.getText
+		val scheduler = visitSchedule(ctx.schedule())
+		AlterSchedulerSetSchedule(name, scheduler)
+	}
+
+	override def visitSetEventEnable(ctx: SetEventEnableContext): MbCommand = {
+		val name = ctx.name.getText
+		val enable = ctx.ENABLE() != null
+		AlterSchedulerSetEnable(name, enable)
+	}
+
+	override def visitDropEvent(ctx: DropEventContext): MbCommand = {
+		val name = ctx.name.getText
+		val ignoreIfNotExists = ctx.EXISTS() != null
+		DropScheduler(name, ignoreIfNotExists)
+	}
+
+	override def visitDefiner(ctx: DefinerContext): Option[String] = {
+		if (ctx.CURRENT_USER() != null) None else Some(ctx.user.getText)
+	}
+
+	override def visitSchedule(ctx: ScheduleContext): String = {
+		ctx.starOrInteger().map(visitStarOrInteger).mkString(" ")
+	}
+
+	override def visitStarOrInteger(ctx: StarOrIntegerContext): String = {
+		if (ctx.STAR() != null) "*" else ctx.INTEGER_VALUE().getText
+	}
+
 	override def visitCreateTemporaryFunction(ctx: CreateTemporaryFunctionContext): MbCommand = {
 		visitCreateTemporaryFunctionCmd(ctx.createTemporaryFunctionCmd())._2
 	}

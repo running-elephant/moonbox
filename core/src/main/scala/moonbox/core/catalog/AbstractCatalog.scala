@@ -243,6 +243,45 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def listApplications(organizationId: Long, pattern: String): Seq[CatalogApplication]
 
 	// ----------------------------------------------------------------------------
+	// Scheduler -- belong to organization
+	// ----------------------------------------------------------------------------
+	final def createScheduler(schedulerDefinition: CatalogScheduler, organization: String, ignoreIfExists: Boolean): Unit = {
+		val scheduler = schedulerDefinition.name
+		postToAll(CreateSchedulerPreEvent(organization, scheduler))
+		doCreateScheduler(schedulerDefinition, ignoreIfExists)
+		postToAll(CreateSchedulerEvent(organization, scheduler))
+	}
+	protected def doCreateScheduler(schedulerDefinition: CatalogScheduler, ignoreIfExists: Boolean): Unit
+
+	final def renameScheduler(organizationId: Long, organization: String, scheduler: String, newScheduler: String, updateBy: Long): Unit = {
+		postToAll(RenameSchedulerPreEvent(organization, scheduler))
+
+		postToAll(RenameSchedulerEvent(organization, scheduler))
+	}
+
+	protected def doRenameScheduler(organizationId: Long, scheduler: String, newScheduler: String, updateBy: Long): Unit
+
+	final def dropScheduler(organizationId: Long, organization: String, scheduler: String, ignoreIfNotExists: Boolean): Unit = {
+		postToAll(DropSchedulerPreEvent(organization, scheduler))
+		doDropScheduler(organizationId, scheduler, ignoreIfNotExists)
+		postToAll(DropSchedulerEvent(organization, scheduler))
+	}
+
+	protected def doDropScheduler(organizationId: Long, scheduler: String, ignoreIfNotExists: Boolean): Unit
+
+	def alterScheduler(schedulerDefinition: CatalogScheduler): Unit
+
+	def schedulerExists(organizationId: Long, scheduler: String): Boolean
+
+	def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler
+
+	def listSchedulers(organizationId: Long): Seq[CatalogScheduler]
+
+	def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler]
+
+
+
+	// ----------------------------------------------------------------------------
 	// Database -- belong to organization
 	// ----------------------------------------------------------------------------
 

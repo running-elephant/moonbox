@@ -33,3 +33,6 @@ class OrganizationExistsException(org: String)
 class ApplicationExistsException(app: String)
 	extends ExistsException(s"Application $app already exists")
 
+class SchedulerExistsException(scheduler: String)
+	extends ExistsException(s"Event $scheduler already exists")
+

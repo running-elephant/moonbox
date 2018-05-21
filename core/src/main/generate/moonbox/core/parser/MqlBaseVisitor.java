@@ -535,6 +535,55 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDropApplication(MqlBaseParser.DropApplicationContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code createEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCreateEvent(MqlBaseParser.CreateEventContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setDefiner}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetDefiner(MqlBaseParser.SetDefinerContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetEventName(MqlBaseParser.SetEventNameContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setEventSchedule}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetEventSchedule(MqlBaseParser.SetEventScheduleContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setEventEnable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetEventEnable(MqlBaseParser.SetEventEnableContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code dropEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDropEvent(MqlBaseParser.DropEventContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code showSysInfo}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -695,6 +744,24 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#definer}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDefiner(MqlBaseParser.DefinerContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#schedule}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSchedule(MqlBaseParser.ScheduleContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#starOrInteger}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#appCmds}.
 	 * @param ctx the parse tree

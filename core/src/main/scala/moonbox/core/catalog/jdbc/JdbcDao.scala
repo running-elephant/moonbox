@@ -481,6 +481,12 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
+	def deleteScheduler(organizationId: Long, scheduler: String) = {
+		delete[CatalogScheduler, CatalogSchedulerTable](
+			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+		)
+	}
+
 	def renameScheduler(organizationId: Long, scheduler: String, newScheduler: String)(updateBy: Long) = {
 		update[CatalogScheduler, CatalogSchedulerTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),

@@ -490,6 +490,71 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
+	// Scheduler -- belong to organization
+	// ----------------------------------------------------------------------------
+
+	override def doCreateScheduler(schedulerDefinition: CatalogScheduler, ignoreIfExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.schedulerExists(schedulerDefinition.organizationId, schedulerDefinition.name)).flatMap {
+			case true =>
+				ignoreIfExists match {
+					case true => Future(Unit)
+					case false => throw new SchedulerExistsException(schedulerDefinition.name)
+				}
+			case false =>
+				jdbcDao.action(jdbcDao.createScheduler(schedulerDefinition))
+		}
+	}
+
+	override def doRenameScheduler(organizationId: Long, scheduler: String, newScheduler: String, updateBy: Long): Unit = await {
+		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler)).flatMap {
+			case true =>
+				jdbcDao.action(jdbcDao.schedulerExists(organizationId, newScheduler)).flatMap {
+					case false =>
+						jdbcDao.action(jdbcDao.renameScheduler(organizationId, scheduler, newScheduler)(updateBy))
+					case true =>
+						throw new SchedulerExistsException(newScheduler)
+				}
+			case false =>
+				throw new NoSuchSchedulerException(scheduler)
+		}
+	}
+
+	override def alterScheduler(schedulerDefinition: CatalogScheduler): Unit = await {
+		jdbcDao.action(jdbcDao.updateScheduler(schedulerDefinition))
+	}
+
+	override def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler = await {
+		jdbcDao.action(jdbcDao.getScheduler(organizationId, scheduler)).map {
+			case Some(a) => a
+			case None => throw new NoSuchSchedulerException(scheduler)
+		}
+	}
+
+	override def doDropScheduler(organizationId: Long, scheduler: String, ignoreIfNotExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler)).flatMap {
+			case true =>
+				jdbcDao.action(jdbcDao.deleteScheduler(organizationId, scheduler))
+			case false =>
+				ignoreIfNotExists match {
+					case true => Future(Unit)
+					case false => throw new NoSuchSchedulerException(scheduler)
+				}
+		}
+	}
+
+	override def schedulerExists(organizationId: Long, scheduler: String): Boolean = await {
+		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler))
+	}
+
+	override def listSchedulers(organizationId: Long): Seq[CatalogScheduler] = await {
+		jdbcDao.action(jdbcDao.listSchedulers(organizationId))
+	}
+
+	override def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler] = await {
+		jdbcDao.action(jdbcDao.listSchedulers(organizationId, pattern))
+	}
+
+	// ----------------------------------------------------------------------------
 	// Database -- belong to organization
 	// ----------------------------------------------------------------------------
 
