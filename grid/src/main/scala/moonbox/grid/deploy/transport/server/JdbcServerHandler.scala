@@ -143,13 +143,18 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
                 } else if (v.data.isDefined && v.schema.isEmpty) {
                   //for some queries without schema: e.g. "show tables; show databases; desc table aaa; desc user sally"
                   val schema: Option[String] = {
-                    val firstRow = v.data.get.head
-                    if (firstRow != null && firstRow.nonEmpty) {
-                      val buf = collection.mutable.ArrayBuffer.empty[String]
-                      firstRow.indices.foreach { i =>
-                        buf += s"{name: column_$i, type: string, nullable: true}"
+                    val data1 = v.data.get
+                    if (data1.nonEmpty) {
+                      val firstRow = data1.head
+                      if (firstRow != null && firstRow.nonEmpty) {
+                        val buf = collection.mutable.ArrayBuffer.empty[String]
+                        firstRow.indices.foreach { i =>
+                          buf += s"{name: column_$i, type: string, nullable: true}"
+                        }
+                        Some(buf.mkString("{type: struct, fields: [", ", ", "]}"))
+                      } else {
+                        None
                       }
-                      Some(buf.mkString("{type: struct, fields: [", ", ", "]}"))
                     } else {
                       None
                     }
