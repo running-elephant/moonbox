@@ -2,6 +2,7 @@ package moonbox.repl
 
 import moonbox.common.MbLogging
 import moonbox.repl.adapter.{Connector, JdbcConnector, RestConnector}
+import moonbox.repl.http.MbHttpConnector
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.terminal.TerminalBuilder
@@ -9,7 +10,7 @@ import org.jline.terminal.TerminalBuilder
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-object Main extends JsonSerializer with MbLogging {
+object Main extends JsonSerializer {
 
   var method: String = "rest"
   var retryTimes: Int = 3
@@ -25,13 +26,13 @@ object Main extends JsonSerializer with MbLogging {
   val lineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
 
   def main(args: Array[String]) {
-	  parse(args.toList)
-
+    parse(args.toList)
     do {
       checkParameters()
-      connector = if(method == "rest" || method == "r") {
-        new RestConnector(timeout)
-      }else{
+      connector = if (method == "rest" || method == "r") {
+        // new RestConnector(timeout)
+        new MbHttpConnector
+      } else {
         new JdbcConnector(timeout)
       }
       repl()
@@ -40,16 +41,15 @@ object Main extends JsonSerializer with MbLogging {
     System.exit(-1)
   }
 
-	def repl(): Unit = {
-		if (connector.prepare(host, port, user, password, "default")) {
-			while (true) {
-				val stringBuilder = new StringBuilder
-				val line: String = lineReader.readLine(prompter, null, null, null).trim
-				if (line.length > 0) {
+  def repl(): Unit = {
+    if (connector.prepare(host, port, user, password, "default")) {
+      while (true) {
+        val stringBuilder = new StringBuilder
+        val line: String = lineReader.readLine(prompter, null, null, null).trim
+        if (line.length > 0) {
           if (!line.endsWith(delimiter)) {
             stringBuilder.append(line)
             var endLine = false
-
             while (!endLine) {
               val line: String = lineReader.readLine(" " * (user.length - 1) + "->" + " ").trim
               if (line.length > 0)
@@ -68,25 +68,25 @@ object Main extends JsonSerializer with MbLogging {
           }
         }
 
-				try {
-					val multiLines = stringBuilder.toString().trim
-					if (multiLines.length > 0) {
+        try {
+          val multiLines = stringBuilder.toString().trim
+          if (multiLines.length > 0) {
             lineReader.getHistory.add(multiLines)
           }
 
-					process(multiLines.stripSuffix(delimiter))  //do process
+          process(multiLines.stripSuffix(delimiter)) //do process
 
-					stringBuilder.clear()
-				} catch {
-					case e: Exception =>
-						System.out.println(e.getMessage)
-				}
-			}
-		} else {
-			retryTimes -= 1
-			logInfo("retry ...")
-		}
-	}
+          stringBuilder.clear()
+        } catch {
+          case e: Exception =>
+            System.out.println(e.getMessage)
+        }
+      }
+    } else {
+      retryTimes -= 1
+      System.out.println("retry ...")
+    }
+  }
 
   private def process(sqls: String): Unit = {
     sqls.trim match {
@@ -111,7 +111,7 @@ object Main extends JsonSerializer with MbLogging {
         if (illegal) {
           connector.process(sqlList)
         }*/
-		  connector.process(sqlList)
+        connector.process(sqlList)
     }
   }
 
@@ -146,9 +146,9 @@ object Main extends JsonSerializer with MbLogging {
     case ("-z" | "--zookeeper") :: value :: tail =>
       password = value
       parse(tail)
-    case ("-t" | "--timeout"):: IntParam(value) :: tail =>
-        timeout = value
-        parse(tail)
+    case ("-t" | "--timeout") :: IntParam(value) :: tail =>
+      timeout = value
+      parse(tail)
     case ("--help") :: tail =>
       printUsageAndExit(0)
     case Nil =>
@@ -165,7 +165,7 @@ object Main extends JsonSerializer with MbLogging {
         "   -h, --host      Connect to host.\n" +
         "   -P, --port      Port num to ues for connecting to server.\n" +
         "   -p, --password  Password to use when connecting to server.\n" +
-		    "	  -z, --zookeeper Zookeeper quorum to get active master address.\n" +
+        "	  -z, --zookeeper Zookeeper quorum to get active master address.\n" +
         "   -u, --user :    User for login.\n" +
         "   --help"
     )

@@ -16,6 +16,9 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		Await.result(f, new FiniteDuration(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), MILLISECONDS))
 	}
 
+	def close(): Unit = {
+		jdbcDao.close()
+	}
 	// ----------------------------------------------------------------------------
 	// Organization
 	// ----------------------------------------------------------------------------

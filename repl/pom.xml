@@ -31,6 +31,12 @@
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-jackson_2.11</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>de.heikoseeberger</groupId>
@@ -46,9 +52,20 @@
             <version>20160212</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.3.6</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
+            <version>2.6.5</version>
+        </dependency>
+
     </dependencies>
 
-    <!--<build>
+    <build>
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -65,11 +82,11 @@
                                     <resource>reference.conf</resource>
                                 </transformer>
                             </transformers>
-                            &lt;!&ndash;<artifactSet>
+                            <artifactSet>
                                 <excludes>
                                     <exclude>org.scalatest:scalatest_2.11</exclude>
                                 </excludes>
-                            </artifactSet>&ndash;&gt;
+                            </artifactSet>
 
                             <filters>
                                 <filter>
@@ -81,12 +98,11 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            &lt;!&ndash;<minimizeJar>true</minimizeJar>&ndash;&gt;
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
-    </build>-->
+    </build>
 
 </project>

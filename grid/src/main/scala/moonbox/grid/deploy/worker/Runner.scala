@@ -12,8 +12,11 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
+	private var currentJob: JobInfo = _
+
 	override def receive: Receive = {
 		case RunJob(jobInfo) =>
+			currentJob = jobInfo
 			val target = sender()
 			run(jobInfo).onComplete {
 				case Success(data) =>
@@ -24,11 +27,22 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		case CancelJob(jobId) =>
 			session.cancelJob(jobId)
 		case KillRunner =>
-			self ! PoisonPill
+			if (currentJob.sessionId.isDefined) {
+				clean()
+				self ! PoisonPill
+			}
 	}
 
 	def run(jobInfo: JobInfo): Future[Any] = {
 		Future(session.execute(jobInfo.jobId, jobInfo.cmds))
+	}
+
+	private def clean(): Unit = {
+		Future {
+			session.cancelJob(currentJob.jobId)
+			session.mixcal.sparkSession.stop()
+			session.catalog.stop()
+		}
 	}
 
 	private def successCallback(jobId: String, data: Any, requester: ActorRef, shutdown: Boolean): Unit = {
@@ -41,12 +55,18 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 				CachedData
 		}
 		requester ! JobStateChanged(jobId, JobState.SUCCESS, result)
-		if (shutdown) self ! PoisonPill
+		if (shutdown) {
+			clean()
+			self ! PoisonPill
+		}
 	}
 
 	private def failureCallback(jobId: String, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
 		logError(e.getStackTrace.map(_.toString).mkString("\n"))
 		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(e.getMessage))
-		if (shutdown) self ! PoisonPill
+		if (shutdown) {
+			clean()
+			self ! PoisonPill
+		}
 	}
 }

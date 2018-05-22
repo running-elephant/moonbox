@@ -12,6 +12,10 @@ object CatalogContext {
 class CatalogContext(val conf: MbConf) extends MbLogging {
 	private val catalog = new JdbcCatalog(conf)
 
+	def stop(): Unit = {
+		catalog.close()
+	}
+
 	def addListener(listener: CatalogEventListener): Unit = {
 		catalog.addListener(listener)
 	}
