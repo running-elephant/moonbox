@@ -50,6 +50,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 
 		case AllocateSession(username, database) =>
 			val requester = sender()
+			logInfo(s"MbWorker::AllocateSession ${requester} ${username} ${database}")
 			Future {
 				val mbSession = MbSession.getMbSession(conf).bindUser(username, database)
 				val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
@@ -64,6 +65,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			}
 		case FreeSession(sessionId) =>
 			val requester = sender()
+			logInfo(s"MbWorker::FreeSession ${requester} ${sessionId}")
 			Future {
 				if (sessionIdToJobRunner.get(sessionId).isDefined) {
 					val runner = sessionIdToJobRunner.get(sessionId).head
@@ -78,7 +80,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 					requester ! FreeSessionFailed(e.getMessage)
 			}
 		case assign@AssignJobToWorker(jobInfo) =>
-			logInfo(s"AssignJobToWorker ${jobInfo}")
+			logInfo(s"MbWorker::AssignJobToWorker ${jobInfo}")
 			val requester = sender()
 			jobInfo.sessionId match {
 				case Some(sessionId) => // adhoc
@@ -95,7 +97,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			}
 
 		case kill@RemoveJobFromWorker(jobId) =>
-			logDebug(s"RemoveJobFromWorker ${jobId}")
+			logDebug(s"MbWorker::RemoveJobFromWorker ${jobId}")
 			sessionIdToJobRunner.get(jobId) match {
 				case Some(runner) => runner forward CancelJob(jobId)
 				case None => logWarning(s"JobRunner $jobId lost.")
@@ -105,20 +107,20 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		case r: RegisteredWorker =>			logDebug(s"RegisteredWorker ${r.master}")
 
 		case MasterChanged =>
-			logDebug(s"MasterChanged ")
+			logDebug(s"MbWorker::MasterChanged ")
 			context.system.scheduler.scheduleOnce(FiniteDuration(10, SECONDS),
 				master, RegisterWorker(workerId, self, 100, 1000))
 
 		case m@MemberUp(member) =>
-			logDebug(s"MemberUp and register to $member")
+			logDebug(s"MbWorker::MemberUp and register to $member")
 			register(member)
 
 		case state: CurrentClusterState =>
-			logDebug(s"CurrentClusterState ${state}")
+			logDebug(s"MbWorker::CurrentClusterState ${state}")
 			state.members.filter(_.status == MemberStatus.Up).foreach(register)
 
 		case a =>
-			logWarning(s"receive UNKNOWN message ${a}")
+			logWarning(s"MbWorker::receive UNKNOWN message ${a}")
 
 	}
 
