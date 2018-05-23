@@ -2,8 +2,8 @@ package moonbox.repl.http
 
 import moonbox.common.message._
 import moonbox.repl.adapter.{Connector, Utils}
-
-class MbHttpConnector extends Connector {
+// timeout: XXX seconds
+class MbHttpConnector(timeout: Int) extends Connector {
   var client: MbHttpClient = _
   var sessionId: String = _
   var token: String = _
@@ -19,7 +19,7 @@ class MbHttpConnector extends Connector {
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     var flag: Boolean = false
     try {
-      client = new MbHttpClient(host, port)
+      client = new MbHttpClient(host, port, timeout * 1000)
       val loginRes = login(user, pwd)
       if (loginRes.error.isEmpty && loginRes.token.isDefined) {
         isLogin = true

@@ -14,7 +14,7 @@ object Main extends JsonSerializer {
 
   var method: String = "rest"
   var retryTimes: Int = 3
-  var timeout: Int = 300
+  var timeout: Int = 300 // unit: second
   var user: String = _
   var host: String = "localhost"
   var port: Int = 9099
@@ -31,7 +31,7 @@ object Main extends JsonSerializer {
       checkParameters()
       connector = if (method == "rest" || method == "r") {
         // new RestConnector(timeout)
-        new MbHttpConnector
+        new MbHttpConnector(timeout)
       } else {
         new JdbcConnector(timeout)
       }

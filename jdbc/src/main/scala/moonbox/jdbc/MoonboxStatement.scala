@@ -54,8 +54,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
           // TODO:
-//          if (resp.data.isEmpty)
-//            isResultSet = false
+          if (resp.schema.isEmpty) {
+            isResultSet = false
+          }
           resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
           resultSet.updateResultSet(resp)
           resultSet
@@ -124,7 +125,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def execute(sql: String) = {
     checkClosed
     executeQuery(sql)
-    if (isResultSet) true else false
+    isResultSet
     //    val client = jdbcSession.jdbcClient
     //    val messageId = client.getMessageId()
     //    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
@@ -135,7 +136,10 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     //    }
   }
 
-  override def getResultSet = resultSet
+  override def getResultSet = {
+    checkClosed
+    resultSet
+  }
 
   override def getUpdateCount = updateCount
 

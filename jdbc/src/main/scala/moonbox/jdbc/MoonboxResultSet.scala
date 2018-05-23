@@ -30,7 +30,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
   lazy val columnLabel2Index: Map[String, Int] = parsedSchema.map(_._1).zipWithIndex.map(p => p._1 -> (p._2 + 1)).toMap
   var resultSetMetaData: ResultSetMetaData = _
 
-  lazy val parsedSchema = parse(schema)
+  lazy val parsedSchema = if (schema != null) parse(schema) else throw new SQLException("ResultSet schema is null")
 
   def sendNextDataFetch(): DataFetchOutbound = {
     val client = stat.jdbcSession.jdbcClient
@@ -65,9 +65,8 @@ class MoonboxResultSet(conn: MoonboxConnection,
     totalRows = result.data.map(_.size.toLong).getOrElse(0)
     currentRowEnd = totalRows - 1
     currentRowId = currentRowStart - 1
-
     closed = false
-    if (result.schema != null && resultSetMetaData == null)
+    if (result.schema.isDefined && resultSetMetaData == null)
       resultSetMetaData = new MoonboxResultSetMetaData(this, result.schema.orNull)
   }
 
@@ -82,7 +81,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     if (totalRows <= 0)
       totalRows = dataFetch.dataFetchState.totalRows
     closed = false
-    if (dataFetch.schema != null && resultSetMetaData == null)
+    if (dataFetch.schema.isDefined && resultSetMetaData == null)
       resultSetMetaData = new MoonboxResultSetMetaData(this, dataFetch.schema.orNull)
   }
 
@@ -126,7 +125,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getBigDecimal(columnIndex: Int, scale: Int) = getAs[java.math.BigDecimal](columnIndex).setScale(scale)
 
-  override def getBytes(columnIndex: Int) = getAs[Array[Byte]](columnIndex )
+  override def getBytes(columnIndex: Int) = getAs[Array[Byte]](columnIndex)
 
   override def getDate(columnIndex: Int) = get(columnIndex).asInstanceOf[Date]
 
