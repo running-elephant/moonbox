@@ -454,21 +454,26 @@ class EsRestClient(param: Map[String, String]) {
             actionRsp.succeeded(false)
             throw new Exception("performScrollRequest to Server return ERROR " +response.getStatusLine.getStatusCode)
         }
+        val jsonReqObject = new JSONObject(query)
+        val requestLines = jsonReqObject.optLong("size", 10000l)  //default 10000
 
         val content = getContent(response)
-        val jsonObject = new JSONObject(content)
-        val totalLines = getFieldAsLong(jsonObject, "hits/total")
-        var scrollId = getFieldAsString(jsonObject, "_scroll_id")
+        val jsonRspObject = new JSONObject(content)
+        val responseLines = getFieldAsLong(jsonRspObject, "hits/total")
+        val shouldProcessLines = math.min(requestLines, responseLines)
+        //if has limit size, we should use the min size of send and receive size, if no limit size, we
+
+        var scrollId = getFieldAsString(jsonRspObject, "_scroll_id")
 
         var proceedLines: Long = 0L
         var fetchSize: Long = handleResponse(content, actionRsp)   //handle
         proceedLines += fetchSize
 
-        if(containsAggs(jsonObject)){
+        if(containsAggs(jsonRspObject)){
             actionRsp   //agg no scroll query
         }
         else {
-            while (proceedLines < totalLines && proceedLines != 0 && !limit) {
+            while (proceedLines < shouldProcessLines && proceedLines != 0 && !limit) {
                 val leftQuery = s"""{"scroll":"2m","scroll_id":"$scrollId"}"""
                 val leftScrollReq: HttpEntity = new StringEntity(leftQuery, ContentType.APPLICATION_JSON)
                 val response: Response = restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), leftScrollReq)
@@ -477,7 +482,7 @@ class EsRestClient(param: Map[String, String]) {
                     throw new Exception(s"performScrollRequest to Server return ERROR ${response.getStatusLine.getStatusCode} line $proceedLines")
                 }
 
-                scrollId = getFieldAsString(jsonObject, "_scroll_id")  //update scroll id
+                scrollId = getFieldAsString(jsonRspObject, "_scroll_id")  //update scroll id
                 fetchSize = handleResponse(getContent(response), actionRsp)      //update fetch size
                 proceedLines += fetchSize
             }
