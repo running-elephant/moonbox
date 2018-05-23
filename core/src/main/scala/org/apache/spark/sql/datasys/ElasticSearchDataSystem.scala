@@ -82,6 +82,8 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 		val json = executor.translate(plan).head
 		val mapping: Seq[(String, String)] = executor.getColumnMapping()	//alias name : column name
     logInfo(json)
+		executor.client.close()
+
 		val rdd = new MbElasticSearchRDD[Row](sparkSession.sparkContext, json, mapping, schema, 1, getProperties, (schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
 		sparkSession.createDataFrame(rdd, plan.schema)
 
