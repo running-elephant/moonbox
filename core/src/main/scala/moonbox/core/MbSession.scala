@@ -52,6 +52,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
 			}
 		}
+		mixcal.sparkSession.catalog.setCurrentDatabase(initializedDatabase.getOrElse("default"))
 		this
 	}
 
