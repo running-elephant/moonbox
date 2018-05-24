@@ -1,7 +1,6 @@
 package moonbox.repl
 
-import moonbox.common.MbLogging
-import moonbox.repl.adapter.{Connector, JdbcConnector, RestConnector}
+import moonbox.repl.adapter.{Connector, JdbcConnector}
 import moonbox.repl.http.MbHttpConnector
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.completer.StringsCompleter
