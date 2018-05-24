@@ -2,6 +2,8 @@ package moonbox.repl.http
 
 import moonbox.common.message._
 import moonbox.repl.adapter.{Connector, Utils}
+import org.json4s.jackson.Serialization.read
+
 // timeout: XXX seconds
 class MbHttpConnector(timeout: Int) extends Connector {
   var client: MbHttpClient = _
@@ -9,6 +11,7 @@ class MbHttpConnector(timeout: Int) extends Connector {
   var token: String = _
   var isLogin: Boolean = _
   var closed: Boolean = _
+  var DEFAULT_FETCH_SIZE = 200
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
@@ -45,7 +48,7 @@ class MbHttpConnector(timeout: Int) extends Connector {
   override def process(sqls: Seq[String]) = {
     val _query = QueryInbound(sessionId, token, sqls)
     val res = client.post(_query, "/query")
-    val resObj = SerializationUtils.fromJson[QueryOutbound](res, classOf[QueryOutbound])
+    val resObj = read[QueryOutbound](res)
     resObj.error match {
       case None => showResult(resObj)
       case Some(errMsg) => System.err.println(errMsg)
@@ -54,7 +57,7 @@ class MbHttpConnector(timeout: Int) extends Connector {
 
   override def close() = {
     if (isLogin && token != null) {
-      if (sessionId != null){
+      if (sessionId != null) {
         // close session first
         val _closeSession = closeSession(token, sessionId)
         _closeSession.error match {
@@ -83,35 +86,59 @@ class MbHttpConnector(timeout: Int) extends Connector {
   private def login(username: String, password: String): LoginOutbound = {
     val _login = LoginInbound(username, password)
     val res = client.post(_login, "/login")
-    SerializationUtils.fromJson[LoginOutbound](res, classOf[LoginOutbound])
+    read[LoginOutbound](res)
   }
 
   private def logout(token: String): LogoutOutbound = {
     val _logout = LogoutInbound(token)
     val res = client.post(_logout, "/logout")
-    SerializationUtils.fromJson[LogoutOutbound](res, classOf[LogoutOutbound])
+    read[LogoutOutbound](res)
   }
 
   private def openSession(token: String, database: String): OpenSessionOutbound = {
     val db = if (database == null || database.length == 0) None else Some(database)
     val _openSession = OpenSessionInbound(token, db)
     val res = client.post(_openSession, "/openSession")
-    SerializationUtils.fromJson[OpenSessionOutbound](res, classOf[OpenSessionOutbound])
+    read[OpenSessionOutbound](res)
   }
 
-  private def closeSession(token: String, sessionId: String): CloseSessionOutbound ={
+  private def closeSession(token: String, sessionId: String): CloseSessionOutbound = {
     val _closeSession = CloseSessionInbound(token, sessionId)
     val res = client.post(_closeSession, "/closeSession")
-    SerializationUtils.fromJson[CloseSessionOutbound](res, classOf[CloseSessionOutbound])
+    read[CloseSessionOutbound](res)
+  }
+
+  private def dataFetch(jobId: String, offset: Long, fetchSize: Long): ResultOutbound = {
+    val _dataFetch = ResultInbound(token, jobId, offset, fetchSize)
+    val res = client.post(_dataFetch, "/result")
+    read[ResultOutbound](res)
   }
 
   private def showResult(queryOutbound: QueryOutbound): Unit = {
     queryOutbound match {
-      case QueryOutbound(_, None, schema, Some(data), _) =>
+      case QueryOutbound(jobId, None, schema, Some(data), size) =>
         if (schema.isDefined) {
-          Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").mkString(" | ")
+          println(Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").mkString(" | "))
         }
         data.foreach(row => println(row.mkString(" | ")))
+        if (jobId.isDefined && size.isDefined) {
+          var currentSize: Long = data.size
+          while (currentSize < size.get) {
+            val fetchResult = dataFetch(jobId.get, currentSize, DEFAULT_FETCH_SIZE)
+            fetchResult match {
+              case ResultOutbound(_, None, _, Some(data)) =>
+                data.foreach(row => println(row.mkString(" | ")))
+                currentSize += data.size
+              case ResultOutbound(_, Some(errMsg), _, _) =>
+                System.err.println(s"QueryOutbound error: $errMsg")
+                currentSize = size.get // break the while cycle
+              case _ =>
+                System.err.println("QueryOutbound mismatch")
+                currentSize = size.get // break the while cycle
+            }
+          }
+        }
+      case QueryOutbound(_, None, _, _, _) =>
       case _ => System.err.println("QueryOutbound mismatch")
     }
   }
