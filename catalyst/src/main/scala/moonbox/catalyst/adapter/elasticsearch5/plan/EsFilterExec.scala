@@ -6,7 +6,7 @@ import moonbox.catalyst.core.parser.udf.ArrayExists
 import moonbox.catalyst.core.plan.{CatalystPlan, FilterExec}
 import org.apache.spark.sql.catalyst.CatalystTypeConverters
 import org.apache.spark.sql.catalyst.CatalystTypeConverters.convertToScala
-import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, Contains, EmptyRow, EndsWith, EqualNullSafe, EqualTo, Expression, GetStructField, GreaterThan, GreaterThanOrEqual, If, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Literal, Not, Or, ScalaUDF, StartsWith}
+import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, Contains, EmptyRow, EndsWith, EqualNullSafe, EqualTo, Expression, GetStructField, GreaterThan, GreaterThanOrEqual, If, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Literal, Not, Or, ScalaUDF, StartsWith}
 import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.unsafe.types.UTF8String
@@ -304,6 +304,18 @@ class EsFilterExec(condition: Expression, child: CatalystPlan) extends FilterExe
                 }
                 else {
                     s"""{"query":{"wildcard":{"${attribute.name}":"*$arg*"}}}"""
+                }
+
+            case Like(attribute: Attribute, Literal(v: UTF8String, StringType)) =>
+                val arg = {
+                    val x =  v.toString.replace('_', '?').replace('%', '*')
+                    x
+                }
+                if (isES50) {
+                    s"""{"wildcard":{"${attribute.name}":"$arg"}}"""
+                }
+                else {
+                    s"""{"query":{"wildcard":{"${attribute.name}":"$arg"}}}"""
                 }
             case _ => ""
         }

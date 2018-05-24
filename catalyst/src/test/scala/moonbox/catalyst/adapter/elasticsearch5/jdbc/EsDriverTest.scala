@@ -393,6 +393,26 @@ class EsDriverTest extends FunSuite{
         doQuery("attractions", "restaurant", "select * from attractions where name like 'Mini%'")
     }
 
+    test("select like2") {
+        doQuery("attractions", "restaurant", "select * from attractions where name like '%Munchies%'")
+    }
+
+    test("select like3") {
+        doQuery("attractions", "restaurant", "select * from attractions where name like 'Mini Munchies Piz__'")
+    }
+
+    test("select like4") {
+        doQuery("attractions", "restaurant", "select * from attractions where name like '__ni Munchies Pizza'")
+    }
+
+    test("select like5") {
+        doQuery("attractions", "restaurant", "select * from attractions where name like '__ni Munchies Pizz__'")
+    }
+
+    test("select like6") {
+        doQuery("attractions", "restaurant", "select * from attractions where name like '% Munchies Piz__'")
+    }
+
     test("select in") {
         doQuery("test_mb_100", "my_table", "select * from test_mb_100 where event_id in (1, 2, 3, 4, 5)" )
     }
