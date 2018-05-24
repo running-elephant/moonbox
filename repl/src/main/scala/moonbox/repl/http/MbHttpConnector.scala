@@ -109,9 +109,10 @@ class MbHttpConnector(timeout: Int) extends Connector {
     queryOutbound match {
       case QueryOutbound(_, None, schema, Some(data), _) =>
         if (schema.isDefined) {
-          Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").mkString(" | ")
+          println(Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").mkString(" | "))
         }
         data.foreach(row => println(row.mkString(" | ")))
+      case QueryOutbound(_, None, _, _, _) =>
       case _ => System.err.println("QueryOutbound mismatch")
     }
   }

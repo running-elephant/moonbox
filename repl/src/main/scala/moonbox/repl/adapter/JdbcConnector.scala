@@ -35,14 +35,13 @@ class JdbcConnector(timeout: Int) extends Connector {
         s"$name($typ)"
       }
 
-      colNameAndType.map(e => print(" | " + e + " | "))
-      println()
+
+      println(colNameAndType.mkString(" | "))
       while (rs.next()) {
         val colData: Seq[AnyRef] = (1 to metaData.getColumnCount).map { index =>
           rs.getObject(index)
         }
-        colData.map(e => print(" | " + e + " | "))
-        println()
+        println(colData.mkString(" | "))
       }
     }
   }

@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
+class Runner(conf: MbConf, var session: MbSession) extends Actor with MbLogging {
 	private var currentJob: JobInfo = _
 
 	override def receive: Receive = {
@@ -43,8 +43,8 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		Future {
 			logInfo(s"Runner::clean $currentJob start")
 			session.cancelJob(currentJob.jobId)
-			session.mixcal.sparkSession.stop()
 			session.catalog.stop()
+			session.mixcal.sparkSession.sessionState.catalog.reset()
 			logInfo(s"Runner::clean $currentJob end")
 		}
 	}
