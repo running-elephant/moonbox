@@ -8,7 +8,6 @@ import moonbox.core.config._
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc._
 trait DatabaseComponent {
-
 	protected val conf: MbConf
 	private lazy val implementation = conf.get(CATALOG_IMPLEMENTATION)
 	private lazy val url = conf.get(CATALOG_URL)
@@ -27,8 +26,22 @@ trait DatabaseComponent {
 			case _ => throw new UnsupportedException(s"unsupported catalog backend type $implementation")
 		}
 	}
-	protected lazy val database: Database = {
-		Class.forName(driver)
-		Database.forURL(url = url, user = user, password = password, driver = driver)
+
+	def database: Database = {
+		if (DatabaseComponent.database == null) {
+			synchronized {
+				if (DatabaseComponent.database == null) {
+					Class.forName(driver)
+					DatabaseComponent.database = Database.forURL(url = url, user = user, password = password, driver = driver)
+				}
+			}
+		}
+		DatabaseComponent.database
 	}
+
 }
+
+object DatabaseComponent {
+	protected  var database: Database = _
+}
+

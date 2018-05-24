@@ -29,6 +29,7 @@ class MbElasticSearchRDD[T: ClassTag](@transient val sc: SparkContext,
     @DeveloperApi
     override def compute(split: Partition, context: TaskContext): Iterator[T] = {
         val executor = new EsCatalystQueryExecutor(prop)
+        context.addTaskCompletionListener( context => executor.client.close())
         val rowIter = executor.execute(json, schema, mapping, mapRow)  //add ES ROW to structtype
         rowIter
     }

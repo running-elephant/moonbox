@@ -23,7 +23,7 @@ import scala.collection.mutable
 
 class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecutor with MongoTranslateSupport with MbLogging {
 
-  val client = new MbMongoClient(props)
+  lazy val client = new MbMongoClient(props)
   override val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
 
   private def getTableSchema(mongoJavaClient: MongoClient, dbName: String, collectionName: String) = {

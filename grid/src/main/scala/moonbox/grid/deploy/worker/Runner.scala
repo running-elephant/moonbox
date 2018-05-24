@@ -16,6 +16,7 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 
 	override def receive: Receive = {
 		case RunJob(jobInfo) =>
+			logInfo(s"Runner::RunJob  $jobInfo")
 			currentJob = jobInfo
 			val target = sender()
 			run(jobInfo).onComplete {
@@ -27,7 +28,8 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 		case CancelJob(jobId) =>
 			session.cancelJob(jobId)
 		case KillRunner =>
-			if (currentJob.sessionId.isDefined) {
+			logInfo(s"Runner::KillRunner $currentJob")
+			if(currentJob == null || currentJob.sessionId.isDefined) {  //if a runner have not a job OR it is an adhoc, release resources
 				clean()
 				self ! PoisonPill
 			}
@@ -39,9 +41,11 @@ class Runner(conf: MbConf, session: MbSession) extends Actor with MbLogging {
 
 	private def clean(): Unit = {
 		Future {
+			logInfo(s"Runner::clean $currentJob start")
 			session.cancelJob(currentJob.jobId)
 			session.mixcal.sparkSession.stop()
 			session.catalog.stop()
+			logInfo(s"Runner::clean $currentJob end")
 		}
 	}
 

@@ -25,7 +25,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	lock.await(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), TimeUnit.MILLISECONDS)
 
 	def close(): Unit = {
-		database.close()
+		//do not need close this dao connection, because all users use one same database connection
 	}
 
 	def action[R](action: DBIOAction[R, NoStream, Nothing]): Future[R] = {
