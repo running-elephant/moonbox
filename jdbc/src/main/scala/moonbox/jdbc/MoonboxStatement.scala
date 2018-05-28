@@ -2,29 +2,33 @@ package moonbox.jdbc
 
 import java.sql._
 
-import moonbox.common.message.{DataFetchOutbound, JdbcInboundMessage, JdbcQueryInbound, JdbcQueryOutbound}
+import moonbox.client.JdbcClient
+import moonbox.common.message._
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   var fetchSize = 1000
-  var queryTimeout = 1000 * 60 * 3
+  var queryTimeout = 1000 * 60 * 30
 
   var dataFetchId: Long = _
   var totalRows: Long = _
   var maxFieldSize: Int = _
   var jdbcSession: JdbcSession = connection.getSession()
   var resultSet: MoonboxResultSet = _
+  var client: JdbcClient = _
+  var currentQueryId: Long = _
   var maxRows: Int = 0
   var updateCount: Int = 0
   var closed: Boolean = false
   var isResultSet: Boolean = true
+  var canceled: Boolean = false
 
   /**
     * Check if the statement is closed.
     *
     * @return true if a reconnect was required
     */
-  def checkClosed: Boolean = {
+  def checkClosed(): Boolean = {
     if (connection == null)
       throw new SQLException("Exception while execute query, because the connection is null value")
     else {
@@ -36,13 +40,24 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     }
   }
 
+  private def beforeAction(): Unit = {
+    canceled = false
+    if (client == null) {
+      synchronized {
+        if (client == null) {
+          client = jdbcSession.jdbcClient
+        }
+      }
+    }
+  }
+
   override def executeQuery(sql: String): ResultSet = {
-    checkClosed
-    val client = jdbcSession.jdbcClient
-    val messageId = client.getMessageId()
-    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
-    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
-    jdbcMessage2ResultSet(queryMessage, resp)
+    checkClosed()
+    beforeAction()
+    currentQueryId = client.getMessageId()
+    val message = JdbcQueryInbound(currentQueryId, getFetchSize, sql)
+    val resp = client.sendAndReceive(message, getQueryTimeout)
+    jdbcMessage2ResultSet(message, resp)
   }
 
   def jdbcMessage2ResultSet(send: JdbcInboundMessage, response: Any): ResultSet = {
@@ -74,6 +89,11 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           resultSet.updateResultSet(dataFetch)
           resultSet
         }
+      //      case cancel: JdbcCancelOutbound =>
+      //        cancel.error match {
+      //          case None => throw new SQLException(s"Query Canceled successfully")
+      //          case Some(err) => throw new SQLException(s"Query Cancel failed: $err")
+      //        }
       case null => throw new SQLException("sql query error or timeout")
       case _ => throw new SQLException("Response message type error for sql query") // TODO: retry or not ?
     }
@@ -93,7 +113,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def getMaxFieldSize = maxFieldSize
 
   override def setMaxFieldSize(max: Int) = {
-    checkClosed
+    checkClosed()
     if (max > 0)
       maxFieldSize = max
   }
@@ -101,7 +121,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def getMaxRows = maxRows
 
   override def setMaxRows(max: Int) = {
-    checkClosed
+    checkClosed()
     if (max > 0)
       maxRows = max
   }
@@ -114,7 +134,18 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     queryTimeout = seconds * 1000
   }
 
-  override def cancel() = {}
+  override def cancel() = {
+   /* beforeAction()
+    val msgId = client.getMessageId()
+    val cancelMessage = JdbcCancelInbound(msgId, currentQueryId)
+    val cancelResp = client.sendAndReceive(cancelMessage, getQueryTimeout)
+    cancelResp match {
+      case JdbcCancelOutbound(_, Some(error), _) => throw new SQLException(s"Cancel query error: $error")
+      case JdbcCancelOutbound(_, None, Some(state)) => if (!state) throw new SQLException(s"Cancel query failed")
+      case other => throw new SQLException(s"Cancel query error: $other")
+    }
+    canceled = true*/
+  }
 
   override def getWarnings = null
 
@@ -123,21 +154,13 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def setCursorName(name: String) = {}
 
   override def execute(sql: String) = {
-    checkClosed
+    checkClosed()
     executeQuery(sql)
     isResultSet
-    //    val client = jdbcSession.jdbcClient
-    //    val messageId = client.getMessageId()
-    //    val queryMessage = JdbcQueryInbound(messageId, getFetchSize, sql)
-    //    val resp = client.sendAndReceive(queryMessage, getQueryTimeout)
-    //    resp match {
-    //      case r: JdbcQueryOutbound => if (r.err.isDefined) false else true
-    //      case _ => false
-    //    }
   }
 
   override def getResultSet = {
-    checkClosed
+    checkClosed()
     resultSet
   }
 
@@ -150,14 +173,14 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def getFetchDirection = 0
 
   override def setFetchSize(rows: Int) = {
-    checkClosed
+    checkClosed()
     if (rows > 0 && maxRows > 0 && rows > maxRows)
       throw new SQLException("fetchSize may not larger than maxRows")
     fetchSize = rows
   }
 
   override def getFetchSize = {
-    checkClosed
+    checkClosed()
     fetchSize
   }
 
@@ -172,7 +195,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def executeBatch = null
 
   override def getConnection = {
-    checkClosed
+    checkClosed()
     connection
   }
 

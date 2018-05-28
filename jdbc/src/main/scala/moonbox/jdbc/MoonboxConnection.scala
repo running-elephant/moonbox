@@ -18,7 +18,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   var closed: Boolean = _
   var database: String = _
   var networkTimeout: Int = 1000 * 60 * 3
-  var DEFAULT_USER_CHECK_TIMEOUT = 1000 * 30
+  var DEFAULT_USER_CHECK_TIMEOUT = 1000 * 60 * 5
 
   def userCheck(): Boolean = {
     var flag = false
@@ -80,6 +80,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def getHoldability: Int = throw new SQLException("Unsupported")
 
   override def setCatalog(catalog: String): Unit = {
+    // TODO: re-init the jdbcSession
     database = catalog
   }
 

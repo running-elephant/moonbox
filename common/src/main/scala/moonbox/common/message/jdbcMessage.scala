@@ -42,6 +42,9 @@ case class JdbcQueryOutbound(messageId: Long, err: Option[String], data: Option[
 case class DataFetchInbound(dataFetchState: DataFetchState) extends JdbcInboundMessage
 case class DataFetchOutbound(dataFetchState: DataFetchState, err: Option[String], data: Option[Seq[Seq[Any]]], schema: Option[String]) extends JdbcOutboundMessage
 
+case class JdbcCancelInbound(messageId: Long, cancelMsg: Long) extends JdbcInboundMessage
+case class JdbcCancelOutbound(messageId: Long, error: Option[String], state: Option[Boolean]) extends JdbcOutboundMessage // true refers to cancel successfully, otherwise failed
+
 case class EchoInbound(messageId: Long, content: Any) extends JdbcInboundMessage
 case class EchoOutbound(messageId: Long, content: Option[Any]) extends JdbcOutboundMessage
 

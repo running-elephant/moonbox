@@ -6,7 +6,7 @@ import java.sql.{Blob, Clob, Date, NClob, Ref, ResultSet, ResultSetMetaData, Row
 import java.util
 import java.util.Calendar
 
-import moonbox.common.message.{DataFetchInbound, DataFetchOutbound, DataFetchState, JdbcQueryOutbound}
+import moonbox.common.message._
 import moonbox.util.SchemaUtil._
 
 class MoonboxResultSet(conn: MoonboxConnection,
@@ -51,7 +51,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
       currentRow = rows((currentRowId - currentRowStart).toInt).toArray
       flag = true
     } else if (!closed && currentRowId < totalRows - 1) {
-      val resp = sendNextDataFetch()
+      val resp = if (!getStatement.canceled) sendNextDataFetch() else throw new SQLException("Query is canceled")
       updateResultSet(resp)
       flag = next
     }

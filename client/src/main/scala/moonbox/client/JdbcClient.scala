@@ -2,7 +2,7 @@ package moonbox.client
 
 import java.io.IOException
 import java.net.SocketAddress
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{CancellationException, ConcurrentHashMap}
 import java.util.concurrent.atomic.AtomicLong
 
 import io.netty.bootstrap.Bootstrap
@@ -73,6 +73,28 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
     }
   }
 
+//  def cancel(msg: Any): Unit = {
+//    val id: Long = msg match {
+//      case echo: EchoInbound => echo.messageId
+//      case m: JdbcLoginInbound => m.messageId
+//      case m: JdbcLogoutInbound => m.messageId
+//      case m: JdbcQueryInbound => m.messageId
+//      case m: JdbcCancelInbound => m.messageId
+//      case m: DataFetchInbound => m.dataFetchState.messageId
+//      case _ => throw new Exception("The cancel input message is unsupported")
+//    }
+//    if (promises.containsKey(id)) {
+//      val promise = promises.get(id)
+//      if (promise.isCancellable) {
+//        promise.setFailure(new CancellationException(s"Message is canceled"))
+//      } else {
+//        throw new Exception(s"Message $msg is not cancellable")
+//      }
+//    } else {
+//      throw new Exception(s"Cancellation is failed, message $msg is not running")
+//    }
+//  }
+
   // return null if it throws an exception
   def sendAndReceive(msg: Any, timeout: Long = DEFAULT_TIMEOUT): JdbcOutboundMessage = {
     if (msg.isInstanceOf[JdbcInboundMessage])
@@ -83,20 +105,27 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
       case m: JdbcLogoutInbound => m.messageId
       case m: JdbcQueryInbound => m.messageId
       case m: DataFetchInbound => m.dataFetchState.messageId
+      case m: JdbcCancelInbound => m.messageId
       case _ => throw new Exception("Unsupported message format")
     }
     try {
       if (promises.containsKey(id)) {
-        if (!promises.get(id).await(timeout))
+        val promise = promises.get(id)
+        if (!promise.await(timeout))
           throw new Exception(s"no response within $timeout ms")
-        else
-          responses.get(id)
-      } else throw new Exception(s"Send message failed: $msg")
-    } catch {
-      case e: Exception =>
-        logError(e.getMessage)
-        null
-    } finally release(id)
+        else {
+          if (promise.isSuccess) {
+            responses.get(id)
+          } else {
+            throw promise.cause()
+          }
+        }
+      } else {
+        throw new Exception(s"Send message failed: $msg")
+      }
+    } finally {
+      release(id)
+    }
   }
 
   private def release(key: Long): Unit = {
@@ -105,33 +134,27 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
   }
 
   def send(msg: Any) = {
-    try {
-      msg match {
-        case inboundMessage: JdbcInboundMessage =>
-          val promise = channel.newPromise()
-          val id = inboundMessage match {
-            case echo: EchoInbound => echo.messageId // used to echo test
-            case login: JdbcLoginInbound => login.messageId
-            case logout: JdbcLogoutInbound => logout.messageId
-            case sqlQuery: JdbcQueryInbound => sqlQuery.messageId
-            case dataFetch: DataFetchInbound => dataFetch.dataFetchState.messageId // add callback to map
-            case _ => null
-          }
-          if (id != null)
-            promises.put(id.asInstanceOf[Long], promise)
-          val startTime = System.currentTimeMillis()
-          channel.writeAndFlush(inboundMessage).sync()
-          val timeSpent = System.currentTimeMillis() - startTime
-          val logMsg = inboundMessage match {
-            case login: JdbcLoginInbound =>
-              login.copy(password = "***")
-            case other => other
-          }
-          logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
-        case _ => throw new Exception("Unsupported message")
-      }
-    } catch {
-      case e: Exception => logError(e.getMessage)
+    msg match {
+      case inboundMessage: JdbcInboundMessage =>
+        val id = inboundMessage match {
+          case echo: EchoInbound => echo.messageId // used to echo test
+          case login: JdbcLoginInbound => login.messageId
+          case logout: JdbcLogoutInbound => logout.messageId
+          case sqlQuery: JdbcQueryInbound => sqlQuery.messageId
+          case dataFetch: DataFetchInbound => dataFetch.dataFetchState.messageId // add callback to map
+          case cancel: JdbcCancelInbound => cancel.messageId
+        }
+        promises.put(id, channel.newPromise())
+        val startTime = System.currentTimeMillis()
+        channel.writeAndFlush(inboundMessage).sync()
+        val timeSpent = System.currentTimeMillis() - startTime
+        val logMsg = inboundMessage match {
+          case login: JdbcLoginInbound =>
+            login.copy(password = "***")
+          case other => other
+        }
+        logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
+      case _ => throw new Exception("Unsupported message")
     }
   }
 
@@ -146,12 +169,16 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
           inboundMessage match {
             case login: JdbcLoginInbound =>
               callbacks.put(login.messageId, callback)
+            case logout: JdbcLogoutInbound =>
+              callbacks.put(logout.messageId, callback)
             case sqlQuery: JdbcQueryInbound =>
               callbacks.put(sqlQuery.messageId, callback)
             case dataFetch: DataFetchInbound =>
               callbacks.put(dataFetch.dataFetchState.messageId, callback) // add callback to map
             case echo: EchoInbound =>
               callbacks.put(echo.messageId, callback)
+            case cancel: JdbcCancelInbound =>
+              callbacks.put(cancel.messageId, callback)
           }
           val startTime = System.currentTimeMillis()
           channel.writeAndFlush(inboundMessage).sync()

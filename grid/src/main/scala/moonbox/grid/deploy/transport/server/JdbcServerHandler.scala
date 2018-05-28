@@ -63,9 +63,12 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
 
   def handleMessage(ctx: ChannelHandlerContext, msg: Any): Unit = {
     msg match {
+      case cancel: JdbcCancelInbound =>
+        val token = channel2SessionIdAndToken.get(ctx.channel())._2
+      // TODO: 1. invoke job cancel interface from service;
+      // TODO: 2. send the canceled message id back and set the corresponding promise to failure
       case echo: EchoInbound =>
         logInfo(s"Received message: $echo")
-        //        channel2SessionIdAndToken.put(ctx.channel(), (echo.messageId.toString, "root"))
         ctx.writeAndFlush(EchoOutbound(echo.messageId, Some(echo.content)))
       case login: JdbcLoginInbound =>
         logInfo(s"Received message: ${login.copy(password = "***")}")
@@ -131,7 +134,8 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
         if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
           val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
           val token = channel2SessionIdAndToken.get(ctx.channel())._2
-          val sqls = query.sql.split(";").toSeq
+          val sqls = query.sql.split(";").map(_.trim).filter(_ != "")
+          // TODO: query can be canceled
           mbService.jobQuery(token, sessionId, sqls, query.fetchSize).onComplete {
             case Success(v) =>
               if (v.error.isEmpty) {
@@ -141,7 +145,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
                   val fetchState = DataFetchState(query.messageId, v.jobId.orNull, 0, v.data.get.size, v.size.get)
                   ctx.writeAndFlush(DataFetchOutbound(fetchState, v.error, v.data, v.schema))
                 } else if (v.data.isDefined && v.schema.isEmpty) {
-                  //for some queries without schema: e.g. "show tables; show databases; desc table aaa; desc user sally"
+                  //for some queries which have data but have no schema: e.g. "show tables; show databases; desc table aaa; desc user sally"
                   val schema: Option[String] = {
                     val data1 = v.data.get
                     if (data1.nonEmpty) {

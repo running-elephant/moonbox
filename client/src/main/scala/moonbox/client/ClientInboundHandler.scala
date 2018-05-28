@@ -18,8 +18,12 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any): Unit = {
     try {
-      if (!callbacks.isEmpty) handleMessageWithCallback(msg)
-      if (!promises.isEmpty) handleMessageWithPromise(msg)
+      if (!promises.isEmpty) {
+        handleMessageWithPromise(msg)
+      }
+      if (!callbacks.isEmpty) {
+        handleMessageWithCallback(msg)
+      }
     } finally {
       ReferenceCountUtil.release(msg)
     }
@@ -30,17 +34,15 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
     ctx.close
   }
 
-  private def handleMessageWithCallback(response: Any): Unit = {
-    try {
-      response match {
-        case echo: EchoOutbound => callback(echo.messageId, echo)
-        case login: JdbcLoginOutbound => callback(login.messageId, login)
-        case query: JdbcQueryOutbound => callback(query.messageId, query)
-        case dataFetch: DataFetchOutbound => callback(dataFetch.dataFetchState.messageId, dataFetch)
-        case _ => throw new Exception("Unsupported message")
-      }
-    } catch {
-      case e: Exception => logError(e.getMessage)
+  private def handleMessageWithCallback(response: Any): Any = {
+    response match {
+      case echo: EchoOutbound => callback(echo.messageId, echo)
+      case login: JdbcLoginOutbound => callback(login.messageId, login)
+      case logout: JdbcLogoutOutbound => callback(logout.messageId, logout)
+      case query: JdbcQueryOutbound => callback(query.messageId, query)
+      case dataFetch: DataFetchOutbound => callback(dataFetch.dataFetchState.messageId, dataFetch)
+      case cancel: JdbcCancelOutbound => callback(cancel.messageId, cancel)
+      case _ => throw new Exception("Unsupported message")
     }
   }
 
@@ -66,11 +68,12 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
           case login: JdbcLoginOutbound => login.messageId
           case logout: JdbcLogoutOutbound => logout.messageId
           case query: JdbcQueryOutbound => query.messageId
+          case cancel: JdbcCancelOutbound => cancel.messageId
           case dataFetch: DataFetchOutbound => dataFetch.dataFetchState.messageId
         }
         if (promises.containsKey(id)) {
-          responses.put(id, resp)
-          promises.get(id).setSuccess()
+            responses.put(id, resp)
+            promises.get(id).setSuccess()
         }
       case _ => throw new Exception("Unsupported message")
     }
