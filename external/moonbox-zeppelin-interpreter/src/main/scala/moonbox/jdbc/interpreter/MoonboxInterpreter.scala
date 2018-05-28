@@ -21,8 +21,10 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
   val USER_KEY = "user"
   val PASSWORD_KEY = "password"
   val MAX_LINE_KEY = "max_count"
+  val TIMEOUT_KEY = "timeout"
 
   var maxResultsLine = 1000
+  var timeout = 60 * 30 // time unit: s
 
   var pool: ConnectionPool = _
   val baseProps = new Properties()
@@ -37,8 +39,11 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
 
   override def cancel(interpreterContext: InterpreterContext): Unit = {
     val id = interpreterContext.getParagraphId
-    if (idToStatement.containsKey(id))
-      idToStatement.get(id).close()
+    if (idToStatement.containsKey(id)) {
+      val stat = idToStatement.get(id)
+      stat.cancel()
+      stat.close()
+    }
   }
 
   override def getFormType: Interpreter.FormType = FormType.SIMPLE
@@ -83,6 +88,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       }
       idToStatement.put(interpreterContext.getParagraphId, statement)
       try {
+        statement.setQueryTimeout(getQueryTimeout())
         if (statement.execute(s)) {
           resultSet = statement.getResultSet
           log.info("Interpreting the resultSet ...")
@@ -159,6 +165,13 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       rowCount += 1
     }
     msg.toString()
+  }
+
+  private def getQueryTimeout(): Int = {
+    val _timeout = baseProps.getProperty(TIMEOUT_KEY) // time unit: s
+    if (_timeout != null)
+      timeout = _timeout.toInt
+    timeout
   }
 
   private def getMaxResultLine(): Int = {

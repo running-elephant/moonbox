@@ -8,7 +8,7 @@
         "envName": null,
         "propertyName": "default.url",
         "defaultValue": "jdbc:moonbox://localhost:10010/default",
-        "description": "The URL for moonbox JDBC."
+        "description": "The URL for moonbox JDBC"
       },
       "default.user": {
         "envName": null,
@@ -28,11 +28,17 @@
         "defaultValue": "moonbox.jdbc.MbDriver",
         "description": "Moonbox JDBC Driver Name"
       },
-      "common.max_count": {
+      "default.max_count": {
         "envName": null,
         "propertyName": "default.max_count",
         "defaultValue": "1000",
-        "description": "Max number of SQL result to display."
+        "description": "Max number of SQL result to display"
+      },
+      "default.timeout": {
+        "envName": null,
+        "propertyName": "default.timeout",
+        "defaultValue": "600",
+        "description": "Query time out, time unit(s)"
       }
     },
     "editor": {
