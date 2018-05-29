@@ -79,6 +79,7 @@ case class CatalogFunction(
 	databaseId: Long,
 	description: Option[String],
 	className: String,
+	methodName: Option[String],
 	resources: Seq[FunctionResource],
 	createBy: Long,
 	createTime: Long = Utils.now,

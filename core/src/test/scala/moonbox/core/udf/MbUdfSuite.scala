@@ -6,6 +6,8 @@ import org.apache.spark.sql.execution.aggregate.ScalaUDAF
 import org.apache.spark.sql.types.DoubleType
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
+import scala.reflect.api.JavaUniverse
+
 class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
   var session: SparkSession = _
@@ -42,27 +44,26 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
         |    ((d * 9.0 / 5.0) + 32.0) + obj.value
         |  }
         |}
-        |scala.reflect.classTag[PersonData].runtimeClass
       """.stripMargin
 
-    session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(UdfHelper.generateFunction(1, "multiply", src, "", "PersonData", "scala"), DoubleType, e))
+	  val (func, returnType) = ScalaSourceUDF(src, "PersonData", Some("multiply"))
+	  session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
 
+
   test("scala test 2") {
     val src =
-      """
-        |class PersonData extends Function1[Double, Double] {
-        |  val field: Double = 42d
-        |  override def apply(v1: Double): Double = {
-        |    ((v1 * 9.0 / 5.0) + field)
-        |  }
-        |}
-        |scala.reflect.classTag[PersonData].runtimeClass
-      """.stripMargin
-    val num = UdfHelper.getParamNumber(udfName="apply", src=src, className = "PersonData", tpe="scala")
-    session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
-      ScalaUDF(UdfHelper.generateFunction(num, "apply", src, "", "PersonData", "scala"), DoubleType, e))
+		"""
+		  |class PersonData extends Function1[Double, Double] {
+		  |  val field: Double = 42d
+		  |  override def apply(v1: Double): Double = {
+		  |    ((v1 * 9.0 / 5.0) + field)
+		  |  }
+		  |}
+		""".stripMargin
+	  val (func, returnType) = ScalaSourceUDF(src, "PersonData", None)
+	  session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
 
@@ -80,11 +81,25 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
         |    }
         |};
       """.stripMargin
-    val num = UdfHelper.getParamNumber(udfName="multiply", src=src, className = "mytest.Panda", tpe="java")
-    session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
-      ScalaUDF(UdfHelper.generateFunction(parameterCount= num, udfName="multiply", src=src, className = "mytest.Panda", tpe="java"), DoubleType, e))
+	  val (func, returnType) = JavaSourceUDF(src, "mytest.Panda", Some("multiply"))
+    session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
+	test("java test 2") {
+		val src =
+			"""package mytest;
+			  |import java.io.Serializable;
+			  |import org.apache.spark.sql.api.java.UDF1;
+			  |public class Panda implements UDF1<Double, Double>{
+			  |    @Override public Double call(Double d) {
+			  |        return d * 2;
+			  |    }
+			  |};
+			""".stripMargin
+		val (func, returnType) = JavaSourceUDF(src, "mytest.Panda", None)
+		session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
+		session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
+	}
 
   test("jar java udf file") {
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
@@ -110,7 +125,6 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
 
   test("udaf scala test") {
-    //TODO: In UDAF, the class name should start with $xxx, because class.getSimpleName will throw exception in clousour
     val src =
       """
         |import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
@@ -139,16 +153,10 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
         |      buffer.getDouble(0)
         |    }
         |}
-        |scala.reflect.classTag[SumAggregation].runtimeClass
       """.stripMargin
-    //session.udf.register("SUMPRODUCT", new SumAggregation)
-    //session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDAF(e, new SumAggregation))  //UserDefinedAggregateFunction
-
-    val clazz:Class[_] = UdfHelper.reflect(src=src, path="", className="SumAggregation", tpe="scala")
-    val obj: Any = UdfHelper.getObjectByClass(clazz)
 
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
-      ScalaUDAF(e, UdfHelper.generateAggFunction(src=src, tpe="scala")))  //UserDefinedAggregateFunction
+      ScalaUDAF(e, ScalaSourceUDAF(src, "SumAggregation")))  //UserDefinedAggregateFunction
 
     session.sql("SELECT Make, multiply(RetailValue, Stock) AS InventoryValuePerMake FROM inventory GROUP BY Make").show()
 
@@ -234,7 +242,7 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
       """.stripMargin
 
     session.sessionState.functionRegistry.registerFunction("fun", (e: Seq[Expression]) =>
-      ScalaUDAF(e, UdfHelper.generateAggFunction(src=src, className="zoo.Bear", tpe="java")))  //UserDefinedAggregateFunction
+      ScalaUDAF(e, JavaSourceUDAF(src, "zoo.Bear")))  //UserDefinedAggregateFunction
 
     session.sql("SELECT city , count['dominant'] as Dominant, count['Total'] as Total from(select city, fun(Female, Male) as count from cities group by (city)) temp").show()
 

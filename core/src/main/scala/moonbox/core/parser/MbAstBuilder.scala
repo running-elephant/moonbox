@@ -3,6 +3,7 @@ package moonbox.core.parser
 import java.util
 import java.util.Locale
 
+import moonbox.core.catalog.FunctionResource
 import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MqlBaseParser._
@@ -465,33 +466,29 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitCreateFunction(ctx: CreateFunctionContext): MbCommand = {
 		val functionIdentifier = visitFuncIdentifier(ctx.name)
-		val properties = visitPropertyList(ctx.propertyList())
+		val isTemp = ctx.TEMP() != null || ctx.TEMPORARY() != null
+		val className = ParserUtils.tripQuotes(ctx.className.getText)
+		val methodName = Option(ctx.methodName).map(_.getText).map(ParserUtils.tripQuotes)
+		val resources = ctx.resource().map { rctx =>
+			FunctionResource(rctx.identifier().getText.toLowerCase, ParserUtils.tripQuotes(rctx.STRING().getText))
+		}
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateFunction(functionIdentifier, properties, ignoreIfExists)
-	}
-
-	override def visitRenameFunction(ctx: RenameFunctionContext): MbCommand = {
-		val functionIdentifier = visitFuncIdentifier(ctx.name)
-		val newFunctionIdentifier = visitFuncIdentifier(ctx.newName)
-		AlterFunctionSetName(functionIdentifier, newFunctionIdentifier)
-	}
-
-	override def visitSetFunctionName(ctx: SetFunctionNameContext): MbCommand = {
-		val functionIdentifier = visitFuncIdentifier(ctx.name)
-		val newFunctionIdentifier = visitFuncIdentifier(ctx.newName)
-		AlterFunctionSetName(functionIdentifier, newFunctionIdentifier)
-	}
-
-	override def visitSetFunctionProperties(ctx: SetFunctionPropertiesContext): MbCommand = {
-		val functionIdentifier = visitFuncIdentifier(ctx.name)
-		val properties = visitPropertyList(ctx.propertyList())
-		AlterFunctionSetOptions(functionIdentifier, properties)
+		if (isTemp) {
+			CreateTempFunction(functionIdentifier, className, methodName, resources, ignoreIfExists)
+		} else {
+			CreateFunction(functionIdentifier, className, methodName, resources, ignoreIfExists)
+		}
 	}
 
 	override def visitDropFunction(ctx: DropFunctionContext): MbCommand = {
 		val functionIdentifier = visitFuncIdentifier(ctx.name)
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		DropFunction(functionIdentifier, ignoreIfNotExists)
+		val isTemp = ctx.TEMP() != null || ctx.TEMPORARY() != null
+		if (isTemp) {
+			DropTempFunction(functionIdentifier, ignoreIfNotExists)
+		} else {
+			DropFunction(functionIdentifier, ignoreIfNotExists)
+		}
 	}
 
 	override def visitFuncIdentifier(ctx: FuncIdentifierContext): MbFunctionIdentifier = {
@@ -502,7 +499,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitCreateApplication(ctx: CreateApplicationContext): MbCommand = {
 		val name = ctx.name.getText
-		val mqlList = visitAppCmds(ctx.appCmds()).map(_.query)
+		val mqlList = visitAppCmds(ctx.appCmds())
 		val ignoreIfExists = ctx.EXISTS() != null
 		CreateApplication(name, mqlList, ignoreIfExists)
 	}
@@ -521,7 +518,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitSetApplicationQuerys(ctx: SetApplicationQuerysContext): MbCommand = {
 		val name = ctx.name.getText
-		val querys = visitAppCmds(ctx.appCmds()).map(_.query)
+		val querys = visitAppCmds(ctx.appCmds())
 		AlterApplicationSetQuery(name, querys)
 	}
 
@@ -531,24 +528,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DropApplication(name, ignoreIfNotExists)
 	}
 
-	override def visitAppCmds(ctx: AppCmdsContext): Seq[MQLQuery] = {
-		val nonLastCmds = Option(ctx.nonLastCmdList()).map(visitNonLastCmdList)
-		val lastCmds = visitLastCmd(ctx.lastCmd())
-		if (nonLastCmds.nonEmpty) {
-			nonLastCmds.get.:+(lastCmds)
-		} else {
-			Seq(lastCmds)
+	override def visitAppCmds(ctx: AppCmdsContext): Seq[String] = {
+		ctx.mql().map { mqlCtx =>
+			mqlCtx.start.getInputStream.toString.substring(mqlCtx.start.getStartIndex, mqlCtx.stop.getStopIndex + 1)
 		}
-	}
-
-	override def visitNonLastCmdList(ctx: NonLastCmdListContext): Seq[MQLQuery] = {
-		ctx.nonLastCmd().map(visitNonLastCmd)
-	}
-
-	override def visitNonLastCmd(ctx: NonLastCmdContext): MQLQuery = {
-		Option(ctx.createTemporaryViewCmd()).map(visitCreateTemporaryViewCmd).getOrElse(
-			visitCreateTemporaryFunctionCmd(ctx.createTemporaryFunctionCmd())
-		)._1
 	}
 
 	override def visitCreateEvent(ctx: CreateEventContext): MbCommand = {
@@ -610,35 +593,12 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		if (ctx.STAR() != null) "*" else ctx.INTEGER_VALUE().getText
 	}
 
-	override def visitCreateTemporaryFunction(ctx: CreateTemporaryFunctionContext): MbCommand = {
-		visitCreateTemporaryFunctionCmd(ctx.createTemporaryFunctionCmd())._2
-	}
-
-	override def visitCreateTemporaryFunctionCmd(ctx: CreateTemporaryFunctionCmdContext): (MQLQuery, MbCommand) = {
-		val mql = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
-		val name = ctx.name.getText
-		val props = visitPropertyList(ctx.propertyList())
-		val replacedIfExists = ctx.REPLACE() != null
-		(MQLQuery(mql), CreateTempFunction(name, props, replacedIfExists))
-	}
-
 	override def visitCreateTemporaryView(ctx: CreateTemporaryViewContext): MbCommand = {
-		visitCreateTemporaryViewCmd(ctx.createTemporaryViewCmd())._2
-	}
-
-	override def visitCreateTemporaryViewCmd(ctx: CreateTemporaryViewCmdContext): (MQLQuery, MbCommand) = {
-		val mql = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
 		val name = ctx.name.getText
-		val query = visitQuery(ctx.query()).query
-		val isCache = ctx.CACHE() != null
-		val isReplacedIfExists = ctx.REPLACE() != null
-		(MQLQuery(mql), CreateTempView(name, query, isCache, isReplacedIfExists))
-	}
-
-	override def visitLastCmd(ctx: LastCmdContext): MQLQuery = {
-		if (ctx.insertIntoCmd() != null) visitInsertIntoCmd(ctx.insertIntoCmd())._1
-		else if (ctx.insertOverwriteCmd() != null) visitInsertOverwriteCmd(ctx.insertOverwriteCmd())._1
-		else visitQuery(ctx.query())
+		val query = visitQuery(ctx.query())
+		val needCache = ctx.CACHE() != null
+		val replace = ctx.REPLACE() != null
+		CreateTempView(name, query.query, needCache, replace)
 	}
 
 	override def visitGrantGrantToUser(ctx: GrantGrantToUserContext): MbCommand = {
@@ -760,26 +720,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitInsertInto(ctx: InsertIntoContext): MbCommand = {
-		visitInsertIntoCmd(ctx.insertIntoCmd())._2
-	}
-
-
-	override def visitInsertIntoCmd(ctx: InsertIntoCmdContext): (MQLQuery, MbCommand) = {
-		val mql = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
 		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
 		val query = visitQuery(ctx.query()).query
-		(MQLQuery(mql), InsertInto(tableIdentifier, query, overwrite = false))
-	}
-
-	override def visitInsertOverwrite(ctx: InsertOverwriteContext): MbCommand = {
-		visitInsertOverwriteCmd(ctx.insertOverwriteCmd())._2
-	}
-
-	override def visitInsertOverwriteCmd(ctx: InsertOverwriteCmdContext): (MQLQuery, MbCommand) = {
-		val mql = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
-		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
-		val query = visitQuery(ctx.query()).query
-		(MQLQuery(mql), InsertInto(tableIdentifier, query, overwrite = true))
+		val overwrite = ctx.OVERWRITE() != null
+		InsertInto(tableIdentifier, query, overwrite)
 	}
 
 	override def visitShowSysInfo(ctx: ShowSysInfoContext): MbCommand = {

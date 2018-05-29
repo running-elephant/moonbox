@@ -726,42 +726,6 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateFunction(MqlBaseParser.CreateFunctionContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code renameFunction}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void enterRenameFunction(MqlBaseParser.RenameFunctionContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code renameFunction}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void exitRenameFunction(MqlBaseParser.RenameFunctionContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code setFunctionName}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void enterSetFunctionName(MqlBaseParser.SetFunctionNameContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code setFunctionName}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void exitSetFunctionName(MqlBaseParser.SetFunctionNameContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code setFunctionProperties}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void enterSetFunctionProperties(MqlBaseParser.SetFunctionPropertiesContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code setFunctionProperties}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void exitSetFunctionProperties(MqlBaseParser.SetFunctionPropertiesContext ctx);
-	/**
 	 * Enter a parse tree produced by the {@code dropFunction}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -1206,18 +1170,6 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitSetConfiguration(MqlBaseParser.SetConfigurationContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code mqlQuery}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void enterMqlQuery(MqlBaseParser.MqlQueryContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code mqlQuery}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void exitMqlQuery(MqlBaseParser.MqlQueryContext ctx);
-	/**
 	 * Enter a parse tree produced by the {@code insertInto}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -1229,18 +1181,6 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitInsertInto(MqlBaseParser.InsertIntoContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code insertOverwrite}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void enterInsertOverwrite(MqlBaseParser.InsertOverwriteContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code insertOverwrite}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 */
-	void exitInsertOverwrite(MqlBaseParser.InsertOverwriteContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code createTemporaryView}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -1254,17 +1194,27 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateTemporaryView(MqlBaseParser.CreateTemporaryViewContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code createTemporaryFunction}
+	 * Enter a parse tree produced by the {@code mqlQuery}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
 	 */
-	void enterCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx);
+	void enterMqlQuery(MqlBaseParser.MqlQueryContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code createTemporaryFunction}
+	 * Exit a parse tree produced by the {@code mqlQuery}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
 	 */
-	void exitCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx);
+	void exitMqlQuery(MqlBaseParser.MqlQueryContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#appCmds}.
+	 * @param ctx the parse tree
+	 */
+	void enterAppCmds(MqlBaseParser.AppCmdsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#appCmds}.
+	 * @param ctx the parse tree
+	 */
+	void exitAppCmds(MqlBaseParser.AppCmdsContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#definer}.
 	 * @param ctx the parse tree
@@ -1295,86 +1245,6 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#appCmds}.
-	 * @param ctx the parse tree
-	 */
-	void enterAppCmds(MqlBaseParser.AppCmdsContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#appCmds}.
-	 * @param ctx the parse tree
-	 */
-	void exitAppCmds(MqlBaseParser.AppCmdsContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#nonLastCmdList}.
-	 * @param ctx the parse tree
-	 */
-	void enterNonLastCmdList(MqlBaseParser.NonLastCmdListContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#nonLastCmdList}.
-	 * @param ctx the parse tree
-	 */
-	void exitNonLastCmdList(MqlBaseParser.NonLastCmdListContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#nonLastCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterNonLastCmd(MqlBaseParser.NonLastCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#nonLastCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitNonLastCmd(MqlBaseParser.NonLastCmdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#lastCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterLastCmd(MqlBaseParser.LastCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#lastCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitLastCmd(MqlBaseParser.LastCmdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#insertIntoCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterInsertIntoCmd(MqlBaseParser.InsertIntoCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#insertIntoCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitInsertIntoCmd(MqlBaseParser.InsertIntoCmdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#insertOverwriteCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterInsertOverwriteCmd(MqlBaseParser.InsertOverwriteCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#insertOverwriteCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitInsertOverwriteCmd(MqlBaseParser.InsertOverwriteCmdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#createTemporaryViewCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterCreateTemporaryViewCmd(MqlBaseParser.CreateTemporaryViewCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#createTemporaryViewCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitCreateTemporaryViewCmd(MqlBaseParser.CreateTemporaryViewCmdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#createTemporaryFunctionCmd}.
-	 * @param ctx the parse tree
-	 */
-	void enterCreateTemporaryFunctionCmd(MqlBaseParser.CreateTemporaryFunctionCmdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#createTemporaryFunctionCmd}.
-	 * @param ctx the parse tree
-	 */
-	void exitCreateTemporaryFunctionCmd(MqlBaseParser.CreateTemporaryFunctionCmdContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#query}.
 	 * @param ctx the parse tree
@@ -1640,15 +1510,15 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitIdentifier(MqlBaseParser.IdentifierContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link MqlBaseParser#generalIdentifier}.
+	 * Enter a parse tree produced by {@link MqlBaseParser#resource}.
 	 * @param ctx the parse tree
 	 */
-	void enterGeneralIdentifier(MqlBaseParser.GeneralIdentifierContext ctx);
+	void enterResource(MqlBaseParser.ResourceContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link MqlBaseParser#generalIdentifier}.
+	 * Exit a parse tree produced by {@link MqlBaseParser#resource}.
 	 * @param ctx the parse tree
 	 */
-	void exitGeneralIdentifier(MqlBaseParser.GeneralIdentifierContext ctx);
+	void exitResource(MqlBaseParser.ResourceContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#nonReserved}.
 	 * @param ctx the parse tree

@@ -430,27 +430,6 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateFunction(MqlBaseParser.CreateFunctionContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code renameFunction}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitRenameFunction(MqlBaseParser.RenameFunctionContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code setFunctionName}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitSetFunctionName(MqlBaseParser.SetFunctionNameContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code setFunctionProperties}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitSetFunctionProperties(MqlBaseParser.SetFunctionPropertiesContext ctx);
-	/**
 	 * Visit a parse tree produced by the {@code dropFunction}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -710,26 +689,12 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitSetConfiguration(MqlBaseParser.SetConfigurationContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code mqlQuery}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitMqlQuery(MqlBaseParser.MqlQueryContext ctx);
-	/**
 	 * Visit a parse tree produced by the {@code insertInto}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitInsertInto(MqlBaseParser.InsertIntoContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code insertOverwrite}
-	 * labeled alternative in {@link MqlBaseParser#mql}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitInsertOverwrite(MqlBaseParser.InsertOverwriteContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code createTemporaryView}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -738,12 +703,18 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateTemporaryView(MqlBaseParser.CreateTemporaryViewContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code createTemporaryFunction}
+	 * Visit a parse tree produced by the {@code mqlQuery}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx);
+	T visitMqlQuery(MqlBaseParser.MqlQueryContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#appCmds}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAppCmds(MqlBaseParser.AppCmdsContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#definer}.
 	 * @param ctx the parse tree
@@ -762,54 +733,6 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#appCmds}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitAppCmds(MqlBaseParser.AppCmdsContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#nonLastCmdList}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNonLastCmdList(MqlBaseParser.NonLastCmdListContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#nonLastCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNonLastCmd(MqlBaseParser.NonLastCmdContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#lastCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitLastCmd(MqlBaseParser.LastCmdContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#insertIntoCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitInsertIntoCmd(MqlBaseParser.InsertIntoCmdContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#insertOverwriteCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitInsertOverwriteCmd(MqlBaseParser.InsertOverwriteCmdContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#createTemporaryViewCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitCreateTemporaryViewCmd(MqlBaseParser.CreateTemporaryViewCmdContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#createTemporaryFunctionCmd}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitCreateTemporaryFunctionCmd(MqlBaseParser.CreateTemporaryFunctionCmdContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#query}.
 	 * @param ctx the parse tree
@@ -969,11 +892,11 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitIdentifier(MqlBaseParser.IdentifierContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link MqlBaseParser#generalIdentifier}.
+	 * Visit a parse tree produced by {@link MqlBaseParser#resource}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitGeneralIdentifier(MqlBaseParser.GeneralIdentifierContext ctx);
+	T visitResource(MqlBaseParser.ResourceContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#nonReserved}.
 	 * @param ctx the parse tree

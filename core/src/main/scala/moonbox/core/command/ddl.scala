@@ -301,11 +301,12 @@ case class UnmountTable(
 
 case class CreateFunction(
 	function: MbFunctionIdentifier,
-	props: Map[String, String],
+	className: String,
+	methodName: Option[String],
+	resources: Seq[FunctionResource],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-
 		val (databaseId, database) = function.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -318,8 +319,9 @@ case class CreateFunction(
 				name = function.func,
 				databaseId = databaseId,
 				description = None,
-				className = "",
-				resources = Seq(),
+				className = className,
+				methodName = methodName,
+				resources = resources,
 				createBy = ctx.userId,
 				updateBy = ctx.userId
 			), ctx.organizationName, database, ignoreIfExists
@@ -328,7 +330,7 @@ case class CreateFunction(
 	}
 }
 
-case class AlterFunctionSetName(
+/*case class AlterFunctionSetName(
 	function: MbFunctionIdentifier,
 	newFunction: MbFunctionIdentifier) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
@@ -367,7 +369,7 @@ case class AlterFunctionSetOptions(
 		)
 		Seq.empty[Row]
 	}
-}
+}*/
 
 case class DropFunction(
 	function: MbFunctionIdentifier,

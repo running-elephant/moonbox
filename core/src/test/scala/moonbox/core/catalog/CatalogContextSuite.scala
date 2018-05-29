@@ -331,7 +331,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		}
 	}
 
-	test("function") {
+	/*test("function") {
 		catalog.createDatabase(CatalogDatabase(
 			name = "db",
 			description = Some("for testing"),
@@ -413,7 +413,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		catalog.dropDatabase(1, "org1", "db", ignoreIfNotExists = true, cascade = true)
 		assert(!catalog.databaseExists(1, "db"))
 
-	}
+	}*/
 
 	test("view") {
 		catalog.createDatabase(CatalogDatabase(

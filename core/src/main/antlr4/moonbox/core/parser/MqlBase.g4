@@ -17,11 +17,11 @@ mql
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)
         org=identifier IDENTIFIED BY pwd=password                                               # createSa
-    | RENAME SA name=identifier TO newName=identifier IN (ORG|ORGANIZATION) org=identifier      # renameSa
-    | ALTER SA name=identifier RENAME TO newName=identifier
-        IN (ORG|ORGANIZATION) org=identifier                                                    # setSaName
-    | ALTER SA name=identifier IDENTIFIED BY pwd=password
-        IN (ORG|ORGANIZATION) org=identifier                                                    # setSaPassword
+    | RENAME SA name=identifier IN (ORG|ORGANIZATION) org=identifier TO newName=identifier      # renameSa
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier
+        RENAME TO newName=identifier                                                            # setSaName
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier
+        IDENTIFIED BY pwd=password                                                              # setSaPassword
     | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION) org=identifier                 # dropSa
 
     | GRANT GRANT OPTION privilegeList TO USER users=identifierList                             # grantGrantToUser
@@ -82,11 +82,9 @@ mql
     | DROP DATABASE (IF EXISTS)? name=identifier (CASCADE)?                                     # dropDatabase
     | USE db=identifier                                                                         # useDatabase
 
-    | CREATE FUNCTION (IF NOT EXISTS)? name=funcIdentifier OPTIONS propertyList                 # createFunction
-    | RENAME FUNCTION name=funcIdentifier TO newName=funcIdentifier                             # renameFunction
-    | ALTER FUNCTION name=funcIdentifier RENAME TO newName=funcIdentifier                       # setFunctionName
-    | ALTER FUNCTION name=funcIdentifier SET OPTIONS propertyList                               # setFunctionProperties
-    | DROP FUNCTION (IF EXISTS)? name=funcIdentifier                                            # dropFunction
+    | CREATE (TEMP | TEMPORARY)? FUNCTION (IF NOT EXISTS)? name=funcIdentifier
+        AS className=STRING (methodName=STRING)? (USING resource (',' resource)*)?              # createFunction
+    | DROP (TEMP | TEMPORARY)? FUNCTION (IF EXISTS)? name=funcIdentifier                        # dropFunction
 
     | CREATE VIEW (IF NOT EXISTS)? name=tableIdentifier (COMMENT comment=STRING)? AS query      # createView
     | RENAME VIEW name=tableIdentifier TO newName=tableIdentifier                               # renameView
@@ -131,14 +129,14 @@ mql
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
     | SET property                                                                              # setConfiguration
 
+    | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier AS? query                                # insertInto
+    | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
     | query                                                                                     # mqlQuery
-    | insertIntoCmd                                                                             # insertInto
-    | insertOverwriteCmd                                                                        # insertOverwrite
-    | createTemporaryViewCmd                                                                    # createTemporaryView
-    | createTemporaryFunctionCmd                                                                # createTemporaryFunction
     ;
 
-
+appCmds
+    : mql (';' mql)*
+    ;
 definer
     : EQ? (user = identifier | CURRENT_USER)
     ;
@@ -148,40 +146,6 @@ schedule
     ;
 starOrInteger
     : STAR | INTEGER_VALUE
-    ;
-appCmds
-    : (nonLastCmdList ',')? lastCmd
-    ;
-
-nonLastCmdList
-    : nonLastCmd (',' nonLastCmd)*
-    ;
-
-nonLastCmd
-    : createTemporaryViewCmd
-    | createTemporaryFunctionCmd
-    ;
-
-lastCmd
-    : insertIntoCmd
-    | insertOverwriteCmd
-    | query
-    ;
-
-insertIntoCmd
-    : INSERT INTO (TABLE)? tableIdentifier query
-    ;
-
-insertOverwriteCmd
-    : INSERT OVERWRITE TABLE tableIdentifier query
-    ;
-
-createTemporaryViewCmd
-    : CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query
-    ;
-
-createTemporaryFunctionCmd
-    : CREATE (OR REPLACE)? (TEMP | TEMPORARY) FUNCTION name=identifier OPTIONS propertyList
     ;
 
 query
@@ -294,8 +258,9 @@ identifier
     | nonReserved
     ;
 
-generalIdentifier
-    : '/'? identifier (('/' | '.') identifier)*
+
+resource
+    : identifier STRING
     ;
 
 nonReserved
@@ -390,6 +355,7 @@ TO: 'TO';
 TYPE: 'TYPE';
 UNMOUNT: 'UNMOUNT';
 USE: 'USE';
+USING: 'USING';
 USER: 'USER';
 USERS: 'USERS';
 VIEW: 'VIEW';

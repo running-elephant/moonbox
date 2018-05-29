@@ -134,8 +134,9 @@ trait EntityComponent extends DatabaseComponent {
 		def databaseId = column[Long]("databaseId")
 		def description = column[Option[String]]("description")
 		def className = column[String]("className")
+		def methodName = column[Option[String]]("methodName")
 		def resources = column[Seq[FunctionResource]]("resources")
-		override def * = (id.?, name, databaseId, description, className,
+		override def * = (id.?, name, databaseId, description, className, methodName,
 			resources, createBy, createTime, updateBy, updateTime
 			) <> (CatalogFunction.tupled, CatalogFunction.unapply)
 	}

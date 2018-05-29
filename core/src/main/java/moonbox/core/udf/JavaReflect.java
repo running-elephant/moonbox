@@ -21,8 +21,8 @@ public class JavaReflect {
         method.invoke(object);
     }
 
-    public static Class doReflect(String className, String src) {
-        Class clazz = null;
+    public static Class<?> doReflect(String className, String src) {
+        Class<?> clazz = null;
         try {
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 

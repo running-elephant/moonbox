@@ -22,6 +22,6 @@ public class JavaByteObject extends SimpleJavaFileObject {
     }
 
     public byte[] getBytes() {
-        return outputStream.toByteArray();
+      return outputStream.toByteArray();
     }
 }

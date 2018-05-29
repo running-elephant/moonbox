@@ -11,7 +11,8 @@ abstract class FunctionResourceType(val `type`: String) {
 object JarResource extends FunctionResourceType("jar")
 object FileResource extends FunctionResourceType("file")
 object ArchiveResource extends FunctionResourceType("archive")
-object ScriptResource extends FunctionResourceType("script")
+object JavaResource extends FunctionResourceType("java")
+object ScalaResource extends FunctionResourceType("scala")
 
 object FunctionResourceType {
 	def fromString(resourceType: String): FunctionResourceType = {
@@ -19,7 +20,8 @@ object FunctionResourceType {
 			case "jar" => JarResource
 			case "file" => FileResource
 			case "archive" => ArchiveResource
-			case "script" => ScriptResource
+			case "java" => JavaResource
+			case "scala" => ScalaResource
 			case other =>
 				throw new UnsupportedException(s"Resource type '$other' is not supported.")
 		}
@@ -29,7 +31,7 @@ object FunctionResourceType {
 case class FunctionResource(resourceType: FunctionResourceType, uri: String)
 
 object FunctionResource {
-	def apply(resourceType: String, uri: String): FunctionResource = {
-		apply(FunctionResourceType.fromString(resourceType), uri)
+	def apply(resourceType: String, resource: String): FunctionResource = {
+		apply(FunctionResourceType.fromString(resourceType), resource)
 	}
 }

@@ -11,16 +11,16 @@ object JavaSourceUDF {
 	}
 
 	private def getFunctionReturnType(src: String, className: String, methodName: Option[String]): (Int, DataType) = {
-		val clazz = SourceCompiler.compileScala(SourceCompiler.prepareScala(src, className))
-		val method = UdfUtils.getMethod(clazz, methodName.getOrElse("apply"))
+		val clazz = SourceCompiler.compileJava(src, className)
+		val method = UdfUtils.getMethod(clazz, methodName.getOrElse("call"))
 		val dataType: (DataType, Boolean) = JavaTypeInference.inferDataType(method.getReturnType)
 		(method.getParameterCount, dataType._1)
 	}
 
 	def generateFunction(src: String, className: String, methodName: Option[String], argumentNum: Int): AnyRef = {
-		lazy val clazz = SourceCompiler.compileScala(SourceCompiler.prepareScala(src, className))
+		lazy val clazz = SourceCompiler.compileJava(src, className)
 		lazy val instance = UdfUtils.newInstance(clazz)
-		lazy val method = UdfUtils.getMethod(clazz, methodName.getOrElse("apply"))
+		lazy val method = UdfUtils.getMethod(clazz, methodName.getOrElse("call"))
 		argumentNum match {
 			case 0 => new Function0[Any] with Serializable {
 				override def apply(): Any = {

@@ -14,10 +14,10 @@ object JavaSourceUDAF {
 	private def generateAggregateFunction(src: String, className: String): UserDefinedAggregateFunction = {
 		new UserDefinedAggregateFunction with Serializable {
 
-			@transient val clazzUsingInDriver = SourceCompiler.compileScala(SourceCompiler.prepareScala(src, className))
+			@transient val clazzUsingInDriver = SourceCompiler.compileJava(src, className)
 			@transient val instanceUsingInDriver = UdfUtils.newInstance(clazzUsingInDriver)
 
-			lazy val clazzUsingInExecutor = SourceCompiler.compileScala(SourceCompiler.prepareScala(src, className))
+			lazy val clazzUsingInExecutor = SourceCompiler.compileJava(src, className)
 			lazy val instanceUsingInExecutor = UdfUtils.newInstance(clazzUsingInExecutor)
 
 			def invokeMethod[T: ClassTag](clazz: Class[_], instance: Any, method: String): T = {

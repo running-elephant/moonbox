@@ -1,5 +1,6 @@
 package moonbox.core.paser
 
+import moonbox.core.catalog.{FunctionResource, JarResource}
 import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MbParser
@@ -61,13 +62,13 @@ class MbParserSuite extends FunSuite {
 
 		assertEquals(
 			AlterSaSetName("sa", "sa1", "org"),
-			"RENAME SA sa TO sa1 IN ORG org",
-			"ALTER SA sa RENAME TO sa1 IN ORG org"
+			"RENAME SA sa IN ORG org TO sa1 ",
+			"ALTER SA sa IN ORG org RENAME TO sa1 "
 		)
 
 		assertEquals(
 			AlterSaSetPassword("sa", "123abc", "org"),
-			"ALTER SA sa IDENTIFIED BY 123abc IN ORG org"
+			"ALTER SA sa IN ORG org IDENTIFIED BY 123abc "
 		)
 
 		assertEquals(
@@ -323,25 +324,31 @@ class MbParserSuite extends FunSuite {
 
 	test("function") {
 		assertEquals(
-			CreateFunction(MbFunctionIdentifier("func", Some("db")), Map("key" -> "value"), ignoreIfExists = true),
-			"CREATE FUNCTION IF NOT EXISTS db.func OPTIONS(key 'value')"
-		)
-
-		assertEquals(
-			AlterFunctionSetName(MbFunctionIdentifier("func", Some("db")), MbFunctionIdentifier("func1", Some("db"))),
-			"RENAME FUNCTION db.func TO db.func1",
-			"ALTER FUNCTION db.func RENAME TO db.func1"
-		)
-
-		assertEquals(
-			AlterFunctionSetOptions(MbFunctionIdentifier("func", Some("db")), Map("key" -> "value")),
-			"ALTER FUNCTION db.func SET OPTIONS(key 'value')"
+			CreateFunction(MbFunctionIdentifier("func", Some("db")),
+				"edp.moonbox.Function",
+				None,
+				Seq(FunctionResource("jar", "/temp/udf.jar")),
+				ignoreIfExists = true),
+			"CREATE FUNCTION IF NOT EXISTS db.func AS 'edp.moonbox.Function' USING JAR '/temp/udf.jar'"
 		)
 
 		assertEquals(
 			DropFunction(MbFunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
 			"DROP FUNCTION IF EXISTS db.func"
 		)
+		assertEquals(
+			CreateTempFunction(MbFunctionIdentifier("func", None),
+				"edp.moonbox.Function",
+				None,
+				Seq(FunctionResource("jar", "/temp/udf.jar")), ignoreIfExists = false),
+			"CREATE TEMP FUNCTION func AS 'edp.moonbox.Function' USING JAR '/temp/udf.jar'",
+			"CREATE TEMPORARY FUNCTION func AS 'edp.moonbox.Function' USING JAR '/temp/udf.jar'"
+		)
+		assertEquals(
+			DropTempFunction(MbFunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
+			"DROP TEMP FUNCTION IF EXISTS db.func"
+		)
+
 	}
 
 	test("view") {
@@ -375,17 +382,31 @@ class MbParserSuite extends FunSuite {
 	test("application") {
 		assertEquals(
 			CreateApplication("app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS CREATE TEMP VIEW view AS SELECT * FROM table, SELECT * FROM view"
-		)
-
-		assertEquals(
-			CreateApplication("app", Seq("CREATE TEMP FUNCTION func OPTIONS(key 'value')", "INSERT INTO db.table1 SELECT func(col) FROM table"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS CREATE TEMP FUNCTION func OPTIONS(key 'value'), INSERT INTO db.table1 SELECT func(col) FROM table"
+			"CREATE APPLICATION IF NOT EXISTS app AS CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view"
 		)
 
 		assertEquals(
 			CreateApplication("app", Seq("SELECT * FROM table"), ignoreIfExists = true),
 			"CREATE APPLICATION IF NOT EXISTS app AS SELECT * FROM table"
+		)
+		assertEquals(
+			AlterApplicationSetName(
+				"app", "app1"
+			),
+			"ALTER APPLICATION app RENAME TO app1",
+			"RENAME APPLICATION app TO app1"
+		)
+		assertEquals(
+			AlterApplicationSetQuery(
+				"app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view")
+			),
+			"ALTER APPLICATION app AS CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view "
+		)
+		assertEquals(
+			DropApplication(
+				"app", ignoreIfNotExists = true
+			),
+			"DROP APPLICATION IF EXISTS app"
 		)
 	}
 
@@ -685,19 +706,6 @@ class MbParserSuite extends FunSuite {
 			CreateTempView("view", "SELECT * FROM table", isCache = true, replaceIfExists = true),
 			"CREATE OR REPLACE CACHE TEMP VIEW view AS SELECT * FROM table",
 			"CREATE OR REPLACE CACHE TEMPORARY VIEW view AS SELECT * FROM table"
-		)
-	}
-
-	test("temp function") {
-		assertEquals(
-			CreateTempFunction("func", Map("key" -> "value"), replaceIfExists = false),
-			"CREATE TEMP FUNCTION func OPTIONS(key 'value')",
-			"CREATE TEMPORARY FUNCTION func OPTIONS(key 'value')"
-		)
-		assertEquals(
-			CreateTempFunction("func", Map("key" -> "value"), replaceIfExists = true),
-			"CREATE OR REPLACE TEMP FUNCTION func OPTIONS(key 'value')",
-			"CREATE OR REPLACE TEMPORARY FUNCTION func OPTIONS(key 'value')"
 		)
 	}
 

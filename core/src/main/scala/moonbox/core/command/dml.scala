@@ -1,7 +1,7 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.catalog.{CatalogGroup, CatalogSession, CatalogUser}
+import moonbox.core.catalog.{CatalogGroup, CatalogSession, CatalogUser, FunctionResource}
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
@@ -278,10 +278,17 @@ case class CreateTempView(
 	isCache: Boolean,
 	replaceIfExists: Boolean) extends MbCommand with DML
 
+
 case class CreateTempFunction(
-	name: String,
-	props: Map[String, String],
-	replaceIfExists: Boolean) extends MbCommand with DML
+	function: MbFunctionIdentifier,
+	className: String,
+	methodName: Option[String],
+	resources: Seq[FunctionResource],
+	ignoreIfExists: Boolean) extends MbCommand with DML
+
+case class DropTempFunction(
+	function: MbFunctionIdentifier,
+	ignoreIfNotExists: Boolean) extends MbCommand with DML
 
 case class InsertInto(
 	table: MbTableIdentifier,

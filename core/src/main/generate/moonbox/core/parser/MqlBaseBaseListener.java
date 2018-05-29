@@ -736,42 +736,6 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterRenameFunction(MqlBaseParser.RenameFunctionContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitRenameFunction(MqlBaseParser.RenameFunctionContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterSetFunctionName(MqlBaseParser.SetFunctionNameContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitSetFunctionName(MqlBaseParser.SetFunctionNameContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterSetFunctionProperties(MqlBaseParser.SetFunctionPropertiesContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitSetFunctionProperties(MqlBaseParser.SetFunctionPropertiesContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterDropFunction(MqlBaseParser.DropFunctionContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1216,18 +1180,6 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterMqlQuery(MqlBaseParser.MqlQueryContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitMqlQuery(MqlBaseParser.MqlQueryContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterInsertInto(MqlBaseParser.InsertIntoContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1235,18 +1187,6 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitInsertInto(MqlBaseParser.InsertIntoContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterInsertOverwrite(MqlBaseParser.InsertOverwriteContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitInsertOverwrite(MqlBaseParser.InsertOverwriteContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1264,13 +1204,25 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx) { }
+	@Override public void enterMqlQuery(MqlBaseParser.MqlQueryContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitCreateTemporaryFunction(MqlBaseParser.CreateTemporaryFunctionContext ctx) { }
+	@Override public void exitMqlQuery(MqlBaseParser.MqlQueryContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterAppCmds(MqlBaseParser.AppCmdsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitAppCmds(MqlBaseParser.AppCmdsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1307,102 +1259,6 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitStarOrInteger(MqlBaseParser.StarOrIntegerContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterAppCmds(MqlBaseParser.AppCmdsContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAppCmds(MqlBaseParser.AppCmdsContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterNonLastCmdList(MqlBaseParser.NonLastCmdListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitNonLastCmdList(MqlBaseParser.NonLastCmdListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterNonLastCmd(MqlBaseParser.NonLastCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitNonLastCmd(MqlBaseParser.NonLastCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterLastCmd(MqlBaseParser.LastCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitLastCmd(MqlBaseParser.LastCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterInsertIntoCmd(MqlBaseParser.InsertIntoCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitInsertIntoCmd(MqlBaseParser.InsertIntoCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterInsertOverwriteCmd(MqlBaseParser.InsertOverwriteCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitInsertOverwriteCmd(MqlBaseParser.InsertOverwriteCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterCreateTemporaryViewCmd(MqlBaseParser.CreateTemporaryViewCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitCreateTemporaryViewCmd(MqlBaseParser.CreateTemporaryViewCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterCreateTemporaryFunctionCmd(MqlBaseParser.CreateTemporaryFunctionCmdContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitCreateTemporaryFunctionCmd(MqlBaseParser.CreateTemporaryFunctionCmdContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1720,13 +1576,13 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterGeneralIdentifier(MqlBaseParser.GeneralIdentifierContext ctx) { }
+	@Override public void enterResource(MqlBaseParser.ResourceContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitGeneralIdentifier(MqlBaseParser.GeneralIdentifierContext ctx) { }
+	@Override public void exitResource(MqlBaseParser.ResourceContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

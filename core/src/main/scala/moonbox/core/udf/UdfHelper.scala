@@ -170,9 +170,9 @@ object UdfHelper {
  */
   def generateFunction(parameterCount: Int, udfName: String="", src: String="", path: String="", className: String="", tpe: String): AnyRef = {
     //Method and Class can not be serialized, use lazy val here
-    lazy val clazz = reflect(src, path, className, tpe)
-    lazy val obj = getObjectByClass(clazz)
-    lazy val method = getMethodByClass(udfName, clazz)
+	lazy val clazz = reflect(src, path, className, tpe)
+	lazy val obj = getObjectByClass(clazz)
+	lazy val method = getMethodByClass(udfName, clazz)
     parameterCount match {
       case 0 => new Function0[Any] with Serializable {
         def apply(): Any = { method.invoke(obj) }
