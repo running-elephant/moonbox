@@ -7,52 +7,6 @@ import java.util.Arrays;
 
 public class JavaReflect {
 
-    public static void main(String[] args) throws Exception {
-        String src ="public class Chef {" +
-                        "public void cook(){" +
-                            "System.out.println(\"do dinner\");" +
-                        "}" +
-                    "};";
-
-        JavaReflect reflect = new JavaReflect();
-        Class clazz = reflect.doReflect("Chef", src);
-        Object object = clazz.newInstance();
-        Method method = clazz.getMethod("cook");
-        method.invoke(object);
-    }
-
-    public static Class<?> doReflect(String className, String src) {
-        Class<?> clazz = null;
-        try {
-            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-
-            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-
-            final JavaByteObject byteObject = new JavaByteObject(className);
-
-            StandardJavaFileManager standardFileManager =  compiler.getStandardFileManager(diagnostics, null, null);
-
-            JavaFileManager fileManager = createFileManager(standardFileManager, byteObject);
-
-            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, null, null, getCompilationUnits(className, src));
-
-            if (!task.call()) {
-                diagnostics.getDiagnostics().forEach(System.out::println);
-            }
-            fileManager.close();
-
-            //loading and using our compiled class
-            final ClassLoader inMemoryClassLoader = createClassLoader(byteObject);
-
-            clazz = inMemoryClassLoader.loadClass(className);
-
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-
-        return clazz;
-    }
-
     public static JavaFileManager createFileManager(StandardJavaFileManager fileManager,
                                                      JavaByteObject byteObject) {
         return new ForwardingJavaFileManager<StandardJavaFileManager>(fileManager) {

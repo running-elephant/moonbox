@@ -25,6 +25,11 @@
                   <resource>reference.conf</resource>
                 </transformer>
               </transformers>
+              <artifactSet>
+                <excludes>
+                  <exclude>org.scalatest:scalatest_2.11</exclude>
+                </excludes>
+              </artifactSet>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>
