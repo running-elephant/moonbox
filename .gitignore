@@ -28,7 +28,6 @@ conf/moonbox-env.sh
 conf/nodes
 conf/log4j.properties
 check_illegal.py
-catalyst/src/main/generate
 **/dependency-reduced-pom.xml
 **/generate
 
