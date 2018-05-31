@@ -81,9 +81,6 @@ case class CreateDatabase(
 			updateBy = ctx.userId
 		)
 		mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
-		if (!mbSession.mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
-			mbSession.mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
-		}
 		Seq.empty[Row]
 	}
 }

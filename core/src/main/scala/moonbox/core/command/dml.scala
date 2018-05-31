@@ -17,6 +17,9 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
+		if (!mbSession.mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
+			mbSession.mixcal.sqlToDF(s"create database if not exists ${currentDb.name}")
+		}
 		mbSession.mixcal.sparkSession.catalog.setCurrentDatabase(ctx.databaseName)
 		Seq.empty[Row]
 	}
