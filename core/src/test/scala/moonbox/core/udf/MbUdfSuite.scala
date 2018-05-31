@@ -18,20 +18,20 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
     //session.sparkContext.addJar(jarPath)
     val rootDir = System.getProperty("user.dir")
 
-    val df = session.read.json(s"${rootDir}/core/src/test/resources/temperatures.json")
+    val df = session.read.json(s"$rootDir/core/src/test/resources/temperatures.json")
     df.createOrReplaceTempView("citytemps")
 
-    val df1 = session.read.json(s"${rootDir}/core/src/test/resources/inventory.json")
+    val df1 = session.read.json(s"$rootDir/core/src/test/resources/inventory.json")
     df1.createOrReplaceTempView("inventory")
 
-    val df2 = session.read.json(s"${rootDir}/core/src/test/resources/cities.json")
+    val df2 = session.read.json(s"$rootDir/core/src/test/resources/cities.json")
     df2.createOrReplaceTempView("cities")
 
-    jarPath = s"file:${rootDir}/core/src/test/resources/udfTest.jar"  //update jar path
+    jarPath = s"file:$rootDir/core/src/test/resources/udfTest.jar"  //update jar path
 
   }
 
-  test("scala test") {
+  test("scala class") {
     val src =
       """
         |class A { val value = 100}
@@ -48,11 +48,11 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
 	  val (func, returnType) = ScalaSourceUDF(src, "PersonData", Some("multiply"))
 	  session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
-    session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
+	  session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
 
 
-  test("scala test 2") {
+  test("scala class extends Function trait") {
     val src =
 		"""
 		  |class PersonData extends Function1[Double, Double] {
@@ -68,7 +68,7 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
   }
 
 
-  test("java test") {
+  test("java class") {
     val src =
       """package mytest;
         |import java.io.Serializable;
@@ -85,7 +85,7 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) => ScalaUDF(func, returnType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
   }
-	test("java test 2") {
+	test("java class implements UDF interface") {
 		val src =
 			"""package mytest;
 			  |import java.io.Serializable;
@@ -101,7 +101,7 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 		session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
 	}
 
-  test("jar java udf file") {
+  /*test("jar java udf file") {
     session.sessionState.functionRegistry.registerFunction("multiply", (e: Seq[Expression]) =>
       ScalaUDF(UdfHelper.generateFunction(1, "multiply", "", jarPath, "zoo.Panda", "jar"), DoubleType, e))
     session.sql("SELECT city, multiply(avgLow) AS avgLowF, multiply(avgHigh) AS avgHighF FROM citytemps").show()
@@ -121,10 +121,10 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
     session.sessionState.functionRegistry.registerFunction("fun", (e: Seq[Expression]) =>
       ScalaUDAF(e, UdfHelper.generateAggFunction(path=jarPath, className="zoo.Bear", tpe="jar")))
     session.sql("SELECT city , count['dominant'] as Dominant, count['Total'] as Total from(select city, fun(Female, Male) as count from cities group by (city)) temp").show()
-  }
+  }*/
 
 
-  test("udaf scala test") {
+  test("udaf scala") {
     val src =
       """
         |import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
@@ -162,7 +162,7 @@ class MbUdfSuite extends FunSuite with BeforeAndAfterAll{
 
   }
 
-  test("udaf java test") {
+  test("udaf java") {
     val src =
       """
         |package zoo;
