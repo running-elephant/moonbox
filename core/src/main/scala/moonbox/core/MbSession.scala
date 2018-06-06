@@ -223,6 +223,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 		val createTableSql = s"create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)} using ${DataSystemFactory.typeToSparkDatasource(typ)} options($propsString)"
 		mixcal.sqlToDF(createTableSql)
+		val registerSuccess = mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)
+		logInfo(s"registerDataSourceTable: $tableIdentifier $registerSuccess")
 	}
 }
 
