@@ -7,6 +7,8 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 
+import scala.collection.mutable.ArrayBuffer
+
 
 
 
@@ -32,10 +34,33 @@ class DefaultSource extends SchemaRelationProvider with CreatableRelationProvide
 						case elem => elem
 					}
 			}
-			partition.foreach { row =>
-				redis.put[String, Any](jobId, parse(row.toSeq))
+			try {
+				val writeBuffer = new ArrayBuffer[Seq[Any]]()
+				var batchSize: Int = 200
+				partition.foreach { row =>
+					if (batchSize <= 0) {
+						writeBuffer += parse(row.toSeq)  //put last time
+						redis.pipePut[String, Any](jobId, writeBuffer:_*)
+
+						batchSize = 200
+						writeBuffer.clear()
+					} else {
+						batchSize = batchSize - 1
+						writeBuffer += parse(row.toSeq)
+					}
+				}
+				if (writeBuffer.nonEmpty) {
+					redis.pipePut[String, Any](jobId, writeBuffer:_*)
+				}
+			} catch{
+				case e: Exception =>
+					e.printStackTrace()
+					throw e
+			} finally {
+				redis.close
 			}
 		}
+		redisClient.close
 		RedisRelation(parameters, data.schema)(sqlContext)
 	}
 }

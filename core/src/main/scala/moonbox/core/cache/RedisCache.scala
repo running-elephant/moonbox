@@ -65,6 +65,14 @@ class RedisCache(servers: String) extends Cache with MbLogging { self =>
 		jedis.rpush(serialize[K](key), serialize[E](value))
 	}
 
+	override def pipePut[K, E](key: K, values: E*): Unit = {
+		val p = jedis.pipelined()
+		values.foreach { value =>
+			p.rpush(serialize[K](key), serialize[E](value))
+		}
+		p.sync()
+	}
+
 	override def putRaw(key: Array[Byte], value: Array[Byte]): Long = {
 		jedis.rpush(key, value)
 	}

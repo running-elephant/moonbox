@@ -4,6 +4,8 @@ trait Cache {
 
 	def put[K, E](key: K, value: E): Long
 
+	def pipePut[K, E](key: K, values: E*): Unit
+
 	def putRaw(key: Array[Byte], value: Array[Byte]): Long
 
 	def put[K, F, E](key: K, field: F, value: E): Long
