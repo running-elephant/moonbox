@@ -119,7 +119,7 @@ package object config {
 	    .createWithDefaultString("off")
 	val RPC_AKKA_CLUSTER_AUTODOWN = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down")
 	    .stringConf
-	    .createWithDefaultString("on")
+	    .createWithDefaultString("off")
 	val RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down-unreachable-after")
 	    .timeConf
 	    .createWithDefaultString("5s")
