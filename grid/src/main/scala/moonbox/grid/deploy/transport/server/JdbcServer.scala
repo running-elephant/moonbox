@@ -9,6 +9,7 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
+import io.netty.handler.timeout.ReadTimeoutHandler
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy.MbService
 
@@ -17,6 +18,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
   var channel2SessionIdAndToken = new ConcurrentHashMap[Channel, (String, String)]
   var bossGroup: NioEventLoopGroup = _
   var workerGroup: NioEventLoopGroup = _
+  var readTimeout: Int = 60 * 60 // time unit: s
 
   def start(): Int = {
     val bossGroup = new NioEventLoopGroup
@@ -28,8 +30,9 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
         new ChannelInitializer[SocketChannel]() {
           override def initChannel(ch: SocketChannel) = {
             ch.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
-            ch.pipeline.addLast("encode", new ObjectEncoder)
-            ch.pipeline.addLast("handler", new JdbcServerHandler(channel2SessionIdAndToken, mbService))
+              .addLast("encode", new ObjectEncoder)
+              .addLast("timeout handler", new ReadTimeoutHandler(readTimeout))
+              .addLast("handler", new JdbcServerHandler(channel2SessionIdAndToken, mbService))
           }
         })
       .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 1024)
@@ -58,9 +61,9 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
     if (channel != null)
       channel.close()
     if (bossGroup != null)
-    bossGroup.shutdownGracefully()
+      bossGroup.shutdownGracefully()
     if (workerGroup != null)
-    workerGroup.shutdownGracefully()
+      workerGroup.shutdownGracefully()
   }
 }
 
