@@ -88,5 +88,14 @@
             <artifactId>json4s-native_2.11</artifactId>
         </dependency>
         <!-- JWT -->
+        <!--quartz-->
+        <dependency>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+        </dependency>
     </dependencies>
 </project>
