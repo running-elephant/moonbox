@@ -1,10 +1,11 @@
 package org.apache.spark.sql.datasys
 
 import java.net.InetAddress
-import java.sql.{Connection, DriverManager}
+import java.sql.{Connection, DriverManager, ResultSet}
 import java.util.Properties
 
 import moonbox.common.MbLogging
+import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
@@ -13,8 +14,10 @@ import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.util.NextIterator
 
-class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with MbLogging {
+class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession)
+	extends DataSystem(props) with Queryable with Insertable with MbLogging {
 
 	require(contains("type", "url", "user", "password", "dbtable"))
 
@@ -115,5 +118,56 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 		)
 		val schema = StructType.fromAttributes(sqlBuilder.finalLogicalPlan.output)
 		sparkSession.createDataFrame(rdd, schema)
+	}
+
+	override def buildQuery(plan: LogicalPlan): DataTable = {
+		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sql = sqlBuilder.toSQL
+		val schema = StructType.fromAttributes(sqlBuilder.finalLogicalPlan.output)
+		logInfo(s"query sql: $sql")
+		val iter = new NextIterator[Row] {
+			val conn = getConnection()
+			val statement = conn.createStatement()
+			val resultSet = statement.executeQuery(sql)
+
+			override def close(): Unit = {
+				try {
+					if (null != resultSet) {
+						resultSet.close()
+					}
+				} catch {
+					case e: Exception => logWarning("Exception closing resultset", e)
+				}
+				try {
+					if (null != statement) {
+						statement.isClosed
+					}
+				} catch {
+					case e: Exception => logWarning("Exception closing statement", e)
+				}
+				try {
+					if (null != conn) {
+						conn.close()
+					}
+					logInfo("closed connection")
+				} catch {
+					case e: Exception => logWarning("Exception closing connection", e)
+				}
+			}
+
+			override def getNext(): Row = {
+				if (resultSet != null && resultSet.next()) {
+					Row(MbJdbcRDD.resultSetToObjectArray(resultSet):_*)
+				} else {
+					finished = true
+					null.asInstanceOf[Row]
+				}
+			}
+		}
+		new DataTable(iter, () => iter.closeIfNeeded(), schema)
+	}
+
+	override def insert(table: DataTable): Unit = {
+		// TODO
 	}
 }
