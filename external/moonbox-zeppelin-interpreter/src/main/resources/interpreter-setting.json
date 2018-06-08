@@ -28,6 +28,12 @@
         "defaultValue": "moonbox.jdbc.MbDriver",
         "description": "Moonbox JDBC Driver Name"
       },
+      "default.maxConcurrency": {
+        "envName": null,
+        "propertyName": "default.maxConcurrency",
+        "defaultValue": "10",
+        "description": "Max number of paralleled paragraphs"
+      },
       "default.max_count": {
         "envName": null,
         "propertyName": "default.max_count",

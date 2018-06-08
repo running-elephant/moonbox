@@ -2,7 +2,7 @@ package moonbox.client
 
 import java.io.IOException
 import java.net.SocketAddress
-import java.util.concurrent.{CancellationException, ConcurrentHashMap}
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 import io.netty.bootstrap.Bootstrap
@@ -67,33 +67,35 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
 
   def isConnected(): Boolean = connected
 
+  def isActive(): Boolean = channel.isActive
+
   def close() = {
     if (channel != null) {
       channel.close()
     }
   }
 
-//  def cancel(msg: Any): Unit = {
-//    val id: Long = msg match {
-//      case echo: EchoInbound => echo.messageId
-//      case m: JdbcLoginInbound => m.messageId
-//      case m: JdbcLogoutInbound => m.messageId
-//      case m: JdbcQueryInbound => m.messageId
-//      case m: JdbcCancelInbound => m.messageId
-//      case m: DataFetchInbound => m.dataFetchState.messageId
-//      case _ => throw new Exception("The cancel input message is unsupported")
-//    }
-//    if (promises.containsKey(id)) {
-//      val promise = promises.get(id)
-//      if (promise.isCancellable) {
-//        promise.setFailure(new CancellationException(s"Message is canceled"))
-//      } else {
-//        throw new Exception(s"Message $msg is not cancellable")
-//      }
-//    } else {
-//      throw new Exception(s"Cancellation is failed, message $msg is not running")
-//    }
-//  }
+  //  def cancel(msg: Any): Unit = {
+  //    val id: Long = msg match {
+  //      case echo: EchoInbound => echo.messageId
+  //      case m: JdbcLoginInbound => m.messageId
+  //      case m: JdbcLogoutInbound => m.messageId
+  //      case m: JdbcQueryInbound => m.messageId
+  //      case m: JdbcCancelInbound => m.messageId
+  //      case m: DataFetchInbound => m.dataFetchState.messageId
+  //      case _ => throw new Exception("The cancel input message is unsupported")
+  //    }
+  //    if (promises.containsKey(id)) {
+  //      val promise = promises.get(id)
+  //      if (promise.isCancellable) {
+  //        promise.setFailure(new CancellationException(s"Message is canceled"))
+  //      } else {
+  //        throw new Exception(s"Message $msg is not cancellable")
+  //      }
+  //    } else {
+  //      throw new Exception(s"Cancellation is failed, message $msg is not running")
+  //    }
+  //  }
 
   // return null if it throws an exception
   def sendAndReceive(msg: Any, timeout: Long = DEFAULT_TIMEOUT): JdbcOutboundMessage = {

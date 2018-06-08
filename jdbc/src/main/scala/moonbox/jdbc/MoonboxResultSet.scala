@@ -89,9 +89,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     if (rows == null)
       throw new SQLException("ResultSet is already closed")
     if (stat != null)
-      stat.checkClosed
-    if (conn != null)
-      conn.checkClosed()
+      stat.checkClosed()
   }
 
   override def close() = {
@@ -107,7 +105,12 @@ class MoonboxResultSet(conn: MoonboxConnection,
     currentRow == null || currentRow.isEmpty
   }
 
-  override def getString(columnIndex: Int) = get(columnIndex).toString
+  override def getString(columnIndex: Int) = {
+    Option(get(columnIndex)) match {
+      case Some(obj) => obj.toString
+      case None => null
+    }
+  }
 
   override def getBoolean(columnIndex: Int) = get(columnIndex).asInstanceOf[Boolean]
 

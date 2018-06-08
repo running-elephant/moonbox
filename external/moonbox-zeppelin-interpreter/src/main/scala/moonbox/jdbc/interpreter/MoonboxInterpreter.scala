@@ -8,6 +8,7 @@ import java.util.concurrent.{ConcurrentHashMap => Jmap}
 
 import org.apache.zeppelin.interpreter.Interpreter.FormType
 import org.apache.zeppelin.interpreter.{Interpreter, InterpreterContext, InterpreterResult}
+import org.apache.zeppelin.scheduler.SchedulerFactory
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -16,17 +17,18 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
 
   val log = LoggerFactory.getLogger(this.getClass)
 
-  val DEFAULT_PRIFIX = "default"
+  val DEFAULT_PREFIX = "default"
   val URL_KEY = "url"
   val USER_KEY = "user"
   val PASSWORD_KEY = "password"
   val MAX_LINE_KEY = "max_count"
   val TIMEOUT_KEY = "timeout"
+  val MAX_CONCURRENCY_KEY = "maxConcurrency"
 
-  var maxResultsLine = 1000
+  val DEFAULT_MAX_CONCURRENCY = 10
+  var DEFAULT_MAX_RESULT_LINE = 1000
   var timeout = 60 * 30 // time unit: s
 
-  var pool: ConnectionPool = _
   val baseProps = new Properties()
   val idToConnection: Jmap[String, Connection] = new Jmap[String, Connection]()
   val idToStatement: Jmap[String, Statement] = new Jmap[String, Statement]()
@@ -35,7 +37,8 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
   val NEWLINE = '\n'
   val TAB = '\t'
   val TABLE_MAGIC_TAG = "%table "
-  val EXPLAIN_PREDICATE = "EXPLAIN "
+
+  override def getScheduler = SchedulerFactory.singleton.createOrGetParallelScheduler("interpreter_" + this.hashCode, getMaxConcurrency())
 
   override def cancel(interpreterContext: InterpreterContext): Unit = {
     val id = interpreterContext.getParagraphId
@@ -43,6 +46,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       val stat = idToStatement.get(id)
       stat.cancel()
       stat.close()
+      idToStatement.remove(id)
     }
   }
 
@@ -61,32 +65,36 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
 
   override def interpret(s: String, interpreterContext: InterpreterContext): InterpreterResult = {
     var interpreterResult: InterpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS)
-    var connection: Connection = null
     var statement: Statement = null
     var resultSet: ResultSet = null
+    val paragraphId = interpreterContext.getParagraphId
     try {
       val url = baseProps.getProperty(URL_KEY)
       log.info("Getting connection ...")
-      connection = {
-        var c = pool.getConnection
-        if (c == null) {
-          c = DriverManager.getConnection(url, baseProps)
+      val connection: Connection = {
+        Option(idToConnection.get(paragraphId)) match {
+          case Some(conn) =>
+            if (!conn.isClosed) {
+              conn
+            } else {
+              interpreterResult.add(InterpreterResult.Type.TEXT, s"WARNING: Connection timeout, using a new connection.$NEWLINE")
+              DriverManager.getConnection(url, baseProps)
+            }
+          case None => DriverManager.getConnection(url, baseProps)
         }
-        c
       }
-      //      connection = DriverManager.getConnection(url, baseProps)
       if (connection == null) {
         interpreterResult = new InterpreterResult(InterpreterResult.Code.ERROR, "Getting connection error")
         throw new SQLException("Getting connection error")
       }
-      idToConnection.put(interpreterContext.getParagraphId, connection)
+      idToConnection.put(paragraphId, connection)
       log.info("Creating statement ...")
       statement = connection.createStatement()
       if (statement == null) {
         interpreterResult = new InterpreterResult(InterpreterResult.Code.ERROR, "Creating statement error")
         throw new SQLException("Creating statement error")
       }
-      idToStatement.put(interpreterContext.getParagraphId, statement)
+      idToStatement.put(paragraphId, statement)
       try {
         statement.setQueryTimeout(getQueryTimeout())
         if (statement.execute(s)) {
@@ -102,11 +110,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
           resultSet.close()
         if (statement != null) {
           statement.close()
-          idToStatement.remove(interpreterContext.getParagraphId)
-        }
-        if (connection != null) {
-          connection.close()
-          idToConnection.remove(interpreterContext.getParagraphId)
+          idToStatement.remove(paragraphId)
         }
       }
     } catch {
@@ -124,23 +128,8 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
   override def open(): Unit = {
     log.debug("Properties: " + property.toString)
     property.stringPropertyNames().asScala.map { key =>
-      baseProps.setProperty(key.stripPrefix(DEFAULT_PRIFIX + "."), this.property.getProperty(key))
+      baseProps.setProperty(key.stripPrefix(DEFAULT_PREFIX + "."), this.property.getProperty(key))
     }
-    initPool(baseProps)
-  }
-
-  private def initPool(props: Properties): Unit = {
-    if (pool == null) {
-      synchronized {
-        if (pool == null) {
-          pool = new ConnectionPoolImpl(props)
-        }
-      }
-    }
-  }
-
-  private def getDefaultKey(key: String): String = {
-    DEFAULT_PRIFIX + "." + key
   }
 
   private def getResultString(resultSet: ResultSet, isTableType: Boolean): String = {
@@ -176,9 +165,20 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
 
   private def getMaxResultLine(): Int = {
     val max = baseProps.getProperty(MAX_LINE_KEY)
-    if (max != null)
-      maxResultsLine = max.toInt
-    maxResultsLine
+    if (max != null) {
+      max.toInt
+    } else {
+      DEFAULT_MAX_RESULT_LINE
+    }
+  }
+
+  def getMaxConcurrency(): Int = {
+    val max = baseProps.getProperty(MAX_CONCURRENCY_KEY)
+    if (max != null) {
+      max.toInt
+    } else {
+      DEFAULT_MAX_CONCURRENCY
+    }
   }
 
   private def replaceReservedChars(str: String): String = {

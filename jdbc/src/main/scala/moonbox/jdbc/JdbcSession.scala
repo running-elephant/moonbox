@@ -17,5 +17,26 @@ case class JdbcSession(jdbcClient: JdbcClient,
                        pwd: String, // md5 String of the original password
                        connectionProperties: Properties,
                        id: String = UUID.randomUUID().toString,
-                       sessionStart: Long = System.currentTimeMillis,
-                       var closed: Boolean = false)
+                       sessionStart: Long = System.currentTimeMillis
+                      ) {
+  var closed: Boolean = false
+
+  def close(): Unit = {
+    if (jdbcClient != null) {
+      jdbcClient.close()
+    }
+    closed = true
+  }
+
+  def isClosed(): Boolean = {
+    if (jdbcClient.isActive()) {
+      closed = false
+    } else {
+      if (jdbcClient != null) {
+        jdbcClient.close()
+      }
+      closed = true
+    }
+    closed
+  }
+}

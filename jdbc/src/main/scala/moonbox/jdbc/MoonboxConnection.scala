@@ -121,10 +121,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def createBlob(): Blob = throw new SQLException("Unsupported")
 
   def checkClosed(): Unit = {
-    if (jdbcSession == null)
-      throw new SQLException("Exception while create a statement, because the JdbcSession is null value")
-    else if (isClosed)
-      throw new SQLException("Exception while create a statement, because the connection is already closed.")
+    if (isClosed()){
+      throw new SQLException("Connection is already closed.")
+    }
   }
 
   override def createStatement(): Statement = {
@@ -201,9 +200,8 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     }
     statement = null
     //    closeSession(jdbcSession)
-    if (jdbcSession != null && !jdbcSession.closed) {
-      jdbcSession.jdbcClient.close()
-      jdbcSession.closed = true
+    if (jdbcSession != null || !jdbcSession.isClosed()) {
+      jdbcSession.close()
     }
     jdbcSession = null
     closed = true
@@ -224,7 +222,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     //throw new SQLException("Unsupported")
   }
 
-  override def isValid(timeout: Int): Boolean = if (jdbcSession == null || isClosed) false else true
+  override def isValid(timeout: Int): Boolean = {
+    if (jdbcSession == null || isClosed()) false else true
+  }
 
   override def getAutoCommit: Boolean = throw new SQLException("Unsupported")
 
@@ -235,11 +235,18 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def getSchema: String = throw new SQLException("Unsupported")
 
   override def getNetworkTimeout: Int = {
-//    throw new SQLException("unsupported")
+    //    throw new SQLException("unsupported")
     networkTimeout
   }
 
-  override def isClosed: Boolean = closed
+  override def isClosed(): Boolean = {
+    synchronized {
+      if (jdbcSession == null || jdbcSession.isClosed()) {
+        closed = true
+      }
+      closed
+    }
+  }
 
   override def getTransactionIsolation: Int = {
     Connection.TRANSACTION_NONE

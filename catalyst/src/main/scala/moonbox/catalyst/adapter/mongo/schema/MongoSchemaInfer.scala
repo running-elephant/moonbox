@@ -4,10 +4,10 @@ import java.util
 
 import com.mongodb.MongoClient
 import com.mongodb.client.model.Aggregates
-import com.mongodb.spark.sql.MongoInferSchema._
+import org.bson.BsonNull
 import org.apache.spark.sql.catalyst.analysis.TypeCoercion
 import org.apache.spark.sql.types._
-import org.bson.{BsonDocument, BsonType, BsonValue, Document}
+import org.bson.{BsonDocument, BsonType, BsonValue}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -15,6 +15,8 @@ import scala.collection.JavaConverters._
 class MongoSchemaInfer(sampleSize: Int = 1000) {
 
   val logger = LoggerFactory.getLogger(this.getClass)
+
+  val compatibleDecimalTypes = Seq(ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType)
 
   def inferSchema(client: MongoClient, database: String, collection: String): StructType = {
     val coll = client.getDatabase(database).getCollection(collection)
@@ -114,6 +116,22 @@ class MongoSchemaInfer(sampleSize: Int = 1000) {
       case 1 if Seq(BsonType.ARRAY, BsonType.DOCUMENT).contains(arrayTypes.head) => getCompatibleArraySchema(bsonArray)
       case 1 => DataTypes.createArrayType(getDataType(bsonArray.head), true)
       case _ => getCompatibleArraySchema(bsonArray)
+    }
+  }
+
+  def getCompatibleArraySchema(bsonArray: Seq[BsonValue]): DataType = {
+    var arrayType: Option[DataType] = Some(SkipFieldType)
+    bsonArray.takeWhile({
+      case (bsonValue: BsonNull) => true
+      case (bsonValue: BsonValue) =>
+        val previous: Option[DataType] = arrayType
+        arrayType = Some(getDataType(bsonValue))
+        if (previous.nonEmpty && arrayType != previous) arrayType = Some(compatibleType(arrayType.get, previous.get))
+        !arrayType.contains(ConflictType) // Option.contains was added in Scala 2.11
+    })
+    arrayType.get match {
+      case SkipFieldType => SkipFieldType
+      case dataType      => DataTypes.createArrayType(dataType, true)
     }
   }
   // scalastyle:on cyclomatic.complexity null
