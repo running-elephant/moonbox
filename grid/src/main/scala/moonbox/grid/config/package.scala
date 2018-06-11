@@ -11,9 +11,9 @@ package object config {
 	val JWT_ALGORITHM = ConfigBuilder("moonbox.jwt.algorithm")
 		.stringConf
 		.createWithDefaultString("HS256")
-	val JWT_TIMEOUT = ConfigBuilder("moonbox.jwt.timeout")
-		.timeConf
-		.createWithDefaultString("300m")
+//	val JWT_TIMEOUT = ConfigBuilder("moonbox.jwt.timeout")
+//		.timeConf
+//		.createWithDefaultString("300m")
 	val JWT_SECRET = ConfigBuilder("moonbox.jwt.secret")
 		.stringConf
 		.createWithDefaultString("moonbox_secret")

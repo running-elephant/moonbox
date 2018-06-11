@@ -3,18 +3,24 @@ package moonbox.grid.deploy
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import moonbox.common.MbLogging
+import moonbox.common.{MbConf, MbLogging}
 import moonbox.common.message._
+import moonbox.core.CatalogContext
 import moonbox.grid.api.{ClosedSession, _}
 import moonbox.grid.deploy.authenticate.LoginManager
+import moonbox.grid.deploy.rest.TokenManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class MbService(val loginManager: LoginManager, master: ActorRef, resultGetter: ActorRef) extends MbLogging {
+class MbService(conf: MbConf, catalogContext: CatalogContext, master: ActorRef, resultGetter: ActorRef) extends MbLogging {
 
 	implicit val timeout = Timeout(new FiniteDuration(3600 * 24, SECONDS))
+
+	private val loginManager = new LoginManager(catalogContext, new TokenManager(conf), this)
+
+	def getLoginManager(): LoginManager = loginManager
 
 	def login(username: String, password: String): Future[Option[String]] = {
 		Future(loginManager.login(username, password))
@@ -35,6 +41,7 @@ class MbService(val loginManager: LoginManager, master: ActorRef, resultGetter: 
 			case Some(username) =>
 				askForCompute(OpenSession(username, database)).mapTo[OpenSessionResponse].flatMap {
 					case OpenedSession(sessionId) =>
+						loginManager.putSession(token, sessionId)
 						Future(OpenSessionOutbound(Some(sessionId), None))
 					case OpenSessionFailed(error) =>
 						Future(OpenSessionOutbound(None, Some(error)))
@@ -48,7 +55,9 @@ class MbService(val loginManager: LoginManager, master: ActorRef, resultGetter: 
 		isLogin(token).flatMap {
 			case Some(username) =>
 				askForCompute(CloseSession(sessionId)).mapTo[CloseSessionResponse].flatMap {
-					case ClosedSession => Future(CloseSessionOutbound(None))
+					case ClosedSession =>
+						loginManager.removeSession(token)
+						Future(CloseSessionOutbound(None))
 					case CloseSessionFailed(error) => Future(CloseSessionOutbound(Some(error)))
 				}
 			case None =>

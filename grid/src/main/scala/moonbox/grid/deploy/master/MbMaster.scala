@@ -14,16 +14,15 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.core.parser.MbParser
-import moonbox.grid.{CachedData, UnitData, _}
 import moonbox.grid.api._
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.authenticate.LoginManager
 import moonbox.grid.deploy.master.MbMasterMessages.ScheduleJob
-import moonbox.grid.deploy.rest.{RestServer, TokenManager}
+import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.deploy.worker.{MbWorker, WorkerInfo}
 import moonbox.grid.deploy.{DeployMessage, MbService}
+import moonbox.grid.{CachedData, UnitData, _}
 
 import scala.collection.JavaConverters._
 import scala.collection._
@@ -65,7 +64,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 	private var cluster: Cluster = Cluster.get(akkaSystem)
 	private var catalogContext: CatalogContext = _
-	private var loginManager: LoginManager = _
 	private var persistenceEngine: PersistenceEngine = _
 	private var singletonMaster: ActorRef = _
 	private var resultGetter: ActorRef = _
@@ -88,8 +86,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		catalogContext = new CatalogContext(conf)
 
-		loginManager = new LoginManager(catalogContext, new TokenManager(conf))
-
 		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
 			FiniteDuration(0, MILLISECONDS),
 			FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS),
@@ -100,7 +96,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		singletonMaster = startMasterEndpoint(akkaSystem)
 		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter], conf), "result-getter")
 
-		val serviceImpl = new MbService(loginManager, singletonMaster, resultGetter)
+		val serviceImpl = new MbService(conf, catalogContext, singletonMaster, resultGetter)
 
 		if (restServerEnabled) {
 			restServer = Some(new RestServer(param.host, param.restPort, conf, serviceImpl, akkaSystem))
