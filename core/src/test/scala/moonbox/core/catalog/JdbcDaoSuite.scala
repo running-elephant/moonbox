@@ -335,6 +335,55 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 		whenReady(action(deleteTables(1)))(affect => assert(affect == 1))
 	}
 
+	test("function") {
+		whenReady(action(createFunction(CatalogFunction(
+						name = "function",
+						databaseId = 1,
+						description = Some("for testing"),
+						className = "className",
+						methodName = None,
+						resources = Seq(),
+						createBy = 1,
+						updateBy = 1
+					)
+				)
+			)
+		)(id => assert(id == 1))
+		whenReady(action(getFunction(1, "function")))(func => assert(
+			func.contains(
+				CatalogFunction(
+					id = Some(1),
+					name = "function",
+					databaseId = 1,
+					description = Some("for testing"),
+					className = "className",
+					methodName = None,
+					resources = Seq(),
+					createBy = 1,
+					createTime = func.get.createTime,
+					updateBy = 1,
+					updateTime = func.get.updateTime
+				)
+			)
+		))
+		whenReady(action(functionExists(1, "function")))(exists => assert(exists))
+		whenReady(action(renameFunction(1, "function", "function1")(1)))(affect => assert(affect == 1))
+		whenReady(action(listFunctions(1)))(funcs => assert(funcs.size == 1))
+		whenReady(action(updateFunction(CatalogFunction(
+			id = Some(1),
+			name = "function",
+			databaseId = 1,
+			description = Some("for testing"),
+			className = "className",
+			methodName = Some("test"),
+			resources = Seq(),
+			createBy = 1,
+			updateBy = 1
+		))))(affect => assert(affect == 1))
+		whenReady(action(getFunction(1, "function")))(func => assert(func.get.methodName.contains("test")))
+		whenReady(action(deleteFunction(1, "function")))(affect => assert(affect == 1))
+	}
+
 	test("database") {
 		whenReady(action(
 			createDatabase(

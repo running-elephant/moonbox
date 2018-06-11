@@ -333,6 +333,15 @@ class MbParserSuite extends FunSuite {
 		)
 
 		assertEquals(
+			CreateFunction(MbFunctionIdentifier("func", Some("db")),
+				"edp.moonbox.Function",
+				Some("test"),
+				Seq(FunctionResource("jar", "/temp/udf.jar")),
+				ignoreIfExists = true),
+			"CREATE FUNCTION IF NOT EXISTS db.func AS 'edp.moonbox.Function' 'test' USING JAR '/temp/udf.jar'"
+		)
+
+		assertEquals(
 			DropFunction(MbFunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
 			"DROP FUNCTION IF EXISTS db.func"
 		)

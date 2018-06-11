@@ -331,7 +331,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		}
 	}
 
-	/*test("function") {
+	test("function") {
 		catalog.createDatabase(CatalogDatabase(
 			name = "db",
 			description = Some("for testing"),
@@ -347,6 +347,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			databaseId = db.id.get,
 			description = Some("for testing"),
 			className = "className",
+			methodName = None,
 			resources = Seq(FunctionResource(JarResource, "hdfs://localhost:8020/jar")),
 			createBy = 1,
 			updateBy = 1
@@ -357,6 +358,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		assert(function.databaseId == db.id.get)
 		assert(function.description.contains("for testing"))
 		assert(function.className == "className")
+		assert(function.methodName == None)
 		assert(function.resources == Seq(FunctionResource(JarResource, "hdfs://localhost:8020/jar")))
 		assert(function.createBy == 1)
 		assert(function.updateBy == 1)
@@ -367,6 +369,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				databaseId = db.id.get,
 				description = Some("for testing"),
 				className = "className",
+				methodName = None,
 				resources = Seq(),
 				createBy = 1,
 				updateBy = 1
@@ -405,6 +408,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			databaseId = db.id.get,
 			description = Some("for testing"),
 			className = "className",
+			methodName = None,
 			resources = Seq(FunctionResource(JarResource, "hdfs://localhost:8020/jar")),
 			createBy = 1,
 			updateBy = 1
@@ -413,7 +417,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		catalog.dropDatabase(1, "org1", "db", ignoreIfNotExists = true, cascade = true)
 		assert(!catalog.databaseExists(1, "db"))
 
-	}*/
+	}
 
 	test("view") {
 		catalog.createDatabase(CatalogDatabase(
