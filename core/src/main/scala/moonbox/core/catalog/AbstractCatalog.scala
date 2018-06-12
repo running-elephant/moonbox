@@ -243,41 +243,41 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def listApplications(organizationId: Long, pattern: String): Seq[CatalogApplication]
 
 	// ----------------------------------------------------------------------------
-	// Scheduler -- belong to organization
+	// timedevent -- belong to organization
 	// ----------------------------------------------------------------------------
-	final def createScheduler(schedulerDefinition: CatalogScheduler, organization: String, ignoreIfExists: Boolean): Unit = {
-		val scheduler = schedulerDefinition.name
-		postToAll(CreateSchedulerPreEvent(organization, scheduler))
-		doCreateScheduler(schedulerDefinition, ignoreIfExists)
-		postToAll(CreateSchedulerEvent(organization, scheduler))
+	final def createTimedEvent(eventDefinition: CatalogTimedEvent, organization: String, ignoreIfExists: Boolean): Unit = {
+		val event = eventDefinition.name
+		postToAll(CreateTimedEventPreEvent(organization, event))
+		doCreateTimedEvent(eventDefinition, ignoreIfExists)
+		postToAll(CreateTimedEventEvent(organization, event))
 	}
-	protected def doCreateScheduler(schedulerDefinition: CatalogScheduler, ignoreIfExists: Boolean): Unit
+	protected def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit
 
-	final def renameScheduler(organizationId: Long, organization: String, scheduler: String, newScheduler: String, updateBy: Long): Unit = {
-		postToAll(RenameSchedulerPreEvent(organization, scheduler))
-
-		postToAll(RenameSchedulerEvent(organization, scheduler))
-	}
-
-	protected def doRenameScheduler(organizationId: Long, scheduler: String, newScheduler: String, updateBy: Long): Unit
-
-	final def dropScheduler(organizationId: Long, organization: String, scheduler: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropSchedulerPreEvent(organization, scheduler))
-		doDropScheduler(organizationId, scheduler, ignoreIfNotExists)
-		postToAll(DropSchedulerEvent(organization, scheduler))
+	final def renameTimedEvent(organizationId: Long, organization: String, event: String, newEvent: String, updateBy: Long): Unit = {
+		postToAll(RenameTimedEventPreEvent(organization, event))
+		doRenameTimedEvent(organizationId, event, newEvent, updateBy)
+		postToAll(RenameTimedEventEvent(organization, event))
 	}
 
-	protected def doDropScheduler(organizationId: Long, scheduler: String, ignoreIfNotExists: Boolean): Unit
+	protected def doRenameTimedEvent(organizationId: Long, event: String, newEvent: String, updateBy: Long): Unit
 
-	def alterScheduler(schedulerDefinition: CatalogScheduler): Unit
+	final def dropTimedEvent(organizationId: Long, organization: String, event: String, ignoreIfNotExists: Boolean): Unit = {
+		postToAll(DropTimedEventPreEvent(organization, event))
+		doDropTimedEvent(organizationId, event, ignoreIfNotExists)
+		postToAll(DropTimedEventEvent(organization, event))
+	}
 
-	def schedulerExists(organizationId: Long, scheduler: String): Boolean
+	protected def doDropTimedEvent(organizationId: Long, event: String, ignoreIfNotExists: Boolean): Unit
 
-	def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler
+	def alterTimedEvent(eventDefinition: CatalogTimedEvent): Unit
 
-	def listSchedulers(organizationId: Long): Seq[CatalogScheduler]
+	def timedEventExists(organizationId: Long, event: String): Boolean
 
-	def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler]
+	def getTimedEvent(organizationId: Long, event: String): CatalogTimedEvent
+
+	def listTimedEvents(organizationId: Long): Seq[CatalogTimedEvent]
+
+	def listTimedEvents(organizationId: Long, pattern: String): Seq[CatalogTimedEvent]
 
 
 

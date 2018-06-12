@@ -108,7 +108,7 @@ case class CatalogApplication(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
-case class CatalogScheduler(
+case class CatalogTimedEvent(
 	id: Option[Long] = None,
 	name: String,
 	organizationId: Long,

@@ -473,59 +473,59 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	// -----------------------------------------------------------------
-	// scheduler
+	// timedevent
 	// -----------------------------------------------------------------
-	def createScheduler(scheduler: CatalogScheduler) = {
-		insert(scheduler, catalogSchedulers)
+	def createTimedEvent(event: CatalogTimedEvent) = {
+		insert(event, catalogTimedEvents)
 	}
 
-	def deleteScheduler(schedulerId: Long) = {
-		delete[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, _.id === schedulerId
+	def deleteTimedEvent(eventId: Long) = {
+		delete[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, _.id === eventId
 		)
 	}
 
-	def deleteScheduler(organizationId: Long, scheduler: String) = {
-		delete[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+	def deleteTimedEvent(organizationId: Long, event: String) = {
+		delete[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
-	def renameScheduler(organizationId: Long, scheduler: String, newScheduler: String)(updateBy: Long) = {
-		update[CatalogScheduler, CatalogSchedulerTable,
+	def renameTimedEvent(organizationId: Long, event: String, newEvent: String)(updateBy: Long) = {
+		update[CatalogTimedEvent, CatalogTimedEventTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler,
-			t => (t.name, t.updateBy, t.updateTime), (newScheduler, updateBy, Utils.now))
+			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event,
+			t => (t.name, t.updateBy, t.updateTime), (newEvent, updateBy, Utils.now))
 	}
 
-	def updateScheduler(schedulerDefinition: CatalogScheduler) = {
-		updateEntity[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.id === schedulerDefinition.id.get, schedulerDefinition
+	def updateTimedEvent(eventDefinition: CatalogTimedEvent) = {
+		updateEntity[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.id === eventDefinition.id.get, eventDefinition
 		)
 	}
 
-	def getScheduler(organizationId: Long, scheduler: String) = {
-		queryOneOption[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+	def getTimedEvent(organizationId: Long, event: String) = {
+		queryOneOption[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
-	def schedulerExists(organizationId: Long, scheduler: String) = {
-		exists[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.organizationId === organizationId && t.name === scheduler
+	def timedEventExists(organizationId: Long, event: String) = {
+		exists[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
-	def listSchedulers(organizationId: Long) = {
-		query[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.organizationId === organizationId
+	def listTimedEvents(organizationId: Long) = {
+		query[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.organizationId === organizationId
 		)
 	}
 
-	def listSchedulers(organizationId: Long, pattern: String) = {
-		query[CatalogScheduler, CatalogSchedulerTable](
-			catalogSchedulers, t => t.organizationId === organizationId && t.name.like(pattern)
+	def listTimedEvents(organizationId: Long, pattern: String) = {
+		query[CatalogTimedEvent, CatalogTimedEventTable](
+			catalogTimedEvents, t => t.organizationId === organizationId && t.name.like(pattern)
 		)
 	}
 

@@ -9,8 +9,8 @@ class NoSuchDatasourceException(user: String)
 class NoSuchApplicationException(app: String)
 	extends Exception(s"Application '$app' not found")
 
-class NoSuchSchedulerException(scheduler: String)
-	extends Exception(s"Scheduler '$scheduler' not found")
+class NoSuchTimedEventException(event: String)
+	extends Exception(s"Scheduler '$event' not found")
 
 class NoSuchTableException(db: String, table: String)
 	extends Exception(s"Table or view '$table' not found in database '$db'")

@@ -360,36 +360,36 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listApplications(organizationId, pattern)
 	}
 
-	def createScheduler(schedulerDefinition: CatalogScheduler, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createScheduler(schedulerDefinition, organization, ignoreIfExists)
+	def createTimedEvent(eventDefinition: CatalogTimedEvent, organization: String, ignoreIfExists: Boolean): Unit = {
+		catalog.createTimedEvent(eventDefinition, organization, ignoreIfExists)
 	}
 
-	def renameScheduler(organizationId: Long, organization: String, scheduler: String, newScheduler: String, updateBy: Long): Unit = {
-		catalog.renameScheduler(organizationId, organization, scheduler, newScheduler, updateBy)
+	def renameTimedEvent(organizationId: Long, organization: String, event: String, newEvent: String, updateBy: Long): Unit = {
+		catalog.renameTimedEvent(organizationId, organization, event, newEvent, updateBy)
 	}
 
-	def alterScheduler(schedulerDefinition: CatalogScheduler): Unit = {
-		catalog.alterScheduler(schedulerDefinition)
+	def alterTimedEvent(eventDefinition: CatalogTimedEvent): Unit = {
+		catalog.alterTimedEvent(eventDefinition)
 	}
 
-	def schedulerExists(organizationId: Long, scheduler: String): Boolean = {
-		catalog.schedulerExists(organizationId, scheduler)
+	def timedEventExists(organizationId: Long, event: String): Boolean = {
+		catalog.timedEventExists(organizationId, event)
 	}
 
-	def dropScheduler(organizationId: Long, organization: String, scheduler: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropScheduler(organizationId, organization, scheduler, ignoreIfNotExists)
+	def dropTimedEvent(organizationId: Long, organization: String, event: String, ignoreIfNotExists: Boolean): Unit = {
+		catalog.dropTimedEvent(organizationId, organization, event, ignoreIfNotExists)
 	}
 
-	def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler = {
-		catalog.getScheduler(organizationId, scheduler)
+	def getTimedEvent(organizationId: Long, event: String): CatalogTimedEvent = {
+		catalog.getTimedEvent(organizationId, event)
 	}
 
-	def listSchedulers(organizationId: Long): Seq[CatalogScheduler] = {
-		catalog.listSchedulers(organizationId)
+	def listTimedEvents(organizationId: Long): Seq[CatalogTimedEvent] = {
+		catalog.listTimedEvents(organizationId)
 	}
 
-	def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler] = {
-		catalog.listSchedulers(organizationId, pattern)
+	def listTimedEvents(organizationId: Long, pattern: String): Seq[CatalogTimedEvent] = {
+		catalog.listTimedEvents(organizationId, pattern)
 	}
 
 	def createUserGroupRel(userGroupRels: Seq[CatalogUserGroupRel], organization: String, group: String, users: Seq[String]): Unit = {

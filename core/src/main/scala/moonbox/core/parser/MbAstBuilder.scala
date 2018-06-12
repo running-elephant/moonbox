@@ -542,43 +542,43 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val application = ctx.app.getText
 		val enable = if (ctx.ENABLE() != null) true else false
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateScheduler(name, definer, scheduler, desc, application, enable, ignoreIfExists)
+		CreateTimedEvent(name, definer, scheduler, desc, application, enable, ignoreIfExists)
 	}
 
 	override def visitRenameEvent(ctx: RenameEventContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
-		AlterSchedulerSetName(name, newName)
+		AlterTimedEventSetName(name, newName)
 	}
 
 	override def visitSetDefiner(ctx: SetDefinerContext): MbCommand = {
 		val name = ctx.name.getText
 		val definer = visitDefiner(ctx.definer())
-		AlterSchedulerSetDefiner(name, definer)
+		AlterTimedEventSetDefiner(name, definer)
 	}
 
 	override def visitSetEventName(ctx: SetEventNameContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
-		AlterSchedulerSetName(name, newName)
+		AlterTimedEventSetName(name, newName)
 	}
 
 	override def visitSetEventSchedule(ctx: SetEventScheduleContext): MbCommand = {
 		val name = ctx.name.getText
 		val scheduler = visitSchedule(ctx.schedule())
-		AlterSchedulerSetSchedule(name, scheduler)
+		AlterTimedEventSetSchedule(name, scheduler)
 	}
 
 	override def visitSetEventEnable(ctx: SetEventEnableContext): MbCommand = {
 		val name = ctx.name.getText
 		val enable = ctx.ENABLE() != null
-		AlterSchedulerSetEnable(name, enable)
+		AlterTimedEventSetEnable(name, enable)
 	}
 
 	override def visitDropEvent(ctx: DropEventContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		DropScheduler(name, ignoreIfNotExists)
+		DropTimedEvent(name, ignoreIfNotExists)
 	}
 
 	override def visitDefiner(ctx: DefinerContext): Option[String] = {
