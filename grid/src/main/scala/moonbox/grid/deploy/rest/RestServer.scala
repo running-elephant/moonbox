@@ -23,7 +23,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 
 	private val maxRetries: Int = conf.get(PORT_MAX_RETRIES.key, PORT_MAX_RETRIES.defaultValue.get)
 	private var bindingFuture: Future[ServerBinding] = _
-	private val tokenManager = service.loginManager.tokenManager
+	private val loginManager = service.getLoginManager()
 	implicit val materializer = ActorMaterializer()
 	implicit val formats = DefaultFormats +   //add custom special serializer
 		new CustomSerializer[java.sql.Date]( _ =>
@@ -56,7 +56,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[LogoutInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
@@ -70,7 +70,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[OpenSessionInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
@@ -84,7 +84,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[CloseSessionInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
@@ -98,7 +98,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[QueryInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
@@ -112,7 +112,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[SubmitInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false => SubmitOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
 								if (in.mode == "sync") {
@@ -129,7 +129,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[ProgressInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								ProgressOutbound(jobId = in.jobId, error = Some("Token is incorrect or expired."))
 							case true =>
@@ -143,7 +143,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[ResultInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								ResultOutbound(jobId = in.jobId, error = Some("Token is incorrect or expired."))
 							case true =>
@@ -157,7 +157,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[CancelInbound]) { in =>
 					complete {
-						tokenManager.isvalid(in.token) match {
+						loginManager.isvalid(in.token) match {
 							case false =>
 								CancelOutbound(jobId = in.jobId, error = Some("Token is incorrect or expired."))
 							case true =>

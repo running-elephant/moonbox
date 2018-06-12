@@ -11,14 +11,14 @@ import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 class TokenManager(conf: MbConf) {
 
 	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM.key, JWT_ALGORITHM.defaultValueString)
-	private val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get)
+//	private val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get / 1000)
 	private val _JWT_SECRET = conf.get(JWT_SECRET.key, JWT_SECRET.defaultValueString)
 
 	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 
 	def encode(username: String): String = {
 		val jwtClaim: JwtClaim = JwtClaim() + ("username", username) + ("seed", UUID.randomUUID().toString)
-		Jwt.encode(jwtHeader, jwtClaim.expiresIn(_JWT_TIMEOUT), _JWT_SECRET)
+		Jwt.encode(jwtHeader, jwtClaim, _JWT_SECRET)
 	}
 
 	def decode(token: String): Option[String] = {
