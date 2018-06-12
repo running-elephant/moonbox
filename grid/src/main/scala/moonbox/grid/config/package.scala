@@ -98,7 +98,6 @@ package object config {
 	    .timeConf
 	    .createWithDefaultString("1s")
 
-
 	val RPC_IMPLEMENTATION = ConfigBuilder("moonbox.rpc.implementation")
 	    .stringConf
 	    .createWithDefaultString("akka")
@@ -121,8 +120,11 @@ package object config {
 	    .stringConf
 	    .createWithDefaultString("off")
 	val RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down-unreachable-after")
-	    .timeConf
-	    .createWithDefaultString("5s")
+	    .stringConf
+	    .createWithDefaultString("off")
+    val RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE = ConfigBuilder("moonbox.rpc.akka.cluster.failure-detector.acceptable-heartbeat-pause")
+        .timeConf
+        .createWithDefaultString("10s")
 	val RPC_AKKA_EXTENSIONS_0 = ConfigBuilder("moonbox.rpc.akka.extensions.0")
 	    .stringConf
 	    .createWithDefaultString("akka.cluster.client.ClusterClientReceptionist")
@@ -136,6 +138,7 @@ package object config {
 		RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.key -> RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.defaultValueString,
 		RPC_AKKA_CLUSTER_AUTODOWN.key -> RPC_AKKA_CLUSTER_AUTODOWN.defaultValueString,
 		RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.key -> RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.defaultValueString,
+        RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.key -> RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.defaultValueString,
 		RPC_AKKA_EXTENSIONS_0.key -> RPC_AKKA_EXTENSIONS_0.defaultValueString
 	)
 
