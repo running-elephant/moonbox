@@ -136,16 +136,16 @@ case class DropApplicationEvent(organization: String, app: String) extends Appli
 case class RenameApplicationPreEvent(organization: String, app: String, newApp: String) extends ApplicationEvent
 case class RenameApplicationEvent(organization: String, app: String, newApp: String) extends ApplicationEvent
 
-trait SchedulerEvent extends CatalogEvent {
-	val scheduler: String
+trait TimedEventEvent extends CatalogEvent {
+	val event: String
 }
 
-case class CreateSchedulerPreEvent(organization: String, scheduler: String) extends SchedulerEvent
-case class CreateSchedulerEvent(organization: String, scheduler: String) extends SchedulerEvent
-case class DropSchedulerPreEvent(organization: String, scheduler: String) extends SchedulerEvent
-case class DropSchedulerEvent(organization: String, scheduler: String) extends SchedulerEvent
-case class RenameSchedulerPreEvent(organization: String, scheduler: String) extends SchedulerEvent
-case class RenameSchedulerEvent(organization: String, scheduler: String) extends SchedulerEvent
+case class CreateTimedEventPreEvent(organization: String, event: String) extends TimedEventEvent
+case class CreateTimedEventEvent(organization: String, event: String) extends TimedEventEvent
+case class DropTimedEventPreEvent(organization: String, event: String) extends TimedEventEvent
+case class DropTimedEventEvent(organization: String, event: String) extends TimedEventEvent
+case class RenameTimedEventPreEvent(organization: String, event: String) extends TimedEventEvent
+case class RenameTimedEventEvent(organization: String, event: String) extends TimedEventEvent
 
 trait UserTableRelEvent extends CatalogEvent {
 	val user: String

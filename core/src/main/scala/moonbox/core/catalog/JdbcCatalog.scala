@@ -493,68 +493,68 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Scheduler -- belong to organization
+	// timedevent -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateScheduler(schedulerDefinition: CatalogScheduler, ignoreIfExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.schedulerExists(schedulerDefinition.organizationId, schedulerDefinition.name)).flatMap {
+	override def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.timedEventExists(eventDefinition.organizationId, eventDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
 					case true => Future(Unit)
-					case false => throw new SchedulerExistsException(schedulerDefinition.name)
+					case false => throw new TimedEventExistsException(eventDefinition.name)
 				}
 			case false =>
-				jdbcDao.action(jdbcDao.createScheduler(schedulerDefinition))
+				jdbcDao.action(jdbcDao.createTimedEvent(eventDefinition))
 		}
 	}
 
-	override def doRenameScheduler(organizationId: Long, scheduler: String, newScheduler: String, updateBy: Long): Unit = await {
-		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler)).flatMap {
+	override def doRenameTimedEvent(organizationId: Long, event: String, newEvent: String, updateBy: Long): Unit = await {
+		jdbcDao.action(jdbcDao.timedEventExists(organizationId, event)).flatMap {
 			case true =>
-				jdbcDao.action(jdbcDao.schedulerExists(organizationId, newScheduler)).flatMap {
+				jdbcDao.action(jdbcDao.timedEventExists(organizationId, newEvent)).flatMap {
 					case false =>
-						jdbcDao.action(jdbcDao.renameScheduler(organizationId, scheduler, newScheduler)(updateBy))
+						jdbcDao.action(jdbcDao.renameTimedEvent(organizationId, event, newEvent)(updateBy))
 					case true =>
-						throw new SchedulerExistsException(newScheduler)
+						throw new TimedEventExistsException(newEvent)
 				}
 			case false =>
-				throw new NoSuchSchedulerException(scheduler)
+				throw new NoSuchTimedEventException(event)
 		}
 	}
 
-	override def alterScheduler(schedulerDefinition: CatalogScheduler): Unit = await {
-		jdbcDao.action(jdbcDao.updateScheduler(schedulerDefinition))
+	override def alterTimedEvent(eventDefinition: CatalogTimedEvent): Unit = await {
+		jdbcDao.action(jdbcDao.updateTimedEvent(eventDefinition))
 	}
 
-	override def getScheduler(organizationId: Long, scheduler: String): CatalogScheduler = await {
-		jdbcDao.action(jdbcDao.getScheduler(organizationId, scheduler)).map {
+	override def getTimedEvent(organizationId: Long, event: String): CatalogTimedEvent = await {
+		jdbcDao.action(jdbcDao.getTimedEvent(organizationId, event)).map {
 			case Some(a) => a
-			case None => throw new NoSuchSchedulerException(scheduler)
+			case None => throw new NoSuchTimedEventException(event)
 		}
 	}
 
-	override def doDropScheduler(organizationId: Long, scheduler: String, ignoreIfNotExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler)).flatMap {
+	override def doDropTimedEvent(organizationId: Long, event: String, ignoreIfNotExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.timedEventExists(organizationId, event)).flatMap {
 			case true =>
-				jdbcDao.action(jdbcDao.deleteScheduler(organizationId, scheduler))
+				jdbcDao.action(jdbcDao.deleteTimedEvent(organizationId, event))
 			case false =>
 				ignoreIfNotExists match {
 					case true => Future(Unit)
-					case false => throw new NoSuchSchedulerException(scheduler)
+					case false => throw new NoSuchTimedEventException(event)
 				}
 		}
 	}
 
-	override def schedulerExists(organizationId: Long, scheduler: String): Boolean = await {
-		jdbcDao.action(jdbcDao.schedulerExists(organizationId, scheduler))
+	override def timedEventExists(organizationId: Long, event: String): Boolean = await {
+		jdbcDao.action(jdbcDao.timedEventExists(organizationId, event))
 	}
 
-	override def listSchedulers(organizationId: Long): Seq[CatalogScheduler] = await {
-		jdbcDao.action(jdbcDao.listSchedulers(organizationId))
+	override def listTimedEvents(organizationId: Long): Seq[CatalogTimedEvent] = await {
+		jdbcDao.action(jdbcDao.listTimedEvents(organizationId))
 	}
 
-	override def listSchedulers(organizationId: Long, pattern: String): Seq[CatalogScheduler] = await {
-		jdbcDao.action(jdbcDao.listSchedulers(organizationId, pattern))
+	override def listTimedEvents(organizationId: Long, pattern: String): Seq[CatalogTimedEvent] = await {
+		jdbcDao.action(jdbcDao.listTimedEvents(organizationId, pattern))
 	}
 
 	// ----------------------------------------------------------------------------

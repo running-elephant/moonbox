@@ -38,7 +38,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val catalogFunctions = TableQuery[CatalogFunctionTable]
 	protected final val catalogViews = TableQuery[CatalogViewTable]
 	protected final val catalogApplications = TableQuery[CatalogApplicationTable]
-	protected final val catalogSchedulers = TableQuery[CatalogSchedulerTable]
+	protected final val catalogTimedEvents = TableQuery[CatalogTimedEventTable]
 	protected final val catalogColumns = TableQuery[CatalogColumnTable]
 	protected final val catalogUserTableRels = TableQuery[CatalogUserTableRelTable]
 	protected final val catalogUserGroupRels = TableQuery[CatalogUserGroupRelTable]
@@ -52,7 +52,7 @@ trait EntityComponent extends DatabaseComponent {
 		catalogFunctions,
 		catalogViews,
 		catalogApplications,
-		catalogSchedulers,
+		catalogTimedEvents,
 		catalogColumns,
 		catalogUserTableRels,
 		catalogUserGroupRels)
@@ -159,7 +159,7 @@ trait EntityComponent extends DatabaseComponent {
 			createTime, updateBy, updateTime) <> (CatalogApplication.tupled, CatalogApplication.unapply)
 	}
 
-	class CatalogSchedulerTable(tag: Tag) extends BaseTable[CatalogScheduler](tag, "schedules") {
+	class CatalogTimedEventTable(tag: Tag) extends BaseTable[CatalogTimedEvent](tag, "event") {
 		def name = column[String]("name")
 		def organizationId = column[Long]("organizationId")
 		def definer = column[Long]("definer")
@@ -169,7 +169,7 @@ trait EntityComponent extends DatabaseComponent {
 		def application = column[Long]("application")
 
 		override def * = (id.?, name, organizationId, definer, schedule, enable, description, application, createBy,
-			createTime, updateBy, updateTime) <> (CatalogScheduler.tupled, CatalogScheduler.unapply)
+			createTime, updateBy, updateTime) <> (CatalogTimedEvent.tupled, CatalogTimedEvent.unapply)
 	}
 
 	class CatalogColumnTable(tag: Tag) extends BaseTable[CatalogColumn](tag, "columns") {
