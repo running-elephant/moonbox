@@ -1,6 +1,7 @@
 package moonbox.core.execution.standalone
 
 import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.datasys.{DataSystemFactory, Insertable}
 
 import scala.collection.mutable
 
@@ -16,6 +17,7 @@ class DataTableWriter(dt: DataTable) {
 
 	def format(source: String): DataTableWriter = {
 		this.source = source
+		options.+("type" -> source)
 		this
 	}
 
@@ -30,7 +32,10 @@ class DataTableWriter(dt: DataTable) {
 	}
 
 	def save(): Unit = {
-
+		DataSystemFactory.getInstance(options.toMap, null) match {
+			case insertable: Insertable => insertable.insert(dt, mode)
+			case _ => throw new Exception(s"Datasytem $source is not insertable")
+		}
 	}
 
 }
