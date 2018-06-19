@@ -169,7 +169,7 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
     override def tableNames(): Seq[String] = Seq()
 
-    override def tableOption(tableName: String): Map[String, String] = Map()
+    override def tableProperties(tableName: String): Map[String, String] = Map()
 
     override def insert(table: DataTable, saveMode: SaveMode): Unit = {}
 }

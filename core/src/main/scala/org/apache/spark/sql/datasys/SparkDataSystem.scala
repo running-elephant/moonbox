@@ -26,8 +26,8 @@ class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSys
 		Dataset.ofRows(sparkSession, plan)
 	}
 
-	override def tableNames() = { throw new UnsupportedOperationException("unsupport method tableNames") }
+	override def tableNames(): Seq[String] = { throw new UnsupportedOperationException("unsupport method tableNames") }
 
-	override def tableOption(tableName: String): Map[String, String] = { throw new UnsupportedOperationException("unsupport method tableOption") }
+	override def tableProperties(tableName: String): Map[String, String] = { throw new UnsupportedOperationException("unsupport method tableOption") }
 
 }

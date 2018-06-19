@@ -34,8 +34,8 @@ class HbaseDataSystem(props: Map[String, String])(@transient val sparkSession: S
 null
 	}
 
-	override def tableNames() = Seq()
+	override def tableNames(): Seq[String] = Seq()
 
-	override def tableOption(tableName: String) = Map()
+	override def tableProperties(tableName: String): Map[String, String] = Map()
 
 }

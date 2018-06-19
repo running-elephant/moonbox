@@ -112,8 +112,8 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 		})(props("url"), p)
 	}
 
-	override def tableNames() = Seq()
+	override def tableNames(): Seq[String] = Seq()
 
-	override def tableOption(tableName: String): Map[String, String] = Map()
+	override def tableProperties(tableName: String): Map[String, String] = Map()
 
 }
