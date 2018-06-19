@@ -80,7 +80,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
 
     /** update insert 1 line by id**/
     def execute4Update(id: String, data: Seq[(String, String)]): Boolean = {  //, schema: StructType
-        //client.update(index, typ, id, data)
+        client.update(index, typ, id, data)
         true
     }
 

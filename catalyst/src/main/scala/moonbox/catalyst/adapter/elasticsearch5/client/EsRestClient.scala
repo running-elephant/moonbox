@@ -194,17 +194,13 @@ class EsRestClient(param: Map[String, String]) {
     /** delete content in index, but index exist. only use higher than 5.*,  in 2.*, need to install a delete by query plugin
       */
     def truncateIndex(index: String, mtype: String): Boolean = {
-        try {
-            val deleteJson = """{ "query": { "match_all": {} } }"""
-            val entityReq: HttpEntity = new StringEntity(deleteJson, ContentType.APPLICATION_JSON)
-            val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_delete_by_query""", new util.Hashtable[String, String](), entityReq)
-            if (isSucceeded(response)) {
-                true
-            } else {
-                false
-            }
-        }catch{
-            case _:IOException => false
+        val deleteJson = """{ "query": { "match_all": {} } }"""
+        val entityReq: HttpEntity = new StringEntity(deleteJson, ContentType.APPLICATION_JSON)
+        val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_delete_by_query""", new util.Hashtable[String, String](), entityReq)
+        if (isSucceeded(response)) {
+            true
+        } else {
+            false
         }
     }
 
@@ -343,26 +339,23 @@ class EsRestClient(param: Map[String, String]) {
 
     }
 
-    /** update one row in index,  **/
-//    def update(index: String, mtype: String, id: String, updateState: Seq[(String, String)]): Boolean = { //, schema: StructType
-//        val updateBody =datas.map{case (key, value) =>
-//            schema(key).dataType match{
-//                case _: NumericType =>
-//                    s""""${schema(key).name}": $value"""
-//                case _ =>
-//                    s""""${schema(key).name}": "$value""""
-//            }
-//        }.mkString(",")
-//
-//        val updateRequest = s"""{ $updateBody }"""
-//        val entityReq: HttpEntity = new StringEntity(updateRequest, ContentType.APPLICATION_JSON)
-//        val response: Response = restClient.performRequest("PUT", s"/$index/$mtype/$id", new util.Hashtable[String, String](), entityReq)
-//        if(isSucceeded(response)) {
-//            true
-//        }else{
-//            false
-//        }
-//    }
+    //UPDATE xxx_tbl SET xxx_title="abcdefg" WHERE id=3;
+    /** update one row in index, column (colName, colValue), colValue is "aaabbbccc" **/
+    def update(index: String, mtype: String, id: String, columns: Seq[(String, String)]): Boolean = { //
+
+        val updateBody = columns.map{case (key, value) =>
+            s""""$key": $value"""
+        }.mkString(",")
+
+        val updateRequest = s"""{ $updateBody }"""
+        val entityReq: HttpEntity = new StringEntity(updateRequest, ContentType.APPLICATION_JSON)
+        val response: Response = restClient.performRequest("POST", s"/$index/$mtype/$id", new util.Hashtable[String, String](), entityReq)
+        if(isSucceeded(response)) {
+            true
+        }else{
+            false
+        }
+    }
 
     /** use logic from es connector, convert every type to json object **/
     private def buildJsonValue(dataType: DataType, value: Any): Any = {
