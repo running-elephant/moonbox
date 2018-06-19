@@ -48,4 +48,6 @@ abstract class DataSystem(props: Map[String, String]) {
 
 	def tableNames(): Seq[String]
 
+    def tableOption(tableName: String): Map[String, String]
+
 }

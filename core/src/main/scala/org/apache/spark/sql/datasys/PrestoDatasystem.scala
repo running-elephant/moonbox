@@ -113,4 +113,7 @@ class PrestoDataSystem(props: Map[String, String])(@transient val sparkSession: 
 	}
 
 	override def tableNames() = Seq()
+
+	override def tableOption(tableName: String): Map[String, String] = Map()
+
 }

@@ -35,4 +35,7 @@ null
 	}
 
 	override def tableNames() = Seq()
+
+	override def tableOption(tableName: String) = Map()
+
 }
