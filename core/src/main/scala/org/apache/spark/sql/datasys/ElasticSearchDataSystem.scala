@@ -162,8 +162,8 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
     }
 
     override def tableProperties(tableName: String): Map[String, String] = {
-        val resource: String = props(ES_RESOURCE)
-        props + (ES_RESOURCE -> resource)
+        val resource: String = props(ES_RESOURCE).split("/")(0)
+        props + (ES_RESOURCE -> s"$resource/$tableName")
     }
 }
 
