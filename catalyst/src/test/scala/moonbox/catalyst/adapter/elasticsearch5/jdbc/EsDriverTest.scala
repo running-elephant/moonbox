@@ -365,6 +365,11 @@ class EsDriverTest extends FunSuite{
         doQuery("test_mb_100", "my_table", "select event_id, col_double_d from test_mb_100  limit 2" )
     }
 
+    test("query event alias") {  //if set limit, no repeat
+        doQuery("test_mb_100", "my_table", "select event_id as id, col_int_a, col_long_c, col_double_d, col_bool_e, col_float_g, col_str_h, col_time_b, col_int_f   from test_mb_100 where event_id < 10 order by event_id" )
+    }
+
+
     test("query avg group by having") {
         doQuery("test_mb_100", "my_table", "select avg(event_id), col_int_f from test_mb_100 group by col_int_f having col_int_f < 5" )
     }

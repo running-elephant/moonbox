@@ -38,7 +38,7 @@ class EsIterator[T](client: EsRestClient,
 
     val index = properties.getProperty("index")
     val typ = properties.getProperty("type")
-    val (response, sid, tsize, fsize, isfinish) = client.performScrollFirst(index, typ, json, context.hasLimited)
+    val (response, sid, tsize, fsize, isfinish) = client.performScrollFirst(index, typ, json, context.limitSize)
     totalSize = tsize
     fetchSize += fsize
     scrollId = sid

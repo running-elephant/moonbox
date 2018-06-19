@@ -1,22 +1,24 @@
 package org.apache.spark.sql.datasys
 
-import java.net.InetAddress
 import java.util.Properties
 
 import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}
 import moonbox.common.MbLogging
-import org.apache.spark.rdd.RDD
+import moonbox.core.execution.standalone.{DataTable, DataTableWriter}
 import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, AttributeReference, CaseWhenCodegen, Divide, EqualNullSafe, EqualTo, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Like, Literal, Multiply, Not, Or, Round, Substring, Subtract}
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.rdd.MbElasticSearchRDD
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 
-import scala.collection.JavaConversions._
-class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with MbLogging{
+import scala.collection.JavaConverters._
+
+class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transient val sparkSession: SparkSession)
+		extends DataSystem(props) with Queryable with Insertable with Truncatable with MbLogging{
 	require(contains("es.nodes", "es.resource"))
 
 	override val name: String = "elasticsearch"
@@ -66,12 +68,20 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 	private def getProperties: Properties = {
 		val properties = new Properties()
 		properties.put("nodes", props("es.nodes").split('/')(0))
-		properties.put("database", props("es.resource").split('/')(0))
-		properties.put("table", props("es.resource").split('/')(1))
+        val resourceArray: Array[String] = props("es.resource").split('/')
+        if(resourceArray.length == 2) {
+            properties.put("database", resourceArray(0))
+            properties.put("table", resourceArray(1))
+        }else if(resourceArray.length == 1){
+            properties.put("database", props("es.resource").split('/')(0))
+        }
 
-		if(props.contains("es.read.field.as.array.include")){
+		if(props.contains("es.read.field.as.array.include")){    //Fields/properties that should be considered as arrays/lists
 			properties.put("es.read.field.as.array.include", props("es.read.field.as.array.include"))
 		}
+        if(props.contains("es.mapping.id")){  //The document field/property name containing the document id.
+            properties.put("es.mapping.id", props("es.mapping.id"))
+        }
 		properties
 	}
 
@@ -81,12 +91,76 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 		val executor = new EsCatalystQueryExecutor(prop)
 		val json = executor.translate(plan).head
 		val mapping: Seq[(String, String)] = executor.getColumnMapping()	//alias name : column name
-    logInfo(json)
-		executor.client.close()
+		logInfo(json)
+		executor.close()
 
-		val rdd = new MbElasticSearchRDD[Row](sparkSession.sparkContext, json, mapping, schema, 1, getProperties, (schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
+		val rdd = new MbElasticSearchRDD[Row](sparkSession.sparkContext,
+                                                json,
+                                                mapping,
+                                                schema,
+                                                1,
+                                                getProperties,
+                                                executor.context.limitSize,
+                                                (schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
 		sparkSession.createDataFrame(rdd, plan.schema)
 
 	}
 
+    override def buildQuery(plan: LogicalPlan): DataTable = {
+        val prop: Properties = getProperties
+        val executor = new EsCatalystQueryExecutor(prop)
+        val schema = plan.schema
+        val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
+        new DataTable(iter, schema, () => executor.close())
+
+    }
+
+    override def insert(table: DataTable, saveMode: SaveMode): Unit = {
+        val prop: Properties = getProperties
+        val executor = new EsCatalystQueryExecutor(prop)
+        try {
+            executor.execute4Insert(table.iter, table.schema, saveMode)
+        }finally {
+            executor.close()
+        }
+
+    }
+
+    def update(id: String, data: Seq[(String, String)]): Unit = {
+        val prop: Properties = getProperties
+        val executor = new EsCatalystQueryExecutor(prop)
+        try {
+            val result = executor.execute4Update(id, data)
+        }finally {
+            executor.close()
+        }
+    }
+
+    override def tableNames(): Seq[String] = {
+        val prop: Properties = getProperties
+        val executor = new EsCatalystQueryExecutor(prop)
+        var tablesNames: Seq[String] = Seq.empty[String]
+        try {  //throw exception and close connection
+            tablesNames = executor.showTableByBb()
+        }finally {
+            executor.close()
+        }
+        tablesNames
+    }
+
+    override def truncate(): Unit = {  //try  throw
+        val prop: Properties = getProperties
+        val executor = new EsCatalystQueryExecutor(prop)
+        try {  //throw exception and close connection
+            executor.execute4Truncate()
+        }finally {
+            executor.close()
+        }
+    }
+
+    override def tableProperties(tableName: String): Map[String, String] = {
+var m = scala.collection.immutable.Map[String, String]()
+        m+=("a" -> "b")
+        m
+    }
 }

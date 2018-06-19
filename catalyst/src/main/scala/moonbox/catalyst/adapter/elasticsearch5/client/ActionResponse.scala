@@ -16,6 +16,14 @@ class ActionResponse extends MbLogging{
     private val aggregations = new LinkedList[AggWrapper]
     private var isAgg = false
 
+    def clear(): Unit = {
+        succeeded = false
+        totalHits = 0L
+        hits.clear()
+        aggregations.clear()
+        isAgg = false
+    }
+
     def succeeded(succeeded: Boolean): ActionResponse = {
         this.succeeded = succeeded
         this

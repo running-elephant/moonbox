@@ -23,6 +23,7 @@ class MbElasticSearchRDD[T: ClassTag](@transient val sc: SparkContext,
                                       schema: StructType,
                                       numPartitions: Int = 1,
                                       prop: Properties,
+                                      limitSize: Int,
                                       mapRow: (Option[StructType], Seq[Any]) => T)
         extends RDD[T](sc, Nil) {
 
@@ -30,7 +31,7 @@ class MbElasticSearchRDD[T: ClassTag](@transient val sc: SparkContext,
     override def compute(split: Partition, context: TaskContext): Iterator[T] = {
         val executor = new EsCatalystQueryExecutor(prop)
         context.addTaskCompletionListener( context => executor.client.close())
-        val rowIter = executor.execute(json, schema, mapping, mapRow)  //add ES ROW to structtype
+        val rowIter = executor.execute(json, schema, mapping, limitSize, mapRow)  //add ES ROW to structtype
         rowIter
     }
 

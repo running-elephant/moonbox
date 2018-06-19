@@ -1,15 +1,17 @@
 package moonbox.catalyst.adapter.elasticsearch5.client
 
 import java.io._
+import java.sql.{Date, Timestamp}
 import java.util
-import java.util.ArrayList
+import java.util.{ArrayList, Properties}
 
 import moonbox.catalyst.adapter.elasticsearch5.client.AggWrapper.AggregationType
-import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
+import org.apache.spark.sql.types._
 import org.elasticsearch.client.RestClientBuilder
 import org.json.JSONArray
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 //import com.alibaba.fastjson.{JSON, JSONArray, JSONObject}
 import org.apache.http.entity.{ContentType, StringEntity}
@@ -26,7 +28,7 @@ class EsRestClient(param: Map[String, String]) {
     //val port = param.getOrElse("es.port", "9200")
     val user: Option[String] = param.get("user")
     val password: Option[String] = param.get("password")
-
+    var version: Seq[Int] = Seq(5,3,2)
     //TODO: more shape type
     val geoShapeMap = Set("POINT", "LINE_STRING", "POLYGON", "MULTI_POINT", "MULTI_LINE_STRING",
         "MULTI_POLYGON",  "GEOMETRY_COLLECTION", "ENVELOPE", "CIRCLE"
@@ -64,8 +66,9 @@ class EsRestClient(param: Map[String, String]) {
         }else {
             RestClient.builder(httpHost: _*).build()
         }
-
     }
+
+    Version()
 
     def getContent(response: Response): String = {
         val entityRsp: InputStream = response.getEntity.getContent
@@ -84,8 +87,7 @@ class EsRestClient(param: Map[String, String]) {
         jsonStr
     }
 
-    /*{
-        "name" : "node-1",
+    /**{"name" : "node-1",
         "cluster_name" : "edp-es",
         "cluster_uuid" : "4cFGDzEQRD2HCSzV8442Mg",
         "version" : {
@@ -95,9 +97,10 @@ class EsRestClient(param: Map[String, String]) {
             "build_snapshot" : false,
             "lucene_version" : "6.4.2"
         },
-        "tagline" : "You Know, for Search"
-    }*/
+        "tagline" : "You Know, for Search"}
+    **/
 
+    /** like show databases, it shows indexs **/
     def getIndices(): Seq[String] = {
         val response = restClient.performRequest("GET", "/_aliases", new util.Hashtable[String, String]())
         val jsonStr = getContent(response)
@@ -110,6 +113,7 @@ class EsRestClient(param: Map[String, String]) {
         }
     }
 
+    /** likes show tables, it shows (index - type) list**/
     def getIndicesAndType(): Seq[(String, String)] = {
         val response: Response = restClient.performRequest("GET", s"""/_mapping?pretty=true""", new util.Hashtable[String, String]())
         val jsonStr = getContent(response)
@@ -128,9 +132,7 @@ class EsRestClient(param: Map[String, String]) {
     }
 
 
-    /*
-     * https://www.elastic.co/guide/en/elasticsearch/reference/5.3/indices-stats.html
-     */
+    /** https://www.elastic.co/guide/en/elasticsearch/reference/5.3/indices-stats.html **/
     def getStats(index: String): (Long, Long) = {  //(doc num, doc size)
         val response = restClient.performRequest("GET", s"$index/_stats/docs,store", new util.Hashtable[String, String]())
         val jsonStr = getContent(response)
@@ -144,17 +146,20 @@ class EsRestClient(param: Map[String, String]) {
         }
     }
 
-    def getVersion(): Seq[Int] = {
+    private def Version(): Unit = {
         val response = restClient.performRequest("GET", "", new util.Hashtable[String, String]())
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
-        if(isSucceeded(response)){
+        version = if(isSucceeded(response)){
             val number = jsonObject.getJSONObject("version").get("number").toString
             number.split('.').map(_.toInt)
         }else{
             Seq(5,3,2) //default version
         }
     }
+
+    def getVersion(): Seq[Int] =  { version }
+
 
     def getSchema(index: String, mtype: String) : (StructType, Set[String]) = {
         val response: Response = restClient.performRequest("GET", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String]())
@@ -174,6 +179,300 @@ class EsRestClient(param: Map[String, String]) {
 
     }
 
+    /**curl -i -XHEAD http://testserver1:9200/test_mb_100/_mapping/my_table **/
+    def checkExist(index: String, mtype: String): Boolean = {
+        val response: Response = restClient.performRequest("HEAD", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String]())
+        if(isSucceeded(response)) {
+            true
+        }else{
+            false
+        }
+    }
+
+    //https://www.elastic.co/guide/en/elasticsearch/reference/5.3/docs-delete-by-query.html
+    //https://stackoverflow.com/questions/34286357/delete-all-documents-of-a-type-in-elasticsearch-2-x
+    /** delete content in index, but index exist. only use higher than 5.*,  in 2.*, need to install a delete by query plugin
+      */
+    def truncateIndex(index: String, mtype: String): Boolean = {
+        try {
+            val deleteJson = """{ "query": { "match_all": {} } }"""
+            val entityReq: HttpEntity = new StringEntity(deleteJson, ContentType.APPLICATION_JSON)
+            val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_delete_by_query""", new util.Hashtable[String, String](), entityReq)
+            if (isSucceeded(response)) {
+                true
+            } else {
+                false
+            }
+        }catch{
+            case _:IOException => false
+        }
+    }
+
+    /** delete index in index, nothing left **/
+    def deleteIndex(index: String): Boolean = {
+        try {
+            val response: Response = restClient.performRequest("DELETE", s"""/$index""", new util.Hashtable[String, String]())
+            if(isSucceeded(response)) {
+                true
+            }else{
+                false
+            }
+        }catch{
+            case _: IOException => false   //no exist, in exception
+        }
+    }
+
+
+    private def buildESType(dataType: DataType): String = {
+         dataType match {
+             case ByteType =>  """{"type": "byte", "index": "not_analyzed"}"""
+             //case StringType  => "text"  //keyword：存储数据时候，不会分词建立索引; text: 存储数据时候，会自动分词，并生成索引
+             case BooleanType => """{"type": "boolean", "index": "not_analyzed"}"""
+             case DoubleType =>  """{"type": "double", "index": "not_analyzed"}"""
+             case BinaryType =>  """{"type": "binary", "index": "not_analyzed"}"""
+             case ShortType =>   """{"type": "short", "index": "not_analyzed"}"""
+             case FloatType =>   """{"type": "float", "index": "not_analyzed"}"""
+             case IntegerType => """{"type": "integer", "index": "not_analyzed"}"""
+             case LongType =>    """{"type": "long", "index": "not_analyzed"}"""
+             case StringType => if (getVersion().head == 5) {
+                     """{"type": "keyword", "index": "not_analyzed"}"""
+                 } else {
+                     """{"type": "string", "index": "not_analyzed"}"""
+                 } //es 2.*版本里面是没有这两个字段，只有string字段
+             case DateType =>       """{"type": "date", "index": "not_analyzed"}"""
+             case TimestampType =>  """{"type": "date", "index": "not_analyzed"}""" //long  <-- date
+             case a: ArrayType =>   buildESType(a.elementType) //"array"
+             case m: MapType =>  //TODO for maptype
+                 s"""{"properties":{  }
+                    |}""".stripMargin
+             case s: StructType =>
+                 val body = s.fields.map{field => s""" "${field.name}": ${buildESType(field.dataType)}""" }.mkString(",\n")
+                 s"""{"properties": {$body}} """
+         }
+    }
+
+    def generateUpdateMapping(index: String, mtype: String, schema: StructType) = {
+        val propContent = schema.fields.map{ field =>
+            s""" "${field.name}": ${buildESType(field.dataType)}"""
+        }.mkString(",\n")
+
+        s"""{
+           |  "_all": { "enabled": true  },
+           |  "properties":{
+           |    $propContent
+           |  }
+           |}""".stripMargin
+    }
+
+    def generateCreateMapping(index: String, mtype: String, schema: StructType): String = {
+        val propContent = schema.fields.map{ field =>
+            s""" "${field.name}": ${buildESType(field.dataType)}"""
+        }.mkString(",\n")
+
+        s"""{
+           |"mappings": {
+           |   "$mtype": {
+           |       "_all": { "enabled": true  },
+           |       "properties":{
+           |            $propContent
+           |        }
+           |    }
+           |  }
+           |}""".stripMargin
+    }
+
+    //TODO: many other type
+//    private def generateMapping(index: String, mtype: String, schema: StructType): String = {
+//        val propContent = schema.fields.map{ field =>
+//            val dType = buildESType(field.dataType)
+//            s""" "${field.name}":{"type": "$dType", "index": "not_analyzed"}"""
+//        }.mkString(",\n")
+//
+//        s"""{
+//            |"mappings": {
+//            |   "$mtype": {
+//            |       "_all": { "enabled": true  },
+//            |       "properties":{
+//            |           $propContent
+//            |       }
+//            |    }
+//            |  }
+//            |}""".stripMargin
+//    }
+
+    /** PUT twitter/_mapping/user
+      *  {
+      *    "properties": {
+      *      "name": {
+      *        "type": "text"
+      *      }
+      *    }
+      *  }
+      * */
+    def putSchema(index: String, mtype: String, schema: StructType): Boolean = {
+        val mapping = generateCreateMapping(index, mtype, schema)
+        val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
+        val response: Response = restClient.performRequest("PUT", s"""/$index""", new util.Hashtable[String, String](), entityReq)
+        if(isSucceeded(response)) {
+            true
+        }else{
+            false
+        }
+
+    }
+    //https://www.elastic.co/guide/en/elasticsearch/reference/5.3/indices-put-mapping.html
+    /**PUT twitter/_mapping/user
+    *   {
+    *      "properties": {
+    *        "name": {
+    *          "type": "text"
+    *        }
+    *      }
+    *   }
+    **/
+
+    def updateSchema(index: String, mtype: String, schema: StructType): Boolean = {
+        val mapping = generateUpdateMapping(index, mtype, schema)
+        val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
+        val response: Response = restClient.performRequest("PUT", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String](), entityReq)
+        if(isSucceeded(response)) {
+            true
+        }else{
+            false
+        }
+
+    }
+
+    /** update one row in index,  **/
+//    def update(index: String, mtype: String, id: String, updateState: Seq[(String, String)]): Boolean = { //, schema: StructType
+//        val updateBody =datas.map{case (key, value) =>
+//            schema(key).dataType match{
+//                case _: NumericType =>
+//                    s""""${schema(key).name}": $value"""
+//                case _ =>
+//                    s""""${schema(key).name}": "$value""""
+//            }
+//        }.mkString(",")
+//
+//        val updateRequest = s"""{ $updateBody }"""
+//        val entityReq: HttpEntity = new StringEntity(updateRequest, ContentType.APPLICATION_JSON)
+//        val response: Response = restClient.performRequest("PUT", s"/$index/$mtype/$id", new util.Hashtable[String, String](), entityReq)
+//        if(isSucceeded(response)) {
+//            true
+//        }else{
+//            false
+//        }
+//    }
+
+    /** use logic from es connector, convert every type to json object **/
+    private def buildJsonValue(dataType: DataType, value: Any): Any = {
+        dataType match {
+            case a: ArrayType =>  buildArray(a, value)//java collection
+            case m: MapType =>    buildMap(m, value)  //java map
+            case s: StructType => buildStruct(s, value)
+            case _: NumericType => value
+            case _: TimestampType => value.asInstanceOf[Timestamp].getTime
+            case _: DateType => value.asInstanceOf[Date].getTime
+            case _: BooleanType => value.asInstanceOf[Boolean]
+            case _: StringType => value.toString
+            case _: DecimalType => throw new Exception("Decimal types are not supported by Elasticsearch - consider using a different type (such as string)")
+            case _ => value
+        }
+    }
+
+    private def buildMap(mapType: MapType, value: Any): util.Map[String, Any] = {
+        value match{
+            case sm: scala.collection.Map[_, _] => buildMap2(mapType, sm)
+            case jm: java.util.Map[_, _] =>  buildMap2(mapType, jm.asScala)
+            case _ => throw new Exception(s"buildMap $value $mapType")
+        }
+    }
+
+    private def buildMap2(mapType: MapType, value: scala.collection.Map[_, _]): util.Map[String, Any] = {
+        value.map{ v => (v._1.toString, buildJsonValue(mapType.valueType, v._2))}.toMap.asJava
+    }
+
+    private def buildArray(arrayType: ArrayType, value: Any): JSONArray = {
+        value match{
+            case a: Array[_] =>  buildSeq(arrayType.elementType, a)
+            case s: Seq[_] =>    buildSeq(arrayType.elementType, s)
+            case _ => throw new Exception(s"buildArray $value $arrayType")
+        }
+    }
+
+    private def buildSeq(dataType: DataType, value: Seq[_]): JSONArray = {
+        val jmap = value.map{ v=> buildJsonValue(dataType, v)}.asJava
+        new JSONArray(jmap)
+    }
+
+    private def buildStruct(schema: StructType, batchData: Any): JSONObject = {
+        val jSONObject: JSONObject = new JSONObject ()
+        batchData match {
+            case seq: Seq[_] =>
+                schema.fields.zipWithIndex foreach {
+                case (field, index) =>
+                    val fieldName = field.name
+                    val fieldValue = seq(index)
+                    val fieldType = field.dataType
+
+                    val jsonValue = buildJsonValue(fieldType, fieldValue)
+                    jSONObject.put(fieldName, jsonValue)
+
+            }
+        }
+        jSONObject
+    }
+
+
+    /** bulk put data to */
+    def putBatchData(index: String, mtype: String, schema: StructType, batchData: Seq[Seq[Any]]): (Boolean, Long) = {
+        val mappingIndex: Option[Int] = if(param.contains("es.mapping.id")) {  //field or property name containing the document id.
+            Option(schema.fieldIndex(param("es.mapping.id")))
+        }else { None }
+
+        //build bulk req string
+        val bulkRequest = batchData.map{ data =>
+            val bulkHeader = if(mappingIndex.isDefined ) {
+                s"""{"index": {"_index": "$index", "_type": "$mtype", "_id": "${data(mappingIndex.get)}"}}\n"""
+            } else{
+                s"""{"index": {"_index": "$index", "_type": "$mtype"}}\n"""
+            }
+
+            val bulkBody = buildStruct(schema, data).toString  //get string from JSON Object
+            bulkHeader + s"$bulkBody\n"
+        }.mkString("")
+
+        //send bulk req
+        val entityReq: HttpEntity = new StringEntity(bulkRequest, ContentType.APPLICATION_JSON)
+        val response: Response = restClient.performRequest("PUT", s"""/_bulk""", new util.Hashtable[String, String](), entityReq)
+
+        //read bulk response
+        handleBulkResponse(response, batchData)
+    }
+
+    private def handleBulkResponse(response: Response, batchData: Seq[Seq[Any]]): (Boolean, Long) = {
+        val content = getContent(response)
+        val jsonObject = new JSONObject(content)
+        val hasError = getFieldAsString(jsonObject, "errors")
+        val indexResult = if(hasError == "false") { true }  else  { false }
+
+        var succeedNum: Long = 0l
+        val items: JSONArray = jsonObject.getJSONArray("items")
+        for(item <- items.asScala){
+            val bulkResult = item.asInstanceOf[JSONObject]
+            if(bulkResult.has("index")){
+                val index = bulkResult.getJSONObject("index")
+                succeedNum += getFieldAsLong(index, "_shards/successful")
+                if(getFieldAsLong(index, "_shards/failed") != 0) {
+                    val seq_no = getFieldAsLong(index, "_seq_no")
+                    throw new Exception(s"EsRestClient write failed for err=$seq_no, ret=$indexResult, suc=$succeedNum," +
+                                        s"json=${batchData(seq_no.intValue())}")
+                }
+            }
+
+        }
+        (indexResult, succeedNum)
+    }
 
     def getProperity(index: String, mtype: String, mapping: JSONObject, parent:String = "", nestField: mutable.Set[String] = mutable.Set.empty[String]): StructType = {
         val arrayInclude = param.get("es.read.field.as.array.include")
@@ -399,7 +698,7 @@ class EsRestClient(param: Map[String, String]) {
     }
 
 
-    def performScrollFirst(index: String, mtype: String, query: String, limit: Boolean=true): (ActionResponse, String, Long, Long, Boolean) = {
+    def performScrollFirst(index: String, mtype: String, query: String, limit: Int): (ActionResponse, String, Long, Long, Boolean) = {
         val actionRsp: ActionResponse = new ActionResponse()
 
         val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)   //default 2 min wait
@@ -448,8 +747,10 @@ class EsRestClient(param: Map[String, String]) {
     def performScrollRequest(index: String, mtype: String, query: String, limit: Boolean=true) : ActionResponse = {
         val actionRsp: ActionResponse = new ActionResponse()
 
-        val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)   //default 2 min wait
-        val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search?scroll=2m""", new util.Hashtable[String, String](), entityReq)
+        //val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)   //default 2 min wait
+        //val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search?scroll=2m""", new util.Hashtable[String, String](), entityReq)
+        val response: Response = performRequestWithScroll(index, mtype, query, true)
+
         if(!isSucceeded(response)) {
             actionRsp.succeeded(false)
             throw new Exception("performScrollRequest to Server return ERROR " +response.getStatusLine.getStatusCode)
@@ -460,7 +761,12 @@ class EsRestClient(param: Map[String, String]) {
         val content = getContent(response)
         val jsonRspObject = new JSONObject(content)
         val responseLines = getFieldAsLong(jsonRspObject, "hits/total")
-        val shouldProcessLines = math.min(requestLines, responseLines)
+
+        val shouldProcessLines = if(limit) {
+            math.min(requestLines, responseLines)
+        }else{
+            math.max(requestLines, responseLines)
+        }
         //if has limit size, we should use the min size of send and receive size, if no limit size, we
 
         var scrollId = getFieldAsString(jsonRspObject, "_scroll_id")
@@ -473,10 +779,12 @@ class EsRestClient(param: Map[String, String]) {
             actionRsp   //agg no scroll query
         }
         else {
-            while (proceedLines < shouldProcessLines && proceedLines != 0 && !limit) {
+            while (proceedLines < shouldProcessLines && proceedLines != 0 ) {
                 val leftQuery = s"""{"scroll":"2m","scroll_id":"$scrollId"}"""
-                val leftScrollReq: HttpEntity = new StringEntity(leftQuery, ContentType.APPLICATION_JSON)
-                val response: Response = restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), leftScrollReq)
+                //val leftScrollReq: HttpEntity = new StringEntity(leftQuery, ContentType.APPLICATION_JSON)
+                //val response: Response = restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), leftScrollReq)
+                val response: Response = performRequestWithScroll(index, mtype, leftQuery, false)
+
                 if(!isSucceeded(response)) {
                     actionRsp.succeeded(false)
                     throw new Exception(s"performScrollRequest to Server return ERROR ${response.getStatusLine.getStatusCode} line $proceedLines")
@@ -576,7 +884,7 @@ class EsRestClient(param: Map[String, String]) {
                     getHitsValue(jsonObject, "", map)
                 }
 
-                if(map.size != 0) {  //es sort will return one empty line, do not add it
+                if(map.nonEmpty) {  //es sort will return one empty line, do not add it
                     action.addHit(new HitWrapper(hit.getString("_index"),
                         hit.getString("_type"),
                         hit.getString("_id"),
@@ -590,13 +898,30 @@ class EsRestClient(param: Map[String, String]) {
         fetchSize
     }
 
-    def performRequest(index: String, mtype: String, query: String): ActionResponse = {
+    def performRequestWithScroll(index: String, mtype: String, query: String, isFirst: Boolean = true): Response = {
         val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
+        val response: Response = if(isFirst) {
+            restClient.performRequest("POST", s"""/$index/$mtype/_search?scroll=2m""", new util.Hashtable[String, String](), entityReq)
+        }else{
+            restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), entityReq)
+        }
+        response
+    }
 
+    def performRequest(index: String, mtype: String, query: String): Response = {
+        val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
         val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search""", new util.Hashtable[String, String](), entityReq)
+        response
+    }
+
+    def sendRequest(index: String, mtype: String, query: String): ActionResponse = {
+        //val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
+        //val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search""", new util.Hashtable[String, String](), entityReq)
+        val response = performRequest(index, mtype, query)
+
         val jsonStr = getContent(response)
-//        val gson = new GsonBuilder().setPrettyPrinting().create
-//        val jsonObject = gson.fromJson(jsonStr, classOf[JSONObject])
+        //val gson = new GsonBuilder().setPrettyPrinting().create
+        //val jsonObject = gson.fromJson(jsonStr, classOf[JSONObject])
         val jsonObject = new JSONObject(jsonStr)
 
         val rsp: ActionResponse = new ActionResponse()
@@ -848,11 +1173,11 @@ class EsRestClient(param: Map[String, String]) {
         parent.getJSONArray(fields(fields.length - 1))
     }
 
-    private def getFieldAsString(jsonObject: JSONObject, field: String) = {
+    def getFieldAsString(jsonObject: JSONObject, field: String) = {
         jsonObject.get(field).toString
     }
 
-    private def getFieldAsLong(jsonObject: JSONObject, field: String) = {
+    def getFieldAsLong(jsonObject: JSONObject, field: String) = {
         val fields = field.split("/")
         val obj = getParentField(jsonObject, fields)
         obj.getLong(fields(fields.length - 1))

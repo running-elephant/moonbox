@@ -16,36 +16,41 @@ class EsProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan) exte
 
         var aliasColumnSeq = Seq.empty[String]
         var sourceColumnSeq = Seq.empty[String]
-        catalystContext.projectElementSeq = projectList.zipWithIndex.map {
-            case (_@Alias(children, alias), index) =>
-                children match {
-                    case _: BinaryArithmetic | _ : Literal | _ : Substring | _: Round | _: Cast | _: CaseWhenCodegen  =>
-                        aliasColumnSeq = aliasColumnSeq :+ s"""|"$alias": {
-                           |    "script" : {
-                           |        "inline" : "${translateProject(children, true, index)}"
-                           |    }
-                           |}""".stripMargin
-                        (alias, alias)
-                    case _ =>
-                        val column = s"""${translateProject(children, false, index)}"""
-                        sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
-                        (alias, column)
-                }
-            case (e: Expression, index) =>
-                val column = s"""${translateProject(e, false, index)}"""
-                sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
-                (column, column)
-        }
-        val aliasColumn = aliasColumnSeq.mkString(",")
-        val sourceColumn = sourceColumnSeq.mkString(",")
+        if(catalystContext.projectElementSeq.nonEmpty) {
+            seq
+        }else{
+            catalystContext.projectElementSeq = projectList.zipWithIndex.map {
+                case (_@Alias(children, alias), index) =>
+                    children match {
+                        case _: BinaryArithmetic | _ : Literal | _ : Substring | _: Round | _: Cast | _: CaseWhenCodegen  =>
+                            aliasColumnSeq = aliasColumnSeq :+ s"""|"$alias": {
+                                                                   |    "script" : {
+                                                                   |        "inline" : "${translateProject(children, true, index)}"
+                                                                   |    }
+                                                                   |}""".stripMargin
+                            (alias, alias)
+                        case _ =>
+                            val column = s"""${translateProject(children, false, index)}"""
+                            sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
+                            (alias, column)
+                    }
+                case (e: Expression, index) =>
+                    val column = s"""${translateProject(e, false, index)}"""
+                    sourceColumnSeq = sourceColumnSeq :+ s""""$column""""
+                    (column, column)
+            }
+            val aliasColumn = aliasColumnSeq.mkString(",")
+            val sourceColumn = sourceColumnSeq.mkString(",")
 
-        val a: String = s"""|"script_fields": {
-              |$aliasColumn
-              |} """.stripMargin
-        val b: String =  s""" |"_source":{
-               |"includes": [$sourceColumn], "excludes": []
-               |} """.stripMargin
-        seq :+b :+ a
+            val scriptField: String = s"""|"script_fields": {
+                                          |$aliasColumn
+                                          |} """.stripMargin
+            val sourceField: String =  s""" |"_source":{
+                                          |"includes": [$sourceColumn], "excludes": []
+                                          |} """.stripMargin
+            seq :+sourceField :+ scriptField
+        }
+
     }
 
     def mkColumnInSource(col: String): String = { s"""|$col""".stripMargin }

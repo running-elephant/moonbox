@@ -135,10 +135,39 @@ class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
         connection = DriverManager.getConnection(url, prop)
         val statement: Statement = connection.createStatement()
         //val rs: ResultSet = statement.executeQuery("select max(event_id) as aaa, min(col_int_a) as bbb from test_mb_100 group by event_id")
-        val rs: ResultSet = statement.executeQuery("select event_id, col_int_a, col_time_b, col_long_c, col_double_d, col_bool_e, col_int_f, col_float_g, col_str_h from test_mb_100 limit 1")
+        val rs: ResultSet = statement.executeQuery("select event_id, col_int_a, col_time_b, col_long_c, col_double_d, col_bool_e, col_int_f, col_float_g, col_str_h from test_mb_100 limit 1 ")
         while (rs.next()) {
             val event_id = rs.getLong(1)
             val col_int_a = rs.getInt(2)
+            val col_time_b = rs.getTimestamp(3)
+            val col_long_c = rs.getLong(4)
+            val col_double_d = rs.getDouble(5)
+            val col_bool_e = rs.getBoolean(6)
+            val col_int_f = rs.getInt(7)
+            val col_float_g = rs.getFloat(8)
+            val col_str_h = rs.getString(8)
+
+            print(s" event_id -> $event_id , col_int_a -> $col_int_a, col_long_c -> $col_long_c, col_double_d ->$col_double_d")
+            print(s" col_bool_e -> $col_bool_e, col_int_f-> $col_int_f, col_float_g-> $col_float_g, col_str_h->$col_str_h")
+            print(s" col_time_b -> $col_time_b")
+            println("")
+        }
+        connection.close()
+    }
+
+
+    test("basic sql type limit 100w") {
+        var connection: Connection = null
+        val url = "jdbc:es://testserver1:9200/test_mb_100w?table=my_table"
+        val prop = EsUtilTest.url2Prop(url)
+
+        connection = DriverManager.getConnection(url, prop)
+        val statement: Statement = connection.createStatement()
+        //val rs: ResultSet = statement.executeQuery("select max(event_id) as aaa, min(col_int_a) as bbb from test_mb_100 group by event_id")
+        val rs: ResultSet = statement.executeQuery("select event_id, col_long_a, col_time_b, col_long_c, col_double_d, col_bool_e, col_int_f, col_float_g, col_str_h from test_mb_100w limit 1000000 ")
+        while (rs.next()) {
+            val event_id = rs.getLong(1)
+            val col_int_a = rs.getLong(2)
             val col_time_b = rs.getTimestamp(3)
             val col_long_c = rs.getLong(4)
             val col_double_d = rs.getDouble(5)

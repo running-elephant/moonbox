@@ -25,12 +25,12 @@ object EsUtil {
             10000  //size must be less than or equal to: [10000]
         }
 
-        val jsonElement = if(!context.hasLimited) {  //if no limit, add default size here
-            Seq(s""" "from":0, "size":${fetchSize} """) ++ element
+        val jsonElement = if(0 == context.limitSize) {  //if no limit, add default size here
+            Seq(s""" "from":0, "size":$fetchSize """) ++ element
         }else{
             element
         }
-        "{ " + jsonElement.mkString(",").replace("@limit", s"${fetchSize}") + " }"  //replace agg size
+        "{ " + jsonElement.mkString(",").replace("@limit", s"$fetchSize") + " }"  //replace agg size
 
     }
 
