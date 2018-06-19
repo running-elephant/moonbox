@@ -23,7 +23,7 @@ class CatalystStatement(url: String, props: Properties) extends Statement {
     if (url.startsWith(MONGO_URL_PREFIX)) {
       val executor = new MongoCatalystQueryExecutor(newProps)
       val schema = executor.getTableSchema
-      val tableName = newProps.getProperty(MongoJDBCUtils.COLLECTION_NAME)
+      val tableName = Option(newProps.getProperty(MongoJDBCUtils.COLLECTION_KEY)).getOrElse(newProps.getProperty("collection"))
       parser.registerTable(tableName, schema, "mongo")
       executor.adaptorFunctionRegister(parser.getRegister)
       val plan = parser.parse(sql)
@@ -47,8 +47,8 @@ class CatalystStatement(url: String, props: Properties) extends Statement {
       val constructor = clazz.getConstructor(classOf[Properties])
       val obj = constructor.newInstance(newProps)
       val schema = clazz.getDeclaredMethod("getTableSchema").invoke(obj)
-      val tableName = newProps.getProperty(MongoJDBCUtils.COLLECTION_NAME)
-      parser.registerTable(tableName, schema.asInstanceOf[StructType], "mongo")
+      val tableName = newProps.getProperty(JDBCUtils.TABLE_KEY)
+      parser.registerTable(tableName, schema.asInstanceOf[StructType], clazz.getSimpleName.stripSuffix("$"))
       val register = parser.getRegister
       clazz.getDeclaredMethod("adaptorFunctionRegister", classOf[UDFRegistration]).invoke(obj, register)
       val plan = parser.parse(sql)

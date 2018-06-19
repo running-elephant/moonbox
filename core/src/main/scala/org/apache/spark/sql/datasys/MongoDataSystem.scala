@@ -4,7 +4,7 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.mongodb._
-import com.mongodb.client.{MongoCollection, MongoDatabase}
+import com.mongodb.client.MongoDatabase
 import com.mongodb.spark.MongoSpark
 import com.mongodb.spark.config.{ReadConfig, WriteConfig}
 import moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor
@@ -104,9 +104,9 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
   private def createReadPreference(map: Map[String, String]): Option[ReadPreference] = {
 
-    //    READ_PREFERENCE_KEYS.add("readpreference")
-    //    READ_PREFERENCE_KEYS.add("readpreferencetags")
-    // TODO: READ_PREFERENCE_KEYS.add("maxstalenessseconds")
+    //    "readpreference"
+    //    "readpreferencetags"
+    // TODO: "maxstalenessseconds"
     var res: ReadPreference = null
     if (map.contains(READ_PREFERENCE_NAME_KEY)) {
       val name = map(READ_PREFERENCE_NAME_KEY)
@@ -132,18 +132,18 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
   private def createCompressors(map: Map[String, String]): Seq[MongoCompressor] = {
     // TODO:
-    //    COMPRESSOR_KEYS.add("compressors")
-    //    COMPRESSOR_KEYS.add("zlibcompressionlevel")
+    // COMPRESSOR_KEYS.add("compressors")
+    // COMPRESSOR_KEYS.add("zlibcompressionlevel")
     Nil
   }
 
   private def createWriteConcern(map: Map[String, String]): Option[WriteConcern] = {
-    // TODO:   WRITE_CONCERN_KEYS.add("safe")
-    // TODO:   WRITE_CONCERN_KEYS.add("fsync")
+    // TODO: "safe"
+    // TODO: "fsync"
 
-    //    WRITE_CONCERN_KEYS.add("w")
-    //    WRITE_CONCERN_KEYS.add("wtimeoutms")
-    //    WRITE_CONCERN_KEYS.add("journal")
+    // "w"
+    // "wtimeoutms"
+    // "journal"
 
     //the value with w maybe string "majority" or int 1, 0
     val writeConcern: WriteConcern = if (map.contains(WRITE_CONCERN_W_KEY)) {
@@ -172,7 +172,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     val builder = MongoClientOptions.builder()
     createReadPreference(map).foreach(builder.readPreference)
     createWriteConcern(map).foreach(builder.writeConcern)
-    //    builder.compressorList(createCompressors(map).asJava)
+    // builder.compressorList(createCompressors(map).asJava)
     map.foreach {
       case (k, v) =>
         k match {
@@ -240,7 +240,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
       val row = table.iter.next()
       docBuffer += row2Document(table.schema, row)
       count += 1
-      if (count == 100) {
+      if (count == batchSize) {
         save(database, collectionName, docBuffer.asJava, saveMode)
         count = 0
       }
@@ -276,13 +276,13 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     }
   }
 
-
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
     val client = writeExecutor.client.client
     batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+    table.close()
   }
 
-  def parse(json: String): Array[(String, String, Boolean)] = {
+  private def parse(json: String): Array[(String, String, Boolean)] = {
     val schemaObject = new JSONObject(json.toLowerCase)
     schemaObject.getJSONArray("fields").asScala.map {
       case elem: JSONObject =>
@@ -297,7 +297,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     }.filter(_ != null).toArray
   }
 
-  def row2Document(schema: StructType, row: Row): Document = {
+  private def row2Document(schema: StructType, row: Row): Document = {
     val document = new Document()
     val parsedSchema = parse(schema.json)
     if (row.length != parsedSchema.length) {
@@ -310,7 +310,6 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def truncate(): Unit = {
-    // remove({}): slow
     writeExecutor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
   }
 
@@ -318,7 +317,10 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     readExecutor.client.client.getDatabase(readDatabase).listCollectionNames().asScala.toSeq
   }
 
+  // mongo spark configurations
   override def tableProperties(tableName: String): Map[String, String] = {
-    props + ((INPUT_PREFIX + COLLECTION_KEY) -> tableName)
+    (props + ((INPUT_PREFIX + COLLECTION_KEY) -> tableName)).map {
+      case (k, v) => MONGO_SPARK_CONFIG_PREFIX + k -> v
+    }
   }
 }

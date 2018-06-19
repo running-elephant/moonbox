@@ -12,12 +12,13 @@ object MongoJDBCUtils {
   val URL_PREFIX: String = "jdbc:mongo://"
   val HOST_KEY: String = "host"
   val PORT_KEY: String = "port"
+  val AUTH_SOURCE: String = "authsource"
   val DB_NAME: String = "database"
-  val COLLECTION_NAME = "collection"
+  val COLLECTION_KEY = "table"
   val USER_KEY = "user"
   val PASSWORD_KEY = "password"
   val HOSTS_AND_PORTS = "nodes"
-  val SPLITER_KEY: String = ","
+  val SPLITTER_KEY: String = ","
 
   def parseHostsAndPorts(hostsAndPorts: String): Seq[(String, String)] = {
     if (hostsAndPorts != null && hostsAndPorts.length > 0)

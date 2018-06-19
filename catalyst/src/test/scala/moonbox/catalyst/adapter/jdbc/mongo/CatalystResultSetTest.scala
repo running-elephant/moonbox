@@ -14,6 +14,13 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   var sql: String = null
   var stmt: Statement = _
   var res: ResultSet = _
+  var props: Properties = new Properties()
+  props.setProperty("authsource", "test")
+  //  props.setProperty("database", "test")
+  //  props.setProperty("table", "books")
+  props.setProperty("user", "yan")
+  props.setProperty("password", "123456")
+
 
   override protected def beforeAll() = {
     Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
@@ -24,16 +31,17 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   test("get(i: Int): string, int") {
     url = "jdbc:mongo://localhost:27017/test?collection=books"
     sql = "select name, price, author, pages from books limit 10"
-    connection = DriverManager.getConnection(url)
+    connection = DriverManager.getConnection(url, props)
     stmt = connection.createStatement()
     res = stmt.executeQuery(sql)
-    while (res.next()){
+    while (res.next()) {
       println(s"name: ${res.getString(1)}, price: ${res.getInt(2)}, author: ${res.getString(3)}, pages: ${res.getInt(4)} ")
     }
   }
 
   test("get(columnName: String): string, int through field name") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+    url = "jdbc:mongo://localhost:27017/test?collection=books"
+    connection = DriverManager.getConnection(url, props)
     stmt = connection.createStatement()
     sql = "select name, price, author, pages from books limit 20"
     res = stmt.executeQuery(sql)
@@ -45,16 +53,16 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   test("get(i: Int): string, double, array") {
     url = "jdbc:mongo://localhost:27017/test?collection=author_withArray"
     sql = "select authorname, age, books.price from author_withArray limit 10"
-    connection = DriverManager.getConnection(url)
+    connection = DriverManager.getConnection(url, props)
     stmt = connection.createStatement()
     res = stmt.executeQuery(sql)
-    while (res.next()){
+    while (res.next()) {
       println(s"authorname: ${res.getString(1)}, age: ${res.getDouble(2)}, books.price: ${res.getArray(3).getArray().asInstanceOf[Array[Any]].mkString(", ")}")
     }
   }
 
   test("get(i: Int): Timestamp") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=timestamp")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=timestamp", props)
     stmt = connection.createStatement()
     sql = "select mytimestamp from timestamp limit 20"
     res = stmt.executeQuery(sql)
@@ -64,7 +72,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("get(i: Int): BsonObjectId, Date") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=date")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=date", props)
     stmt = connection.createStatement()
     sql = "select _id, mydate from date limit 20"
     res = stmt.executeQuery(sql)
@@ -74,7 +82,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("get(i: Int): BigDecimal") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=bigdecimal1")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=bigdecimal1", props)
     stmt = connection.createStatement()
     sql = "select mybigdecimal1 from bigdecimal1 limit 20"
     res = stmt.executeQuery(sql)
@@ -84,7 +92,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("get(i: Int): String, BsonDocument") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal", props)
     stmt = connection.createStatement()
     sql = "select bookname, bookinfo from book_nested_normal"
     res = stmt.executeQuery(sql)
@@ -94,7 +102,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("get(i: Int): String, nested String") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal", props)
     stmt = connection.createStatement()
     sql = "select bookname, bookinfo.info1 from book_nested_normal"
     res = stmt.executeQuery(sql)
@@ -104,7 +112,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("nested field in filter") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=book_nested_normal", props)
     stmt = connection.createStatement()
     sql = "select bookname, bookinfo.info1 from book_nested_normal where bookinfo.info1 = 'info_1'"
     res = stmt.executeQuery(sql)
@@ -114,7 +122,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("filter") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
     stmt = connection.createStatement()
     sql = "select name, author, price, pages from books where price < 20 and pages > 100 or price = 22"
     res = stmt.executeQuery(sql)
@@ -124,7 +132,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("aggregate") {
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
     stmt = connection.createStatement()
     sql = "select author as a, max(price) from books where price > 10 and 100 < pages or pages < 50 group by author"
     res = stmt.executeQuery(sql)
@@ -154,14 +162,14 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
       SQLs.sql17,
       SQLs.sql18,
       SQLs.sql19,
-//      SQLs.sql20,
+      //      SQLs.sql20,
       SQLs.sql21
     )
     var count = 1
     var exceptionSqls = Seq[String]()
     sqls.foreach { sql =>
       try {
-        connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+        connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
         stmt = connection.createStatement()
         res = stmt.executeQuery(sql)
         println(s"-------------------sql$count-------------------")
@@ -183,8 +191,8 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     assert(exceptionSqls.isEmpty)
   }
 
-  test("sql23"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+  test("sql23") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
     stmt = connection.createStatement()
     sql = SQLs.sql23
     res = stmt.executeQuery(sql)
@@ -194,8 +202,8 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("array_map in mongo"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
+  test("array_map in mongo") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray", props)
     stmt = connection.createStatement()
     sql = "select authorname, age, books.price, array_map(books.price, value => value * 2) from author_withArray"
     res = stmt.executeQuery(sql)
@@ -205,8 +213,8 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("array_filter in mongo"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
+  test("array_filter in mongo") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray", props)
     stmt = connection.createStatement()
     sql = "select authorname, age, books.price, array_filter(books.price, value => value > 2) from author_withArray"
     res = stmt.executeQuery(sql)
@@ -216,32 +224,35 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-//  test("array_exists in mongo"){
-//    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
-//    stmt = connection.createStatement()
-//    sql = "select authorname, age, books.price, array_filter(books.price, value => value > 2) from author_withArray where array_exists(books.price, value => value = 2)"
-//    res = stmt.executeQuery(sql)
-//    println("-------------------test array_exists in mongo-------------------")
-//    while (res.next()) {
-//      println(s"authorname: ${res.getString(1)}, age: ${res.getDouble(2)}, books.price: ${res.getArray(3).getArray.asInstanceOf[Array[Any]].map(_.asInstanceOf[Double]).mkString(", ")}, array_map: ${res.getArray(4).getArray.asInstanceOf[Array[Any]].map(_.toString).mkString(", ")}")
-//    }
-//  }
+  //  test("array_exists in mongo"){
+  //    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=author_withArray")
+  //    stmt = connection.createStatement()
+  //    sql = "select authorname, age, books.price, array_filter(books.price, value => value > 2) from author_withArray where array_exists(books.price, value => value = 2)"
+  //    res = stmt.executeQuery(sql)
+  //    println("-------------------test array_exists in mongo-------------------")
+  //    while (res.next()) {
+  //      println(s"authorname: ${res.getString(1)}, age: ${res.getDouble(2)}, books.price: ${res.getArray(3).getArray.asInstanceOf[Array[Any]].map(_.asInstanceOf[Double]).mkString(", ")}, array_map: ${res.getArray(4).getArray.asInstanceOf[Array[Any]].map(_.toString).mkString(", ")}")
+  //    }
+  //  }
 
   test("other driver by reflection") {
-    url = "jdbc:other://localhost:27017/test?collection=books"
+    url = "jdbc:other://localhost:27017/test?table=books"
     sql = "select name, price, author, pages from books limit 10"
-    val props = new Properties()
     props.setProperty("executor", "moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor")
     connection = DriverManager.getConnection(url, props)
     stmt = connection.createStatement()
     res = stmt.executeQuery(sql)
-    while (res.next()){
+    while (res.next()) {
       println(s"name: ${res.getString(1)}, price: ${res.getInt(2)}, author: ${res.getString(3)}, pages: ${res.getInt(4)} ")
     }
   }
 
-  test("data type test in mongo"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test")
+  test("data type test in mongo") {
+    val props = new Properties()
+    props.setProperty("user", "yan")
+    props.setProperty("password", "123456")
+    props.setProperty("authsource", "test")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test", props)
     stmt = connection.createStatement()
     sql = "select * from data_type_test"
     res = stmt.executeQuery(sql)
@@ -251,8 +262,8 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("test for adding mongo operators: string related"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+  test("test for adding mongo operators: string related") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
     stmt = connection.createStatement()
     sql = "select substr(name, 0, 3), lower(name), upper(name), concat(name, '_', author) from books"
     res = stmt.executeQuery(sql)
@@ -265,8 +276,12 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("test for adding mongo operators: time related"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test")
+  test("test for adding mongo operators: time related") {
+    val props = new Properties()
+    props.setProperty("user", "yan")
+    props.setProperty("password", "123456")
+    props.setProperty("authsource", "test")
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/zhicheng?collection=data_type_test", props)
     stmt = connection.createStatement()
     sql = "select year(datetime), month(datetime), dayOfMonth(datetime), Hour(datetime), minute(datetime), second(datetime), dayOfYear(datetime), weekOfYear(datetime), datetime from data_type_test"
     res = stmt.executeQuery(sql)
@@ -284,14 +299,26 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  test("test for adding mongo operators: case when"){
-    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books")
+  test("test for adding mongo operators: case when") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books", props)
     stmt = connection.createStatement()
     sql = "select (case when price+2 < 20 and 15 < price then 0 when price >50 then 2 else 1 end) as aaa from books"
     res = stmt.executeQuery(sql)
     println("-------------------test for adding mongo operators: case when-------------------")
     while (res.next()) {
       println(res.getObject(1))
+    }
+  }
+
+  test("field appears in Alias and Order by at the same time") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books&user=yan&password=123456", props)
+    stmt = connection.createStatement()
+    sql = "select name, price as aaa from books order by price"
+    res = stmt.executeQuery(sql)
+    println("-------------------field appears in Alias and Order by at the same time-------------------")
+    while (res.next()) {
+      println(res.getObject(1))
+      println(res.getObject(2))
     }
   }
 

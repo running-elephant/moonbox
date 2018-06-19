@@ -26,6 +26,8 @@ class MongoProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan)
             case arrayFilter: ArrayFilter =>
               fields = withQuotes(alias.name) + ": {$filter: " + handleArrayFilter(arrayFilter) + "}" :: fields
               with2Dollar = false
+            case AttributeReference(name, _, _, _) =>
+              fields = s"${withQuotes(alias.name)}: " + "\"" + s"$$$name" + "\"" :: fields
             case other =>
               fields = s"${withQuotes(alias.name)}: " + expressionToBson(other) :: fields
           }
