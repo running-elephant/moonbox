@@ -280,9 +280,10 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
     val client = writeExecutor.client.client
     batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+    table.close()
   }
 
-  def parse(json: String): Array[(String, String, Boolean)] = {
+  private def parse(json: String): Array[(String, String, Boolean)] = {
     val schemaObject = new JSONObject(json.toLowerCase)
     schemaObject.getJSONArray("fields").asScala.map {
       case elem: JSONObject =>
@@ -297,7 +298,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     }.filter(_ != null).toArray
   }
 
-  def row2Document(schema: StructType, row: Row): Document = {
+  private def row2Document(schema: StructType, row: Row): Document = {
     val document = new Document()
     val parsedSchema = parse(schema.json)
     if (row.length != parsedSchema.length) {

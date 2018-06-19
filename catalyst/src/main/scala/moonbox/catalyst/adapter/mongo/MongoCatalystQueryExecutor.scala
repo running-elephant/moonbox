@@ -21,10 +21,14 @@ import org.bson.{BsonDocument, Document}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecutor with MongoTranslateSupport with MbLogging {
+class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends CatalystQueryExecutor with MongoTranslateSupport with MbLogging {
 
-  lazy val client = new MbMongoClient(props)
-  override val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
+  def this(properties: Properties) = this(null, properties)
+  var closed: Boolean = _
+  var client: MbMongoClient = MbMongoClient(cli, props)
+  override lazy val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
+
+  def this(props: Properties, client: MongoClient) = this(props)
 
   private def getTableSchema(mongoJavaClient: MongoClient, dbName: String, collectionName: String) = {
     new MongoSchemaInfer().inferSchema(mongoJavaClient, dbName, collectionName)
@@ -32,15 +36,23 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
 
   override def getTableSchema: StructType = getTableSchema(client.client, client.database, client.collectionName)
 
-  override def execute[T](plan: LogicalPlan, convert: (Option[StructType], Seq[Any]) => T): Iterator[T] = {
-    val (iter, _, context) = getBsonIterator(plan)
-    bsonIteratorConverter(iter, context.index2FieldName, convert)
+  def close(): Unit ={
+    if (!closed){
+      closed = true
+      // Note: it's important that we set closed = true before calling close(), since setting it
+      // afterwards would permit us to call close() multiple times if close() threw an exception.
+      client.close()
+    }
   }
 
-  private def bsonIteratorConverter[T](iter: Iterator[Document], index2FieldName: mutable.Map[Int, String], converter: => (Option[StructType], Seq[Any]) => T): Iterator[T] = {
+  def toIterator[T](plan: LogicalPlan, converter: Seq[Any] => T): Iterator[T] = {
+    val (iter, _, context) = getBsonIterator(plan)
+    bsonIteratorConverter(iter, context.index2FieldName, converter)
+  }
+
+  private def bsonIteratorConverter[T](iter: Iterator[Document], index2FieldName: mutable.Map[Int, String], converter: => Seq[Any] => T): Iterator[T] = {
     new Iterator[T] {
       override def hasNext = iter.hasNext
-
       override def next() = {
         val doc = iter.next().toBsonDocument(classOf[BsonDocument], MongoClient.getDefaultCodecRegistry)
         var res = Seq[Any]()
@@ -55,14 +67,14 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
             throw new Exception("Field name cannot be null")
           res :+= MongoJDBCUtils.bsonValue2Value(doc.get(ithFieldName.head), ithFieldName.tail)
         }
-        converter(None, res)
+        converter(res)
       }
     }
   }
 
   override def execute4Jdbc(plan: LogicalPlan): (Iterator[JdbcRow], Map[Int, Int], Map[String, Int]) = {
     val (iter, outputSchema, context) = getBsonIterator(plan, new CatalystContext)
-    val newIterator = bsonIteratorConverter(iter, context.index2FieldName, (_, in: Seq[Any]) => new JdbcRow(in: _*))
+    val newIterator = bsonIteratorConverter(iter, context.index2FieldName, in => new JdbcRow(in: _*))
     val columnLabel2Index = context.index2FieldName.map(e => e._2 -> e._1).toMap
     val index2SqlType = MongoJDBCUtils.index2SqlType(outputSchema)
     (newIterator, index2SqlType, columnLabel2Index)
@@ -150,7 +162,6 @@ class MongoCatalystQueryExecutor(props: Properties) extends CatalystQueryExecuto
   def adaptorFunctionRegister(udf: UDFRegistration): Unit = {
     import moonbox.catalyst.adapter.mongo.function.UDFunctions._
     udf.register("geo_near", geoNear _)
-    udf.register("geo_near", (a: Int, b: Int) => a + b)
     udf.register("index_stats", indexStats _)
   } // TODO:
 
