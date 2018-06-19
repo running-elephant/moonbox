@@ -19,7 +19,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
 
-	val catalog = new CatalogContext(conf, this)
+	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
 	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
@@ -152,7 +152,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
 		if (columnPermission) {
 			ColumnPrivilegeChecker.intercept(analyzedLogicalPlan,
-				tableIdentifierToCatalogTable, catalog, catalogSession)
+				tableIdentifierToCatalogTable, this)
 		}
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 

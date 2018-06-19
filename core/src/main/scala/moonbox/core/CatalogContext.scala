@@ -12,7 +12,7 @@ object CatalogContext {
 	val DEFAULT_DATABASE = "default"
 }
 
-class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
+class CatalogContext(val conf: MbConf) extends MbLogging {
 	private val catalog = new JdbcCatalog(conf)
 
 	def stop(): Unit = {
@@ -225,7 +225,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 		if (database.isLogical) {
 			catalog.getTable(databaseId, table)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession)
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
 			CatalogTable(
 				name = table,
 				description = None,
@@ -249,7 +249,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 		if (database.isLogical) {
 			catalog.listTables(databaseId)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession)
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
 			val tableNames: Seq[String] = datasys.tableNames()
 			tableNames.map { name =>
 				CatalogTable(
@@ -272,7 +272,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 		if (database.isLogical) {
 			catalog.listTables(databaseId, pattern)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession)
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
 			val tableNames: Seq[String] = datasys.tableNames()
 			tableNames.map { name =>
 				CatalogTable(
@@ -289,7 +289,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 		}
 	}
 
-	def getColumns(databaseId: Long, table: String): Seq[CatalogColumn] = {
+	def getColumns(databaseId: Long, table: String)(mbSession: MbSession): Seq[CatalogColumn] = {
 		val database = catalog.getDatabase(databaseId)
 		val tableIdentifier = TableIdentifier(table, Some(database.name))
 		if (database.isLogical) {

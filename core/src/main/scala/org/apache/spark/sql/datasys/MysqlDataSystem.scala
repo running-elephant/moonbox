@@ -16,6 +16,8 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.util.NextIterator
 
+import scala.collection.mutable.ArrayBuffer
+
 class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession)
 	extends DataSystem(props) with Queryable with Insertable with MbLogging {
 
@@ -167,9 +169,20 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 		new DataTable(iter, schema, () => iter.closeIfNeeded())
 	}
 
-    override def tableNames(): Seq[String] = Seq()
+    override def tableNames(): Seq[String] = {
+		val tables = new ArrayBuffer[String]()
+		val connection = getConnection()
+		val resultSet = connection.createStatement().executeQuery("show tables")
+		while (resultSet.next()) {
+			tables.+=:(resultSet.getString(1))
+		}
+		connection.close()
+		tables
+	}
 
-    override def tableProperties(tableName: String): Map[String, String] = Map()
+    override def tableProperties(tableName: String): Map[String, String] = {
+		props.+("dbtable" -> tableName)
+	}
 
     override def insert(table: DataTable, saveMode: SaveMode): Unit = {}
 }

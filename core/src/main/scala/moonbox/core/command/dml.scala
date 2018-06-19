@@ -166,10 +166,10 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
 		val catalogColumns =
 			if (catalogTable.createBy == ctx.userId || !mbSession.columnPermission) {
-				mbSession.catalog.getColumns(databaseId, table.table)
+				mbSession.catalog.getColumns(databaseId, table.table)(mbSession)
 			} else {
 				val userTableRels = mbSession.catalog.getUserTableRels(ctx.userId, databaseId, table.table).map(_.column)
-				mbSession.catalog.getColumns(databaseId, table.table).filter(column => userTableRels.contains(column.name))
+				mbSession.catalog.getColumns(databaseId, table.table)(mbSession).filter(column => userTableRels.contains(column.name))
 			}
 		result.append(Row("Table Name", catalogTable.name))
 		result.append(Row("Description", catalogTable.description.getOrElse("")))

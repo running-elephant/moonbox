@@ -11,8 +11,9 @@ import scala.collection.mutable.ArrayBuffer
 object ColumnPrivilegeChecker {
 	def intercept(plan: LogicalPlan,
 		tableIdentifierToCatalogTable: Map[TableIdentifier, CatalogTable],
-		catalog: CatalogContext,
-		catalogSession: CatalogSession): Unit = {
+		mbSession: MbSession): Unit = {
+		val catalog = mbSession.catalog
+		val catalogSession = mbSession.catalogSession
 		if (tableIdentifierToCatalogTable.nonEmpty) {
 			val availableColumns = collectLogicalRelation(plan).flatMap { logicalRelation =>
 				logicalRelation.catalogTable match {
@@ -20,7 +21,7 @@ object ColumnPrivilegeChecker {
 						val table = tableIdentifierToCatalogTable.get(catalogTable.identifier)
 						require(table.isDefined)
 						val columnNames = if (table.get.createBy == catalogSession.userId) {
-							catalog.getColumns(table.get.databaseId, table.get.name).map(_.name)
+							catalog.getColumns(table.get.databaseId, table.get.name)(mbSession).map(_.name)
 						} else {
 							catalog.getUserTableRels(catalogSession.userId, table.get.databaseId, table.get.name).map(_.column)
 						}

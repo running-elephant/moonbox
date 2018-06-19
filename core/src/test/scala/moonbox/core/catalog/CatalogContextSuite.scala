@@ -1,7 +1,7 @@
 package moonbox.core.catalog
 
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.CatalogContext
+import moonbox.core.{CatalogContext, MbSession}
 import moonbox.core.config._
 import org.apache.spark.sql.types.StructType
 import org.scalatest.FunSuite
@@ -14,6 +14,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		.set(CATALOG_USER.key, "testUser")
 		.set(CATALOG_PASSWORD.key, "testPass")
 		.set(CATALOG_DRIVER.key, "org.h2.Driver")
+
 
 	val catalog = new CatalogContext(conf)
 	catalog.addListener(new CatalogEventListener {
