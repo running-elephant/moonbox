@@ -306,7 +306,6 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		assert(catalog.getTable(db1.id.get, "table1").description.contains("for fun"))
 		assert(catalog.getTable(db1.id.get, "table1").properties == Map("key2" -> "value2"))
 		catalog.dropTable(db1.id.get, "org1", "db1", "table1", ignoreIfNotExists = true)
-		assert(!catalog.tableExists(db1.id.get, "table1"))
 
 		intercept[NoSuchTableException] {
 			catalog.dropTable(db1.id.get, "org1", "db1", "table1", ignoreIfNotExists = false)

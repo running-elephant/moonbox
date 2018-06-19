@@ -162,7 +162,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.treeToDF(lastLogicalPlan)
 	}
 
-/*	private def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
+	private def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
 		database match {
 			case None =>
 				catalog.getTable(catalogSession.databaseId, table)
@@ -170,7 +170,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				val database = catalog.getDatabase(catalogSession.organizationId, databaseName)
 				catalog.getTable(database.id.get, table)
 		}
-	}*/
+	}
 
 	private def collectDataSourceTable(plan: LogicalPlan): Seq[TableIdentifier] = {
 		val tables = new mutable.HashSet[TableIdentifier]()

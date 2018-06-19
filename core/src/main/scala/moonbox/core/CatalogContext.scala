@@ -211,6 +211,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 		catalog.alterTable(tableDefinition)
 	}
 
+
 	def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long) = {
 		catalog.renameTable(databaseId, organization, db, table, newTable, updateBy)
 	}
@@ -220,8 +221,22 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 	}
 
 	def getTable(databaseId: Long, table: String): CatalogTable = {
-		//TODO
-		catalog.getTable(databaseId, table)
+		val database  = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.getTable(databaseId, table)
+		} else {
+			val datasys = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession)
+			CatalogTable(
+				name = table,
+				description = None,
+				databaseId = database.id.get,
+				properties = datasys.tableProperties(table),
+				createBy = database.createBy,
+				createTime = database.createTime,
+				updateBy = database.updateBy,
+				updateTime = database.updateTime
+			)
+		}
 	}
 
 	/*def tableExists(databaseId: Long, table: String): Boolean = {
@@ -230,12 +245,29 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 	}*/
 
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
-		// TODO
-		catalog.listTables(databaseId)
+		val database = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.listTables(databaseId)
+		} else {
+			val datasys = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession)
+			val tableNames: Seq[String] = datasys.tableNames()
+			tableNames.map { name =>
+				CatalogTable(
+					name = name,
+					description = None,
+					databaseId = database.id.get,
+					properties = datasys.tableProperties(name),
+					createBy = database.createBy,
+					createTime = database.createTime,
+					updateBy = database.updateBy,
+					updateTime = database.updateTime
+				)
+			}
+		}
 	}
 
 	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable] = {
-		// TODO
+		// TODO pattern
 		val database = catalog.getDatabase(databaseId)
 		if (database.isLogical) {
 			catalog.listTables(databaseId, pattern)
@@ -247,7 +279,7 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 					name = name,
 					description = None,
 					databaseId = database.id.get,
-					properties = datasys.tableProperties,
+					properties = datasys.tableProperties(name),
 					createBy = database.createBy,
 					createTime = database.createTime,
 					updateBy = database.updateBy,
@@ -258,14 +290,13 @@ class CatalogContext(val conf: MbConf, mbSession: MbSession) extends MbLogging {
 	}
 
 	def getColumns(databaseId: Long, table: String): Seq[CatalogColumn] = {
-		// TODO
 		val database = catalog.getDatabase(databaseId)
-		val tableIdentifier = TableIdentifier(table, Some(database.name)
+		val tableIdentifier = TableIdentifier(table, Some(database.name))
 		if (database.isLogical) {
 			val props = catalog.getTable(databaseId, table).properties
 			mbSession.mixcal.registerTable(TableIdentifier(table, Some(database.name)), props)
 		} else {
-			val props = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession).tableProperties
+			val props = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession).tableProperties(table)
 			mbSession.mixcal.registerTable(tableIdentifier, props)
 		}
 		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
