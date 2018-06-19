@@ -58,22 +58,19 @@ mql
     | ALTER GROUP name=identifier removeUser (addUser)?                                         # removeUsersFromGroup
     | DROP GROUP (IF EXISTS)? name=identifier (CASCADE)?                                        # dropGroup
 
-    | MOUNT DATASOURCE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                    # mountDatasource
-    | RENAME DATASOURCE name=identifier TO newName=identifier                                   # renameDatasource
-    | ALTER DATASOURCE name=identifier RENAME TO newName=identifier                             # setDatasourceName
-    | ALTER DATASOURCE name=identifier SET OPTIONS propertyList                                 # setDatasourceProperties
-    | UNMOUNT DATASOURCE (IF EXISTS)? name=identifier                                           # unmountDatasource
-
     | MOUNT STREAM? TABLE (IF NOT EXISTS)? tableIdentifier ('('columns=colTypeList')')?
         OPTIONS propertyList                                                                    # mountTable
-    | WITH DATASOURCE ds=identifier MOUNT (STREAM)? TABLE (IF NOT EXISTS)?  mountTableList      # mountTableWithDatasource
     | RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                              # renameTable
     | ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                        # setTableName
     | ALTER TABLE name=tableIdentifier SET OPTIONS propertyList                                 # setTableProperties
-    | ALTER TABLE name=tableIdentifier ADD COLUMNS ('(' columns=colTypeList ')')                # addTableColumns
-    | ALTER TABLE name=tableIdentifier CHANGE COLUMN? identifier colType                        # changeTableColumn
-    | ALTER TABLE name=tableIdentifier DROP COLUMN identifier                                   # dropTableColumn
+    //| ALTER TABLE name=tableIdentifier ADD COLUMNS ('(' columns=colTypeList ')')                # addTableColumns
+    //| ALTER TABLE name=tableIdentifier CHANGE COLUMN? identifier colType                        # changeTableColumn
+    //| ALTER TABLE name=tableIdentifier DROP COLUMN identifier                                   # dropTableColumn
     | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                           # unmountTable
+
+    | MOUNT DATABASE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                      # mountDatabase
+    | UNMOUNT DATABASE (IF EXISTS)? name=identifier                                             # unmountDatabase
+    | ALTER DATABASE name=identifier SET OPTIONS propertyList                                   # setDatabaseProperties
 
     | CREATE DATABASE (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                # createDatabase
     | RENAME DATABASE name=identifier TO newName=identifier                                     # renameDatabase
@@ -109,7 +106,7 @@ mql
     | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
 
     | SHOW SYSINFO                                                                              # showSysInfo
-    | SHOW DATASOURCES (LIKE pattern=STRING)?                                                   # showDatasources
+    //| SHOW DATASOURCES (LIKE pattern=STRING)?                                                   # showDatasources
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
     | SHOW VIEWS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                            # showViews
@@ -118,7 +115,7 @@ mql
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
 
-    | (DESC | DESCRIBE) DATASOURCE EXTENDED? name=identifier                                    # descDatasource
+    //| (DESC | DESCRIBE) DATASOURCE EXTENDED? name=identifier                                    # descDatasource
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
     | (DESC | DESCRIBE) TABLE EXTENDED? tableIdentifier                                         # descTable
     | (DESC | DESCRIBE) VIEW tableIdentifier                                                    # descView
@@ -127,7 +124,7 @@ mql
     | (DESC | DESCRIBE) GROUP name=identifier                                                   # descGroup
 
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
-    | SET property                                                                              # setConfiguration
+    | SET (GLOBAL | SESSION?) property                                                          # setConfiguration
 
     | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier AS? query                                # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
@@ -316,6 +313,7 @@ EXTENDED: 'EXTENDED';
 FROM: 'FROM';
 FUNCTION: 'FUNCTION';
 FUNCTIONS: 'FUNCTIONS';
+GLOBAL: 'GLOBAL';
 GRANT: 'GRANT';
 GROUP: 'GROUP';
 GROUPS: 'GROUPS';
@@ -342,6 +340,7 @@ REVOKE: 'REVOKE';
 SA: 'SA';
 SCHEDULE: 'SCHEDULE';
 SELECT: 'SELECT';
+SESSION: 'SESSION';
 SET: 'SET';
 SHOW: 'SHOW';
 STAR: '*';

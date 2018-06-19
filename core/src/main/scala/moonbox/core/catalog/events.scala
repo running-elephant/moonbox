@@ -147,12 +147,8 @@ case class DropTimedEventEvent(organization: String, event: String) extends Time
 case class RenameTimedEventPreEvent(organization: String, event: String) extends TimedEventEvent
 case class RenameTimedEventEvent(organization: String, event: String) extends TimedEventEvent
 
-trait UserTableRelEvent extends CatalogEvent {
-	val user: String
-	val database: String
-	val table: String
-	val columns: Seq[String]
-}
+trait UserTableRelEvent extends CatalogEvent
+
 case class CreateUserTableRelPreEvent(
 	organization: String,
 	user: String,
@@ -177,6 +173,22 @@ case class DropUserTableRelEvent(
 	database: String,
 	table: String,
 	columns: Seq[String]) extends UserTableRelEvent
+case class DropUserTableRelsByTablePreEvent(
+	organization: String,
+	database: String,
+	table: String) extends UserTableRelEvent
+case class DropUserTableRelsByTableEvent(
+	organization: String,
+	database: String,
+	table: String) extends UserTableRelEvent
+
+case class DropUserTableRelsByUserPreEvent(
+	organization: String,
+	user: String) extends UserTableRelEvent
+
+case class DropUserTableRelsByUserEvent(
+	organization: String,
+	user: String) extends UserTableRelEvent
 
 
 trait UserGroupRelEvent extends CatalogEvent

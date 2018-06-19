@@ -36,6 +36,8 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 						jdbcDao.createDatabase(CatalogDatabase(
 							name = "default",
 							organizationId = id,
+							properties = Map(),
+							isLogical = true,
 							createBy = orgDefinition.createBy,
 							updateBy = orgDefinition.updateBy
 						))
@@ -336,7 +338,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Datasource -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateDatasource(dsDefinition: CatalogDatasource, ignoreIfExists: Boolean): Unit = await {
+	/*override def doCreateDatasource(dsDefinition: CatalogDatasource, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.datasourceExists(dsDefinition.organizationId, dsDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -410,7 +412,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	override def listDatasources(organizationId: Long, pattern: String): Seq[CatalogDatasource] = await {
 		jdbcDao.action(jdbcDao.listDatasources(organizationId, pattern))
-	}
+	}*/
 
 	// ----------------------------------------------------------------------------
 	// Application -- belong to organization
@@ -574,6 +576,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	override def doDropDatabase(organizationId: Long, database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
+		// TODO drop user table rels
 		jdbcDao.action(jdbcDao.getDatabase(organizationId, database)).flatMap {
 			case Some(db) =>
 				if (cascade) {
@@ -662,7 +665,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
 
-	override def doCreateTable(tableDefinition: CatalogTable, columns: StructType, ignoreIfExists: Boolean): Unit = await {
+	override def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(tableDefinition.databaseId)).flatMap {
 			case Some(database) =>
 				jdbcDao.action(jdbcDao.tableExists(tableDefinition.databaseId, tableDefinition.name)).flatMap {
@@ -675,7 +678,8 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 									tableDefinition.name)
 						}
 					case false =>
-						jdbcDao.actionTransactionally(
+						jdbcDao.action(jdbcDao.createTable(tableDefinition))
+						/*jdbcDao.actionTransactionally(
 							jdbcDao.createTable(tableDefinition).flatMap { tableId =>
 								val catalogColumns = columns.map { field =>
 									CatalogColumn(
@@ -689,7 +693,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 								}
 								jdbcDao.createColumns(catalogColumns)
 							}
-						)
+						)*/
 				}
 			case None =>
 				throw new NoSuchDatabaseException(s"Id ${tableDefinition.databaseId}")
@@ -701,12 +705,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		jdbcDao.action(jdbcDao.getTable(databaseId, table)).flatMap {
 			case Some(catalogTable) =>
 				// delete user table column relation
-				// delete columns in table
 				// delete table
 				jdbcDao.actionTransactionally(
 					for (
-						_ <- jdbcDao.deleteUserTableRelsByTable(catalogTable.id.get);
-						_ <- jdbcDao.deleteColumns(catalogTable.id.get);
+						_ <- jdbcDao.deleteUserTableRels(databaseId, table);
 						_ <- jdbcDao.deleteTable(databaseId, table)
 					) yield ()
 				)
@@ -774,6 +776,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Column -- belong to table
 	// ----------------------------------------------------------------------------
 
+	/*
 	override def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long] = await {
 		val groupedColumns = columnDefinition.groupBy(col => columnExists(col.tableId, col.name))
 		groupedColumns.get(true) match {
@@ -851,7 +854,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	override def listColumns(tableId: Long): Seq[CatalogColumn] = await {
 		jdbcDao.action(jdbcDao.listColumns(tableId))
 	}
-
+*/
 	// ----------------------------------------------------------------------------
 	// Function -- belong to database
 	// ----------------------------------------------------------------------------
@@ -1066,30 +1069,58 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// UserTableRel --   the relation of user - table - column
 	// ----------------------------------------------------------------------------
 
+	/*override def doCreateUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel]): Unit = await {
+		val rels = userTableRelDefinition.groupBy(rel => (rel.userId, rel.tableId)).toSeq
+		assert(rels.length == 1)
+		val (userId, tableId) = rels.head._1
+		jdbcDao.action(jdbcDao.getUserLogicalTableRels(userId, tableId)).flatMap { existRels =>
+			val existColumns = existRels.map(_.column)
+			val needCreateRels = rels.head._2.filterNot(rel => existColumns.contains(rel.column))
+			jdbcDao.action(jdbcDao.createUserLogicalTableRel(needCreateRels:_*))
+		}
+	}*/
 
 	override def doCreateUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel]): Unit = await {
-
-		val userIdTableIdToRels = userTableRelDefinition.groupBy(rel => (rel.userId, rel.tableId)).toSeq
-		require(userIdTableIdToRels.length == 1)
-		val userId = userIdTableIdToRels.head._1._1
-		val tableId = userIdTableIdToRels.head._1._2
-		jdbcDao.action(jdbcDao.getUserTableRels(userId, tableId)).flatMap { existsRels =>
-			val existColumns = existsRels.map(_.columnId)
-			val needCreateRels = userIdTableIdToRels.head._2.filterNot(rel => existColumns.contains(rel.columnId))
+		val rels = userTableRelDefinition.groupBy(rel => (rel.userId, rel.databaseId, rel.table)).toSeq
+		assert(rels.length == 1)
+		val (userId, databaseId, table) = rels.head._1
+		jdbcDao.action(jdbcDao.getUserTableRels(userId, databaseId, table)).flatMap { existRels =>
+			val existColumns = existRels.map(_.column)
+			val needCreateRels = rels.head._2.filterNot(rel => existColumns.contains(rel.column))
 			jdbcDao.action(jdbcDao.createUserTableRel(needCreateRels:_*))
 		}
 	}
 
-	override  def doDropUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long]): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserTableRels(userId, tableId, columnIds))
+	/*override def doDropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserLogicalTableRels(userId, tableId, columns))
+	}*/
+
+	override def doDropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserTableRels(userId, databaseId, table, columns))
 	}
 
-	override def getUserTableRel(userId: Long, tableId: Long): Seq[CatalogUserTableRel] = await {
-		jdbcDao.action(jdbcDao.getUserTableRels(userId, tableId))
+	/*override def doDropUserLogicalTableRels(tableId: Long): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserLogicalTableRels(tableId))
+	}*/
+
+	override def doDropUserTableRels(databaseId: Long, table: String): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserTableRels(databaseId, table))
 	}
 
-	override def userTableRelExists(userId: Long, tableId: Long): Boolean = await {
-		jdbcDao.action(jdbcDao.userTableRelExists(userId, tableId))
+	/*override def doDropUserPhysicalTableRelsByUser(userId: Long): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserPhysicalTableRelsByUser(userId))
+	}*/
+
+	override def doDropUserTableRelsByUser(userId: Long): Unit = await {
+		jdbcDao.action(jdbcDao.deleteUserTableRelsByUser(userId))
+	}
+
+	/*override def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel] = await {
+		jdbcDao.action(jdbcDao.getUserLogicalTableRels(userId, tableId))
+	}*/
+
+	override def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel] = await {
+		jdbcDao.action(jdbcDao.getUserTableRels(userId, databaseId, table))
 	}
 
 }

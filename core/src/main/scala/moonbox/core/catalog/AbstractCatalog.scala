@@ -156,7 +156,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Datasource -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	final def createDatasource(dsDefinition: CatalogDatasource, organization: String, ignoreIfExists: Boolean): Unit = {
+	/*final def createDatasource(dsDefinition: CatalogDatasource, organization: String, ignoreIfExists: Boolean): Unit = {
 		val ds = dsDefinition.name
 		postToAll(CreateDatasourcePreEvent(organization, ds))
 		doCreateDatasource(dsDefinition, ignoreIfExists)
@@ -195,7 +195,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def listDatasources(organizationId: Long): Seq[CatalogDatasource]
 
-	def listDatasources(organizationId: Long, pattern: String): Seq[CatalogDatasource]
+	def listDatasources(organizationId: Long, pattern: String): Seq[CatalogDatasource]*/
 
 	// ----------------------------------------------------------------------------
 	// Application -- belong to organization
@@ -334,13 +334,13 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
 
-	final def createTable(tableDefinition: CatalogTable, columns: StructType, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+	final def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
 		val table = tableDefinition.name
 		postToAll(CreateTablePreEvent(organization, db, table))
-		doCreateTable(tableDefinition, columns, ignoreIfExists)
+		doCreateTable(tableDefinition, ignoreIfExists)
 		postToAll(CreateTableEvent(organization, db, table))
 	}
-	protected def doCreateTable(tableDefinition: CatalogTable, columns: StructType, ignoreIfExists: Boolean): Unit
+	protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit
 
 	final def dropTable(databaseId: Long, organization: String, db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
 		postToAll(DropTablePreEvent(organization, db, table))
@@ -378,7 +378,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Column -- belong to table
 	// ----------------------------------------------------------------------------
 
-	protected def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long]
+	/*protected def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long]
 
 	protected def dropColumn(tableId: Long, column: String, ignoreIfNotExists: Boolean): Unit
 
@@ -402,7 +402,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def columnExists(tableId: Long, column: String): Boolean
 
-	def listColumns(tableId: Long): Seq[CatalogColumn]
+	def listColumns(tableId: Long): Seq[CatalogColumn]*/
 
 	// ----------------------------------------------------------------------------
 	// Function -- belong to database
@@ -539,30 +539,81 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// UserTableRel --   the relation of user - table - column
 	// ----------------------------------------------------------------------------
 
+	/*final def createUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel])(
+								  user: String, organization: String, db: String, table: String): Unit = {
+		val columns = userTableRelDefinition.map(_.column)
+		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columns))
+		doCreateUserLogicalTableRel(userTableRelDefinition)
+		postToAll(CreateUserTableRelEvent(organization, user, db, table, columns))
+	}
+
+	protected def doCreateUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel]): Unit*/
+
 	final def createUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel])(
-								  user: String, organization: String, db: String, table: String, columnNames: Seq[String]): Unit = {
-		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columnNames))
+		user: String, organization: String, db: String, table: String): Unit = {
+		val columns = userTableRelDefinition.map(_.column)
+		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columns))
 		doCreateUserTableRel(userTableRelDefinition)
-		postToAll(CreateUserTableRelEvent(organization, user, db, table, columnNames))
+		postToAll(CreateUserTableRelEvent(organization, user, db, table, columns))
 	}
 
 	protected def doCreateUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel]): Unit
 
-
-	final def dropUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long])
-							   (user: String, organization: String, db: String, table: String, columnNames: Seq[String]): Unit = {
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columnNames))
-		doDropUserTableRels(userId, tableId, columnIds)
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columnNames))
+	/*final def dropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String])
+							   (user: String, organization: String, db: String, table: String): Unit = {
+		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
+		doDropUserLogicalTableRels(userId, tableId, columns)
+		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
 	}
 
-	protected def doDropUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long]): Unit
+	protected def doDropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]): Unit*/
 
-	def getUserTableRel(userId: Long, tableId: Long): Seq[CatalogUserTableRel]
+	final def dropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String])
+		(user: String, organization: String, db: String): Unit = {
+		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
+		doDropUserTableRels(userId, databaseId, table, columns)
+		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
+	}
 
-	def userTableRelExists(userId: Long, tableId: Long): Boolean
+	protected def doDropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]): Unit
+
+	/*final def dropUserLogicalTableRels(tableId: Long)(organization: String, database: String, table: String): Unit = {
+		postToAll(DropUserTableRelsByTablePreEvent(organization, database, table))
+		doDropUserLogicalTableRels(tableId)
+		postToAll(DropUserTableRelsByTableEvent(organization, database, table))
+	}
+
+	protected def doDropUserLogicalTableRels(tableId: Long): Unit*/
+
+	final def dropUserTableRels(databaseId: Long, table: String)(organization: String, database: String): Unit = {
+		postToAll(DropUserTableRelsByTablePreEvent(organization, database, table))
+		doDropUserTableRels(databaseId, table)
+		postToAll(DropUserTableRelsByTableEvent(organization, database, table))
+	}
+
+	protected def doDropUserTableRels(databaseId: Long, table: String): Unit
 
 
+	/*final def dropUserLogicalTableRelsByUser(userId: Long)(organization: String, user: String): Unit = {
+		postToAll(DropUserTableRelsByUserPreEvent(organization, user))
+		doDropUserLogicalTableRelsByUser(userId)
+		postToAll(DropUserTableRelsByUserEvent(organization, user))
+	}
+
+	protected def doDropUserLogicalTableRelsByUser(userId: Long): Unit*/
+
+	final def dropUserTableRelsByUser(userId: Long)(organization: String, user: String): Unit = {
+		postToAll(DropUserTableRelsByUserPreEvent(organization, user))
+		doDropUserTableRelsByUser(userId)
+		postToAll(DropUserTableRelsByUserEvent(organization, user))
+	}
+
+	protected def doDropUserTableRelsByUser(userId: Long): Unit
+
+
+	//def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel]
+
+	def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel]
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)

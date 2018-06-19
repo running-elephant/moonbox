@@ -2,6 +2,7 @@ package moonbox.core.catalog.jdbc
 
 import moonbox.common.util.ParseUtils
 import moonbox.core.catalog._
+import slick.lifted.ProvenShape
 
 trait EntityComponent extends DatabaseComponent {
 	import profile.api._
@@ -29,7 +30,7 @@ trait EntityComponent extends DatabaseComponent {
 		ParseUtils.parseProperties(_).map { case (resourceType, uri) => FunctionResource(resourceType, uri) }
 	)
 
-	protected final val catalogDatasources = TableQuery[CatalogDatasourceTable]
+	//protected final val catalogDatasources = TableQuery[CatalogDatasourceTable]
 	protected final val catalogDatabases = TableQuery[CatalogDatabaseTable]
 	protected final val catalogTables = TableQuery[CatalogTableTable]
 	protected final val catalogOrganizations = TableQuery[CatalogOrganizationTable]
@@ -39,11 +40,13 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val catalogViews = TableQuery[CatalogViewTable]
 	protected final val catalogApplications = TableQuery[CatalogApplicationTable]
 	protected final val catalogTimedEvents = TableQuery[CatalogTimedEventTable]
-	protected final val catalogColumns = TableQuery[CatalogColumnTable]
+	// protected final val catalogColumns = TableQuery[CatalogColumnTable]
 	protected final val catalogUserTableRels = TableQuery[CatalogUserTableRelTable]
+	//protected final val catalogUserLogicalTableRels = TableQuery[CatalogUserLogicalTableRelTable]
 	protected final val catalogUserGroupRels = TableQuery[CatalogUserGroupRelTable]
+	protected final val catalogVariables = TableQuery[CatalogVariableTable]
 
-	protected final val tableQuerys = Seq(catalogDatasources,
+	protected final val tableQuerys = Seq(
 		catalogDatabases,
 		catalogTables,
 		catalogOrganizations,
@@ -53,9 +56,10 @@ trait EntityComponent extends DatabaseComponent {
 		catalogViews,
 		catalogApplications,
 		catalogTimedEvents,
-		catalogColumns,
 		catalogUserTableRels,
-		catalogUserGroupRels)
+		catalogUserGroupRels,
+		catalogVariables
+	)
 
 	abstract class BaseTable[T](tag: Tag, desc: String) extends Table[T](tag, desc) {
 
@@ -71,20 +75,22 @@ trait EntityComponent extends DatabaseComponent {
 
 	}
 
-	class CatalogDatasourceTable(tag: Tag) extends BaseTable[CatalogDatasource](tag, "datasources") {
+	/*class CatalogDatasourceTable(tag: Tag) extends BaseTable[CatalogDatasource](tag, "datasources") {
 		def name = column[String]("name")
 		def properties = column[Map[String, String]]("properties")
 		def description = column[Option[String]]("description")
 		def organizationId = column[Long]("organizationId")
 		override def * = (id.?, name, properties, description, organizationId,
 			createBy, createTime, updateBy, updateTime) <> (CatalogDatasource.tupled, CatalogDatasource.unapply)
-	}
+	}*/
 
 	class CatalogDatabaseTable(tag: Tag) extends BaseTable[CatalogDatabase](tag, "databases") {
 		def name = column[String]("name")
 		def description = column[Option[String]]("description")
 		def organizationId = column[Long]("organizationId")
-		override def * = (id.?, name, description, organizationId, createBy, createTime,
+		def properties = column[Map[String, String]]("properties")
+		def isLogical = column[Boolean]("isLogical")
+		override def * = (id.?, name, description, organizationId, properties, isLogical, createBy, createTime,
 			updateBy, updateTime) <> (CatalogDatabase.tupled, CatalogDatabase.unapply)
 	}
 
@@ -172,27 +178,44 @@ trait EntityComponent extends DatabaseComponent {
 			createTime, updateBy, updateTime) <> (CatalogTimedEvent.tupled, CatalogTimedEvent.unapply)
 	}
 
-	class CatalogColumnTable(tag: Tag) extends BaseTable[CatalogColumn](tag, "columns") {
+/*	class CatalogColumnTable(tag: Tag) extends BaseTable[CatalogColumn](tag, "columns") {
 		def name = column[String]("name")
 		def dataType = column[String]("dataType")
 		def readOnly = column[Boolean]("readOnly")
 		def tableId = column[Long]("tableId")
 		override def * = (id.?, name, dataType, readOnly, tableId, createBy, createTime,
 			updateBy, updateTime) <> (CatalogColumn.tupled, CatalogColumn.unapply)
-	}
+	}*/
 
 	class CatalogUserTableRelTable(tag: Tag) extends BaseTable[CatalogUserTableRel](tag, "user_table_rel") {
 		def userId = column[Long]("userId")
-		def tableId = column[Long]("tableId")
-		def columnId = column[Long]("columnId")
-		override def * = (id.?, userId, tableId, columnId,
+		def databaseId = column[Long]("databaseId")
+		def table = column[String]("table")
+		def columnName = column[String]("column")
+		override def * = (id.?, userId, databaseId, table, columnName,
 			createBy, createTime, updateBy, updateTime) <> (CatalogUserTableRel.tupled, CatalogUserTableRel.unapply)
 	}
+
+	/*class CatalogUserLogicalTableRelTable(tag: Tag) extends BaseTable[CatalogUserLogicalTableRel](tag, "user_logical_table_rel") {
+		def userId = column[Long]("userId")
+		def tableId = column[Long]("tableId")
+		def columnName = column[String]("column")
+		override def * = (id.?, userId, tableId, columnName,
+			createBy, createTime, updateBy, updateTime) <> (CatalogUserLogicalTableRel.tupled, CatalogUserLogicalTableRel.unapply)
+
+	}*/
 
 	class CatalogUserGroupRelTable(tag: Tag) extends BaseTable[CatalogUserGroupRel](tag, "user_group_rel") {
 		def groupId = column[Long]("groupId")
 		def userId = column[Long]("userId")
 		override def * = (id.?, groupId, userId, createBy, createTime,
 			updateBy, updateTime) <> (CatalogUserGroupRel.tupled, CatalogUserGroupRel.unapply)
+	}
+
+	class CatalogVariableTable(tag: Tag) extends BaseTable[CatalogVariable](tag, "variables") {
+		def name = column[String]("name")
+		def value = column[String]("value")
+		def userId = column[Long]("userId")
+		override def *  = (id.?, name, value, userId, createBy, createTime, updateBy, updateTime) <> (CatalogVariable.tupled, CatalogVariable.unapply)
 	}
 }

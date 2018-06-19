@@ -361,7 +361,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	// Datasource
 	// -----------------------------------------------------------------
 
-	def createDatasource(datasource: CatalogDatasource) = {
+	/*def createDatasource(datasource: CatalogDatasource) = {
 		insert(datasource, catalogDatasources)
 	}
 
@@ -410,7 +410,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	def listDatasources(organizationId: Long, pattern: String) = {
 		query[CatalogDatasource, CatalogDatasourceTable](
 			catalogDatasources, t => t.organizationId === organizationId && t.name.like(pattern))
-	}
+	}*/
 
 	// -----------------------------------------------------------------
 	// Application
@@ -651,77 +651,77 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	// -----------------------------------------------------------------
 	// Column
 	// -----------------------------------------------------------------
+	/*
+		def createColumns(columns: Seq[CatalogColumn]) = {
+			require(Utils.allEquals(columns.map(_.tableId).toList))
+			insertMultiple[CatalogColumn, CatalogColumnTable](columns, catalogColumns)
+		}
 
-	def createColumns(columns: Seq[CatalogColumn]) = {
-		require(Utils.allEquals(columns.map(_.tableId).toList))
-		insertMultiple[CatalogColumn, CatalogColumnTable](columns, catalogColumns)
-	}
+		def deleteColumn(columnId: Long) = {
+			delete[CatalogColumn, CatalogColumnTable](
+				catalogColumns, _.id === columnId
+			)
+		}
 
-	def deleteColumn(columnId: Long) = {
-		delete[CatalogColumn, CatalogColumnTable](
-			catalogColumns, _.id === columnId
-		)
-	}
+		def deleteColumn(tableId: Long, column: String) = {
+			delete[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.tableId === tableId && t.name === column
+			)
+		}
 
-	def deleteColumn(tableId: Long, column: String) = {
-		delete[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId && t.name === column
-		)
-	}
+		def deleteColumns(tableId: Long) = {
+			delete[CatalogColumn, CatalogColumnTable](
+				catalogColumns, _.tableId === tableId
+			)
+		}
 
-	def deleteColumns(tableId: Long) = {
-		delete[CatalogColumn, CatalogColumnTable](
-			catalogColumns, _.tableId === tableId
-		)
-	}
+		def updateColumn(column: CatalogColumn) = {
+			updateEntity[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.id === column.id.get, column
+			)
+		}
 
-	def updateColumn(column: CatalogColumn) = {
-		updateEntity[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.id === column.id.get, column
-		)
-	}
+		def getColumn(columnId: Long) = {
+			queryOneOption[CatalogColumn, CatalogColumnTable](
+				catalogColumns, _.id === columnId
+			)
+		}
 
-	def getColumn(columnId: Long) = {
-		queryOneOption[CatalogColumn, CatalogColumnTable](
-			catalogColumns, _.id === columnId
-		)
-	}
+		def getColumn(tableId: Long, column: String) = {
+			queryOneOption[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.tableId === tableId && t.name === column
+			)
+		}
 
-	def getColumn(tableId: Long, column: String) = {
-		queryOneOption[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId && t.name === column
-		)
-	}
+		def getColumns(columns: Seq[Long]) = {
+			query[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.id.inSet(columns)
+			)
+		}
 
-	def getColumns(columns: Seq[Long]) = {
-		query[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.id.inSet(columns)
-		)
-	}
+		def getColumns(tableId: Long) = {
+			query[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.tableId === tableId
+			)
+		}
 
-	def getColumns(tableId: Long) = {
-		query[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId
-		)
-	}
+		def getColumns(tableId: Long, columns: Seq[String]) = {
+			query[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.tableId === tableId && t.name.inSet(columns)
+			)
+		}
 
-	def getColumns(tableId: Long, columns: Seq[String]) = {
-		query[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId && t.name.inSet(columns)
-		)
-	}
+		def columnExists(tableId: Long, column: String) = {
+			exists[CatalogColumn, CatalogColumnTable](
+				catalogColumns, t => t.tableId === tableId && t.name === column
+			)
+		}
 
-	def columnExists(tableId: Long, column: String) = {
-		exists[CatalogColumn, CatalogColumnTable](
-			catalogColumns, t => t.tableId === tableId && t.name === column
-		)
-	}
-
-	def listColumns(tableId: Long) = {
-		query[CatalogColumn, CatalogColumnTable](
-			catalogColumns, _.tableId === tableId
-		)
-	}
+		def listColumns(tableId: Long) = {
+			query[CatalogColumn, CatalogColumnTable](
+				catalogColumns, _.tableId === tableId
+			)
+		}*/
 
 	// -----------------------------------------------------------------
 	// Function
@@ -875,23 +875,45 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
-	// use for revoking columns of table from user
-	def deleteUserTableRels(userId: Long, tableId: Long, columnIds: Seq[Long]) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels,
-			t => t.userId === userId && t.tableId === tableId && t.columnId.inSet(columnIds)
-		)
-	}
-
-	/*// use for revoking all columns of table from user
-	def deleteUserTableRels(userId: Long, tableId: Long) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels,
-			t => t.userId === userId && t.tableId === tableId
+	/*def createUserPhysicalTableRel(rels: CatalogUserPhysicalTableRel*) = {
+		insertMultiple[CatalogUserPhysicalTableRel, CatalogUserPhysicalTableRelTable](
+			rels, catalogUserPhysicalTableRels
 		)
 	}*/
 
-	// use for dropping user
+	/*// Using for revoking columns
+	def deleteUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]) = {
+		delete[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
+			catalogUserLogicalTableRels,
+			t => t.userId === userId && t.tableId === tableId && t.columnName.inSet(columns)
+		)
+	}*/
+
+	// Using for revoking columns
+	def deleteUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]) = {
+		delete[CatalogUserTableRel, CatalogUserTableRelTable](
+			catalogUserTableRels,
+			t => t.userId === userId && t.databaseId === databaseId && t.table === table && t.columnName.inSet(columns)
+		)
+	}
+
+	/*// Using for unmounting table directly or dropping local database
+	def deleteUserLogicalTableRels(tableId: Long) = {
+		delete[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
+			catalogUserLogicalTableRels,
+			t => t.tableId === tableId
+		)
+	}*/
+
+	// Using for unmounting physical database
+	def deleteUserTableRels(databaseId: Long, table: String) = {
+		delete[CatalogUserTableRel, CatalogUserTableRelTable](
+			catalogUserTableRels,
+			t => t.databaseId === databaseId && t.table === table
+		)
+	}
+
+	// Using for dropping user
 	def deleteUserTableRelsByUser(userId: Long) = {
 		delete[CatalogUserTableRel, CatalogUserTableRelTable](
 			catalogUserTableRels,
@@ -899,25 +921,25 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
-	// use for dropping table
-	def deleteUserTableRelsByTable(tableId: Long) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels, t => t.tableId === tableId
+	/*// Using for dropping user
+	def deleteUserPhysicalTableRelsByUser(userId: Long) = {
+		delete[CatalogUserPhysicalTableRel, CatalogUserPhysicalTableRelTable](
+			catalogUserPhysicalTableRels,
+			t => t.userId === userId
 		)
-	}
+	}*/
 
-	def getUserTableRels(userId: Long, tableId: Long) = {
+	/*def getUserLogicalTableRels(userId: Long, tableId: Long) = {
+		query[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
+			catalogUserLogicalTableRels, t => t.userId === userId && t.tableId === tableId
+		)
+	}*/
+
+	def getUserTableRels(userId: Long, databaseId: Long, table: String) = {
 		query[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels, t => t.userId === userId && t.tableId === tableId
+			catalogUserTableRels, t => t.userId === userId && t.databaseId === databaseId && t.table === table
 		)
 	}
-
-	def userTableRelExists(userId: Long, tableId: Long) = {
-		exists[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels, t => t.userId === userId && t.tableId === tableId
-		)
-	}
-
 
 	// -----------------------------------------------------------------
 	// UserGroupRel

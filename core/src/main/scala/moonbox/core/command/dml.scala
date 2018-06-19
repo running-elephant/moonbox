@@ -1,6 +1,5 @@
 package moonbox.core.command
 
-import moonbox.common.util.Utils
 import moonbox.core.catalog.{CatalogGroup, CatalogSession, CatalogUser, FunctionResource}
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
@@ -17,6 +16,7 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
+		ctx.isLogical = currentDb.isLogical
 		if (!mbSession.mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
 			mbSession.mixcal.sqlToDF(s"create database if not exists ${currentDb.name}")
 		}
@@ -25,7 +25,7 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 	}
 }
 
-case class ShowDatasources(
+/*case class ShowDatasources(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
@@ -33,6 +33,14 @@ case class ShowDatasources(
 			mbSession.catalog.listDatasource(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatasource(ctx.organizationId))
 		datasources.map { d => Row(d.name)}
+	}
+}*/
+
+case class SetVariables(name: String, value: String, isGlobal: Boolean)
+	extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		// TODO
+		Seq.empty[Row]
 	}
 }
 
@@ -121,7 +129,7 @@ case class ShowApplications(
 	}
 }
 
-case class DescDatasource(name: String, extended: Boolean) extends MbRunnableCommand with DML {
+/*case class DescDatasource(name: String, extended: Boolean) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val datasource = mbSession.catalog.getDatasource(ctx.organizationId, name)
 		val result = Row("Datasource Name", datasource.name) ::
@@ -136,7 +144,7 @@ case class DescDatasource(name: String, extended: Boolean) extends MbRunnableCom
 		}
 		result
 	}
-}
+}*/
 
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
@@ -149,7 +157,7 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 }
 
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
-
+	// TODO
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
 
@@ -158,10 +166,10 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
 		val catalogColumns =
 			if (catalogTable.createBy == ctx.userId || !mbSession.columnPermission) {
-				mbSession.catalog.getColumns(catalogTable.id.get)
+				mbSession.catalog.getColumns(databaseId, table.table)
 			} else {
-				val userTableRels = mbSession.catalog.getUserTableRel(ctx.userId, catalogTable.id.get)
-				mbSession.catalog.getColumns(userTableRels.map(_.columnId))
+				val userTableRels = mbSession.catalog.getUserTableRels(ctx.userId, databaseId, table.table).map(_.column)
+				mbSession.catalog.getColumns(databaseId, table.table).filter(column => userTableRels.contains(column.name))
 			}
 		result.append(Row("Table Name", catalogTable.name))
 		result.append(Row("Description", catalogTable.description.getOrElse("")))
@@ -244,7 +252,7 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 	}
 }
 
-case class SetConfiguration(key: String, value: String) extends MbRunnableCommand with DML {
+/*case class SetConfiguration(key: String, value: String) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val user = mbSession.catalog.getUser(ctx.userId)
 		mbSession.catalog.alterUser(
@@ -256,7 +264,7 @@ case class SetConfiguration(key: String, value: String) extends MbRunnableComman
 		)
 		Seq.empty[Row]
 	}
-}
+}*/
 
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {

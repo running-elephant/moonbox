@@ -168,7 +168,7 @@ class MbParserSuite extends FunSuite {
 		)
 	}
 
-	test("datasource") {
+	/*test("datasource") {
 		assertEquals(
 			MountDatasource("datasource", Map("key" -> "value", "key1" -> "value1"), ignoreIfExists = false),
 			"MOUNT DATASOURCE datasource OPTIONS(key 'value', key1 'value1')"
@@ -199,7 +199,7 @@ class MbParserSuite extends FunSuite {
 			UnmountDatasource("datasource", ignoreIfNotExists = true),
 			"UNMOUNT DATASOURCE IF EXISTS datasource"
 		)
-	}
+	}*/
 
 	test("database") {
 		assertEquals(
@@ -221,6 +221,16 @@ class MbParserSuite extends FunSuite {
 		assertEquals(
 			DropDatabase("database", ignoreIfNotExists = true, cascade = true),
 			"DROP DATABASE IF EXISTS database CASCADE"
+		)
+
+		assertEquals(
+			MountDatabase("database", Map("key" -> "value", "key1" -> "value1"), ignoreIfExists = false),
+			"MOUNT DATABASE database OPTIONS(key 'value', key1 'value1')"
+		)
+
+		assertEquals(
+			UnmountDatabase("database", ignoreIfNotExists = false),
+			"UNMOUNT DATABASE database"
 		)
 	}
 
@@ -245,7 +255,7 @@ class MbParserSuite extends FunSuite {
 			"MOUNT TABLE table(name string, age int) OPTIONS(key 'value')"
 		)
 
-		assertEquals(
+		/*assertEquals(
 			MountTableWithDatasoruce("datasource",
 				Seq(
 					(MbTableIdentifier("table", None), Some(
@@ -272,7 +282,7 @@ class MbParserSuite extends FunSuite {
 				ignoreIfExists = true
 			),
 			"WITH DATASOURCE datasource MOUNT STREAM TABLE IF NOT EXISTS db.table OPTIONS(dbtable 'table'), db1.table1 OPTIONS(dbtable 'table1')"
-		)
+		)*/
 
 		assertEquals(
 			AlterTableSetName(MbTableIdentifier("table", None), MbTableIdentifier("table1", None)),
@@ -291,7 +301,7 @@ class MbParserSuite extends FunSuite {
 			"ALTER TABLE db.table SET OPTIONS(key 'value')"
 		)
 
-		assertEquals(
+		/*assertEquals(
 			AlterTableAddColumns(MbTableIdentifier("table", None),
 				StructType(Seq(
 					StructField("name", StringType),
@@ -314,7 +324,7 @@ class MbParserSuite extends FunSuite {
 				"name"
 			),
 			"ALTER TABLE table DROP COLUMN name"
-		)
+		)*/
 
 		assertEquals(
 			UnmountTable(MbTableIdentifier("table", Some("db")), ignoreIfNotExists = true),
@@ -460,7 +470,7 @@ class MbParserSuite extends FunSuite {
 		)
 	}
 
-	test("show datasources") {
+	/*test("show datasources") {
 		assertEquals(
 			ShowDatasources(pattern = Some("abc%")),
 			"SHOW DATASOURCES LIKE 'abc%'"
@@ -470,7 +480,7 @@ class MbParserSuite extends FunSuite {
 			ShowDatasources(pattern = None),
 			"SHOW DATASOURCES"
 		)
-	}
+	}*/
 
 	test("show databases") {
 		assertEquals(
@@ -580,7 +590,7 @@ class MbParserSuite extends FunSuite {
 		)
 	}
 
-	test("desc datasource") {
+	/*test("desc datasource") {
 		assertEquals(
 			DescDatasource("ds", extended = false),
 			"DESC DATASOURCE ds",
@@ -592,7 +602,7 @@ class MbParserSuite extends FunSuite {
 			"DESC DATASOURCE EXTENDED ds",
 			"DESCRIBE DATASOURCE EXTENDED ds"
 		)
-	}
+	}*/
 
 	test("desc database") {
 		assertEquals(
@@ -674,9 +684,19 @@ class MbParserSuite extends FunSuite {
 
 	test("set configuration") {
 		assertEquals(
-			SetConfiguration("key", "value"),
+			SetVariables("key", "value", isGlobal = false),
 			"SET key = 'value'",
 			"SET key 'value'"
+		)
+		assertEquals(
+			SetVariables("key", "value", isGlobal = false),
+			"SET SESSION key = 'value'",
+			"SET SESSION key 'value'"
+		)
+		assertEquals(
+			SetVariables("key", "value", isGlobal = true),
+			"SET GLOBAL key = 'value'",
+			"SET GLOBAL key 'value'"
 		)
 	}
 

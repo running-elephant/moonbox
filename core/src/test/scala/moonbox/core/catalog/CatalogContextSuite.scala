@@ -172,7 +172,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		}
 	}
 
-	test("datasource") {
+	/*test("datasource") {
 		catalog.createDatasource(CatalogDatasource(
 			name = "ds",
 			properties = Map("key1" -> "value1"),
@@ -218,13 +218,15 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		intercept[NoSuchDatasourceException] {
 			catalog.dropDatasource(1, "org1", "ds1", ignoreIfNotExists = false)
 		}
-	}
+	}*/
 
 	test("database and table") {
 		catalog.createDatabase(CatalogDatabase(
 			name = "db",
 			description = Some("for testing"),
 			organizationId = 1,
+			properties = Map(),
+			isLogical = true,
 			createBy = 1,
 			updateBy = 1
 		), "org1", ignoreIfExists = true)
@@ -240,6 +242,8 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				name = "db",
 				description = Some("for testing"),
 				organizationId = 1,
+				properties = Map(),
+				isLogical = true,
 				createBy = 1,
 				updateBy = 1
 			), "org1", ignoreIfExists = false)
@@ -266,7 +270,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			isStream = false,
 			createBy = 1,
 			updateBy = 1
-		), new StructType(),  "org1", "db1", ignoreIfExists = true)
+		), "org1", "db1", ignoreIfExists = true)
 
 		val table = catalog.getTable(db1.id.get, "table")
 		assert(table.name == "table")
@@ -285,7 +289,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				isStream = false,
 				createBy = 1,
 				updateBy = 1
-			),new StructType(), "org1", "db1", ignoreIfExists = false)
+			),"org1", "db1", ignoreIfExists = false)
 		}
 
 		catalog.renameTable(db1.id.get, "org1", "db1","table", "table1", 2)
@@ -316,7 +320,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			isStream = false,
 			createBy = 1,
 			updateBy = 1
-		), new StructType(), "org1", "db1", ignoreIfExists = true)
+		), "org1", "db1", ignoreIfExists = true)
 
 		intercept[NonEmptyException] {
 			catalog.dropDatabase(1, "org1", "db1", ignoreIfNotExists = true, cascade = false)
@@ -336,6 +340,8 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			name = "db",
 			description = Some("for testing"),
 			organizationId = 1,
+			properties = Map(),
+			isLogical = true,
 			createBy = 1,
 			updateBy = 1
 		), "org1", ignoreIfExists = true)
@@ -424,6 +430,8 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			name = "db",
 			description = Some("for testing"),
 			organizationId = 1,
+			properties = Map(),
+			isLogical = true,
 			createBy = 1,
 			updateBy = 1
 		), "org1", ignoreIfExists = true)

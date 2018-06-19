@@ -17,6 +17,8 @@ class NoSuchTableException(db: String, table: String)
 
 class NoSuchColumnException(table: String, column: String)
 	extends Exception(s"Column '$column' not found in table $table")
+case class NoSuchGrantColumnException(user: String, table: String, column: String)
+	extends Exception(s"Column '$column' in table $table has not been granted to user $user")
 
 class NoSuchTablesException(table: (String, String)*)
 	extends Exception(s"Table or view '${table.map {case (t, d) => s"d.t"}.mkString(",")}'")
