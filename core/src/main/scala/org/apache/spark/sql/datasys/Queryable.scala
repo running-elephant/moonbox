@@ -11,3 +11,7 @@ trait Queryable {
 trait Insertable {
 	def insert(table: DataTable, saveMode: SaveMode): Unit
 }
+
+trait Truncatable{
+    def truncate(): Unit
+}

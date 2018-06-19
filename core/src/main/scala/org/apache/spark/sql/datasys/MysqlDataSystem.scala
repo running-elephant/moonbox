@@ -13,7 +13,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.util.NextIterator
 
 class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession)
@@ -164,10 +164,10 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 				}
 			}
 		}
-		new DataTable(iter, () => iter.closeIfNeeded(), schema)
+		new DataTable(iter, schema, () => iter.closeIfNeeded())
 	}
 
-	override def insert(table: DataTable): Unit = {
-		// TODO
-	}
+    override def tableNames(): Seq[String] = Seq()
+
+    override def insert(table: DataTable, saveMode: SaveMode): Unit = {}
 }

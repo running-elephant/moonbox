@@ -46,5 +46,6 @@ abstract class DataSystem(props: Map[String, String]) {
 
 	def buildScan(plan: LogicalPlan): DataFrame
 
+	def tableNames(): Seq[String]
 
 }

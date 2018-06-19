@@ -25,4 +25,6 @@ class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSys
 	override def buildScan(plan: LogicalPlan): DataFrame = {
 		Dataset.ofRows(sparkSession, plan)
 	}
+
+	override def tableNames() = { throw new UnsupportedOperationException("unsupport method tableNames") }
 }
