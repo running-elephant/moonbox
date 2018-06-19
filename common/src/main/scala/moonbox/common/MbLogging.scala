@@ -12,6 +12,7 @@ object MbLogging {
 	try {
 		// We use reflection here to handle the case where users remove the
 		// slf4j-to-jul bridge order to route their logs to JUL.
+        System.setProperty("log4j.configuration", "")
 		val bridgeClass = Utils.classForName("org.slf4j.bridge.SLF4JBridgeHandler")
 		bridgeClass.getMethod("removeHandlersForRootLogger").invoke(null)
 		val installed = bridgeClass.getMethod("isInstalled").invoke(null).asInstanceOf[Boolean]
