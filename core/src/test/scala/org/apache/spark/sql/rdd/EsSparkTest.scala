@@ -25,7 +25,14 @@ class EsSparkTest extends FunSuite with BeforeAndAfterAll{
         val executor = new EsCatalystQueryExecutor(properties)
         val json = executor.translate(optimized).head
         val mapping = executor.getColumnMapping()
-        val rdd = new MbElasticSearchRDD[Row](spark.sparkContext, json, mapping, optimized.schema, 1, map(), SparkUtil.resultListToJdbcRow)
+        val rdd = new MbElasticSearchRDD[Row](spark.sparkContext,
+            json,
+            mapping,
+            optimized.schema,
+            1,
+            map(),
+            executor.context.limitSize,
+            SparkUtil.resultListToJdbcRow)
 
         val df = spark.createDataFrame(rdd, optimized.schema)
         df
