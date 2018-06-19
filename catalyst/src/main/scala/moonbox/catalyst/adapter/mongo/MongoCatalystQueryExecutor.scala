@@ -26,7 +26,7 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
   def this(properties: Properties) = this(null, properties)
   var closed: Boolean = _
   var client: MbMongoClient = MbMongoClient(cli, props)
-  override lazy val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
+  override val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
 
   def this(props: Properties, client: MongoClient) = this(props)
 
