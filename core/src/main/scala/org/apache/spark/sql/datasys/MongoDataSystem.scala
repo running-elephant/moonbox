@@ -49,9 +49,9 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   val WRITE_CONCERN_JOURNAL_KEY: String = WriteConfig.writeConcernJournalProperty
   val WRITE_CONCERN_W_TIMEOUT_MS_KEY: String = WriteConfig.writeConcernWTimeoutMSProperty
 
-  val cleanedInputMap: Map[String, String] = props.filter(!_._1.startsWith(MONGO_SPARK_OUTPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_INPUT_PREFIX) -> v }
+  val cleanedInputMap: Map[String, String] = props.filterKeys(!_.startsWith(MONGO_SPARK_OUTPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_INPUT_PREFIX) -> v }
 
-  val cleanedOutputMap: Map[String, String] = props.filter(!_._1.startsWith(MONGO_SPARK_INPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_OUTPUT_PREFIX) -> v }
+  val cleanedOutputMap: Map[String, String] = props.filterKeys(!_.startsWith(MONGO_SPARK_INPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_OUTPUT_PREFIX) -> v }
 
   var readClientURI: MongoClientURI = _
   var writeClientURI: MongoClientURI = _
