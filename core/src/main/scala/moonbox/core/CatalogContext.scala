@@ -2,6 +2,9 @@ package moonbox.core
 
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog._
+import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
+import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.types.StructType
 
 
@@ -168,38 +171,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listGroups(organizationId, pattern)
 	}
 
-	def createDatasource(dsDefinition: CatalogDatasource, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createDatasource(dsDefinition, organization, ignoreIfExists)
-	}
-
-	def renameDatasource(organizationId: Long, organization: String, ds: String, newDs: String, updateBy: Long): Unit = {
-		catalog.renameDatasource(organizationId, organization, ds, newDs, updateBy)
-	}
-
-	def alterDatasource(dsDefinition: CatalogDatasource): Unit = {
-		catalog.alterDatasource(dsDefinition)
-	}
-
-	def datasourceExists(organizationId: Long, ds: String): Boolean = {
-		catalog.datasourceExists(organizationId, ds)
-	}
-
-	def dropDatasource(organizationId: Long, organization: String, datasource: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropDatasource(organizationId, organization, datasource, ignoreIfNotExists)
-	}
-
-	def getDatasource(organizationId: Long, datasource: String): CatalogDatasource = {
-		catalog.getDatasource(organizationId, datasource)
-	}
-
-	def listDatasource(organizationId: Long): Seq[CatalogDatasource] = {
-		catalog.listDatasources(organizationId)
-	}
-
-	def listDatasource(organizationId: Long, pattern: String): Seq[CatalogDatasource] = {
-		catalog.listDatasources(organizationId, pattern)
-	}
-
 	def createDatabase(dbDefinition: CatalogDatabase, organization: String, ignoreIfExists: Boolean): Unit = {
 		catalog.createDatabase(dbDefinition, organization, ignoreIfExists)
 	}
@@ -232,17 +203,14 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listDatabases(organizationId, pattern)
 	}
 
-	def createTable(tableDefinition: CatalogTable, columns: StructType, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createTable(tableDefinition, columns, organization, db, ignoreIfExists)
+	def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+		catalog.createTable(tableDefinition, organization, db, ignoreIfExists)
 	}
 
 	def alterTable(tableDefinition: CatalogTable): Unit = {
 		catalog.alterTable(tableDefinition)
 	}
 
-	def tableExists(databaseId: Long, table: String): Boolean = {
-		catalog.tableExists(databaseId, table)
-	}
 
 	def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long) = {
 		catalog.renameTable(databaseId, organization, db, table, newTable, updateBy)
@@ -253,15 +221,96 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def getTable(databaseId: Long, table: String): CatalogTable = {
-		catalog.getTable(databaseId, table)
+		val database  = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.getTable(databaseId, table)
+		} else {
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			CatalogTable(
+				name = table,
+				description = None,
+				databaseId = database.id.get,
+				properties = datasys.tableProperties(table),
+				createBy = database.createBy,
+				createTime = database.createTime,
+				updateBy = database.updateBy,
+				updateTime = database.updateTime
+			)
+		}
 	}
 
+	/*def tableExists(databaseId: Long, table: String): Boolean = {
+		// TODO
+		catalog.tableExists(databaseId, table)
+	}*/
+
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
-		catalog.listTables(databaseId)
+		val database = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.listTables(databaseId)
+		} else {
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			val tableNames: Seq[String] = datasys.tableNames()
+			tableNames.map { name =>
+				CatalogTable(
+					name = name,
+					description = None,
+					databaseId = database.id.get,
+					properties = datasys.tableProperties(name),
+					createBy = database.createBy,
+					createTime = database.createTime,
+					updateBy = database.updateBy,
+					updateTime = database.updateTime
+				)
+			}
+		}
 	}
 
 	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable] = {
-		catalog.listTables(databaseId, pattern)
+		// TODO pattern
+		val database = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.listTables(databaseId, pattern)
+		} else {
+			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			val tableNames: Seq[String] = datasys.tableNames()
+			tableNames.map { name =>
+				CatalogTable(
+					name = name,
+					description = None,
+					databaseId = database.id.get,
+					properties = datasys.tableProperties(name),
+					createBy = database.createBy,
+					createTime = database.createTime,
+					updateBy = database.updateBy,
+					updateTime = database.updateTime
+				)
+			}
+		}
+	}
+
+	def getColumns(databaseId: Long, table: String)(mbSession: MbSession): Seq[CatalogColumn] = {
+		val database = catalog.getDatabase(databaseId)
+		val tableIdentifier = TableIdentifier(table, Some(database.name))
+		if (database.isLogical) {
+			val props = catalog.getTable(databaseId, table).properties
+			mbSession.mixcal.registerTable(TableIdentifier(table, Some(database.name)), props)
+		} else {
+			val props = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession).tableProperties(table)
+			mbSession.mixcal.registerTable(tableIdentifier, props)
+		}
+		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.toString,
+				databaseId = database.id.get,
+				table = table,
+				createBy = database.createBy,
+				createTime = database.createTime,
+				updateBy = database.updateBy,
+				updateTime = database.updateTime
+			)
+		}
 	}
 
 	def createFunction(funcDefinition: CatalogFunction, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
@@ -404,20 +453,39 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getUserGroupRelsByGroup(groupId)
 	}
 
-	def createUserTableRel(userTableRel: Seq[CatalogUserTableRel], user: String, organization: String, db: String, table: String, columns: Seq[String]): Unit = {
-		catalog.createUserTableRel(userTableRel)(user, organization, db, table, columns)
+	def createUserTableRel(userTableRels: Seq[CatalogUserTableRel], user: String, organization: String, db: String, table: String): Unit = {
+		catalog.createUserTableRel(userTableRels)(user, organization, db, table)
 	}
 
-	def getUserTableRel(userId: Long, tableId: Long): Seq[CatalogUserTableRel] = {
-		catalog.getUserTableRel(userId, tableId)
+	/*def createUserPhysicalTableRel(userTableRels: Seq[CatalogUserPhysicalTableRel], user: String, organization: String, db: String, table: String): Unit = {
+		catalog.createUserPhysicalTableRel(userTableRels)(user, organization, db, table)
+	}*/
+
+	/*def dropUserLogicalRels(userId: Long, tableId: Long, columns: Seq[String], user: String, organization: String, db: String, table: String): Unit = {
+		catalog.dropUserLogicalTableRels(userId, tableId, columns)(user, organization, db, table)
+	}*/
+
+	def dropUserTableRel(userId: Long, databaseId: Long, table: String, columns: Seq[String], user: String, organization: String, db: String) = {
+		catalog.dropUserTableRels(userId, databaseId, table, columns)(user, organization, db)
 	}
 
-	def dropUserTableRel(userId: Long, tableId: Long, columnIds: Seq[Long], user: String, organization: String, db: String, table: String, columns: Seq[String]) = {
-		catalog.dropUserTableRels(userId, tableId, columnIds)(user, organization, db, table, columns)
+	/*def dropUserLogicalTableRels(tableId: Long)(organization: String, database: String, table: String): Unit = {
+		catalog.dropUserLogicalTableRels(tableId)(organization, database, table)
 	}
 
+	def dropUserPhysicalTableRels(databaseId: Long, table: String)(organization: String, database: String): Unit = {
+		catalog.dropUserPhysicalTableRels(databaseId, table)(organization, database)
+	}*/
 
-	def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean) = {
+	/*def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel] = {
+		catalog.getUserLogicalTableRels(userId, tableId)
+	}*/
+
+	def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel] = {
+		catalog.getUserTableRels(userId, databaseId, table)
+	}
+
+	/*def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean) = {
 		catalog.createColumns(columnDefinition, ignoreIfExists)
 	}
 
@@ -427,5 +495,5 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 
 	def getColumns(tableId: Long): Seq[CatalogColumn] = {
 		catalog.getColumns(tableId)
-	}
+	}*/
 }

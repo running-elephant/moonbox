@@ -24,7 +24,7 @@ import scala.collection.mutable
 class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends CatalystQueryExecutor with MongoTranslateSupport with MbLogging {
 
   def this(properties: Properties) = this(null, properties)
-  var closed: Boolean = _
+  private var closed: Boolean = _
   var client: MbMongoClient = MbMongoClient(cli, props)
   override val planner: CatalystPlanner = new CatalystPlanner(MongoRules.rules)
 
@@ -35,6 +35,10 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
   }
 
   override def getTableSchema: StructType = getTableSchema(client.client, client.database, client.collectionName)
+
+  def isClose(): Boolean = {
+    closed
+  }
 
   def close(): Unit ={
     if (!closed){

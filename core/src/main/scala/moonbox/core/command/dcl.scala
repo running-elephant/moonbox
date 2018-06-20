@@ -276,31 +276,36 @@ case class GrantDmlOnToUser(
 	columns: Seq[MbColumnIdentifier],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
+	private def checkColumns(columns: Seq[String], mbSession: MbSession, table: String, database: String, properties: Map[String, String]): Seq[String] = {
+		if (columns.contains("*")) {
+			Seq("*")
+		} else {
+			val tableIdentifier = TableIdentifier(table, Some(database))
+			mbSession.mixcal.registerTable(tableIdentifier, properties)
+			val tableColumns = mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map(_.name)
+			val diff = columns.diff(tableColumns)
+			if (diff.nonEmpty) {
+				throw new NoSuchColumnException(table, diff.mkString(", "))
+			} else {
+				columns
+			}
+		}
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val tableToColumns = columns.groupBy(col => (col.database, col.table))
-		tableToColumns.keys.foreach { key =>
-			val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
-			val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
-			val catalogColumns = mbSession.catalog.getColumns(table.id.get)
-			// column names want to be grant
-			val grantColumnNames = tableToColumns(key).map(_.column)
-			// column names of table
-			val tableColumnNames = catalogColumns.map(_.name)
-
-			val diff = grantColumnNames.diff(tableColumnNames)
-			val relatedColumns = if (diff.length == 1 && diff.head == "*") {
-				catalogColumns
-			} else if (diff.nonEmpty) {
-				throw new NoSuchColumnException(table.name, diff.filterNot(_ == "*").mkString(", "))
-			} else {
-				catalogColumns.filter(col => grantColumnNames.contains(col.name))
-			}
+		tableToColumns.keys.foreach { case key @ (database, table) =>
+			val wantToGrantColumns = tableToColumns(key).map(_.column)
+			val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, database.getOrElse(ctx.databaseName))
+			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, table)
+			val grantColumns = checkColumns(wantToGrantColumns, mbSession, table, catalogDatabase.name, catalogTable.properties)
 			mbSession.catalog.getUsers(ctx.organizationId, users).foreach { catalogUser =>
-				val catalogUserTableRels = relatedColumns.map { col =>
+				val catalogUserTableRels = grantColumns.map { col =>
 					CatalogUserTableRel(
 						userId = catalogUser.id.get,
-						tableId = table.id.get,
-						columnId = col.id.get,
+						databaseId = catalogDatabase.id.get,
+						table = table,
+						column = col,
 						createBy = ctx.userId,
 						updateBy = ctx.userId
 					)
@@ -309,11 +314,53 @@ case class GrantDmlOnToUser(
 					catalogUserTableRels,
 					catalogUser.name,
 					ctx.organizationName,
-					database.map(_.name).getOrElse(ctx.databaseName),
-					table.name,
-					relatedColumns.map(_.name)
-				)
+					catalogDatabase.name,
+					table)
 			}
+
+
+			/*if (catalogDatabase.isLogical) {
+				val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, table)
+				val grantColumns = checkColumns(wantToGrantColumns, mbSession, table, catalogDatabase.name, catalogTable.properties)
+				mbSession.catalog.getUsers(ctx.organizationId, users).foreach { catalogUser =>
+					val catalogUserTableRels = grantColumns.map { col =>
+						CatalogUserLogicalTableRel(
+							userId = catalogUser.id.get,
+							tableId = catalogTable.id.get,
+							column = col,
+							createBy = ctx.userId,
+							updateBy = ctx.userId
+						)
+					}
+					mbSession.catalog.createUserLogicalTableRel(
+						catalogUserTableRels,
+						catalogUser.name,
+						ctx.organizationName,
+						catalogDatabase.name,
+						table)
+				}
+			} else {
+				// TODO database level properties to table level properties
+				val grantColumns = checkColumns(wantToGrantColumns, mbSession, table, catalogDatabase.name, catalogDatabase.properties)
+				mbSession.catalog.getUsers(ctx.organizationId, users).foreach { catalogUser =>
+					val catalogUserTableRels = grantColumns.map { col =>
+						CatalogUserPhysicalTableRel(
+							userId = catalogUser.id.get,
+							databaseId = catalogDatabase.id.get,
+							table = table,
+							column = col,
+							createBy = ctx.userId,
+							updateBy = ctx.userId
+						)
+					}
+					mbSession.catalog.createUserPhysicalTableRel(
+						catalogUserTableRels,
+						catalogUser.name,
+						ctx.organizationName,
+						catalogDatabase.name,
+						table)
+				}
+			}*/
 		}
 		Seq.empty[Row]
 	}
@@ -326,44 +373,8 @@ case class GrantDmlOnToGroup(
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}
-		val tableToColumns = columns.groupBy(col => (col.database, col.table))
-		tableToColumns.keys.foreach { key =>
-			val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
-			val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
-			val catalogColumns = mbSession.catalog.getColumns(table.id.get)
-
-			val grantColumnNames = tableToColumns(key).map(_.column)
-
-			val tableColumnNames = catalogColumns.map(_.name)
-			val diff = grantColumnNames.diff(tableColumnNames)
-			val relatedColumns = if (diff.length == 1 && diff.head == "*") {
-				catalogColumns
-			} else if (diff.nonEmpty) {
-				throw new NoSuchColumnException(table.name, diff.mkString(", "))
-			} else {
-				catalogColumns.filter(col => grantColumnNames.contains(col.name))
-			}
-
-			mbSession.catalog.getUsers(userGroupRel.map(_.userId)).foreach { catalogUser =>
-				val catalogUserTableRels = relatedColumns.map { col =>
-					CatalogUserTableRel(
-						userId = catalogUser.id.get,
-						tableId = table.id.get,
-						columnId = col.id.get,
-						createBy = ctx.userId,
-						updateBy = ctx.userId
-					)
-				}
-				mbSession.catalog.createUserTableRel(
-					catalogUserTableRels,
-					catalogUser.name,
-					ctx.organizationName,
-					database.map(_.name).getOrElse(ctx.databaseName),
-					table.name,
-					relatedColumns.map(_.name)
-				)
-			}
-		}
+		val users = userGroupRel.map { rel => mbSession.catalog.getUser(rel.userId).name }
+		GrantDmlOnToUser(columns, users).run(mbSession)
 		Seq.empty[Row]
 	}
 }
@@ -372,37 +383,67 @@ case class RevokeDmlOnFromUser(
 	columns: Seq[MbColumnIdentifier],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
+	private def checkColumns(columns: Seq[String], existColumns: Seq[String], user: String, table: String): Seq[String] = {
+		if (columns.contains("*")) {
+			existColumns
+		} else {
+			val diff = columns.diff(existColumns)
+			if (diff.nonEmpty) {
+				throw new NoSuchGrantColumnException(user, table, diff.mkString(", "))
+			} else {
+				columns
+			}
+		}
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val tableToColumns = columns.groupBy(col => (col.database, col.table))
-		tableToColumns.keys.foreach { key =>
-			val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
-			val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
-			val catalogColumns = mbSession.catalog.getColumns(table.id.get)
-
-			// column names want to be grant
-			val grantColumnNames = tableToColumns(key).map(_.column)
-			// column names of table
-			val tableColumnNames = catalogColumns.map(_.name)
-
-			val diff = grantColumnNames.diff(tableColumnNames)
-			val unrelatedColumns = if (diff.length == 1 && diff.head == "*") {
-				catalogColumns
-			} else if (diff.nonEmpty) {
-				throw new NoSuchColumnException(table.name, diff.filterNot(_ == "*").mkString(", "))
-			} else {
-				catalogColumns.filter(col => grantColumnNames.contains(col.name))
-			}
-
-
-			mbSession.catalog.getUsers(ctx.organizationId, users).foreach { catalogUser =>
+		tableToColumns.keys.foreach { case key @ (database, table) =>
+			val wantToRevokeColumns = tableToColumns(key).map(_.column)
+			val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, database.getOrElse(ctx.databaseName))
+			val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
+			catalogUsers.foreach { catalogUser =>
+				val existColumns = mbSession.catalog.getUserTableRels(catalogUser.id.get, catalogDatabase.id.get, table).map(_.column)
+				val revokeColumns = checkColumns(wantToRevokeColumns, existColumns, catalogUser.name, table)
 				mbSession.catalog.dropUserTableRel(
 					catalogUser.id.get,
-					table.id.get,
-					unrelatedColumns.map(_.id.get),
-					catalogUser.name, ctx.organizationName, database.map(_.name).getOrElse(ctx.databaseName),
-					table.name, unrelatedColumns.map(_.name)
+					catalogDatabase.id.get,
+					table,
+					revokeColumns,
+					catalogUser.name,
+					ctx.organizationName,
+					catalogDatabase.name
 				)
 			}
+
+			/*if (catalogDatabase.isLogical) {
+				val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, table)
+				catalogUsers.foreach { catalogUser =>
+					val existColumns = mbSession.catalog.getUserLogicalTableRels(catalogUser.id.get, catalogTable.id.get).map(_.column)
+					val revokeColumns = checkColumns(wantToRevokeColumns, existColumns, catalogUser.name, table)
+					mbSession.catalog.dropUserLogicalRels(
+						catalogUser.id.get,
+						catalogTable.id.get,
+						revokeColumns,
+						catalogUser.name,
+						ctx.organizationName,
+						catalogDatabase.name, table)
+				}
+			} else {
+				catalogUsers.foreach { catalogUser =>
+					val existColumns = mbSession.catalog.getUserPhysicalTableRels(catalogUser.id.get, catalogDatabase.id.get, table).map(_.column)
+					val revokeColumns = checkColumns(wantToRevokeColumns, existColumns, catalogUser.name, table)
+					mbSession.catalog.dropUserPhysicalTableRel(
+						catalogUser.id.get,
+						catalogDatabase.id.get,
+						table,
+						revokeColumns,
+						catalogUser.name,
+						ctx.organizationName,
+						catalogDatabase.name
+					)
+				}
+			}*/
 		}
 		Seq.empty[Row]
 	}
@@ -416,36 +457,8 @@ case class RevokeDmlOnFromGroup(
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}
-		val tableToColumns = columns.groupBy(col => (col.database, col.table))
-		tableToColumns.keys.foreach { key =>
-			val database = key._1.map(mbSession.catalog.getDatabase(ctx.organizationId, _))
-			val table = mbSession.catalog.getTable(database.map(_.id.get).getOrElse(ctx.databaseId), key._2)
-			val catalogColumns = mbSession.catalog.getColumns(table.id.get)
-
-			// column names want to be grant
-			val grantColumnNames = tableToColumns(key).map(_.column)
-			// column names of table
-			val tableColumnNames = catalogColumns.map(_.name)
-
-			val diff = grantColumnNames.diff(tableColumnNames)
-			val unrelatedColumns = if (diff.length == 1 && diff.head == "*") {
-				catalogColumns
-			} else if (diff.nonEmpty) {
-				throw new NoSuchColumnException(table.name, diff.filterNot(_ == "*").mkString(", "))
-			} else {
-				catalogColumns.filter(col => grantColumnNames.contains(col.name))
-			}
-
-			mbSession.catalog.getUsers(userGroupRel.map(_.userId)).foreach { catalogUser =>
-				mbSession.catalog.dropUserTableRel(
-					catalogUser.id.get,
-					table.id.get,
-					unrelatedColumns.map(_.id.get),
-					catalogUser.name, ctx.organizationName, database.map(_.name).getOrElse(ctx.databaseName),
-					table.name, unrelatedColumns.map(_.name)
-				)
-			}
-		}
+		val users = userGroupRel.map { rel => mbSession.catalog.getUser(rel.userId).name }
+		RevokeDmlOnFromUser(columns, users).run(mbSession)
 		Seq.empty[Row]
 	}
 }

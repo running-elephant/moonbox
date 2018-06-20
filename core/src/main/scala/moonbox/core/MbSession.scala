@@ -30,7 +30,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 						new CatalogSession(
 							catalogUser.id.get,
 							catalogUser.name,
-							-1, "SYSTEM", -1, "SYSTEM")
+							-1, "SYSTEM", true, -1, "SYSTEM")
 					} else {
 						val organization = catalog.getOrganization(catalogUser.organizationId)
 						val database = catalog.getDatabase(catalogUser.organizationId, initializedDatabase.getOrElse("default"))
@@ -39,6 +39,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 							catalogUser.name,
 							database.id.get,
 							database.name,
+							database.isLogical,
 							organization.id.get,
 							organization.name
 						)
@@ -139,22 +140,21 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def sql(sqlText: String, pushdown: Boolean = this.pushdown): DataFrame = {
+		// TODO
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
 		val tableIdentifiers = collectDataSourceTable(parsedLogicalPlan)
 		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
 			(table, getCatalogTable(table.table, table.database))
 		}.toMap
 		tableIdentifierToCatalogTable.foreach {
-			case (table, catalogTable) => registerDataSourceTable(table, catalogTable)
+			case (table, catalogTable) => mixcal.registerTable(table, catalogTable.properties)
 		}
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
 		if (columnPermission) {
 			ColumnPrivilegeChecker.intercept(analyzedLogicalPlan,
-				tableIdentifierToCatalogTable, catalog, catalogSession)
+				tableIdentifierToCatalogTable, this)
 		}
 		val optimizedLogicalPlan = mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
-
-
 
 		val lastLogicalPlan = if (pushdown) {
 			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
@@ -214,7 +214,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}.toSeq
 	}
 
-	private def registerDataSourceTable(tableIdentifier: TableIdentifier, catalogTable: CatalogTable): Unit = {
+/*	private def registerDataSourceTable(tableIdentifier: TableIdentifier, catalogTable: CatalogTable): Unit = {
 		val props = catalogTable.properties.+("alias" -> tableIdentifier.table)
 		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 		val typ = props("type")
@@ -225,9 +225,12 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.sqlToDF(createTableSql)
 		val registerSuccess = mixcal.sparkSession.sessionState.catalog.tableExists(tableIdentifier)
 		logInfo(s"registerDataSourceTable: $tableIdentifier $registerSuccess")
-	}
+	}*/
+
 }
 
 object MbSession extends MbLogging {
+
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
+
 }

@@ -5,32 +5,32 @@ import moonbox.core.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.types.{StructField, StructType}
 
 sealed trait DDL
 
-case class MountDatasource(
+case class MountDatabase(
 	name: String,
 	props: Map[String, String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val catalogDatasource = CatalogDatasource(
+
+		val catalogDatabase = CatalogDatabase(
 			name = name,
 			properties = props,
 			description = None,
 			organizationId = ctx.organizationId,
+			isLogical = false,
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createDatasource(catalogDatasource, ctx.organizationName, ignoreIfExists)
+		mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
 		Seq.empty[Row]
 	}
 }
 
-case class AlterDatasourceSetName(
+/*case class AlterDatasourceSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
@@ -38,31 +38,40 @@ case class AlterDatasourceSetName(
 		mbSession.catalog.renameDatasource(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
-}
+}*/
 
-case class AlterDatasourceSetOptions(
+case class AlterDatabaseSetOptions(
 	name: String,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existDatasource: CatalogDatasource = mbSession.catalog.getDatasource(ctx.organizationId, name)
-		mbSession.catalog.alterDatasource(
-			existDatasource.copy(
-				properties = existDatasource.properties ++ props,
-				updateBy = ctx.userId,
-				updateTime = Utils.now
+		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
+		if (existDatabase.isLogical) {
+			throw new UnsupportedOperationException(s"Logical database $name can not be set properties")
+		} else {
+			mbSession.catalog.alterDatabase(
+				existDatabase.copy(
+					properties = existDatabase.properties ++ props,
+					updateBy = ctx.userId,
+					updateTime = Utils.now
+				)
 			)
-		)
+		}
 		Seq.empty[Row]
 	}
 }
 
-case class UnmountDatasource(
+case class UnmountDatabase(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		mbSession.catalog.dropDatasource(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
+		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
+		if (existDatabase.isLogical) {
+			throw new UnsupportedOperationException(s"Database $name is logical. Please use DROP DATABASE command.")
+		} else {
+			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade = false)
+		}
 		Seq.empty[Row]
 	}
 }
@@ -77,6 +86,8 @@ case class CreateDatabase(
 			name = name,
 			description = comment,
 			organizationId = ctx.organizationId,
+			properties = Map(),
+			isLogical = true,
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
@@ -118,7 +129,12 @@ case class DropDatabase(
 	cascade: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade)
+		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
+		if (!existDatabase.isLogical) {
+			throw new UnsupportedOperationException(s"Database $name is physical. Please use UNMOUNT DATABASE command.")
+		} else {
+			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade)
+		}
 		Seq.empty[Row]
 	}
 }
@@ -130,46 +146,37 @@ case class MountTable(
 	isStream: Boolean,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
+	// TODO column privilege refactor
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val (databaseId, database)= table.database match {
+		val (databaseId, database, isLogical)= table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
-				(currentDatabase.id.get, currentDatabase.name)
+				(currentDatabase.id.get, currentDatabase.name, currentDatabase.isLogical)
 			case None =>
-				(ctx.databaseId, ctx.databaseName)
+				(ctx.databaseId, ctx.databaseName, ctx.isLogical)
 		}
-		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
-		val typ = props("type")
-		val catalog = mbSession.mixcal.sparkSession.sessionState.catalog
-		val tableIdentifier = TableIdentifier(table.table, table.database)
-		if (catalog.tableExists(tableIdentifier)) {
-			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
+		if (!isLogical) {
+			throw new UnsupportedOperationException(s"Can't mount table in physical database $database")
+		} else {
+			// for verifying options
+			mbSession.mixcal.registerTable(TableIdentifier(table.table, table.database), props)
+
+			val catalogTable = CatalogTable(
+				name = table.table,
+				description = None,
+				databaseId = databaseId,
+				properties = props,
+				isStream = isStream,
+				createBy = ctx.userId,
+				updateBy = ctx.userId
+			)
+			mbSession.catalog.createTable(catalogTable, ctx.organizationName, database, ignoreIfExists)
 		}
-		val createTableSql =
-			s"""
-			   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
-			   |using ${DataSystemFactory.typeToSparkDatasource(typ)}
-			   |options($propsString)
-			 """.stripMargin
-		mbSession.mixcal.sqlToDF(createTableSql)
-
-		val columns = schema.getOrElse(mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema)
-
-		val catalogTable = CatalogTable(
-			name = table.table,
-			description = None,
-			databaseId = databaseId,
-			properties = props,
-			isStream = isStream,
-			createBy = ctx.userId,
-			updateBy = ctx.userId
-		)
-		mbSession.catalog.createTable(catalogTable, columns, ctx.organizationName, database, ignoreIfExists)
 		Seq.empty[Row]
 	}
 }
 
-case class MountTableWithDatasoruce(
+/*case class MountTableWithDatasoruce(
 	datasource: String,
 	tables: Seq[(MbTableIdentifier, Option[StructType], Map[String, String])],
 	isStream: Boolean,
@@ -214,7 +221,7 @@ case class MountTableWithDatasoruce(
 		}
 		Seq.empty[Row]
 	}
-}
+}*/
 
 case class AlterTableSetName(
 	table: MbTableIdentifier,
@@ -222,12 +229,15 @@ case class AlterTableSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		require(table.database == newTable.database, s"Rename table cant not rename database")
-		val (databaseId, database) = table.database match {
+		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
-				(currentDatabase.id.get, currentDatabase.name)
+				(currentDatabase.id.get, currentDatabase.name, currentDatabase.isLogical)
 			case None =>
-				(ctx.databaseId, ctx.databaseName)
+				(ctx.databaseId, ctx.databaseName, ctx.isLogical)
+		}
+		if (!isLogical) {
+			throw new UnsupportedOperationException("Can't rename table in physical database")
 		}
 		mbSession.catalog.renameTable(databaseId, ctx.organizationName, database, table.table, newTable.table, ctx.userId)
 		Seq.empty[Row]
@@ -238,12 +248,15 @@ case class AlterTableSetOptions(
 	table: MbTableIdentifier,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val databaseId = table.database match {
+		val (databaseId, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
-				currentDatabase.id.get
+				(currentDatabase.id.get, currentDatabase.isLogical)
 			case None =>
-				ctx.databaseId
+				(ctx.databaseId, ctx.isLogical)
+		}
+		if (!isLogical) {
+			throw new UnsupportedOperationException("Can't alter table options in physical database.")
 		}
 		val existTable: CatalogTable = mbSession.catalog.getTable(databaseId, table.table)
 		mbSession.catalog.alterTable(
@@ -257,7 +270,7 @@ case class AlterTableSetOptions(
 	}
 }
 
-case class AlterTableAddColumns(
+/*case class AlterTableAddColumns(
 	table: MbTableIdentifier,
 	columns: StructType) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
@@ -279,25 +292,27 @@ case class AlterTableDropColumn(
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		Seq.empty[Row]
 	}
-}
+}*/
 
 case class UnmountTable(
 	table: MbTableIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val (databaseId, database) = table.database match {
+		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
-				(currentDatabase.id.get, currentDatabase.name)
+				(currentDatabase.id.get, currentDatabase.name, currentDatabase.isLogical)
 			case None =>
-				(ctx.databaseId, ctx.databaseName)
+				(ctx.databaseId, ctx.databaseName, ctx.isLogical)
+		}
+		if (!isLogical) {
+			throw new UnsupportedOperationException("Can't unmount table in physical database.")
 		}
 		mbSession.catalog.dropTable(databaseId, ctx.organizationName, database, table.table, ignoreIfNotExists)
 		Seq.empty[Row]
 	}
 }
-
 
 case class CreateFunction(
 	function: MbFunctionIdentifier,

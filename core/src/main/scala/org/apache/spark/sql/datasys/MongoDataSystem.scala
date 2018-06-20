@@ -26,9 +26,11 @@ import scala.collection.mutable.ArrayBuffer
 class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with Queryable with Insertable with Truncatable with MbLogging {
 
   //common
-  val MONGO_SPARK_CONFIG_PREFIX: String = "spark.mongodb."
-  val INPUT_PREFIX: String = "input."
-  val OUTPUT_PREFIX: String = "output."
+  //  val MONGO_SPARK_CONFIG_PREFIX: String = "spark.mongodb."
+  val MONGO_SPARK_INPUT_PREFIX: String = "spark.mongodb.input."
+  val MONGO_SPARK_OUTPUT_PREFIX: String = "spark.mongodb.output."
+  //  val INPUT_PREFIX: String = "input."
+  //  val OUTPUT_PREFIX: String = "output."
   val URI_KEY: String = ReadConfig.mongoURIProperty
   val DATABASE_KEY: String = ReadConfig.databaseNameProperty
   val COLLECTION_KEY: String = ReadConfig.collectionNameProperty
@@ -47,14 +49,14 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   val WRITE_CONCERN_JOURNAL_KEY: String = WriteConfig.writeConcernJournalProperty
   val WRITE_CONCERN_W_TIMEOUT_MS_KEY: String = WriteConfig.writeConcernWTimeoutMSProperty
 
-  val cleanedInputMap: Map[String, String] = props.filter(!_._1.startsWith(OUTPUT_PREFIX)).map { case (k, v) => k.stripPrefix(INPUT_PREFIX) -> v }
+  val cleanedInputMap: Map[String, String] = props.filterKeys(!_.startsWith(MONGO_SPARK_OUTPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_INPUT_PREFIX) -> v }
 
-  val cleanedOutputMap: Map[String, String] = props.filter(!_._1.startsWith(INPUT_PREFIX)).map { case (k, v) => k.stripPrefix(OUTPUT_PREFIX) -> v }
+  val cleanedOutputMap: Map[String, String] = props.filterKeys(!_.startsWith(MONGO_SPARK_INPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_OUTPUT_PREFIX) -> v }
 
   var readClientURI: MongoClientURI = _
   var writeClientURI: MongoClientURI = _
 
-  lazy val readExecutor: MongoCatalystQueryExecutor = {
+  def readExecutor: MongoCatalystQueryExecutor = {
     val uri = cleanedInputMap(URI_KEY)
     val clientOptions = getMongoClientOptions(cleanedInputMap)
     readClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
@@ -62,7 +64,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     new MongoCatalystQueryExecutor(readClient, map2Property(cleanedInputMap))
   }
 
-  lazy val writeExecutor: MongoCatalystQueryExecutor = {
+  def writeExecutor: MongoCatalystQueryExecutor = {
     val uri = cleanedOutputMap(URI_KEY)
     val clientOptions = getMongoClientOptions(cleanedOutputMap)
     writeClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
@@ -103,7 +105,6 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   private def createReadPreference(map: Map[String, String]): Option[ReadPreference] = {
-
     //    "readpreference"
     //    "readpreferencetags"
     // TODO: "maxstalenessseconds"
@@ -140,11 +141,9 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   private def createWriteConcern(map: Map[String, String]): Option[WriteConcern] = {
     // TODO: "safe"
     // TODO: "fsync"
-
     // "w"
     // "wtimeoutms"
     // "journal"
-
     //the value with w maybe string "majority" or int 1, 0
     val writeConcern: WriteConcern = if (map.contains(WRITE_CONCERN_W_KEY)) {
       val w = map(WRITE_CONCERN_W_KEY)
@@ -201,7 +200,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     classOf[ArrayMap], classOf[ArrayFilter], classOf[IsNull], classOf[IsNotNull], classOf[Lower], classOf[Upper], classOf[Substring], classOf[Hour], classOf[Second], classOf[Month], classOf[Minute],
     classOf[Year], classOf[WeekOfYear], classOf[CaseWhen], classOf[DayOfYear], classOf[Concat], classOf[DayOfMonth], classOf[CaseWhenCodegen]
   )
-  override protected val beGoodAtOperators: Seq[Class[_]] = Seq(classOf[Project], classOf[Filter], classOf[Aggregate], classOf[Sort], classOf[GlobalLimit], classOf[LocalLimit])
+  override protected val beGoodAtOperators: Seq[Class[_]] = Seq(classOf[Filter], classOf[Aggregate], classOf[Sort], classOf[GlobalLimit], classOf[LocalLimit])
   override protected val supportedUDF: Seq[String] = Seq()
 
   override protected def isSupportAll: Boolean = false
@@ -214,7 +213,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     props.foreach {
       case (k, v) =>
         newProps.setProperty(k, v)
-        builder.option(MONGO_SPARK_CONFIG_PREFIX + k, v)
+        builder.option(k, v)
     }
     val pipeline = new MongoCatalystQueryExecutor(newProps).translate(plan).map(BsonDocument.parse)
     logInfo(pipeline.map(_.toJson).mkString("\n"))
@@ -277,9 +276,15 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-    val client = writeExecutor.client.client
-    batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
-    table.close()
+    val executor = writeExecutor
+    try {
+      val client = executor.client.client
+      batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+    } finally {
+      executor.close()
+      table.close()
+    }
+
   }
 
   private def parse(json: String): Array[(String, String, Boolean)] = {
@@ -310,17 +315,30 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def truncate(): Unit = {
-    writeExecutor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
+    val executor = writeExecutor
+    try {
+      executor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
+    } finally {
+      executor.close()
+    }
   }
 
   override def tableNames(): Seq[String] = {
-    readExecutor.client.client.getDatabase(readDatabase).listCollectionNames().asScala.toSeq
+    val executor = readExecutor
+    try {
+      val iter = executor.client.client.getDatabase(readDatabase).listCollectionNames().iterator()
+      val buffer = new ArrayBuffer[String]()
+      while (iter.hasNext) {
+        buffer += iter.next()
+      }
+      buffer
+    } finally {
+      executor.close()
+    }
   }
 
   // mongo spark configurations
   override def tableProperties(tableName: String): Map[String, String] = {
-    (props + ((INPUT_PREFIX + COLLECTION_KEY) -> tableName)).map {
-      case (k, v) => MONGO_SPARK_CONFIG_PREFIX + k -> v
-    }
+    props + ((MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY) -> tableName)
   }
 }

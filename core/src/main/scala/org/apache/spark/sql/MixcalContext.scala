@@ -9,7 +9,9 @@ import moonbox.core.MbSession._
 import moonbox.core.config._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -66,6 +68,22 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 
 	def rddToDF(rdd: RDD[Row], schema: StructType): DataFrame = {
 		sparkSession.createDataFrame(rdd, schema)
+	}
+
+	def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
+		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
+		val typ = props("type")
+		val catalog = sparkSession.sessionState.catalog
+		if (catalog.tableExists(tableIdentifier)) {
+			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
+		}
+		val createTableSql =
+			s"""
+			   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
+			   |using ${DataSystemFactory.typeToSparkDatasource(typ)}
+			   |options($propsString)
+			 """.stripMargin
+		sqlToDF(createTableSql)
 	}
 
 }

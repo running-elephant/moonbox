@@ -4,7 +4,7 @@ import moonbox.common.util.Utils
 
 trait CatalogItem
 
-case class CatalogDatasource(
+/*case class CatalogDatasource(
 	id: Option[Long] = None,
 	name: String,
 	properties: Map[String, String],
@@ -13,13 +13,15 @@ case class CatalogDatasource(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogItem*/
 
 case class CatalogDatabase(
 	id: Option[Long] = None,
 	name: String,
 	description: Option[String] = None,
 	organizationId: Long,
+	properties: Map[String, String],
+	isLogical: Boolean,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
@@ -126,18 +128,29 @@ case class CatalogColumn(
 	id: Option[Long] = None,
 	name: String,
 	dataType: String,
-	readOnly: Boolean,
-	tableId: Long,
+	databaseId: Long,
+	table: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
-case class CatalogUserTableRel(
+/*case class CatalogUserLogicalTableRel(
 	id: Option[Long] = None,
 	userId: Long,
 	tableId: Long,
-	columnId: Long,
+	column: String,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem*/
+
+case class CatalogUserTableRel(
+	id: Option[Long] = None,
+	userId: Long,
+	databaseId: Long,
+	table: String,
+	column: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
@@ -152,4 +165,12 @@ case class CatalogUserGroupRel(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
-
+case class CatalogVariable(
+	id: Option[Long] = None,
+	name: String,
+	value: String,
+	userId: Long,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem

@@ -190,35 +190,23 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ctx.identifier().map(_.getText)
 	}
 
-	override def visitMountDatasource(ctx: MountDatasourceContext): MbCommand = {
+	override def visitMountDatabase(ctx: MountDatabaseContext): MbCommand = {
 		val name = ctx.name.getText
 		val properties = visitPropertyList(ctx.propertyList())
 		val ignoreIfExists = ctx.EXISTS() != null
-		MountDatasource(name, properties, ignoreIfExists)
+		MountDatabase(name, properties, ignoreIfExists)
 	}
 
-	override def visitRenameDatasource(ctx: RenameDatasourceContext): MbCommand = {
-		val name = ctx.name.getText
-		val newName = ctx.newName.getText
-		AlterDatasourceSetName(name, newName)
-	}
-
-	override def visitSetDatasourceName(ctx: SetDatasourceNameContext): MbCommand = {
-		val name = ctx.name.getText
-		val newName = ctx.newName.getText
-		AlterDatasourceSetName(name, newName)
-	}
-
-	override def visitSetDatasourceProperties(ctx: SetDatasourcePropertiesContext): MbCommand = {
+	override def visitSetDatabaseProperties(ctx: SetDatabasePropertiesContext): MbCommand = {
 		val name = ctx.name.getText
 		val properties = visitPropertyList(ctx.propertyList())
-		AlterDatasourceSetOptions(name, properties)
+		AlterDatabaseSetOptions(name, properties)
 	}
 
-	override def visitUnmountDatasource(ctx: UnmountDatasourceContext): MbCommand = {
+	override def visitUnmountDatabase(ctx: UnmountDatabaseContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		UnmountDatasource(name, ignoreIfNotExists)
+		UnmountDatabase(name, ignoreIfNotExists)
 	}
 
 	override def visitPropertyList(ctx: PropertyListContext): Map[String, String] = {
@@ -347,14 +335,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		}
 	}
 
-	override def visitMountTableWithDatasource(ctx: MountTableWithDatasourceContext): MbCommand = {
-		val datasource = ctx.ds.getText
-		val tables = visitMountTableList(ctx.mountTableList())
-		val isStream = ctx.STREAM() != null
-		val ignoreIfExists = ctx.EXISTS() != null
-		MountTableWithDatasoruce(datasource, tables, isStream, ignoreIfExists)
-	}
-
 	override def visitRenameTable(ctx: RenameTableContext): MbCommand = {
 		val table = visitTableIdentifier(ctx.name)
 		val newTable = visitTableIdentifier(ctx.newName)
@@ -373,7 +353,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		AlterTableSetOptions(tableIdentifier, properties)
 	}
 
-	override def visitAddTableColumns(ctx: AddTableColumnsContext): MbCommand = {
+	/*override def visitAddTableColumns(ctx: AddTableColumnsContext): MbCommand = {
 		AlterTableAddColumns(
 			visitTableIdentifier(ctx.tableIdentifier),
 			createSchema(ctx.colTypeList())
@@ -392,7 +372,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 			visitTableIdentifier(ctx.tableIdentifier),
 			ctx.identifier().getText
 		)
-	}
+	}*/
 
 	override def visitUnmountTable(ctx: UnmountTableContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
@@ -730,10 +710,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowSysInfo
 	}
 
-	override def visitShowDatasources(ctx: ShowDatasourcesContext): MbCommand = {
+	/*override def visitShowDatasources(ctx: ShowDatasourcesContext): MbCommand = {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
 		ShowDatasources(pattern)
-	}
+	}*/
 
 	override def visitShowDatabase(ctx: ShowDatabaseContext): MbCommand = {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
@@ -773,11 +753,11 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowApplications(pattern)
 	}
 
-	override def visitDescDatasource(ctx: DescDatasourceContext): MbCommand = {
+	/*override def visitDescDatasource(ctx: DescDatasourceContext): MbCommand = {
 		val datasource = ctx.name.getText
 		val extended = ctx.EXTENDED() != null
 		DescDatasource(datasource, extended)
-	}
+	}*/
 
 	override def visitDescDatabase(ctx: DescDatabaseContext): MbCommand = {
 		val database = ctx.name.getText
@@ -814,8 +794,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitSetConfiguration(ctx: SetConfigurationContext): MbCommand = {
 		val key = visitPropertyKey(ctx.property().key)
 		val value = Option(ctx.property().value).map(v => ParserUtils.tripQuotes(v.getText)).orNull
-		key -> value
-		SetConfiguration(key, value)
+		SetVariables(key, value, ctx.GLOBAL() != null)
 	}
 
 	override def visitExplain(ctx: ExplainContext): MbCommand = {
