@@ -52,7 +52,6 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 	)
 
 	override protected val beGoodAtOperators: Seq[Class[_]] = Seq(
-		classOf[Project],
 		classOf[Filter],
 		classOf[GlobalLimit],
 		classOf[LocalLimit],

@@ -45,7 +45,7 @@ class ActionResponse extends MbLogging{
             hits.map{_.getMap}
         }
         resultSeq.map{elem =>
-            logInfo("date= " + elem)
+            //logInfo("date= " + elem)
             resultListToObjectArray(schema, colId2ColName, elem, isAgg)
         }
 

@@ -6,6 +6,7 @@ import java.util
 import java.util.{ArrayList, Properties}
 
 import moonbox.catalyst.adapter.elasticsearch5.client.AggWrapper.AggregationType
+import moonbox.common.MbLogging
 import org.apache.spark.sql.types._
 import org.elasticsearch.client.RestClientBuilder
 import org.json.JSONArray
@@ -22,7 +23,7 @@ import org.json.JSONObject
 
 case class ShapeType(name: String, tpe: AnyRef, level: Int)
 
-class EsRestClient(param: Map[String, String]) {
+class EsRestClient(param: Map[String, String]) extends MbLogging{
 
     val nodes: Array[String] = param("nodes").split(",")   // 1.1.1.1:9200,2.2.2.2:9200
     //val port = param.getOrElse("es.port", "9200")
@@ -220,27 +221,29 @@ class EsRestClient(param: Map[String, String]) {
 
 
     private def buildESType(dataType: DataType): String = {
+        //in es5, index became a boolean property, that is why setting it to not_analyzed doesn't have any effect.
+        //If you want to have a non analyzed field, you need to use "type": "keyword"
+         val indexOption = if(getVersion().head >= 5){ "true" } else { "not_analyzed" }
          dataType match {
-             case ByteType =>  """{"type": "byte", "index": "not_analyzed"}"""
+             case ByteType =>    s"""{"type": "byte", "index": "$indexOption"}"""
              //case StringType  => "text"  //keyword：存储数据时候，不会分词建立索引; text: 存储数据时候，会自动分词，并生成索引
-             case BooleanType => """{"type": "boolean", "index": "not_analyzed"}"""
-             case DoubleType =>  """{"type": "double", "index": "not_analyzed"}"""
-             case BinaryType =>  """{"type": "binary", "index": "not_analyzed"}"""
-             case ShortType =>   """{"type": "short", "index": "not_analyzed"}"""
-             case FloatType =>   """{"type": "float", "index": "not_analyzed"}"""
-             case IntegerType => """{"type": "integer", "index": "not_analyzed"}"""
-             case LongType =>    """{"type": "long", "index": "not_analyzed"}"""
-             case StringType => if (getVersion().head == 5) {
-                     """{"type": "keyword", "index": "not_analyzed"}"""
+             case BooleanType => s"""{"type": "boolean", "index": "$indexOption"}"""
+             case DoubleType =>  s"""{"type": "double", "index": "$indexOption"}"""
+             case BinaryType =>  s"""{"type": "binary", "index": "$indexOption"}"""
+             case ShortType =>   s"""{"type": "short", "index": "$indexOption"}"""
+             case FloatType =>   s"""{"type": "float", "index": "$indexOption"}"""
+             case IntegerType => s"""{"type": "integer", "index": "$indexOption"}"""
+             case LongType =>    s"""{"type": "long", "index": "$indexOption"}"""
+             case StringType => if (getVersion().head >= 5) {
+                     s"""{"type": "keyword", "index": "$indexOption"}"""
                  } else {
-                     """{"type": "string", "index": "not_analyzed"}"""
-                 } //es 2.*版本里面是没有这两个字段，只有string字段
-             case DateType =>       """{"type": "date", "index": "not_analyzed"}"""
-             case TimestampType =>  """{"type": "date", "index": "not_analyzed"}""" //long  <-- date
+                     s"""{"type": "string", "index": "$indexOption"}"""
+                 } //es 2.*版本里面是没有keyword text两个字段，只有string字段
+             case DateType =>       s"""{"type": "date", "index": "$indexOption"}"""
+             case TimestampType =>  s"""{"type": "date", "index": "$indexOption"}""" //long  <-- date
              case a: ArrayType =>   buildESType(a.elementType) //"array"
              case m: MapType =>  //TODO for maptype
-                 s"""{"properties":{  }
-                    |}""".stripMargin
+                 s"""{"properties":{  }}""".stripMargin
              case s: StructType =>
                  val body = s.fields.map{field => s""" "${field.name}": ${buildESType(field.dataType)}""" }.mkString(",\n")
                  s"""{"properties": {$body}} """
@@ -306,7 +309,10 @@ class EsRestClient(param: Map[String, String]) {
       *  }
       * */
     def putSchema(index: String, mtype: String, schema: StructType): Boolean = {
+
         val mapping = generateCreateMapping(index, mtype, schema)
+        logInfo("putSchema" + mapping)
+
         val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
         val response: Response = restClient.performRequest("PUT", s"""/$index""", new util.Hashtable[String, String](), entityReq)
         if(isSucceeded(response)) {
