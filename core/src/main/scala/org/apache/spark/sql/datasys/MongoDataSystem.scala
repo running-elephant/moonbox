@@ -200,7 +200,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     classOf[ArrayMap], classOf[ArrayFilter], classOf[IsNull], classOf[IsNotNull], classOf[Lower], classOf[Upper], classOf[Substring], classOf[Hour], classOf[Second], classOf[Month], classOf[Minute],
     classOf[Year], classOf[WeekOfYear], classOf[CaseWhen], classOf[DayOfYear], classOf[Concat], classOf[DayOfMonth], classOf[CaseWhenCodegen]
   )
-  override protected val beGoodAtOperators: Seq[Class[_]] = Seq(classOf[Project], classOf[Filter], classOf[Aggregate], classOf[Sort], classOf[GlobalLimit], classOf[LocalLimit])
+  override protected val beGoodAtOperators: Seq[Class[_]] = Seq(classOf[Filter], classOf[Aggregate], classOf[Sort], classOf[GlobalLimit], classOf[LocalLimit])
   override protected val supportedUDF: Seq[String] = Seq()
 
   override protected def isSupportAll: Boolean = false
@@ -228,10 +228,8 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def buildQuery(plan: LogicalPlan): DataTable = {
-    val executor = readExecutor
-    val iter: Iterator[Row] = executor.toIterator[Row](plan, seq => new GenericRowWithSchema(seq.toArray, plan.schema))
-    executor.close()
-    new DataTable(iter, plan.schema, () => executor.close())
+    val iter: Iterator[Row] = readExecutor.toIterator[Row](plan, seq => new GenericRowWithSchema(seq.toArray, plan.schema))
+    new DataTable(iter, plan.schema, () => readExecutor.close())
   }
 
   private def batchInsert(database: MongoDatabase, collectionName: String, batchSize: Int, table: DataTable, saveMode: SaveMode): Unit = {
@@ -279,10 +277,14 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
     val executor = writeExecutor
-    val client = executor.client.client
-    batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
-    executor.close()
-    table.close()
+    try {
+      val client = executor.client.client
+      batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+    } finally {
+      executor.close()
+      table.close()
+    }
+
   }
 
   private def parse(json: String): Array[(String, String, Boolean)] = {
@@ -314,19 +316,25 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
 
   override def truncate(): Unit = {
     val executor = writeExecutor
-    executor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
-    executor.close()
+    try {
+      executor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
+    } finally {
+      executor.close()
+    }
   }
 
   override def tableNames(): Seq[String] = {
     val executor = readExecutor
-    val iter = executor.client.client.getDatabase(readDatabase).listCollectionNames().iterator()
-    val buffer = new ArrayBuffer[String]()
-    while (iter.hasNext) {
-      buffer += iter.next()
+    try {
+      val iter = executor.client.client.getDatabase(readDatabase).listCollectionNames().iterator()
+      val buffer = new ArrayBuffer[String]()
+      while (iter.hasNext) {
+        buffer += iter.next()
+      }
+      buffer
+    } finally {
+      executor.close()
     }
-    executor.close()
-    buffer
   }
 
   // mongo spark configurations
