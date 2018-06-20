@@ -185,7 +185,7 @@ class EsClientTest extends FunSuite{
     }
 
     test("truncate index") {
-        val ret = service.truncateIndex("temp_test_table", "my_table3")
+        val ret = service.truncateIndex("temp_test_table", "my_table")
         println(ret)
     }
 
@@ -241,30 +241,19 @@ class EsClientTest extends FunSuite{
 
 
     test("update one data") {
-        val schema = StructType(
-            Seq(StructField("col1", StringType),
-                StructField("col2", LongType),
-                StructField("col3", DoubleType),
-                StructField("col4", ShortType),
-                StructField("col5", FloatType),
-                StructField("col6", BooleanType)
-            ))
+        val data1 = Seq(("col1",""""eee""""), ("col2", "541"), ("col3", "72.18"), ("col4", "43"), ("col5", "24"), ("col6", "true"))
+        val ret1 = service.update("temp_test_table", "my_table", "111", data1)
+        println(ret1)
 
-        val data1 = Seq(("col1","eee"), ("col2", 541l), ("col3", 72.18d), ("col4", 43), ("col5", 24f), ("col6", true))
-        //val ret1 = service.update("temp_test_table", "my_table", "111", data1, schema)
-        //println(ret1)
+        val data2 = Seq(("col1",""""fff""""), ("col2", "365"), ("col3", "38.12"), ("col4", "43"), ("col5", "24"), ("col6", "true"))
+        val ret2 = service.update("temp_test_table", "my_table", "222", data2)
+        println(ret2)
 
-        val data2 = Seq(("col1","fff"), ("col2", 365l), ("col3", 38.12d), ("col4", 43), ("col5", 24f), ("col6", true))
-        //val ret2 = service.update("temp_test_table", "my_table", "111", data2, schema)
-        //println(ret2)
-
-        val data3 = Seq(("col1","ggg"), ("col2", 752l), ("col3", 75.11d), ("col4", 32), ("col5", 52f), ("col6", false))
-        //val ret3 = service.update("temp_test_table", "my_table", "111", data3, schema)
-        //println(ret3)
-
+        val data3 = Seq(("col1",""""ggg""""), ("col2", "752"), ("col3", "75.11"), ("col4", "32"), ("col5", "52"), ("col6", "false"))
+        val ret3 = service.update("temp_test_table", "my_table", "333", data3)
+        println(ret3)
 
     }
-
 
     //service.close()
 }

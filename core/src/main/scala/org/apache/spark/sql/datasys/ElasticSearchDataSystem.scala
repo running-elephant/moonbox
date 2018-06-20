@@ -20,6 +20,7 @@ import scala.collection.JavaConverters._
 class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transient val sparkSession: SparkSession)
 		extends DataSystem(props) with Queryable with Insertable with Truncatable with MbLogging{
 	require(contains("es.nodes", "es.resource"))
+    import ElasticSearchDataSystem._
 
 	override val name: String = "elasticsearch"
 
@@ -66,22 +67,24 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
 	override def fastEquals(other: DataSystem): Boolean = false
 
 	private def getProperties: Properties = {
+
 		val properties = new Properties()
-		properties.put("nodes", props("es.nodes").split('/')(0))
-        val resourceArray: Array[String] = props("es.resource").split('/')
+        //change es.nodes to nodes, es.resource to database and table, for mb catalyst parser
+		properties.put("nodes", props(ES_NODES).split('/')(0))
+
+        val resourceArray: Array[String] = props(ES_RESOURCE).split('/')
         if(resourceArray.length == 2) {
             properties.put("database", resourceArray(0))
             properties.put("table", resourceArray(1))
         }else if(resourceArray.length == 1){
-            properties.put("database", props("es.resource").split('/')(0))
+            properties.put("database", resourceArray(0))
         }
 
-		if(props.contains("es.read.field.as.array.include")){    //Fields/properties that should be considered as arrays/lists
-			properties.put("es.read.field.as.array.include", props("es.read.field.as.array.include"))
-		}
-        if(props.contains("es.mapping.id")){  //The document field/property name containing the document id.
-            properties.put("es.mapping.id", props("es.mapping.id"))
-        }
+        props.foreach{ prop =>  properties.put(prop._1, prop._2) }
+
+		//"es.read.field.as.array.include"    //Fields/properties that should be considered as arrays/lists
+        //"es.mapping.id" //The document field/property name containing the document id.
+
 		properties
 	}
 
@@ -130,7 +133,7 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
         val prop: Properties = getProperties
         val executor = new EsCatalystQueryExecutor(prop)
         try {
-            val result = executor.execute4Update(id, data)
+            executor.execute4Update(id, data)
         }finally {
             executor.close()
         }
@@ -159,8 +162,13 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
     }
 
     override def tableProperties(tableName: String): Map[String, String] = {
-var m = scala.collection.immutable.Map[String, String]()
-        m+=("a" -> "b")
-        m
+        val resource: String = props(ES_RESOURCE).split("/")(0)
+        props + (ES_RESOURCE -> s"$resource/$tableName")
     }
+}
+
+object ElasticSearchDataSystem{
+    val ES_NODES: String = "es.nodes"
+    val ES_RESOURCE: String = "es.resource"
+
 }

@@ -39,9 +39,9 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
         client
     }
     val version = client.getVersion()
-    val (schema: StructType, nestFieldSet: Set[String]) = client.getSchema(index, typ)
+    //val (schema: StructType, nestFieldSet: Set[String]) = client.getSchema(index, typ)
     val context: CatalystContext = new CatalystContext()
-    context.nestFields = nestFieldSet
+    //context.nestFields = nestFieldSet
     context.version = version
 
     override def adaptorFunctionRegister(udf: UDFRegistration) = {
@@ -56,7 +56,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
     }
 
     override def getTableSchema : StructType  = {
-        schema
+        client.getSchema(index, typ)._1
     }
 
     def execute4Truncate(): Boolean = {
@@ -80,7 +80,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
 
     /** update insert 1 line by id**/
     def execute4Update(id: String, data: Seq[(String, String)]): Boolean = {  //, schema: StructType
-        //client.update(index, typ, id, data)
+        client.update(index, typ, id, data)
         true
     }
 
@@ -89,7 +89,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
         mode match{
             case Append =>
                 //batch save data to index
-                batchInsert(iter)
+                batchInsert(iter, schema)
             case Overwrite =>
                 if(client.checkExist(index, typ)) {
                     //1 delete exist index
@@ -98,24 +98,24 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
                     client.putSchema(index, typ, schema)
                 }
                 //3 batch insert data to index
-                batchInsert(iter)
+                batchInsert(iter, schema)
             case ErrorIfExists =>
                 //check is empty or not
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
-                    batchInsert(iter)
+                    batchInsert(iter, schema)
                 }else{
                     throw new Exception(s"SaveMode is set to ErrorIfExists and index $index $typ exists and contains data. Consider changing the SaveMode")
                 }
             case Ignore =>
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
-                    batchInsert(iter)
+                    batchInsert(iter, schema)
                 }
         }
     }
 
-    private def batchInsert(iter: Iterator[Row]): (Boolean, Long) = {
+    private def batchInsert(iter: Iterator[Row], schema: StructType): (Boolean, Long) = {
         val batchNum: Long = 100l  //batch number
         var currentNum: Long = 0l
         val array = scala.collection.mutable.ArrayBuffer[Seq[Any]]()
@@ -163,6 +163,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
 
     override def translate(plan: LogicalPlan): Seq[String] = {
         val iterator: Iterator[CatalystPlan] = planner.plan(plan)
+        context.nestFields = client.getSchema(index, typ)._2  //update nest field
 
         val json: String = if (iterator.hasNext) {
             val plan = iterator.next()  // do translate
