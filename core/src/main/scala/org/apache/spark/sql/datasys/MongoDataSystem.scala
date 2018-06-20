@@ -56,7 +56,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   var readClientURI: MongoClientURI = _
   var writeClientURI: MongoClientURI = _
 
-  lazy val readExecutor: MongoCatalystQueryExecutor = {
+  def readExecutor: MongoCatalystQueryExecutor = {
     val uri = cleanedInputMap(URI_KEY)
     val clientOptions = getMongoClientOptions(cleanedInputMap)
     readClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
@@ -64,7 +64,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     new MongoCatalystQueryExecutor(readClient, map2Property(cleanedInputMap))
   }
 
-  lazy val writeExecutor: MongoCatalystQueryExecutor = {
+  def writeExecutor: MongoCatalystQueryExecutor = {
     val uri = cleanedOutputMap(URI_KEY)
     val clientOptions = getMongoClientOptions(cleanedOutputMap)
     writeClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
@@ -105,7 +105,6 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   private def createReadPreference(map: Map[String, String]): Option[ReadPreference] = {
-
     //    "readpreference"
     //    "readpreferencetags"
     // TODO: "maxstalenessseconds"
@@ -142,11 +141,9 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   private def createWriteConcern(map: Map[String, String]): Option[WriteConcern] = {
     // TODO: "safe"
     // TODO: "fsync"
-
     // "w"
     // "wtimeoutms"
     // "journal"
-
     //the value with w maybe string "majority" or int 1, 0
     val writeConcern: WriteConcern = if (map.contains(WRITE_CONCERN_W_KEY)) {
       val w = map(WRITE_CONCERN_W_KEY)
@@ -231,8 +228,10 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def buildQuery(plan: LogicalPlan): DataTable = {
-    val iter: Iterator[Row] = readExecutor.toIterator[Row](plan, seq => new GenericRowWithSchema(seq.toArray, plan.schema))
-    new DataTable(iter, plan.schema, () => readExecutor.close())
+    val executor = readExecutor
+    val iter: Iterator[Row] = executor.toIterator[Row](plan, seq => new GenericRowWithSchema(seq.toArray, plan.schema))
+    executor.close()
+    new DataTable(iter, plan.schema, () => executor.close())
   }
 
   private def batchInsert(database: MongoDatabase, collectionName: String, batchSize: Int, table: DataTable, saveMode: SaveMode): Unit = {
@@ -279,8 +278,10 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-    val client = writeExecutor.client.client
+    val executor = writeExecutor
+    val client = executor.client.client
     batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+    executor.close()
     table.close()
   }
 
@@ -312,15 +313,19 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def truncate(): Unit = {
-    writeExecutor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
+    val executor = writeExecutor
+    executor.client.client.getDatabase(writeDatabase).getCollection(writeCollection).deleteMany(new Document())
+    executor.close()
   }
 
   override def tableNames(): Seq[String] = {
-    val iter = readExecutor.client.client.getDatabase(readDatabase).listCollectionNames().iterator()
+    val executor = readExecutor
+    val iter = executor.client.client.getDatabase(readDatabase).listCollectionNames().iterator()
     val buffer = new ArrayBuffer[String]()
     while (iter.hasNext) {
       buffer += iter.next()
     }
+    executor.close()
     buffer
   }
 
