@@ -1,19 +1,17 @@
 package org.apache.spark.sql.rdd
 
-import java.util.Properties
-
 import com.mongodb.spark.MongoSpark
 import com.mongodb.{ConnectionString, MongoClient, MongoClientURI}
 import moonbox.catalyst.core.parser.SqlParser
 import org.apache.spark.sql.datasys.MongoDataSystem
 import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.bson.Document
 import org.scalatest.FunSuite
-
-import scala.collection.JavaConverters._
 
 class MongoDataSysTest extends FunSuite {
 
   test("buildScan") {
+    //-----------get logicalPlan by spark-----------
     val spark = SparkSession.builder()
       .master("local[*]")
       .appName("mongo-spark")
@@ -22,90 +20,90 @@ class MongoDataSysTest extends FunSuite {
       .getOrCreate()
     val df = MongoSpark.load(spark)
     df.createOrReplaceTempView("books")
-
-    val map = Map(
-      "input.uri" -> "mongodb://yan:123456@localhost:27017/test.books?authSource=test",
-      "output.uri" -> "mongodb://yan:123456@localhost:27017/test.books?authSource=test"
-    )
     val df1 = spark.sql("select * from books limit 10")
     val planBySpark = df1.queryExecution.optimizedPlan
+    //----------buildScan(logicalPlan)-----------
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test.books?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/test.books?authSource=test"
+    )
     new MongoDataSystem(map)(spark).buildScan(planBySpark).show()
   }
 
   test("build query") {
-    val sql = "select name, price, author, pages from books limit 20"
-    val uri = "mongodb://yan:123456@localhost:27017/test?authSource=test"
-    val props = new Properties()
-    props.setProperty("input.uri", uri)
-    props.setProperty("input.database", "test")
-    props.setProperty("input.collection", "books")
-    val parser = new SqlParser()
-    val dataSys = new MongoDataSystem(props.asScala.toMap)(null)
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.input.collection" -> "books"
+    )
+    val dataSys = new MongoDataSystem(map)(null)
     val executor = dataSys.readExecutor
-    executor.client.client.getDatabase("zhicheng").listCollectionNames().asScala.foreach(println)
     val schema = executor.getTableSchema
     val tableName = dataSys.readExecutor.client.collectionName
+    /* get logicalPlan by sqlParser */
+    val parser = new SqlParser()
     parser.registerTable(tableName, schema, "mongo")
     executor.adaptorFunctionRegister(parser.getRegister)
-    val dataTable = dataSys.buildQuery(parser.parse(sql))
+    val sql = "select name, price, author, pages from books limit 20"
+    val logicalPlan = parser.parse(sql)
+    /* buildQuery */
+    val dataTable = dataSys.buildQuery(logicalPlan)
     dataTable.foreach(r => println(r))
   }
 
   test("insert test") {
-    val sql = "select name, price, author, pages from books limit 20"
-    val inputUri = "mongodb://yan:123456@localhost:27017/test?authSource=test"
-    val outputUri = "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test"
-    val props = new Properties()
-    props.setProperty("input.uri", inputUri)
-    props.setProperty("output.uri", outputUri)
-    props.setProperty("input.database", "test")
-    props.setProperty("output.database", "zhicheng")
-    props.setProperty("input.collection", "books")
-    props.setProperty("output.collection", "tt")
-    val parser = new SqlParser()
-    val dataSys = new MongoDataSystem(props.asScala.toMap)(null)
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.output.database" -> "zhicheng",
+      "spark.mongodb.input.collection" -> "books",
+      "spark.mongodb.output.collection" -> "tt"
+    )
+    val dataSys = new MongoDataSystem(map)(null)
     val executor = dataSys.readExecutor
-    executor.client.client.getDatabase("zhicheng").listCollectionNames().asScala.foreach(println)
     val schema = executor.getTableSchema
     val tableName = dataSys.readExecutor.client.collectionName
+    /* get logicalPlan by sqlParser */
+    val parser = new SqlParser()
     parser.registerTable(tableName, schema, "mongo")
     executor.adaptorFunctionRegister(parser.getRegister)
+    val sql = "select * from books limit 3"
     val plan = parser.parse(sql)
+    /* buildQuery */
     val dataTable = dataSys.buildQuery(plan)
-    //    dataTable.foreach(r => println(r))
-    dataSys.insert(dataTable, SaveMode.ErrorIfExists)
+    /* insert */
+    dataSys.insert(dataTable, SaveMode.Ignore)
   }
 
   test("truncate test") {
-    val prop = new Properties()
-    prop.setProperty("input.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("output.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("input.database", "zhicheng")
-    prop.setProperty("output.database", "zhicheng")
-    prop.setProperty("input.collection", "tt")
-    prop.setProperty("output.collection", "tt")
-    new MongoDataSystem(prop.asScala.toMap)(null).truncate()
+    val map = Map(
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.output.database" -> "zhicheng",
+      "spark.mongodb.output.collection" -> "tt"
+    )
+    new MongoDataSystem(map)(null).truncate()
   }
 
   test("tableNames") {
-    val prop = new Properties()
-    prop.setProperty("input.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("output.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("input.database", "zhicheng")
-    prop.setProperty("output.database", "zhicheng")
-    prop.setProperty("input.collection", "tt")
-    prop.setProperty("output.collection", "tt")
-    val names = new MongoDataSystem(prop.asScala.toMap)(null).tableNames()
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.input.collection" -> "books"
+    )
+    val names = new MongoDataSystem(map)(null).tableNames()
     names.foreach(println)
   }
 
   test("tableProperties") {
-    val prop = new Properties()
-    prop.setProperty("input.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("output.uri", "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test")
-    prop.setProperty("input.database", "zhicheng")
-    prop.setProperty("output.database", "zhicheng")
-    val names = new MongoDataSystem(prop.asScala.toMap)(null).tableProperties("tt")
+    val map = Map(
+      "type" -> "mongo",
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.output.database" -> "test"
+    )
+    val names = new MongoDataSystem(map)(null).tableProperties("books")
     names.foreach(println)
   }
 
@@ -122,15 +120,59 @@ class MongoDataSysTest extends FunSuite {
   test("mongo uri test") {
     val inputUri = "mongodb://yan:123456@localhost:27017/zhicheng"
     val connectionString = new ConnectionString(inputUri)
-    connectionString.getDatabase
-    connectionString.getCollection
-    connectionString.getUsername
-    connectionString.getPassword
-    connectionString.getCredential
-    connectionString.getConnectionString
+    Seq(connectionString.getDatabase,
+      connectionString.getCollection,
+      connectionString.getUsername,
+      connectionString.getPassword,
+      connectionString.getCredential,
+      connectionString.getConnectionString
+    ).foreach(println)
     val cli = new MongoClient(new MongoClientURI(inputUri))
-    val db = cli.getDatabase("test").getCollection("books")
-    println(db)
+    val collection = cli.getDatabase("test").getCollection("books")
+    println(collection.getNamespace)
+  }
+
+  test("create collection with schema") {
+    import com.mongodb.client.model.{CreateCollectionOptions, Filters, ValidationOptions}
+    import org.bson.BsonType
+
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.input.database" -> "zhicheng",
+      "spark.mongodb.output.database" -> "zhicheng"
+    )
+    val datasys = new MongoDataSystem(map)(null)
+    val executor = datasys.writeExecutor
+    val client = executor.client.client
+
+    val username = Filters.`type`("username", BsonType.STRING)
+    val email = Filters.regex("email", "@*.*$")
+    val password = Filters.`type`("password", BsonType.STRING)
+    val validator = Filters.and(username, email, password)
+    val validationOptions = new ValidationOptions().validator(validator)
+    val database = client.getDatabase(datasys.writeDatabase)
+    database.createCollection("accounts", new CreateCollectionOptions().validationOptions(validationOptions))
+  }
+
+  test("insert document into collection with schema") {
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/zhicheng?authSource=test",
+      "spark.mongodb.input.database" -> "zhicheng",
+      "spark.mongodb.output.database" -> "zhicheng"
+    )
+    val datasys = new MongoDataSystem(map)(null)
+    val executor = datasys.writeExecutor
+    val client = executor.client.client
+    val database = client.getDatabase(datasys.writeDatabase)
+    val doc = new Document()
+    doc.put("username", "Alice")
+    doc.put("email", "123@abc.com")
+    doc.put("password", "123456")
+    database.getCollection("accounts").insertOne(doc)
+    println()
+    executor.close()
   }
 
 }
