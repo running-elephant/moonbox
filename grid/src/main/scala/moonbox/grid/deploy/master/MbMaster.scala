@@ -22,6 +22,7 @@ import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.deploy.worker.{MbWorker, WorkerInfo}
 import moonbox.grid.deploy.{DeployMessage, MbService}
+import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
 import moonbox.grid.{CachedData, UnitData, _}
 
 import scala.collection.JavaConverters._
@@ -62,11 +63,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	// for context dependent
 	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
 
-	private var cluster: Cluster = Cluster.get(akkaSystem)
+	private val cluster: Cluster = Cluster.get(akkaSystem)
 	private var catalogContext: CatalogContext = _
 	private var persistenceEngine: PersistenceEngine = _
 	private var singletonMaster: ActorRef = _
 	private var resultGetter: ActorRef = _
+	private var timedEventService: TimedEventService = _
 	/*private var checkForWorkerTimeOutTask: Cancellable = _*/
 
 	private val restServerEnabled = conf.get(REST_SERVER_ENABLE.key, REST_SERVER_ENABLE.defaultValue.get)
@@ -95,6 +97,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		singletonMaster = startMasterEndpoint(akkaSystem)
 		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter], conf), "result-getter")
+		timedEventService = new TimedEventServiceImpl(conf)
+		timedEventService.start()
 
 		val serviceImpl = new MbService(conf, catalogContext, singletonMaster, resultGetter)
 
@@ -144,7 +148,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		restServer.foreach(_.stop())
 		tcpServer.foreach(_.stop())
-
+		timedEventService.stop()
 		persistenceEngine.close()
 	}
 
@@ -254,6 +258,14 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		case ch: MasterChanged.type =>
 			logInfo("MasterChanged")
 			informAliveWorkers(ch)
+
+		case RegisterTimedEvent(event) =>
+			if (!timedEventService.timedEventExists(event.group, event.name)) {
+				timedEventService.addTimedEvent(event)
+			}
+
+		case UnregisterTimedEvent(group, name) =>
+			timedEventService.deleteTimedEvent(group, name)
 
 		case a =>
 			logWarning(s"Unknown Message: $a")

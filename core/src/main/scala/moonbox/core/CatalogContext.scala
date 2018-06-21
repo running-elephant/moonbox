@@ -401,6 +401,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getApplication(organizationId, application)
 	}
 
+	def getApplication(applicationId: Long): CatalogApplication = {
+		catalog.getApplication(applicationId)
+	}
+
 	def listApplications(organizationId: Long): Seq[CatalogApplication] = {
 		catalog.listApplications(organizationId)
 	}

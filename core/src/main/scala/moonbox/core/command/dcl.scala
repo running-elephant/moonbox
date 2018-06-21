@@ -293,6 +293,7 @@ case class GrantDmlOnToUser(
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		// TODO logicalTable real name
 		val tableToColumns = columns.groupBy(col => (col.database, col.table))
 		tableToColumns.keys.foreach { case key @ (database, table) =>
 			val wantToGrantColumns = tableToColumns(key).map(_.column)
