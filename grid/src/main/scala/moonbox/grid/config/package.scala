@@ -125,10 +125,13 @@ package object config {
     val RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE = ConfigBuilder("moonbox.rpc.akka.cluster.failure-detector.acceptable-heartbeat-pause")
         .timeConf
         .createWithDefaultString("10s")
-	val RPC_AKKA_EXTENSIONS_0 = ConfigBuilder("moonbox.rpc.akka.extensions.0")
+	val RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.retry-unsuccessful-join-after")
+            .timeConf
+            .createWithDefaultString("3s")
+    val RPC_AKKA_EXTENSIONS_0 = ConfigBuilder("moonbox.rpc.akka.extensions.0")
 	    .stringConf
 	    .createWithDefaultString("akka.cluster.client.ClusterClientReceptionist")
-
+    //https://doc.akka.io/docs/akka/2.4.3/java/cluster-usage.html
 
 	val AKKA_DEFAULT_CONFIG = Map(
 		RPC_AKKA_LOGLEVEL.key -> RPC_AKKA_LOGLEVEL.defaultValueString,
@@ -139,6 +142,7 @@ package object config {
 		RPC_AKKA_CLUSTER_AUTODOWN.key -> RPC_AKKA_CLUSTER_AUTODOWN.defaultValueString,
 		RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.key -> RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.defaultValueString,
         RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.key -> RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.defaultValueString,
+        RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER.key -> RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER.defaultValueString,
 		RPC_AKKA_EXTENSIONS_0.key -> RPC_AKKA_EXTENSIONS_0.defaultValueString
 	)
 

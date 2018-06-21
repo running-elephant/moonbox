@@ -3,8 +3,9 @@ package moonbox.grid.deploy.master
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
-import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorRef, ActorSystem, Address, PoisonPill, Props, Terminated}
 import akka.cluster.Cluster
+import akka.cluster.ClusterEvent._
 import akka.cluster.client.ClusterClientReceptionist
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import akka.pattern._
@@ -42,6 +43,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
 	private var nextJobNumber = 0
 	private val workers = new mutable.HashMap[ActorRef, WorkerInfo]
+    private val recoverWorkers = new mutable.HashMap[Address, (ActorRef, WorkerInfo, String)]
 
 	/*private val jobIdToClient = new mutable.HashMap[String, ActorRef]()*/
 	private val jobIdToWorker = new mutable.HashMap[String, ActorRef]()
@@ -83,6 +85,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
 		logInfo("PreStart master ...")
+        cluster = Cluster(context.system)
+        cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 
 		catalogContext = new CatalogContext(conf)
 
@@ -250,6 +254,37 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					persistenceEngine.removeWorker(workerInfo)
 				case None =>
 			}
+        case UnreachableMember(member) =>
+            logInfo(s"UnreachableMember $member")
+            workers.filter{elem => elem._1.path.address == member.address}
+                   .foreach{elem =>
+                       recoverWorkers.update(member.address, (elem._1, elem._2, ""))
+                       workers.remove(elem._1)
+                   }
+
+            sessionIdToWorker.filter{elem => elem._2.path.address == member.address}
+                    .foreach{elem =>
+                        if(recoverWorkers.contains(member.address)){
+                            val rworker = recoverWorkers(member.address)
+                            recoverWorkers.update(member.address, (rworker._1, rworker._2, elem._1))  //update session id
+                        }
+                        sessionIdToWorker.remove(elem._1)
+                    }
+            logInfo(s"new worker is $workers, new sessionId is $sessionIdToWorker")
+
+        case ReachableMember(member) =>
+            logInfo(s"ReachableMember $member")
+            val rworker = recoverWorkers.get(member.address)
+            if(rworker.isDefined){
+                if(!workers.contains(rworker.get._1)) {
+                    workers.put(rworker.get._1, rworker.get._2)
+                }
+                if(!sessionIdToWorker.contains(rworker.get._3)) {
+                    sessionIdToWorker.put(rworker.get._3, rworker.get._1)
+                }
+            }
+            logInfo(s"new worker is $workers, new sessionId is $sessionIdToWorker")
+        case _: CurrentClusterState =>
 
 		case ch: MasterChanged.type =>
 			logInfo("MasterChanged")
