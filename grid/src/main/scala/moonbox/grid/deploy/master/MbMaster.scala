@@ -65,7 +65,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	// for context dependent
 	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
 
-	private val cluster: Cluster = Cluster.get(akkaSystem)
+	private var cluster: Cluster = Cluster.get(akkaSystem)
 	private var catalogContext: CatalogContext = _
 	private var persistenceEngine: PersistenceEngine = _
 	private var singletonMaster: ActorRef = _
