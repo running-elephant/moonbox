@@ -6,7 +6,7 @@ import com.cronutils.descriptor.CronDescriptor
 import com.cronutils.model.CronType
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.parser.CronParser
-import moonbox.common.MbConf
+import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.timer.EventState.EventState
 import org.quartz.Trigger.TriggerState
 import org.quartz._
@@ -19,12 +19,12 @@ object TimedEventServiceImpl {
 
 }
 
-class TimedEventServiceImpl(conf: MbConf) extends TimedEventService {
+class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLogging {
 
 	private val timedScheduler = {
 		val props = new Properties()
-		conf.getAll.filterKeys(key => key.startsWith("moonbox.timedEvent.")).foreach {
-			case (key, value) => props.put(key.stripPrefix("moonbox.timedEvent."), value)
+		conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")).foreach {
+			case (key, value) => props.put(key.stripPrefix("moonbox.timer."), value)
 		}
 		new StdSchedulerFactory(props).getScheduler
 	}
@@ -40,11 +40,13 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService {
 	override def start(): Unit = {
 		if (!timedScheduler.isStarted) {
 			timedScheduler.start()
+			logInfo("Timer is started.")
 		}
 	}
 	override def stop(): Unit = {
 		if (!timedScheduler.isShutdown) {
 			timedScheduler.shutdown()
+			logInfo("Timer is stopped")
 		}
 	}
 

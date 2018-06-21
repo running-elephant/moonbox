@@ -102,6 +102,7 @@ case class AlterDatabaseSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		mbSession.catalog.renameDatabase(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
+		ctx.databaseName = newName
 		Seq.empty[Row]
 	}
 }
@@ -595,6 +596,10 @@ case class CreateTimedEvent(
 case class AlterTimedEventSetName(
 	name: String, newName: String) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		if (timedEvent.enable) {
+			throw new Exception(s"Can't rename Event $name, while it is running.")
+		}
 		mbSession.catalog.renameTimedEvent(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
@@ -604,10 +609,13 @@ case class AlterTimedEventSetDefiner(
 	name: String,
 	definer: Option[String]) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existsScheduler = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		if (timedEvent.enable) {
+			throw new Exception(s"Can't alter definer of Event $name, while it is running.")
+		}
 		val newDefinerId = mbSession.catalog.getUser(ctx.organizationId, definer.getOrElse(ctx.userName)).id.get
 		mbSession.catalog.alterTimedEvent(
-			existsScheduler.copy(definer = newDefinerId)
+			timedEvent.copy(definer = newDefinerId)
 		)
 		Seq.empty[Row]
 	}
@@ -616,9 +624,12 @@ case class AlterTimedEventSetDefiner(
 case class AlterTimedEventSetSchedule(
 	name: String, schedule: String) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existsScheduler = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		if (timedEvent.enable) {
+			throw new Exception(s"Can't alter schedule of Event $name, while it is running.")
+		}
 		mbSession.catalog.alterTimedEvent(
-			existsScheduler.copy(schedule = schedule)
+			timedEvent.copy(schedule = schedule)
 		)
 		Seq.empty[Row]
 	}
@@ -627,9 +638,9 @@ case class AlterTimedEventSetSchedule(
 case class AlterTimedEventSetEnable(
 	name: String, enable: Boolean) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existsScheduler = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
+		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		mbSession.catalog.alterTimedEvent(
-			existsScheduler.copy(enable = enable)
+			timedEvent.copy(enable = enable)
 		)
 		Seq.empty[Row]
 	}

@@ -15,17 +15,19 @@ object ColumnPrivilegeChecker {
 		val catalog = mbSession.catalog
 		val catalogSession = mbSession.catalogSession
 		if (tableIdentifierToCatalogTable.nonEmpty) {
+			val physicalColumns = new ArrayBuffer[AttributeSet]()
 			val availableColumns = collectLogicalRelation(plan).flatMap { logicalRelation =>
 				logicalRelation.catalogTable match {
 					case Some(catalogTable) =>
 						val table = tableIdentifierToCatalogTable.get(catalogTable.identifier)
 						require(table.isDefined)
-						val columnNames = if (table.get.createBy == catalogSession.userId) {
-							catalog.getColumns(table.get.databaseId, table.get.name)(mbSession).map(_.name)
+						physicalColumns.append(logicalRelation.references)
+						if (table.get.createBy == catalogSession.userId) {
+							logicalRelation.references
 						} else {
-							catalog.getUserTableRels(catalogSession.userId, table.get.databaseId, table.get.name).map(_.column)
+							val visibleColumns = catalog.getUserTableRels(catalogSession.userId, table.get.databaseId, table.get.name).map(_.column)
+							logicalRelation.references.filter(attr => visibleColumns.contains(attr.name))
 						}
-						logicalRelation.references.filter(attr => columnNames.contains(attr.name))
 					case None =>
 						Seq()
 				}
@@ -35,10 +37,9 @@ object ColumnPrivilegeChecker {
 			plan.transformAllExpressions {
 				case expression =>
 					attributeSet.append(expression.references)
-					attributeSet.reduce(_ ++ _)
 					expression
 			}
-			val unavailableColumns = attributeSet.reduce(_ ++ _) -- availableColumns
+			val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
 			if (unavailableColumns.nonEmpty)
 				throw new ColumnPrivilegeException(
 					s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)

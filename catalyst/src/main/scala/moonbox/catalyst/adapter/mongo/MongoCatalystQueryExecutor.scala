@@ -10,7 +10,7 @@ import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystPlanner, CatalystQueryExecutor, Strategy}
 import moonbox.common.MbLogging
-import org.apache.spark.sql.UDFRegistration
+import org.apache.spark.sql.{Row, UDFRegistration}
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, GetStructField}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project}
@@ -46,6 +46,17 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
       // Note: it's important that we set closed = true before calling close(), since setting it
       // afterwards would permit us to call close() multiple times if close() threw an exception.
       client.close()
+    }
+  }
+
+  def toRowIterator(plan: LogicalPlan): Iterator[Row] = {
+    val schema = plan.schema
+    val documentIter = getBsonIterator(plan)._1
+    new Iterator[Row] {
+      override def hasNext: Boolean = documentIter.hasNext
+      override def next(): Row = {
+        MapFunctions.documentToRow(documentIter.next().toBsonDocument(classOf[BsonDocument], MongoClient.getDefaultCodecRegistry), schema)
+      }
     }
   }
 

@@ -4,10 +4,11 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.mongodb._
-import com.mongodb.client.MongoDatabase
+import com.mongodb.client.model.{InsertOneModel, ReplaceOneModel, UpdateOneModel, UpdateOptions}
+import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.spark.MongoSpark
 import com.mongodb.spark.config.{ReadConfig, WriteConfig}
-import moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor
+import moonbox.catalyst.adapter.mongo.{MapFunctions, MongoCatalystQueryExecutor}
 import moonbox.catalyst.core.parser.udf.{ArrayFilter, ArrayMap}
 import moonbox.common.MbLogging
 import moonbox.core.execution.standalone.DataTable
@@ -15,10 +16,8 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.bson.{BsonDocument, Document}
-import org.json.JSONObject
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -26,11 +25,8 @@ import scala.collection.mutable.ArrayBuffer
 class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: SparkSession) extends DataSystem(props) with Queryable with Insertable with Truncatable with MbLogging {
 
   //common
-  //  val MONGO_SPARK_CONFIG_PREFIX: String = "spark.mongodb."
   val MONGO_SPARK_INPUT_PREFIX: String = "spark.mongodb.input."
   val MONGO_SPARK_OUTPUT_PREFIX: String = "spark.mongodb.output."
-  //  val INPUT_PREFIX: String = "input."
-  //  val OUTPUT_PREFIX: String = "output."
   val URI_KEY: String = ReadConfig.mongoURIProperty
   val DATABASE_KEY: String = ReadConfig.databaseNameProperty
   val COLLECTION_KEY: String = ReadConfig.collectionNameProperty
@@ -42,7 +38,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   val READ_PREFERENCE_TAG_SETS_KEY: String = ReadConfig.readPreferenceTagSetsProperty
 
   //output
-  val REPLACEMENT_KEY: String = WriteConfig.replaceDocumentProperty
+  val REPLACE_DOCUMENT_KEY: String = WriteConfig.replaceDocumentProperty
   val MAX_BATCH_SIZE_KEY: String = WriteConfig.maxBatchSizeProperty
   /*write_concern*/
   val WRITE_CONCERN_W_KEY: String = WriteConfig.writeConcernWProperty
@@ -96,7 +92,7 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     }
   }
 
-  lazy val writeCollection = {
+  lazy val writeCollection: String = {
     if (cleanedOutputMap.contains(COLLECTION_KEY)) {
       cleanedOutputMap(COLLECTION_KEY)
     } else {
@@ -104,9 +100,19 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     }
   }
 
+  lazy val maxBatchSize: Int = {
+    if (cleanedOutputMap.contains(MAX_BATCH_SIZE_KEY)) {
+      cleanedOutputMap(MAX_BATCH_SIZE_KEY).toInt
+    } else 512
+  }
+
+  lazy val replaceDocument: Boolean = {
+    if (cleanedOutputMap.contains(REPLACE_DOCUMENT_KEY)) {
+      cleanedOutputMap(REPLACE_DOCUMENT_KEY).toBoolean
+    } else true
+  }
+
   private def createReadPreference(map: Map[String, String]): Option[ReadPreference] = {
-    //    "readpreference"
-    //    "readpreferencetags"
     // TODO: "maxstalenessseconds"
     var res: ReadPreference = null
     if (map.contains(READ_PREFERENCE_NAME_KEY)) {
@@ -141,9 +147,6 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   private def createWriteConcern(map: Map[String, String]): Option[WriteConcern] = {
     // TODO: "safe"
     // TODO: "fsync"
-    // "w"
-    // "wtimeoutms"
-    // "journal"
     //the value with w maybe string "majority" or int 1, 0
     val writeConcern: WriteConcern = if (map.contains(WRITE_CONCERN_W_KEY)) {
       val w = map(WRITE_CONCERN_W_KEY)
@@ -228,50 +231,75 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   }
 
   override def buildQuery(plan: LogicalPlan): DataTable = {
-    val iter: Iterator[Row] = readExecutor.toIterator[Row](plan, seq => new GenericRowWithSchema(seq.toArray, plan.schema))
-    new DataTable(iter, plan.schema, () => readExecutor.close())
+    val schema = plan.schema
+    val iter: Iterator[Row] = readExecutor.toRowIterator(plan)
+    new DataTable(iter, schema, () => readExecutor.close())
+  }
+
+  private def insertDirect(collection: MongoCollection[BsonDocument], table: DataTable, batchSize: Int): Unit = {
+    if (table.iter.nonEmpty) {
+      table.iter.grouped(batchSize).foreach { batch =>
+        collection.insertMany(batch.map(row => MapFunctions.rowToDocument(row)).asJava)
+      }
+    }
+  }
+
+  private def bulkWrite(collection: MongoCollection[BsonDocument], table: DataTable, batchSize: Int): Unit = {
+    if (table.iter.nonEmpty) {
+      table.iter.grouped(batchSize).foreach { batch =>
+        val updateOptions = new UpdateOptions().upsert(true)
+        val requests = batch.map { row =>
+          val doc = MapFunctions.rowToDocument(row)
+          Option(doc.get("_id")) match {
+            case Some(id) =>
+              if (replaceDocument) {
+                new ReplaceOneModel[BsonDocument](new BsonDocument("_id", id), doc, updateOptions)
+              } else {
+                doc.remove("_id")
+                new UpdateOneModel[BsonDocument](new BsonDocument("_id", id), new BsonDocument("$set", doc), updateOptions)
+              }
+            case None =>
+              new InsertOneModel[BsonDocument](doc)
+          }
+        }
+        collection.bulkWrite(requests.asJava)
+      }
+    }
+
   }
 
   private def batchInsert(database: MongoDatabase, collectionName: String, batchSize: Int, table: DataTable, saveMode: SaveMode): Unit = {
-    val docBuffer = new ArrayBuffer[Document](batchSize)
-    var count = 0
-    while (table.iter.hasNext && count < batchSize) {
-      val row = table.iter.next()
-      docBuffer += row2Document(table.schema, row)
-      count += 1
-      if (count == batchSize) {
-        save(database, collectionName, docBuffer.asJava, saveMode)
-        count = 0
+    lazy val collectionExists: Boolean = {
+      val iter = database.listCollectionNames().iterator()
+      var flag = false
+      while (iter.hasNext && !flag) {
+        if (iter.next() == collectionName) flag = true
       }
+      flag
     }
-    if (docBuffer.nonEmpty) {
-      save(database, collectionName, docBuffer.asJava, saveMode)
-    }
-  }
-
-  private def save(database: MongoDatabase, collectionName: String, docs: java.util.List[Document], saveMode: SaveMode): Unit = {
     saveMode match {
-      case SaveMode.Append =>
-        database.getCollection(collectionName).insertMany(docs)
+      case SaveMode.Append => /* do nothing */
       case SaveMode.Overwrite =>
-        // TODO: drop this collection or truncate this collection?
-        //drop collection
+        /* drop this collection */
         database.getCollection(collectionName).drop()
         database.createCollection(collectionName)
-        database.getCollection(collectionName).insertMany(docs)
       case SaveMode.ErrorIfExists =>
-        if (database.listCollectionNames().asScala.exists(_ == collectionName)) {
-          throw new Exception(s"SaveMode is set to ErrorIfExists and ${database.getName}.$collectionName exists and contains data. Consider changing the SaveMode")
+        if (collectionExists) {
+          throw new UnsupportedOperationException(s"SaveMode is set to ErrorIfExists and ${database.getName}.$collectionName exists. Consider changing the SaveMode")
         } else {
           database.createCollection(collectionName)
-          database.getCollection(collectionName).insertMany(docs)
         }
       case SaveMode.Ignore =>
-        if (!database.listCollectionNames().asScala.exists(_ == collectionName)) {
+        if (!collectionExists) {
           database.createCollection(collectionName)
-          database.getCollection(collectionName).insertMany(docs)
-        }
+        } else return
       case _ => throw new IllegalArgumentException(s"Unknown save mode: $saveMode. " + "Accepted save modes are 'overwrite', 'append', 'ignore', 'error'.")
+    }
+    val collection = database.getCollection(collectionName, classOf[BsonDocument])
+    if (table.schema.fields.exists(_.name == "_id")) {
+      bulkWrite(collection, table, batchSize)
+    } else {
+      insertDirect(collection, table, batchSize)
     }
   }
 
@@ -279,39 +307,11 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
     val executor = writeExecutor
     try {
       val client = executor.client.client
-      batchInsert(client.getDatabase(writeDatabase), writeCollection, 100, table, saveMode)
+      batchInsert(client.getDatabase(writeDatabase), writeCollection, maxBatchSize, table, saveMode)
     } finally {
       executor.close()
       table.close()
     }
-
-  }
-
-  private def parse(json: String): Array[(String, String, Boolean)] = {
-    val schemaObject = new JSONObject(json.toLowerCase)
-    schemaObject.getJSONArray("fields").asScala.map {
-      case elem: JSONObject =>
-        val columnName = elem.getString("name")
-        val nullable = elem.getBoolean("nullable")
-        val columnType = elem.get("type") match {
-          case v: JSONObject => v.getString("type")
-          case s => s.toString
-        }
-        (columnName, columnType, nullable)
-      case _ => null
-    }.filter(_ != null).toArray
-  }
-
-  private def row2Document(schema: StructType, row: Row): Document = {
-    val document = new Document()
-    val parsedSchema = parse(schema.json)
-    if (row.length != parsedSchema.length) {
-      throw new Exception("Schema is incorrect")
-    }
-    parsedSchema.zipWithIndex.foreach {
-      case (field, idx) => document.put(field._1, row.get(idx))
-    }
-    document
   }
 
   override def truncate(): Unit = {

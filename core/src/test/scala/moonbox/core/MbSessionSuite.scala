@@ -13,6 +13,6 @@ class MbSessionSuite extends FunSuite {
 		mbSession.execute("test", mbParser.parsePlan("GRANT DML ON default.mysql_test_booklist.{id,bname,male} TO USER jack"))
 		*/
 		mbSession.bindUser("jack")
-		mbSession.sql("select * from mysql_test_booklist").show()
+		//mbSession.sql("select * from mysql_test_booklist").show()
 	}
 }
