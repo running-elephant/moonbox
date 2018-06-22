@@ -188,7 +188,7 @@ class EsDriverTest extends FunSuite{
     }
 
     test("col 1000 lines"){
-        doQuery("test_mb_1000", "my_table", "select * from test_mb_1000 order by event_id asc" )
+        doQuery("test_mb_1000", "my_table", "select col_long_a, event_id  from test_mb_1000 order by col_long_a asc, event_id desc " )
     }
 
     test("col 100w of lines"){

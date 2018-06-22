@@ -5,11 +5,12 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
+import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.datasys.DataSystemFactory
+import org.apache.spark.sql.datasys.{DataSystem, DataSystemFactory, Queryable}
 import org.apache.spark.sql.{DataFrame, MixcalContext, Row, SaveMode}
 
 import scala.collection.mutable
@@ -61,7 +62,46 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
-	def execute(jobId: String, cmds: Seq[MbCommand]): Any = {
+	def optimizedPlan(sqlText: String): LogicalPlan = {
+		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
+		val tableIdentifiers = collectDataSourceTable(parsedLogicalPlan)
+		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
+			(table, getCatalogTable(table.table, table.database))
+		}
+		tableIdentifierToCatalogTable.foreach {
+			case (table, catalogTable) => mixcal.registerTable(table, catalogTable.properties)
+		}
+		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
+		if (columnPermission) {
+			ColumnPrivilegeChecker.intercept(analyzedLogicalPlan, tableIdentifierToCatalogTable.toMap, this)
+		}
+		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+	}
+
+	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): (LogicalPlan, Option[Queryable]) = {
+		val lastLogicalPlan = if (pushdown) {
+			mixcal.furtherOptimizedLogicalPlan(plan)
+		} else plan
+		(lastLogicalPlan, None)
+	}
+
+	def toDF(plan: LogicalPlan): DataFrame = {
+		mixcal.treeToDF(plan)
+	}
+
+	def toDT(plan: LogicalPlan, datasys: Queryable): DataTable = {
+		datasys.buildQuery(plan)
+	}
+
+	def withPrivilege[T](cmd: MbCommand)(f: => T): T = {
+		CmdPrivilegeChecker.intercept(cmd, catalog, catalogSession) match {
+			case false => throw new Exception("Permission denied.")
+			case true => f
+		}
+	}
+
+
+	/*def execute(jobId: String, cmds: Seq[MbCommand]): Any = {
 		cmds.map{c => execute(jobId, c)}.last
 	}
 
@@ -160,9 +200,9 @@ class MbSession(conf: MbConf) extends MbLogging {
 			mixcal.furtherOptimizedLogicalPlan(optimizedLogicalPlan)
 		} else optimizedLogicalPlan
 		mixcal.treeToDF(lastLogicalPlan)
-	}
+	}*/
 
-	private def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
+	def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
 		database match {
 			case None =>
 				catalog.getTable(catalogSession.databaseId, table)

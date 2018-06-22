@@ -37,6 +37,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		cluster = Cluster(context.system)
 		cluster.subscribe(self, classOf[MemberUp])
 		// TODO init sparkContext
+		logDebug(s"MbWorker::preStart RegisterWorker")
 		master ! RegisterWorker(workerId, self, 100, 1000)
 		//heartbeat()
 		workerLatestState()
@@ -107,8 +108,8 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		case r: RegisteredWorker =>			logDebug(s"RegisteredWorker ${r.master}")
 
 		case MasterChanged =>
-			logDebug(s"MbWorker::MasterChanged ")
-			context.system.scheduler.scheduleOnce(FiniteDuration(10, SECONDS),
+			logDebug(s"MbWorker::MasterChanged RegisterWorker")
+			context.system.scheduler.scheduleOnce(FiniteDuration(4, SECONDS),
 				master, RegisterWorker(workerId, self, 100, 1000))
 
 		case m@MemberUp(member) =>

@@ -31,6 +31,7 @@ case class AlterOrganizationSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		mbSession.catalog.renameOrganization(name, newName, ctx.userId)
+		ctx.organizationName = newName
 		Seq.empty[Row]
 	}
 }

@@ -267,8 +267,10 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 }*/
 
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
+	// TODO
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {
-		val queryExecution = mbSession.sql(query).queryExecution.executedPlan
+		val (logicalPlan, _) = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
+		val queryExecution = mbSession.toDF(logicalPlan).queryExecution.executedPlan
 		val outputString =
 			if (extended) {
 				queryExecution.toString()

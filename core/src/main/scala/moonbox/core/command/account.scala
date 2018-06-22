@@ -104,6 +104,7 @@ case class AlterUserSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		mbSession.catalog.renameUser(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
+		ctx.userName = newName
 		Seq.empty[Row]
 	}
 }

@@ -79,38 +79,45 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
     }
 
     /** update insert 1 line by id**/
-    def execute4Update(id: String, data: Seq[(String, String)]): Boolean = {  //, schema: StructType
+    def execute4Update(id: String, data: Seq[(String, String)]): Boolean = {
         client.update(index, typ, id, data)
         true
     }
 
+    /** insert to es by iterator, support four mode */
     def execute4Insert(iter: Iterator[Row], schema: StructType, mode: SaveMode): Unit = {
         import org.apache.spark.sql.SaveMode._
         mode match{
             case Append =>
                 //batch save data to index
-                batchInsert(iter, schema)
+                val ret1 = batchInsert(iter, schema)
+                logInfo(s"execute4Insert ($index,$typ) Append: batchInsert ${ret1._1} ${ret1._2}")
             case Overwrite =>
                 if(client.checkExist(index, typ)) {
                     //1 delete exist index
-                    client.deleteIndex(index)
+                    val ret1 = client.deleteIndex(index)
+                    logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret1")
                     //2 create new index with schema
-                    client.putSchema(index, typ, schema)
+                    val ret2 = client.putSchema(index, typ, schema)
+                    logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret2")
                 }
                 //3 batch insert data to index
-                batchInsert(iter, schema)
+                val ret3 = batchInsert(iter, schema)
+                logInfo(s"execute4Insert ($index,$typ) Overwrite: batchInsert ${ret3._1} ${ret3._2}")
             case ErrorIfExists =>
                 //check is empty or not
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
-                    batchInsert(iter, schema)
+                    val ret1 = batchInsert(iter, schema)
+                    logInfo(s"execute4Insert ($index,$typ) ErrorIfExists: batchInsert ${ret1._1} ${ret1._2}")
                 }else{
                     throw new Exception(s"SaveMode is set to ErrorIfExists and index $index $typ exists and contains data. Consider changing the SaveMode")
                 }
             case Ignore =>
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
-                    batchInsert(iter, schema)
+                    val ret1 = batchInsert(iter, schema)
+                    logInfo(s"execute4Insert ($index,$typ) Ignore: batchInsert ${ret1._1} ${ret1._2}")
                 }
         }
     }
@@ -161,6 +168,7 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
 
     }
 
+    /** translate logical plan to json string **/
     override def translate(plan: LogicalPlan): Seq[String] = {
         val iterator: Iterator[CatalystPlan] = planner.plan(plan)
         context.nestFields = client.getSchema(index, typ)._2  //update nest field

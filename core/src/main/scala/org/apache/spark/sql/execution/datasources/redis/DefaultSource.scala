@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 
 
 
-class DefaultSource extends SchemaRelationProvider with CreatableRelationProvider {
+class DefaultSource extends SchemaRelationProvider with CreatableRelationProvider with DataSourceRegister {
 	override def createRelation(sqlContext: SQLContext,
 		parameters: Map[String, String], schema: StructType): BaseRelation = {
 		RedisRelation(parameters, schema)(sqlContext)
@@ -63,6 +63,8 @@ class DefaultSource extends SchemaRelationProvider with CreatableRelationProvide
 		redisClient.close
 		RedisRelation(parameters, data.schema)(sqlContext)
 	}
+
+	override def shortName(): String = "redis"
 }
 
 case class RedisRelation(props: Map[String, String], userSchema: StructType)

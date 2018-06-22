@@ -3,6 +3,7 @@ package moonbox.grid.deploy
 import akka.actor.ActorRef
 import moonbox.grid.JobState.JobState
 import moonbox.grid.deploy.worker.WorkerInfo
+import moonbox.grid.timer.EventEntity
 import moonbox.grid.{JobInfo, JobResult}
 
 sealed trait DeployMessage extends Serializable
@@ -66,4 +67,7 @@ object DeployMessages {
 	//case class MasterChanged(master: ActorRef, masterWebUiUrl: String) extends DeployMessage
 	case object MasterChanged extends DeployMessage
 
+	// Runner to Master
+	case class RegisterTimedEvent(event: EventEntity) extends DeployMessage
+	case class UnregisterTimedEvent(group: String, name: String) extends DeployMessage
 }
