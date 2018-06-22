@@ -1,6 +1,6 @@
 package moonbox.repl
 
-import moonbox.repl.adapter.{Connector, JdbcConnector}
+import moonbox.repl.adapter.{Connector, JdbcConnector, Utils}
 import moonbox.repl.http.MbHttpConnector
 import org.jline.reader.LineReaderBuilder
 import org.jline.reader.impl.completer.StringsCompleter
@@ -97,19 +97,7 @@ object Main extends JsonSerializer {
         connector.shutdown()
         System.exit(0)
       case trimmedSql =>
-        val sqlList = trimmedSql.split(";")
-        /*val illegal: Boolean = sqlList.map { sql =>
-          val validate: Try[Boolean] = Validation.validate(sql)
-          if (validate.isFailure) {
-            System.out.println(validate.failed.get.getMessage)
-            false
-          } else {
-            true
-          }
-        }.forall(_ == true)
-        if (illegal) {
-          connector.process(sqlList)
-        }*/
+        val sqlList = Utils.splitSql(trimmedSql, ';') //trimmedSql.split(";")
         connector.process(sqlList)
     }
   }

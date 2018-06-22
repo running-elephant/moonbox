@@ -5,7 +5,8 @@ import java.util.Properties
 
 class JdbcConnector(timeout: Int) extends Connector {
   var connection: Connection = _
-  override def prepare(host: String, port:Int, user: String, pwd: String, db: String): Boolean = {
+
+  override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
       Class.forName("moonbox.jdbc.MbDriver")
       val url = s"jdbc:moonbox://${host}:${port}/default"
@@ -15,7 +16,7 @@ class JdbcConnector(timeout: Int) extends Connector {
       /*prop.setProperty("fetchsize", 200.toString)*/
       connection = DriverManager.getConnection(url, prop)
       true
-    }catch{
+    } catch {
       case e: Exception =>
         e.printStackTrace()
         false
@@ -23,32 +24,35 @@ class JdbcConnector(timeout: Int) extends Connector {
   }
 
   override def process(sqls: Seq[String]): Unit = {
+    val numShow = 500
     val stmt = connection.createStatement()
     stmt.setQueryTimeout(timeout)
     stmt.setFetchSize(200)
     sqls.foreach { sql =>
-      val rs = stmt.executeQuery(sql)
+      if (!stmt.execute(sql)) return
+      val rs = stmt.getResultSet
       val metaData: ResultSetMetaData = rs.getMetaData
-      val colNameAndType = (1 to metaData.getColumnCount).map { index =>
+      var dataBuf = Seq[Seq[Any]]()
+      val columnCount = metaData.getColumnCount
+      val schema = (1 to columnCount).map { index =>
         val name = metaData.getColumnName(index)
         val typ = metaData.getColumnTypeName(index)
         s"$name($typ)"
       }
-
-      colNameAndType.map(e => print(" | " + e + " | "))
-      println()
-      while (rs.next()) {
-        val colData: Seq[AnyRef] = (1 to metaData.getColumnCount).map { index =>
+      var rowCount = 0
+      while (rs.next() && rowCount < numShow) {
+        val colData: Seq[Any] = (1 to columnCount).map { index =>
           rs.getObject(index)
         }
-        colData.map(e => print(" | " + e + " | "))
-        println()
+        dataBuf :+= colData
+        rowCount += 1
       }
+      print(Utils.showString(dataBuf, schema, numShow, 45))
     }
   }
 
   override def close(): Unit = {
-    if(connection != null) {
+    if (connection != null) {
       connection.close()
       connection = null
     }

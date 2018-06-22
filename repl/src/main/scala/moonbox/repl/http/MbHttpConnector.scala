@@ -117,27 +117,37 @@ class MbHttpConnector(timeout: Int) extends Connector {
   private def showResult(queryOutbound: QueryOutbound): Unit = {
     queryOutbound match {
       case QueryOutbound(jobId, None, schema, Some(data), size) =>
-        if (schema.isDefined) {
-          println(Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").mkString(" | "))
-        }
-        data.foreach(row => println(row.mkString(" | ")))
-        if (jobId.isDefined && size.isDefined) {
+        val numShow = 500
+        var dataBuf: Seq[Seq[Any]] = Nil
+        val parsedSchema: Seq[String] = if (schema.isDefined) {
+          Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").toSeq
+        } else Nil
+        if (numShow <= data.size) {
+          dataBuf = data.take(numShow)
+        } else {
           var currentSize: Long = data.size
-          while (currentSize < size.get) {
-            val fetchResult = dataFetch(jobId.get, currentSize, DEFAULT_FETCH_SIZE)
-            fetchResult match {
-              case ResultOutbound(_, None, _, Some(data)) =>
-                data.foreach(row => println(row.mkString(" | ")))
-                currentSize += data.size
-              case ResultOutbound(_, Some(errMsg), _, _) =>
-                System.err.println(s"QueryOutbound error: $errMsg")
-                currentSize = size.get // break the while cycle
-              case _ =>
-                System.err.println("QueryOutbound mismatch")
-                currentSize = size.get // break the while cycle
+          if (jobId.isDefined && size.isDefined && data.size < size.get) {
+            val remainRowNums = if (numShow >= size.get) size.get else numShow - data.size
+            while (currentSize < remainRowNums) {
+              val fetchSize = math.min(DEFAULT_FETCH_SIZE, remainRowNums - currentSize)
+              val fetchResult = dataFetch(jobId.get, currentSize, fetchSize)
+              fetchResult match {
+                case ResultOutbound(_, None, _, Some(data)) =>
+                  dataBuf = dataBuf ++ data
+                  currentSize += data.size
+                case ResultOutbound(_, Some(errMsg), _, _) =>
+                  System.err.println(s"QueryOutbound error: $errMsg")
+                  currentSize = size.get // break the while cycle
+                case _ =>
+                  System.err.println("QueryOutbound mismatch")
+                  currentSize = size.get // break the while cycle
+              }
             }
+          } else {
+            dataBuf = dataBuf ++ data
           }
         }
+        print(Utils.showString(dataBuf, parsedSchema, numShow, 45))
       case QueryOutbound(_, None, _, _, _) =>
       case _ => System.err.println("QueryOutbound mismatch")
     }

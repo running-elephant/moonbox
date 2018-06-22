@@ -8,6 +8,8 @@ import moonbox.common.MbLogging
 import moonbox.common.message._
 import moonbox.grid.deploy.MbService
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
@@ -134,7 +136,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
         if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
           val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
           val token = channel2SessionIdAndToken.get(ctx.channel())._2
-          val sqls = query.sql.split(";").map(_.trim).filter(_ != "")
+          val sqls: Seq[String] = splitSql(query.sql, ';')
           // TODO: query can be canceled
           mbService.jobQuery(token, sessionId, sqls, query.fetchSize).onComplete {
             case Success(v) =>
@@ -188,7 +190,7 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
     }
   }
 
-  def doDataFetch(ctx: ChannelHandlerContext, inbound: DataFetchInbound): Unit = {
+  private def doDataFetch(ctx: ChannelHandlerContext, inbound: DataFetchInbound): Unit = {
     if (channel2SessionIdAndToken.containsKey(ctx.channel())) {
       val token = channel2SessionIdAndToken.get(ctx.channel())._2
       val dataFetch = inbound.dataFetchState
@@ -222,7 +224,27 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
       logInfo("Do dataFetch error, login first")
       ctx.writeAndFlush(DataFetchOutbound(inbound.dataFetchState, Some("Do dataFetch error, login first"), None, None))
     }
+  }
 
+  private def splitSql(sql: String, splitter: Char): Seq[String] = {
+    val stack = new mutable.Stack[Char]()
+    val splitIndex = new ArrayBuffer[Int]()
+    for ((char, idx) <- sql.toCharArray.zipWithIndex) {
+      if (char == splitter) {
+        if (stack.isEmpty) splitIndex += idx
+      }
+      if (char == '(') stack.push('(')
+      if (char == ')') stack.pop()
+    }
+    splits(sql, splitIndex.toArray, 0).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
+  }
+
+  private def splits(sql: String, idxs: Array[Int], offset: Int): Seq[String] = {
+    if (idxs.nonEmpty) {
+      val head = idxs.head
+      val (h, t) = sql.splitAt(head - offset)
+      h +: splits(t, idxs.tail, head)
+    } else sql :: Nil
   }
 
 }

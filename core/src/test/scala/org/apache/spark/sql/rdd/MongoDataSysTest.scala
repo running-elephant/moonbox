@@ -34,7 +34,7 @@ class MongoDataSysTest extends FunSuite {
     val map = Map(
       "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
       "spark.mongodb.input.database" -> "test",
-      "spark.mongodb.input.collection" -> "books"
+      "spark.mongodb.input.collection" -> "book_nested"
     )
     val dataSys = new MongoDataSystem(map)(null)
     val executor = dataSys.readExecutor
@@ -44,7 +44,7 @@ class MongoDataSysTest extends FunSuite {
     val parser = new SqlParser()
     parser.registerTable(tableName, schema, "mongo")
     executor.adaptorFunctionRegister(parser.getRegister)
-    val sql = "select name, price, author, pages from books limit 20"
+    val sql = "select * from book_nested limit 20"
     val logicalPlan = parser.parse(sql)
     /* buildQuery */
     val dataTable = dataSys.buildQuery(logicalPlan)
@@ -173,6 +173,18 @@ class MongoDataSysTest extends FunSuite {
     database.getCollection("accounts").insertOne(doc)
     println()
     executor.close()
+  }
+
+  test("query with spark"){
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.input.collection" -> "book_nested"
+    )
+    val sparkBuilder = SparkSession.builder().appName("nested collection").master("local[*]")
+    map.foreach(kv => sparkBuilder.config(kv._1, kv._2))
+    val spark = sparkBuilder.getOrCreate()
+    MongoSpark.load(spark).show()
   }
 
 }
