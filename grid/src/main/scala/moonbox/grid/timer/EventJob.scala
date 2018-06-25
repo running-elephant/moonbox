@@ -1,9 +1,16 @@
 package moonbox.grid.timer
 
-import org.quartz.{Job, JobExecutionContext, JobKey, TriggerKey}
+import moonbox.common.MbLogging
+import org.quartz.{Job, JobExecutionContext}
 
-class EventJob extends Job {
+class EventJob extends Job with MbLogging {
 	override def execute(ctx: JobExecutionContext): Unit = {
-		println(ctx.getMergedJobDataMap.get(EventEntity.EVENT_KEY))
+		val dataMap = ctx.getMergedJobDataMap
+		val definer = dataMap.getString(EventEntity.DEFINER)
+		val sqls = dataMap.get(EventEntity.SQLS).asInstanceOf[Seq[String]]
+		val func = dataMap.get(EventEntity.FUNC).asInstanceOf[() => Unit]
+		logInfo(s"""Timed event fire as user '$definer' run sqls (${sqls.mkString(", ")})""")
+		//MbMaster.singleton ! JobSubmit(definer, sqls, async = true)
+		func()
 	}
 }

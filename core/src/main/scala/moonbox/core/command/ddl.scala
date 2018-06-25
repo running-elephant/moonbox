@@ -573,6 +573,7 @@ case class CreateTimedEvent(
 	enable: Boolean,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
+	// TODO schedule validation
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val definerId = definer.map(user => mbSession.catalog.getUser(ctx.organizationId, user).id.get).getOrElse(ctx.userId)
 		val appId = mbSession.catalog.getApplication(ctx.organizationId, app).id.get

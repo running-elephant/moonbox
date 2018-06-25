@@ -30,6 +30,7 @@ import scala.collection.JavaConverters._
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -100,6 +101,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		)*/
 
 		singletonMaster = startMasterEndpoint(akkaSystem)
+		MbMaster.singleton = singletonMaster
 		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter], conf), "result-getter")
 		timedEventService = new TimedEventServiceImpl(conf)
 		timedEventService.start()
@@ -152,7 +154,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		restServer.foreach(_.stop())
 		tcpServer.foreach(_.stop())
-		timedEventService.stop()
+		if (timedEventService != null) {
+			timedEventService.stop()
+		}
 		persistenceEngine.close()
 	}
 
@@ -295,12 +299,27 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			informAliveWorkers(ch)
 
 		case RegisterTimedEvent(event) =>
-			if (!timedEventService.timedEventExists(event.group, event.name)) {
-				timedEventService.addTimedEvent(event)
+			val target = sender()
+			Future {
+				if (!timedEventService.timedEventExists(event.group, event.name)) {
+					timedEventService.addTimedEvent(event)}
+			}.onComplete {
+				case Success(_) =>
+					target ! RegisteredTimedEvent
+				case Failure(e) =>
+					target ! RegisterTimedEventFailed(e.getMessage)
 			}
 
 		case UnregisterTimedEvent(group, name) =>
-			timedEventService.deleteTimedEvent(group, name)
+			val target = sender()
+			Future {
+				timedEventService.deleteTimedEvent(group, name)
+			}.onComplete {
+				case Success(_) =>
+					target ! UnregisteredTimedEvent
+				case Failure(e) =>
+					target ! UnregisterTimedEventFailed(e.getMessage)
+			}
 
 		case a =>
 			logWarning(s"Unknown Message: $a")
@@ -512,6 +531,7 @@ object MbMaster extends MbLogging {
 	val MASTER_NAME = "mbmaster"
 	val SINGLETON_PROXY_NAME = "singleton-master-proxy"
 	val SINGLETON_MANAGER_PATH = s"/user/$MASTER_NAME"
+	var singleton: ActorRef = _
 
 	def main(args: Array[String]) {
 		val conf = new MbConf()

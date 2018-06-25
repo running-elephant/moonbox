@@ -517,7 +517,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitCreateEvent(ctx: CreateEventContext): MbCommand = {
 		val name = ctx.name.getText
 		val definer = if (ctx.DEFINER() != null) visitDefiner(ctx.definer()) else None
-		val scheduler = visitSchedule(ctx.schedule())
+		val scheduler = ParserUtils.tripQuotes(ctx.cronExpression.getText)
 		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
 		val application = ctx.app.getText
 		val enable = if (ctx.ENABLE() != null) true else false
@@ -545,7 +545,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitSetEventSchedule(ctx: SetEventScheduleContext): MbCommand = {
 		val name = ctx.name.getText
-		val scheduler = visitSchedule(ctx.schedule())
+		val scheduler = ParserUtils.tripQuotes(ctx.cronExpression.getText)
 		AlterTimedEventSetSchedule(name, scheduler)
 	}
 
@@ -563,14 +563,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitDefiner(ctx: DefinerContext): Option[String] = {
 		if (ctx.CURRENT_USER() != null) None else Some(ctx.user.getText)
-	}
-
-	override def visitSchedule(ctx: ScheduleContext): String = {
-		ctx.starOrInteger().map(visitStarOrInteger).mkString(" ")
-	}
-
-	override def visitStarOrInteger(ctx: StarOrIntegerContext): String = {
-		if (ctx.STAR() != null) "*" else ctx.INTEGER_VALUE().getText
 	}
 
 	override def visitCreateTemporaryView(ctx: CreateTemporaryViewContext): MbCommand = {

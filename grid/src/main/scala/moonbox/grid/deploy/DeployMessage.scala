@@ -69,5 +69,12 @@ object DeployMessages {
 
 	// Runner to Master
 	case class RegisterTimedEvent(event: EventEntity) extends DeployMessage
+
+	sealed trait RegisterTimedEventResponse
+	case object RegisteredTimedEvent extends DeployMessage with RegisterTimedEventResponse
+	case class RegisterTimedEventFailed(message: String) extends DeployMessage with RegisterTimedEventResponse
 	case class UnregisterTimedEvent(group: String, name: String) extends DeployMessage
+	sealed trait UnregisterTimedEventResponse
+	case object UnregisteredTimedEvent extends DeployMessage with UnregisterTimedEventResponse
+	case class UnregisterTimedEventFailed(message: String) extends DeployMessage with UnregisterTimedEventResponse
 }

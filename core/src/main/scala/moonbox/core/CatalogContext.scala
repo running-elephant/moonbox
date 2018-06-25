@@ -302,7 +302,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
 			CatalogColumn(
 				name = field.name,
-				dataType = field.dataType.toString,
+				dataType = field.dataType.simpleString,
 				databaseId = database.id.get,
 				table = table,
 				createBy = database.createBy,

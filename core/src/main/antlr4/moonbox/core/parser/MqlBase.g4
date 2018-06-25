@@ -96,12 +96,13 @@ mql
     | ALTER APPLICATION name=identifier AS appCmds                                              # setApplicationQuerys
     | DROP APPLICATION (IF EXISTS)? name=identifier                                             # dropApplication
 
-    | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT schedule
+    | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT
+        cronExpression=STRING
         (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL app=identifier                    # createEvent
     | RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
     | ALTER DEFINER definer EVENT name=identifier                                               # setDefiner
     | ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
-    | ALTER EVENT name=identifier ON SCHEDULE AT schedule                                       # setEventSchedule
+    | ALTER EVENT name=identifier ON SCHEDULE AT cronExpression=STRING                          # setEventSchedule
     | ALTER EVENT name=identifier (ENABLE | DISABLE)                                            # setEventEnable
     | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
 
@@ -132,17 +133,10 @@ mql
     ;
 
 appCmds
-    : mql (';' mql)*
+    : '(' mql (';' mql)* ')'
     ;
 definer
     : EQ? (user = identifier | CURRENT_USER)
-    ;
-
-schedule
-    : starOrInteger starOrInteger starOrInteger starOrInteger starOrInteger starOrInteger
-    ;
-starOrInteger
-    : STAR | INTEGER_VALUE
     ;
 
 query

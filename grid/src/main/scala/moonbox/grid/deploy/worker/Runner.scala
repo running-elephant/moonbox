@@ -1,20 +1,26 @@
 package moonbox.grid.deploy.worker
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
+import akka.pattern._
+import akka.util.Timeout
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.{ColumnPrivilegeException, MbSession}
 import moonbox.core.command._
 import moonbox.core.config.CACHE_IMPLEMENTATION
+import moonbox.grid.JobState.JobState
 import moonbox.grid._
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.timer.EventEntity
+import moonbox.grid.timer.{EventCall, EventEntity}
 import org.apache.spark.sql.SaveMode
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
+	implicit val askTimeout = Timeout(new FiniteDuration(20, SECONDS))
+	private val awaitTimeout = new FiniteDuration(20, SECONDS)
 	private implicit val catalogSession = mbSession.catalogSession
 	private var currentJob: JobInfo = _
 
@@ -65,27 +71,36 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 	def createTimedEvent(event: CreateTimedEvent, target: ActorRef): JobResult = {
-		val row = event.run(mbSession)
-		val catalogApplication = mbSession.catalog.getApplication(catalogSession.organizationId, event.app)
-		if (event.enable) {
+		val result = if (event.enable) {
+			val catalogApplication = mbSession.catalog.getApplication(catalogSession.organizationId, event.app)
+			val definer = event.definer.getOrElse(catalogSession.userName)
+			val sqls = catalogApplication.cmds
 			val eventEntity = EventEntity(
 				group = catalogSession.organizationName,
 				name = event.name,
-				sqls = catalogApplication.cmds,
+				sqls = sqls,
 				cronExpr = event.schedule,
-				definer = event.definer.getOrElse(catalogSession.userName),
+				definer = definer,
 				start = None,
 				end = None,
-				desc = event.description
+				desc = event.description,
+				function = new EventCall(definer, sqls)
 			)
-			target ! RegisterTimedEvent(eventEntity)
+			val response = target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
+				case RegisteredTimedEvent =>
+					Future(event.run(mbSession).map(_.toSeq.map(_.toString)))
+				case RegisterTimedEventFailed(message) =>
+					throw new Exception(message)
+			}
+			Await.result(response, awaitTimeout)
+		} else {
+			event.run(mbSession).map(_.toSeq.map(_.toString))
 		}
-		DirectData(row.map(_.toSeq.map(_.toString)))
+		DirectData(result)
 	}
 
 	def alterTimedEvent(event: AlterTimedEventSetEnable, target: ActorRef): JobResult = {
-		val row = event.run(mbSession)
-		if (event.enable) {
+		val result = if (event.enable) {
 			val existsEvent = mbSession.catalog.getTimedEvent(catalogSession.organizationId, event.name)
 			val catalogUser = mbSession.catalog.getUser(existsEvent.definer)
 			val catalogApplication = mbSession.catalog.getApplication(existsEvent.application)
@@ -97,13 +112,25 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				definer = catalogUser.name,
 				start = None,
 				end = None,
-				desc = existsEvent.description
+				desc = existsEvent.description,
+				function = new EventCall(catalogUser.name, catalogApplication.cmds)
 			)
-			target ! RegisterTimedEvent(eventEntity)
+			target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
+				case RegisteredTimedEvent =>
+					Future(event.run(mbSession).map(_.toSeq.map(_.toString)))
+				case RegisterTimedEventFailed(message) =>
+					throw new Exception(message)
+			}
 		} else {
-			target ! UnregisterTimedEvent(catalogSession.organizationName, event.name)
+			target.ask(UnregisterTimedEvent(catalogSession.organizationName, event.name))
+				.mapTo[UnregisterTimedEventResponse].flatMap {
+				case UnregisteredTimedEvent =>
+					Future(event.run(mbSession).map(_.toSeq.map(_.toString)))
+				case UnregisterTimedEventFailed(message) =>
+					throw new Exception(message)
+			}
 		}
-		DirectData(row.map(_.toSeq.map(_.toString)))
+		DirectData(Await.result(result, awaitTimeout))
 	}
 
 	def createTempView(tempView: CreateTempView): JobResult = {
@@ -122,7 +149,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 	def mqlQuery(query: MQLQuery, jobId: String): JobResult = {
-		// TODO jobId
 		val format = conf.get(CACHE_IMPLEMENTATION.key, CACHE_IMPLEMENTATION.defaultValueString)
 		val options = conf.getAll.filterKeys(_.startsWith("moonbox.cache")).+("jobId" -> jobId)
 		val optimized = mbSession.optimizedPlan(query.query)
@@ -169,21 +195,20 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		UnitData
 	}
 
-
-	private def clean(): Unit = {
+	private def clean(jobState: JobState): Unit = {
 		Future {
-			logInfo(s"Runner::clean $currentJob start")
+			logInfo(s"Runner::clean ${currentJob.copy(status = jobState)} start")
 			mbSession.cancelJob(currentJob.jobId)
 			// session.mixcal.sparkSession.sessionState.catalog.reset()
 			mbSession.catalog.stop()
-			logInfo(s"Runner::clean $currentJob end")
+			logInfo(s"Runner::clean ${currentJob.copy(status = jobState)} end")
 		}
 	}
 
 	private def successCallback(jobId: String, result: JobResult, requester: ActorRef, shutdown: Boolean): Unit = {
 		requester ! JobStateChanged(jobId, JobState.SUCCESS, result)
 		if (shutdown) {
-			clean()
+			clean(JobState.SUCCESS)
 			self ! PoisonPill
 		}
 	}
@@ -192,7 +217,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		logError(e.getStackTrace.map(_.toString).mkString("\n"))
 		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(e.getMessage))
 		if (shutdown) {
-			clean()
+			clean(JobState.FAILED)
 			self ! PoisonPill
 		}
 	}

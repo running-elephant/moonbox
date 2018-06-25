@@ -34,7 +34,11 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			definer = "sally",
 			start = None,
 			end = None,
-			desc = None)
+			desc = None,
+			function = () => {
+				println()
+			}
+		)
 		)
 		timedEventService.addTimedEvent(EventEntity(
 			group = "group_test",
@@ -44,7 +48,8 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			definer = "lee",
 			start = None,
 			end = None,
-			desc = None)
+			desc = None,
+			function = () => {})
 		)
 		Thread.sleep(10000)
 		timedEventService.getTimedEvents("group_test").foreach(println)

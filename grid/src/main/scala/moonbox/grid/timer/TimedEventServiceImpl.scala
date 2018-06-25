@@ -2,11 +2,13 @@ package moonbox.grid.timer
 
 import java.util.{Locale, Properties}
 
+import akka.actor.ActorRef
 import com.cronutils.descriptor.CronDescriptor
 import com.cronutils.model.CronType
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.parser.CronParser
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.grid.deploy.MbService
 import moonbox.grid.timer.EventState.EventState
 import org.quartz.Trigger.TriggerState
 import org.quartz._
@@ -52,7 +54,9 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 
 	override def addTimedEvent(event: EventEntity): Unit = {
 		val jobDataMap = new JobDataMap()
-		jobDataMap.put(EventEntity.EVENT_KEY, event)
+		jobDataMap.put(EventEntity.DEFINER, event.definer)
+		jobDataMap.put(EventEntity.SQLS, event.sqls)
+		jobDataMap.put(EventEntity.FUNC, event.function)
 		val jobBuilder = JobBuilder.newJob(classOf[EventJob])
 		if (event.desc.isDefined) {
 			jobBuilder.withDescription(event.desc.get)
