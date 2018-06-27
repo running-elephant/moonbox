@@ -152,50 +152,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def listUsers(organizationId: Long, pattern: String): Seq[CatalogUser]
 
-	// ----------------------------------------------------------------------------
-	// Datasource -- belong to organization
-	// ----------------------------------------------------------------------------
 
-	/*final def createDatasource(dsDefinition: CatalogDatasource, organization: String, ignoreIfExists: Boolean): Unit = {
-		val ds = dsDefinition.name
-		postToAll(CreateDatasourcePreEvent(organization, ds))
-		doCreateDatasource(dsDefinition, ignoreIfExists)
-		postToAll(CreateDatasourceEvent(organization, ds))
-	}
-
-	protected def doCreateDatasource(dsDefinition: CatalogDatasource, ignoreIfExists: Boolean): Unit
-
-	final def dropDatasource(organizationId: Long, organization: String, ds: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropDatasourcePreEvent(organization, ds))
-		doDropDatasource(organizationId, ds, ignoreIfNotExists)
-		postToAll(DropDatasourceEvent(organization, ds))
-	}
-
-	protected def doDropDatasource(organizationId: Long, ds: String, ignoreIfNotExists: Boolean): Unit
-
-	final def renameDatasource(organizationId: Long, organization: String, ds: String, newDs: String, updateBy: Long): Unit = {
-		postToAll(RenameDatasourcePreEvent(organization, ds, newDs))
-		doRenameDatasource(organizationId, ds, newDs, updateBy)
-		postToAll(RenameDatasourceEvent(organization, ds, newDs))
-	}
-
-	protected def doRenameDatasource(organizationId: Long, ds: String, newDs: String, updateBy: Long): Unit
-
-	def alterDatasource(dsDefinition: CatalogDatasource): Unit
-
-	def getDatasource(organizationId: Long, ds: String): CatalogDatasource
-
-	def getDatasource(ds: Long): CatalogDatasource
-
-	def getDatasourceOption(organizationId: Long, ds: String): Option[CatalogDatasource]
-
-	def getDatasourceOption(ds: Long): Option[CatalogDatasource]
-
-	def datasourceExists(organizationId: Long, ds: String): Boolean
-
-	def listDatasources(organizationId: Long): Seq[CatalogDatasource]
-
-	def listDatasources(organizationId: Long, pattern: String): Seq[CatalogDatasource]*/
 
 	// ----------------------------------------------------------------------------
 	// Application -- belong to organization
@@ -375,36 +332,6 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable]
 
 	// ----------------------------------------------------------------------------
-	// Column -- belong to table
-	// ----------------------------------------------------------------------------
-
-	/*protected def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long]
-
-	protected def dropColumn(tableId: Long, column: String, ignoreIfNotExists: Boolean): Unit
-
-	protected def dropColumns(tableId: Long): Unit
-
-	def alterColumn(columnDefinition: CatalogColumn): Unit
-
-	def getColumn(tableId: Long, column: String): CatalogColumn
-
-	def getColumn(column: Long): CatalogColumn
-
-	def getColumnOption(tableId: Long, column: String): Option[CatalogColumn]
-
-	def getColumnOption(column: Long): Option[CatalogColumn]
-
-	def getColumns(columns: Seq[Long]): Seq[CatalogColumn]
-
-	def getColumns(tableId: Long, columns: Seq[String]): Seq[CatalogColumn]
-
-	def getColumns(tableId: Long): Seq[CatalogColumn]
-
-	def columnExists(tableId: Long, column: String): Boolean
-
-	def listColumns(tableId: Long): Seq[CatalogColumn]*/
-
-	// ----------------------------------------------------------------------------
 	// Function -- belong to database
 	// ----------------------------------------------------------------------------
 
@@ -536,84 +463,77 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 
 	// ----------------------------------------------------------------------------
-	// UserTableRel --   the relation of user - table - column
+	// database privilege --   the privilege relation of user - database
 	// ----------------------------------------------------------------------------
-
-	/*final def createUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel])(
-								  user: String, organization: String, db: String, table: String): Unit = {
-		val columns = userTableRelDefinition.map(_.column)
-		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columns))
-		doCreateUserLogicalTableRel(userTableRelDefinition)
-		postToAll(CreateUserTableRelEvent(organization, user, db, table, columns))
-	}
-
-	protected def doCreateUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel]): Unit*/
-
-	final def createUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel])(
-		user: String, organization: String, db: String, table: String): Unit = {
-		val columns = userTableRelDefinition.map(_.column)
-		postToAll(CreateUserTableRelPreEvent(organization, user, db, table, columns))
-		doCreateUserTableRel(userTableRelDefinition)
-		postToAll(CreateUserTableRelEvent(organization, user, db, table, columns))
-	}
-
-	protected def doCreateUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel]): Unit
-
-	/*final def dropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String])
-							   (user: String, organization: String, db: String, table: String): Unit = {
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
-		doDropUserLogicalTableRels(userId, tableId, columns)
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
-	}
-
-	protected def doDropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]): Unit*/
-
-	final def dropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String])
+	final def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*)
 		(user: String, organization: String, db: String): Unit = {
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
-		doDropUserTableRels(userId, databaseId, table, columns)
-		postToAll(DropUserTableRelPreEvent(organization, user, db, table, columns))
+		val privileges = dbPrivilege.map(_.privilegeType)
+		postToAll(CreateDatabasePrivilegePreEvent(organization, user, db, privileges))
+		doCreateDatabasePrivilege(dbPrivilege:_*)
+		postToAll(CreateDatabasePrivilegeEvent(organization, user, db, privileges))
 	}
+	protected def doCreateDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*): Unit
 
-	protected def doDropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]): Unit
-
-	/*final def dropUserLogicalTableRels(tableId: Long)(organization: String, database: String, table: String): Unit = {
-		postToAll(DropUserTableRelsByTablePreEvent(organization, database, table))
-		doDropUserLogicalTableRels(tableId)
-		postToAll(DropUserTableRelsByTableEvent(organization, database, table))
+	final def dropDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*)
+		(user: String, organization: String, database: String): Unit = {
+		postToAll(DropDatabasePrivilegePreEvent(organization, user, database, privileges))
+		doDropDatabasePrivilege(userId, databaseId, privileges:_*)
+		postToAll(DropDatabasePrivilegeEvent(organization, user, database, privileges))
 	}
+	protected def doDropDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*): Unit
 
-	protected def doDropUserLogicalTableRels(tableId: Long): Unit*/
+	protected def getDatabasePrivilege(userId: Long, databaseId: Long, privilege: String): Option[CatalogDatabasePrivilege]
 
-	final def dropUserTableRels(databaseId: Long, table: String)(organization: String, database: String): Unit = {
-		postToAll(DropUserTableRelsByTablePreEvent(organization, database, table))
-		doDropUserTableRels(databaseId, table)
-		postToAll(DropUserTableRelsByTableEvent(organization, database, table))
+	protected def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege]
+
+	// ----------------------------------------------------------------------------
+	// table privilege --   the privilege relation of user - table
+	// ----------------------------------------------------------------------------
+	final def createTablePrivilege(tablePrivilege: CatalogTablePrivilege*)
+		(user: String, organization: String, db: String, table: String): Unit = {
+		val privileges = tablePrivilege.map(_.privilegeType)
+		postToAll(CreateTablePrivilegePreEvent(organization, user, db, table, privileges))
+		doCreateTablePrivilege(tablePrivilege:_*)
+		postToAll(CreateTablePrivilegeEvent(organization, user, db, table, privileges))
 	}
+	protected def doCreateTablePrivilege(tablePrivilege: CatalogTablePrivilege*): Unit
 
-	protected def doDropUserTableRels(databaseId: Long, table: String): Unit
-
-
-	/*final def dropUserLogicalTableRelsByUser(userId: Long)(organization: String, user: String): Unit = {
-		postToAll(DropUserTableRelsByUserPreEvent(organization, user))
-		doDropUserLogicalTableRelsByUser(userId)
-		postToAll(DropUserTableRelsByUserEvent(organization, user))
+	final def dropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*)
+		(user: String, organization: String, database: String): Unit = {
+		postToAll(DropTablePrivilegePreEvent(organization, user, database, table, privileges))
+		doDropTablePrivilege(userId, databaseId, table, privileges:_*)
+		postToAll(DropTablePrivilegeEvent(organization, user, database, table, privileges))
 	}
+	protected def doDropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*): Unit
 
-	protected def doDropUserLogicalTableRelsByUser(userId: Long): Unit*/
+	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege]
 
-	final def dropUserTableRelsByUser(userId: Long)(organization: String, user: String): Unit = {
-		postToAll(DropUserTableRelsByUserPreEvent(organization, user))
-		doDropUserTableRelsByUser(userId)
-		postToAll(DropUserTableRelsByUserEvent(organization, user))
+	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege]
+
+	// ----------------------------------------------------------------------------
+	// column privilege --   the privilege relation of user - table - column
+	// ----------------------------------------------------------------------------
+	final def createColumnPrivilege(tablePrivilege: CatalogColumnPrivilege*)
+		(user: String, organization: String, db: String, table: String): Unit = {
+		val privileges = tablePrivilege.groupBy(_.privilegeType).map { case (k, v) =>
+			(k, v.map(_.column))
+		}.toSeq
+		postToAll(CreateColumnPrivilegePreEvent(organization, user, db, table, privileges))
+		doCreateColumnPrivilege(tablePrivilege:_*)
+		postToAll(CreateColumnPrivilegeEvent(organization, user, db, table, privileges))
 	}
+	protected def doCreateColumnPrivilege(columnPrivilege: CatalogColumnPrivilege*): Unit
 
-	protected def doDropUserTableRelsByUser(userId: Long): Unit
+	final def dropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])])
+		(user: String, organization: String, database: String): Unit = {
+		postToAll(DropColumnPrivilegePreEvent(organization, user, database, table, privileges))
+		doDropColumnPrivilege(userId, databaseId, table, privileges)
+		postToAll(DropColumnPrivilegeEvent(organization, user, database, table, privileges))
+	}
+	protected def doDropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])]): Unit
 
+	protected def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege]
 
-	//def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel]
-
-	def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel]
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)

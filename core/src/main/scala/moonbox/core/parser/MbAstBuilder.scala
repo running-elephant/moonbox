@@ -4,6 +4,7 @@ import java.util
 import java.util.Locale
 
 import moonbox.core.catalog.FunctionResource
+import moonbox.core.command.PrivilegeType.{PrivilegeType, _}
 import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MqlBaseParser._
@@ -353,27 +354,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		AlterTableSetOptions(tableIdentifier, properties)
 	}
 
-	/*override def visitAddTableColumns(ctx: AddTableColumnsContext): MbCommand = {
-		AlterTableAddColumns(
-			visitTableIdentifier(ctx.tableIdentifier),
-			createSchema(ctx.colTypeList())
-		)
-	}
-
-	override def visitChangeTableColumn(ctx: ChangeTableColumnContext): MbCommand = {
-		AlterTableChangeColumn(
-			visitTableIdentifier(ctx.tableIdentifier),
-			visitColType(ctx.colType())
-		)
-	}
-
-	override def visitDropTableColumn(ctx: DropTableColumnContext): MbCommand = {
-		AlterTableDropColumn(
-			visitTableIdentifier(ctx.tableIdentifier),
-			ctx.identifier().getText
-		)
-	}*/
-
 	override def visitUnmountTable(ctx: UnmountTableContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
 		val ignoreIfNotExists = ctx.EXISTS() != null
@@ -384,21 +364,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val database = Option(ctx.db).map(_.getText)
 		val table = ctx.table.getText
 		MbTableIdentifier(table, database)
-	}
-
-	override def visitMountTableList(ctx: MountTableListContext): Seq[(MbTableIdentifier, Option[StructType], Map[String, String])] = {
-		ctx.mountTableOptions().map(visitMountTableOptions)
-	}
-
-	override def visitMountTableOptions(ctx: MountTableOptionsContext): (MbTableIdentifier, Option[StructType], Map[String, String]) = {
-		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
-		val properties = visitPropertyList(ctx.propertyList())
-		val schema = if (ctx.colTypeList() != null) {
-			Some(createSchema(ctx.colTypeList()))
-		} else {
-			None
-		}
-		(tableIdentifier, schema, properties)
 	}
 
 	override def visitCreateView(ctx: CreateViewContext): MbCommand = {
@@ -574,121 +539,121 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitGrantGrantToUser(ctx: GrantGrantToUserContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		val grants = visitPrivilegeList(ctx.privilegeList())
+		val users = visitIdentifierList(ctx.users).distinct
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
 		GrantGrantToUser(grants, users)
 	}
 
 	override def visitGrantGrantToGroup(ctx: GrantGrantToGroupContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		val grants = visitPrivilegeList(ctx.privilegeList())
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
 		GrantGrantToGroup(grants, groups)
 	}
 
 	override def visitRevokeGrantFromUser(ctx: RevokeGrantFromUserContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		val grants = visitPrivilegeList(ctx.privilegeList())
+		val users = visitIdentifierList(ctx.users).distinct
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
 		RevokeGrantFromUser(grants, users)
 	}
 
 	override def visitRevokeGrantFromGroup(ctx: RevokeGrantFromGroupContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		val grants = visitPrivilegeList(ctx.privilegeList())
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
 		RevokeGrantFromGroup(grants, groups)
 	}
 
-	override def visitPrivilegeList(ctx: PrivilegeListContext): Seq[PrivilegeType] = {
+	override def visitGrantPrivilegeList(ctx: GrantPrivilegeListContext): Seq[PrivilegeType] = {
+		ctx.grantPrivilege().map(visitGrantPrivilege)
+	}
+
+	override def visitGrantPrivilege(ctx: GrantPrivilegeContext): PrivilegeType = {
+		if (ctx.ACCOUNT() != null) PrivilegeType.ACCOUNT
+		else if (ctx.DDL() != null) PrivilegeType.DDL
+		else PrivilegeType.DCL
+	}
+
+	override def visitGrantPrivilegeToUsers(ctx: GrantPrivilegeToUsersContext): MbCommand = {
+		val users = visitIdentifierList(ctx.users).distinct
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		GrantPrivilegeToUser(privileges, users)
+	}
+
+	override def visitGrantPrivilegeToGroups(ctx: GrantPrivilegeToGroupsContext): MbCommand = {
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		GrantPrivilegeToGroup(privileges, groups)
+	}
+
+	override def visitRevokePrivilegeFromUsers(ctx: RevokePrivilegeFromUsersContext): MbCommand = {
+		val users = visitIdentifierList(ctx.users).distinct
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		RevokePrivilegeFromUser(privileges, users)
+	}
+
+	override def visitRevokePrivilegeFromGroups(ctx: RevokePrivilegeFromGroupsContext): MbCommand = {
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		RevokePrivilegeFromGroup(privileges, groups)
+	}
+
+	override def visitGrantResourcePrivilegeToUsers(ctx: GrantResourcePrivilegeToUsersContext): MbCommand = {
+		val users = visitIdentifierList(ctx.users).distinct
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		GrantResourceToUser(resourcePrivileges, tableIdentifier, users)
+	}
+
+	override def visitGrantResourcePrivilegeToGroups(ctx: GrantResourcePrivilegeToGroupsContext): MbCommand = {
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		GrantResourceToGroup(resourcePrivileges, tableIdentifier, groups)
+	}
+
+	override def visitRevokeResourcePrivilegeFromUsers(ctx: RevokeResourcePrivilegeFromUsersContext): MbCommand = {
+		val users = visitIdentifierList(ctx.users).distinct
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		RevokeResourceFromUser(resourcePrivileges, tableIdentifier, users)
+	}
+
+	override def visitRevokeResourcePrivilegeFromGroups(ctx: RevokeResourcePrivilegeFromGroupsContext): MbCommand = {
+		val groups = visitIdentifierList(ctx.groups).distinct
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		RevokeResourceFromGroup(resourcePrivileges, tableIdentifier, groups)
+	}
+
+	override def visitPrivileges(ctx: PrivilegesContext): Seq[ResourcePrivilege] = {
 		ctx.privilege().map(visitPrivilege)
 	}
 
-	override def visitPrivilege(ctx: PrivilegeContext): PrivilegeType = {
-		if (ctx.ACCOUNT() != null) GrantAccount
-		else if (ctx.DDL() != null) GrantDdl
-		else GrantDmlOn
-	}
-
-	override def visitGrantAccountToUsers(ctx: GrantAccountToUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		GrantAccountToUser(users)
-	}
-
-	override def visitGrantAccountToGroups(ctx: GrantAccountToGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		GrantAccountToGroup(groups)
-	}
-
-	override def visitRevokeAccountFromUsers(ctx: RevokeAccountFromUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		RevokeAccountFromUser(users)
-	}
-
-	override def visitRevokeAccountFromGroups(ctx: RevokeAccountFromGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		RevokeAccountFromGroup(groups)
-	}
-
-	override def visitGrantDdlToUsers(ctx: GrantDdlToUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		GrantDdlToUser(users)
-	}
-
-	override def visitGrantDdlToGroups(ctx: GrantDdlToGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		GrantDdlToGroup(groups)
-	}
-
-	override def visitRevokeDdlFromUsers(ctx: RevokeDdlFromUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		RevokeDdlFromUser(users)
-	}
-
-	override def visitRevokeDdlFromGroups(ctx: RevokeDdlFromGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		RevokeDdlFromGroup(groups)
-	}
-
-	override def visitGrantDmlOnToUsers(ctx: GrantDmlOnToUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		val columns = visitQualifiedColumnList(ctx.qualifiedColumnList())
-		GrantDmlOnToUser(columns, users)
-	}
-
-	override def visitGrantDmlOnToGroups(ctx: GrantDmlOnToGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		val columns = visitQualifiedColumnList(ctx.qualifiedColumnList())
-		GrantDmlOnToGroup(columns, groups)
-	}
-
-	override def visitRevokeDmlOnFromUsers(ctx: RevokeDmlOnFromUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users)
-		val columns = visitQualifiedColumnList(ctx.qualifiedColumnList())
-		RevokeDmlOnFromUser(columns, users)
-	}
-
-	override def visitRevokeDmlOnFromGroups(ctx: RevokeDmlOnFromGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups)
-		val columns = visitQualifiedColumnList(ctx.qualifiedColumnList())
-		RevokeDmlOnFromGroup(columns, groups)
-	}
-
-	override def visitQualifiedColumnList(ctx: QualifiedColumnListContext): Seq[MbColumnIdentifier] = {
-		ctx.columnIdentifier().flatMap(visitColumnIdentifier)
-	}
-
-	override def visitColumnIdentifier(ctx: ColumnIdentifierContext): Seq[MbColumnIdentifier] = {
-		val db = Option(ctx.db).map(_.getText)
-		val table = visitIdentifierStarList(ctx.table)
-		val col = visitIdentifierStarList(ctx.colunm)
-		for (t <- table; c <- col) yield MbColumnIdentifier(c, t, db)
-	}
-
-	override def visitIdentifierStarList(ctx: IdentifierStarListContext): Seq[String] = {
-		val identifiers = ctx.identifier()
-		if (identifiers.nonEmpty) {
-			identifiers.map(_.getText)
+	override def visitPrivilege(ctx: PrivilegeContext): ResourcePrivilege = {
+		if (ctx.SELECT() != null) {
+			val columns = Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers).getOrElse(Seq())
+			SelectPrivilege(columns)
+		} else if (ctx.UPDATE() != null) {
+			val columns = Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers).getOrElse(Seq())
+			UpdatePrivilege(columns)
+		} else if (ctx.INSERT() != null) {
+			InsertPrivilege
+		} else if (ctx.DELETE() != null) {
+			DeletePrivilege
+		} else if (ctx.TRUNCATE() != null) {
+			TruncatePrivilege
 		} else {
-			Seq(Option(ctx.STAR()).map(_.getText).getOrElse(ctx.getText))
+			AllPrivilege
 		}
+	}
+
+	override def visitColumnIdentifiers(ctx: ColumnIdentifiersContext): Seq[String] = {
+		ctx.identifier().map(_.getText)
+	}
+
+	override def visitTableCollections(ctx: TableCollectionsContext): MbTableIdentifier = {
+		val database = Option(ctx.db).map(_.getText)
+		val table = ctx.table.getText
+		MbTableIdentifier(table, database)
 	}
 
 	override def visitInsertInto(ctx: InsertIntoContext): MbCommand = {
@@ -701,11 +666,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitShowSysInfo(ctx: ShowSysInfoContext): MbCommand = {
 		ShowSysInfo
 	}
-
-	/*override def visitShowDatasources(ctx: ShowDatasourcesContext): MbCommand = {
-		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowDatasources(pattern)
-	}*/
 
 	override def visitShowDatabase(ctx: ShowDatabaseContext): MbCommand = {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
@@ -744,12 +704,6 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
 		ShowApplications(pattern)
 	}
-
-	/*override def visitDescDatasource(ctx: DescDatasourceContext): MbCommand = {
-		val datasource = ctx.name.getText
-		val extended = ctx.EXTENDED() != null
-		DescDatasource(datasource, extended)
-	}*/
 
 	override def visitDescDatabase(ctx: DescDatabaseContext): MbCommand = {
 		val database = ctx.name.getText

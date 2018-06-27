@@ -75,9 +75,10 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			password = "123456",
 			account = true,
 			ddl = true,
+			dcl = true,
 			grantAccount = true,
 			grantDdl = true,
-			grantDmlOn = true,
+			grantDcl = true,
 			isSA = true,
 			organizationId = 1,
 			createBy = 1,
@@ -89,9 +90,10 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		assert(sa.password == "123456")
 		assert(sa.account)
 		assert(sa.ddl)
+		assert(sa.dcl)
 		assert(sa.grantAccount)
 		assert(sa.grantDdl)
-		assert(sa.grantDmlOn)
+		assert(sa.grantDcl)
 		assert(sa.isSA)
 		assert(sa.createBy == 1)
 		assert(sa.updateBy == 1)
@@ -102,9 +104,10 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				password = "123456",
 				account = true,
 				ddl = true,
+				dcl = true,
 				grantAccount = true,
 				grantDdl = true,
-				grantDmlOn = true,
+				grantDcl = true,
 				isSA = true,
 				organizationId = 1,
 				createBy = 1,
@@ -172,54 +175,6 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			catalog.dropGroup(1, "org1", "group1", ignoreIfNotExists = false, cascade = false)
 		}
 	}
-
-	/*test("datasource") {
-		catalog.createDatasource(CatalogDatasource(
-			name = "ds",
-			properties = Map("key1" -> "value1"),
-			description = Some("for testing"),
-			organizationId = 1,
-			createBy = 1,
-			updateBy = 1
-		), "org1", ignoreIfExists = true)
-
-		val ds = catalog.getDatasource(1, "ds")
-		assert(ds.name == "ds")
-		assert(ds.properties == Map("key1" -> "value1"))
-		assert(ds.description.contains("for testing"))
-		assert(ds.organizationId == 1)
-		assert(ds.createBy == 1)
-		assert(ds.updateBy == 1)
-
-		intercept[DatasourceExistsException] {
-			catalog.createDatasource(CatalogDatasource(
-				name = "ds",
-				properties = Map("key1" -> "value1"),
-				description = Some("for testing"),
-				organizationId = 1,
-				createBy = 1,
-				updateBy = 1
-			), "org1", ignoreIfExists = false)
-		}
-
-		catalog.renameDatasource(1, "org1", "ds", "ds1", 2)
-
-		intercept[NoSuchDatasourceException] {
-			catalog.getDatasource(1, "ds")
-		}
-		val ds1 = catalog.getDatasource(1, "ds1")
-		assert(ds1.name == "ds1")
-		assert(ds1.updateBy == 2)
-
-		catalog.alterDatasource(ds1.copy(properties = Map("key2" -> "value2"), updateBy = 1))
-
-		assert(catalog.getDatasource(1, "ds1").properties == Map("key2" -> "value2"))
-		catalog.dropDatasource(1, "org1", "ds1", ignoreIfNotExists = true)
-		assert(!catalog.datasourceExists(1, "ds1"))
-		intercept[NoSuchDatasourceException] {
-			catalog.dropDatasource(1, "org1", "ds1", ignoreIfNotExists = false)
-		}
-	}*/
 
 	test("database and table") {
 		catalog.createDatabase(CatalogDatabase(

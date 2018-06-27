@@ -1,6 +1,7 @@
 package moonbox.core.catalog
 
 import moonbox.common.util.Utils
+import moonbox.core.command.PrivilegeType.PrivilegeType
 
 trait CatalogItem
 
@@ -64,9 +65,10 @@ case class CatalogUser(
 	password: String,
 	account: Boolean = false,
 	ddl: Boolean = false,
+	dcl: Boolean = false,
 	grantAccount: Boolean = false,
 	grantDdl: Boolean = false,
-	grantDmlOn: Boolean = false,
+	grantDcl: Boolean = false,
 	isSA: Boolean = false,
 	organizationId: Long,
 	configuration: Map[String, String] = Map(),
@@ -135,22 +137,34 @@ case class CatalogColumn(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
-/*case class CatalogUserLogicalTableRel(
+case class CatalogDatabasePrivilege(
 	id: Option[Long] = None,
 	userId: Long,
-	tableId: Long,
-	column: String,
+	databaseId: Long,
+	privilegeType: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem*/
+	updateTime: Long = Utils.now) extends CatalogItem
 
-case class CatalogUserTableRel(
+case class CatalogTablePrivilege(
+	id: Option[Long] = None,
+	userId: Long,
+	databaseId: Long,
+	table: String,
+	privilegeType: String,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem
+
+case class CatalogColumnPrivilege(
 	id: Option[Long] = None,
 	userId: Long,
 	databaseId: Long,
 	table: String,
 	column: String,
+	privilegeType: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,

@@ -40,7 +40,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		case KillRunner =>
 			logInfo(s"Runner::KillRunner $currentJob")
 			if(currentJob == null || currentJob.sessionId.isDefined) {  //if a runner have not a job OR it is an adhoc, release resources
-				clean()
+				clean(JobState.KILLED)
 				self ! PoisonPill
 			}
 	}

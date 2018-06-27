@@ -32,10 +32,10 @@ class MbHttpConnector(timeout: Int) extends Connector {
           sessionId = sessionRes.sessionId.get
           flag = true
         } else {
-          throw new Exception("Open session error ...")
+          throw new Exception(sessionRes.error.getOrElse("Open session error ..."))
         }
       } else {
-        throw new Exception("Login error ...")
+        throw new Exception(loginRes.error.getOrElse("Login error ..."))
       }
       flag
     } catch {

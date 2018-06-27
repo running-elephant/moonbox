@@ -24,25 +24,20 @@ mql
         IDENTIFIED BY pwd=password                                                              # setSaPassword
     | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION) org=identifier                 # dropSa
 
-    | GRANT GRANT OPTION privilegeList TO USER users=identifierList                             # grantGrantToUser
-    | GRANT GRANT OPTION privilegeList TO GROUP groups=identifierList                           # grantGrantToGroup
-    | REVOKE GRANT OPTION privilegeList FROM USER users=identifierList                          # revokeGrantFromUser
-    | REVOKE GRANT OPTION privilegeList FROM GROUP groups=identifierList                        # revokeGrantFromGroup
+    | GRANT GRANT OPTION grantPrivilegeList TO USER users=identifierList                        # grantGrantToUser
+    | GRANT GRANT OPTION grantPrivilegeList TO GROUP groups=identifierList                      # grantGrantToGroup
+    | REVOKE GRANT OPTION grantPrivilegeList FROM USER users=identifierList                     # revokeGrantFromUser
+    | REVOKE GRANT OPTION grantPrivilegeList FROM GROUP groups=identifierList                   # revokeGrantFromGroup
 
-    | GRANT ACCOUNT TO USER users=identifierList                                                # grantAccountToUsers
-    | GRANT ACCOUNT TO GROUP groups=identifierList                                              # grantAccountToGroups
-    | REVOKE ACCOUNT FROM USER users=identifierList                                             # revokeAccountFromUsers
-    | REVOKE ACCOUNT FROM GROUP groups=identifierList                                           # revokeAccountFromGroups
+    | GRANT grantPrivilegeList TO USER users=identifierList                                     # grantPrivilegeToUsers
+    | GRANT grantPrivilegeList TO GROUP groups=identifierList                                   # grantPrivilegeToGroups
+    | REVOKE grantPrivilegeList FROM USER users=identifierList                                  # revokePrivilegeFromUsers
+    | REVOKE grantPrivilegeList FROM GROUP groups=identifierList                                # revokePrivilegeFromGroups
 
-    | GRANT DDL TO USER users=identifierList                                                    # grantDdlToUsers
-    | GRANT DDL TO GROUP groups=identifierList                                                  # grantDdlToGroups
-    | REVOKE DDL FROM USER users=identifierList                                                 # revokeDdlFromUsers
-    | REVOKE DDL FROM GROUP groups=identifierList                                               # revokeDdlFromGroups
-
-    | GRANT DML ON qualifiedColumnList TO USER users=identifierList                             # grantDmlOnToUsers
-    | GRANT DML ON qualifiedColumnList TO GROUP groups=identifierList                           # grantDmlOnToGroups
-    | REVOKE DML ON qualifiedColumnList FROM USER users=identifierList                          # revokeDmlOnFromUsers
-    | REVOKE DML ON qualifiedColumnList FROM GROUP groups=identifierList                        # revokeDmlOnFromGroups
+    | GRANT privileges ON tableCollections TO USER users=identifierList                         # grantResourcePrivilegeToUsers
+    | GRANT privileges ON tableCollections TO GROUP groups=identifierList                       # grantResourcePrivilegeToGroups
+    | REVOKE privileges ON tableCollections FROM USER users=identifierList                      # revokeResourcePrivilegeFromUsers
+    | REVOKE privileges ON tableCollections FROM GROUP groups=identifierList                    # revokeResourcePrivilegeFromGroups
 
     | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password                   # createUser
     | RENAME USER name=identifier TO newName=identifier                                         # renameUser
@@ -63,9 +58,6 @@ mql
     | RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                              # renameTable
     | ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                        # setTableName
     | ALTER TABLE name=tableIdentifier SET OPTIONS propertyList                                 # setTableProperties
-    //| ALTER TABLE name=tableIdentifier ADD COLUMNS ('(' columns=colTypeList ')')                # addTableColumns
-    //| ALTER TABLE name=tableIdentifier CHANGE COLUMN? identifier colType                        # changeTableColumn
-    //| ALTER TABLE name=tableIdentifier DROP COLUMN identifier                                   # dropTableColumn
     | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                           # unmountTable
 
     | MOUNT DATABASE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                      # mountDatabase
@@ -107,7 +99,6 @@ mql
     | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
 
     | SHOW SYSINFO                                                                              # showSysInfo
-    //| SHOW DATASOURCES (LIKE pattern=STRING)?                                                   # showDatasources
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
     | SHOW VIEWS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                            # showViews
@@ -116,7 +107,6 @@ mql
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
 
-    //| (DESC | DESCRIBE) DATASOURCE EXTENDED? name=identifier                                    # descDatasource
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
     | (DESC | DESCRIBE) TABLE EXTENDED? tableIdentifier                                         # descTable
     | (DESC | DESCRIBE) VIEW tableIdentifier                                                    # descView
@@ -175,35 +165,38 @@ namedQuery
     : name=identifier AS? '(' query ')'
     ;
 
-mountTableList
-    : mountTableOptions (',' mountTableOptions)*
-    ;
-mountTableOptions
-    : tableIdentifier ('(' columns=colTypeList ')')? OPTIONS propertyList
+grantPrivilegeList
+    :  grantPrivilege (',' grantPrivilege)*
     ;
 
-privilegeList
-    :  privilege (',' privilege)*
-    ;
-
-privilege
+grantPrivilege
     : ACCOUNT
     | DDL
-    | DMLON
+    | DCL
     ;
 
-qualifiedColumnList
-    : columnIdentifier (',' columnIdentifier)*
+privileges
+    : privilege (',' privilege)*
+    ;
+privilege
+    : SELECT columnIdentifiers?
+    | UPDATE columnIdentifiers?
+    | INSERT
+    | DELETE
+    | TRUNCATE
+    | ALL
     ;
 
-columnIdentifier
-    : (db=identifier '.')? table=identifierStarList '.' colunm=identifierStarList
+columnIdentifiers
+    : '(' identifier (',' identifier)* ')'
     ;
 
-identifierStarList
-    : '[' identifier (',' identifier)* ']'
-    | '{' identifier (',' identifier)* '}'
-    | identifier
+tableCollections
+    : (db=identifier '.')? table = identifierOrStar
+    ;
+
+identifierOrStar
+    : identifier
     | STAR
     ;
 
@@ -266,6 +259,7 @@ nonReserved
 
 ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
+ALL: 'ALL';
 ALTER: 'ALTER';
 APPLICATION: 'APPLICATION';
 APPLICATIONS: 'APPLICATIONS';
@@ -290,12 +284,12 @@ DATASOURCE: 'DATASOURCE';
 DATASOURCES: 'DATASOURCES';
 DDL: 'DDL';
 DEFINER: 'DEFINER';
+DELETE: 'DELETE';
 DESC: 'DESC';
 DESCRIBE: 'DESCRIBE';
 DISABLE: 'DISABLE';
 DO: 'DO';
-DML: 'DML';
-DMLON: 'DMLON';
+DCL: 'DCL';
 DROP: 'DROP';
 ENABLE: 'ENABLE';
 EQ: '=' | '==';
@@ -346,7 +340,9 @@ TEMP: 'TEMP';
 TEMPORARY: 'TEMPORARY';
 TO: 'TO';
 TYPE: 'TYPE';
+TRUNCATE: 'TRUNCATE';
 UNMOUNT: 'UNMOUNT';
+UPDATE: 'UPDATE';
 USE: 'USE';
 USING: 'USING';
 USER: 'USER';
@@ -370,8 +366,6 @@ IDENTIFIER
     | '\'' (LETTER | DIGIT | '_' )+ '\''
     | '"' (LETTER | DIGIT | '_' )+ '"'
     ;
-
-
 
 fragment DIGIT
     : [0-9]
