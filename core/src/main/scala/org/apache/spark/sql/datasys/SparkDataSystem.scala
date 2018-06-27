@@ -30,4 +30,5 @@ class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSys
 
 	override def tableProperties(tableName: String): Map[String, String] = { throw new UnsupportedOperationException("unsupport method tableOption") }
 
+	override def tableName(): String = {  throw new UnsupportedOperationException("unsupport method tableName") }
 }

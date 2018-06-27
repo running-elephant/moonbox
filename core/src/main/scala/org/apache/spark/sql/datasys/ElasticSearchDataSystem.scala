@@ -19,8 +19,8 @@ import scala.collection.JavaConverters._
 
 class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transient val sparkSession: SparkSession)
 		extends DataSystem(props) with Queryable with Insertable with Truncatable with MbLogging{
-	require(contains("es.nodes", "es.resource"))
     import ElasticSearchDataSystem._
+    require(contains(ES_NODES, ES_RESOURCE))
 
 	override val name: String = "elasticsearch"
 
@@ -163,6 +163,12 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])(@transi
     override def tableProperties(tableName: String): Map[String, String] = {
         val resource: String = props(ES_RESOURCE).split("/")(0)
         props + (ES_RESOURCE -> s"$resource/$tableName")
+    }
+
+    override def tableName(): String = {
+        val res = props(ES_RESOURCE).split("/")
+        if(res.length == 2){ res(1) }
+        else{ throw new Exception(s"$ES_RESOURCE $res does not have 2 elements by / separator")}
     }
 }
 

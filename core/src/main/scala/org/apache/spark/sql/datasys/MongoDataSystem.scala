@@ -341,4 +341,8 @@ class MongoDataSystem(props: Map[String, String])(@transient val sparkSession: S
   override def tableProperties(tableName: String): Map[String, String] = {
     props + ((MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY) -> tableName)
   }
+
+  override def tableName(): String = {
+    props(MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY)
+  }
 }

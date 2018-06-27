@@ -185,4 +185,8 @@ class MysqlDataSystem(props: Map[String, String])(@transient val sparkSession: S
 	}
 
     override def insert(table: DataTable, saveMode: SaveMode): Unit = {}
+
+	override def tableName(): String = {
+		props("dbtable")
+	}
 }

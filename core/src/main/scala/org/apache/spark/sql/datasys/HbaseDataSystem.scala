@@ -38,4 +38,5 @@ null
 
 	override def tableProperties(tableName: String): Map[String, String] = Map()
 
+	override def tableName() = ""
 }

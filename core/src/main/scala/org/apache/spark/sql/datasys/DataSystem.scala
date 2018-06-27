@@ -50,4 +50,6 @@ abstract class DataSystem(props: Map[String, String]) {
 
     def tableProperties(tableName: String): Map[String, String]
 
+	def tableName(): String
+
 }
