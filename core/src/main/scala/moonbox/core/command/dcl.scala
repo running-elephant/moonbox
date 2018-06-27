@@ -5,6 +5,7 @@ import moonbox.core.catalog._
 import moonbox.core.command.PrivilegeType.PrivilegeType
 import moonbox.core.{MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.datasys.DataSystemFactory
 
 sealed trait DCL
 
@@ -276,7 +277,6 @@ case class GrantResourceToUser(
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
 
-		// val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
 
 		if (tableIdentifier.table == "*") { // database privilege
 			val privilegeType = privileges.flatMap {
@@ -314,6 +314,8 @@ case class GrantResourceToUser(
 					catalogDatabase.name)
 			}
 		} else {
+			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
+			val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
 			val catalogColumns = mbSession.catalog.getColumns(catalogDatabase.id.get, tableIdentifier.table)(mbSession)
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false
@@ -339,7 +341,7 @@ case class GrantResourceToUser(
 					CatalogTablePrivilege(
 						userId = catalogUser.id.get,
 						databaseId = catalogDatabase.id.get,
-						table = tableIdentifier.table,
+						table = physicalTableName,
 						privilegeType = priv,
 						createBy = ctx.userId,
 						updateBy = ctx.userId
@@ -360,7 +362,7 @@ case class GrantResourceToUser(
 							CatalogColumnPrivilege(
 								userId = catalogUser.id.get,
 								databaseId = catalogDatabase.id.get,
-								table = tableIdentifier.table,
+								table = physicalTableName,
 								column = column,
 								privilegeType = SelectPrivilege.NAME,
 								createBy = ctx.userId,
@@ -373,7 +375,7 @@ case class GrantResourceToUser(
 							CatalogColumnPrivilege(
 								userId = catalogUser.id.get,
 								databaseId = catalogDatabase.id.get,
-								table = tableIdentifier.table,
+								table = physicalTableName,
 								column = column,
 								privilegeType = UpdatePrivilege.NAME,
 								createBy = ctx.userId,
@@ -422,6 +424,7 @@ case class RevokeResourceFromUser(
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
+
 		if (tableIdentifier.table == "*") {
 			val privilegeTypes = privileges.flatMap {
 				case SelectPrivilege(columns) if columns.nonEmpty =>
@@ -451,6 +454,9 @@ case class RevokeResourceFromUser(
 					catalogDatabase.name)
 			}
 		} else {
+			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
+			val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
+
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false
 				case UpdatePrivilege(columns) if columns.nonEmpty => false
@@ -474,7 +480,7 @@ case class RevokeResourceFromUser(
 				mbSession.catalog.dropTablePrivilege(
 					catalogUser.id.get,
 					catalogDatabase.id.get,
-					tableIdentifier.table,
+					physicalTableName,
 					privilegeTypes,
 					catalogUser.name,
 					ctx.organizationName,
@@ -490,7 +496,7 @@ case class RevokeResourceFromUser(
 				mbSession.catalog.dropColumnPrivilege(
 					catalogUser.id.get,
 					catalogDatabase.id.get,
-					tableIdentifier.table,
+					physicalTableName,
 					catalogColumnPrivileges,
 					catalogUser.name,
 					ctx.organizationName,

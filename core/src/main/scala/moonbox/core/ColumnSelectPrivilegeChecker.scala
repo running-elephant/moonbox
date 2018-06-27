@@ -5,15 +5,16 @@ import moonbox.core.command._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.datasys.DataSystemFactory
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StructType
 
 import scala.collection.mutable.ArrayBuffer
 
 class TablePrivilegeManager(mbSession: MbSession, catalogTable: CatalogTable) {
-
+	val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
 	val dbPrivileges = mbSession.catalog.getDatabasePrivilege(mbSession.catalogSession.userId, catalogTable.databaseId)
-	val tablePrivileges= mbSession.catalog.getTablePrivilege(mbSession.catalogSession.userId, catalogTable.databaseId, catalogTable.name)
+	val tablePrivileges = mbSession.catalog.getTablePrivilege(mbSession.catalogSession.userId, catalogTable.databaseId, physicalTableName)
 
 	def insertable(): Boolean = {
 		tableLevelPrivilege(InsertPrivilege.NAME)
@@ -41,7 +42,7 @@ class TablePrivilegeManager(mbSession: MbSession, catalogTable: CatalogTable) {
 		} else if (dbPrivileges.exists(dbPriv => dbPriv.databaseId == catalogTable.databaseId &&
 			dbPriv.privilegeType == privilegeType)) true
 		else if (tablePrivileges.exists(tablePriv => tablePriv.databaseId == catalogTable.databaseId &&
-			tablePriv.table == catalogTable.name && tablePriv.privilegeType == privilegeType)) true
+			tablePriv.table == physicalTableName && tablePriv.privilegeType == privilegeType)) true
 		else false
 	}
 
@@ -53,7 +54,7 @@ class TablePrivilegeManager(mbSession: MbSession, catalogTable: CatalogTable) {
 			val tablePrivi = tableLevelPrivilege(privilegeType)
 			if (tablePrivi) catalogColumns
 			else {
-				val visibleColumns = mbSession.catalog.getColumnPrivilege(mbSession.catalogSession.userId, catalogTable.databaseId, catalogTable.name, privilegeType).map(_.column)
+				val visibleColumns = mbSession.catalog.getColumnPrivilege(mbSession.catalogSession.userId, catalogTable.databaseId, physicalTableName, privilegeType).map(_.column)
 				catalogColumns.filter(column => visibleColumns.contains(column.name))
 			}
 		}
@@ -85,11 +86,19 @@ object ColumnSelectPrivilegeChecker {
 			}
 			val attributeSet = new ArrayBuffer[AttributeSet]()
 
-			plan.transformAllExpressions {
+			plan.foreach {
+				case project: Project =>
+					attributeSet.append(project.projectList.map(_.references):_*)
+				case aggregate: Aggregate =>
+					attributeSet.append(aggregate.aggregateExpressions.map(_.references):_*)
+					attributeSet.append(aggregate.groupingExpressions.map(_.references):_*)
+				case other =>
+			}
+			/*plan.transformAllExpressions {
 				case expression =>
 					attributeSet.append(expression.references)
 					expression
-			}
+			}*/
 			val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
 			if (unavailableColumns.nonEmpty)
 				throw new ColumnPrivilegeException(
