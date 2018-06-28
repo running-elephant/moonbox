@@ -4,12 +4,13 @@ import org.apache.spark.sql.SparkSession
 
 object DataSystemFactory {
 	def getInstance(props: Map[String, String], sparkSession: SparkSession): DataSystem = {
-		require(props.contains("type"))
+		require(props.contains("type"), s"properties in method ${this.getClass.getSimpleName}.getInstance() must contains key 'type' ")
 		props("type").toLowerCase match {
 			case "mysql" => new MysqlDataSystem(props)(sparkSession)
 			case "presto" | "prestodb" => new PrestoDataSystem(props)(sparkSession)
 			case "es" | "elasticsearch" => new ElasticSearchDataSystem(props)(sparkSession)
 			case "mongo" | "mongodb" => new MongoDataSystem(props)(sparkSession)
+			case "redis" => new RedisDataSystem(props)(sparkSession)
 			case _ => new SparkDataSystem(sparkSession)
 		}
 	}

@@ -4,8 +4,9 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, EqualTo}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
-import org.apache.spark.sql.datasys.{DataSystemFactory, SparkDataSystem}
+import org.apache.spark.sql.datasys.{DataSystemFactory, Queryable, SparkDataSystem}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+
 import scala.collection.mutable
 
 object Pushdown {
@@ -13,13 +14,18 @@ object Pushdown {
 }
 
 class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
+
 	override def apply(plan: LogicalPlan): LogicalPlan = {
 		val graph = buildDataSystemTree(plan)
-		val points = findReplacePoint(graph)
-		replacePushdownSubtree(graph, points)
+		val (whole, partial) = findReplacePoint(graph)
+		if (whole.isDefined) {
+			wholePushdown(whole.get)
+		} else {
+			replacePushdownSubtree(graph, partial)
+		}
 	}
 
-	private def findReplacePoint(graph: MbTreeNode): mutable.HashSet[MbTreeNode] = {
+	private def findReplacePoint(graph: MbTreeNode): (Option[MbTreeNode], mutable.HashSet[MbTreeNode]) = {
 		val parents = new mutable.HashSet[MbTreeNode]()
 		val visited = new mutable.HashSet[MbTreeNode]()
 		val waitingForVisit = new mutable.Stack[MbTreeNode]()
@@ -35,10 +41,22 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 				}
 			}
 		}
-		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem]) {
+		/*if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem]) {
 			parents.add(graph)
 		}
-		parents.filter(n => n.plan.find(l => n.dataSystem.isGoodAt(l.getClass)).isDefined)
+		parents.filter(n => n.plan.find(l => n.dataSystem.isGoodAt(l.getClass)).isDefined)*/
+		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem] &&
+			graph.plan.find(l => graph.dataSystem.isGoodAt(l.getClass)).isDefined &&
+			graph.dataSystem.isInstanceOf[Queryable]
+		) {
+			(Some(graph), mutable.HashSet[MbTreeNode]())
+		} else {
+			(None, parents.filter(n => n.plan.find(l => n.dataSystem.isGoodAt(l.getClass)).isDefined))
+		}
+	}
+
+	private def wholePushdown(graph: MbTreeNode): LogicalPlan = {
+		WholePushdown(graph.plan, graph.dataSystem.asInstanceOf[Queryable])
 	}
 
 	private def replacePushdownSubtree(graph: MbTreeNode, points: mutable.HashSet[MbTreeNode]): LogicalPlan = {
@@ -155,4 +173,5 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 			node.dataSystem.fastEquals(children.head.dataSystem)
 		}
 	}
+
 }

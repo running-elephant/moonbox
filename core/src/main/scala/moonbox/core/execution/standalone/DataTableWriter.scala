@@ -17,7 +17,7 @@ class DataTableWriter(dt: DataTable) {
 
 	def format(source: String): DataTableWriter = {
 		this.source = source
-		options.+("type" -> source)
+		this.options += ("type" -> source)
 		this
 	}
 

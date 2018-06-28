@@ -78,11 +78,10 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 	}
 
-	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): (LogicalPlan, Option[Queryable]) = {
-		val lastLogicalPlan = if (pushdown) {
+	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): LogicalPlan = {
+		if (pushdown) {
 			mixcal.furtherOptimizedLogicalPlan(plan)
 		} else plan
-		(lastLogicalPlan, None)
 	}
 
 	def toDF(plan: LogicalPlan): DataFrame = {

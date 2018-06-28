@@ -12,6 +12,7 @@ import moonbox.grid._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.timer.{EventCall, EventEntity}
 import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.optimizer.WholePushdown
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -135,7 +136,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def createTempView(tempView: CreateTempView): JobResult = {
 		val optimized = mbSession.optimizedPlan(tempView.query)
-		val (plan, _) = mbSession.pushdownPlan(optimized, pushdown = false)
+		val plan = mbSession.pushdownPlan(optimized, pushdown = false)
 		val df = mbSession.toDF(plan)
 		if (tempView.isCache) {
 			df.cache()
@@ -153,18 +154,25 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		val options = conf.getAll.filterKeys(_.startsWith("moonbox.cache")).+("jobId" -> jobId)
 		val optimized = mbSession.optimizedPlan(query.query)
 		try {
-			val (plan, wholePushdown) = mbSession.pushdownPlan(optimized)
-			if (wholePushdown.isDefined) {
-				mbSession.toDT(plan, wholePushdown.get).write().format(format).options(options).save()
-			} else {
-				mbSession.toDF(plan).write.format(format).options(options).save()
+			val plan = mbSession.pushdownPlan(optimized)
+			plan match {
+				case WholePushdown(child, queryable) =>
+					mbSession.toDT(child, queryable).write().format(format).options(options).save()
+				case _ =>
+					mbSession.toDF(plan).write.format(format).options(options).save()
 			}
 		} catch {
 			case e: ColumnPrivilegeException =>
 				throw e
-			case _: Throwable =>
-				val (plan, _) = mbSession.pushdownPlan(optimized, pushdown = false)
-				mbSession.toDF(plan).write.format(format).options(options).save()
+			case e: Throwable =>
+				logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
+				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
+				plan match {
+					case WholePushdown(child, queryable) =>
+						mbSession.toDF(child).write.format(format).options(options).save()
+					case _ =>
+						mbSession.toDF(plan).write.format(format).options(options).save()
+				}
 		}
 		CachedData
 	}
@@ -175,21 +183,23 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		val saveMode = if (insert.overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(insert.query)
 		try {
-			val (plan, wholePushdown) = mbSession.pushdownPlan(optimized)
-			if (wholePushdown.isDefined) {
-				mbSession.toDT(plan, wholePushdown.get).write().format(format).options(options).mode(saveMode).save()
-			} else {
-				mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
+			val plan = mbSession.pushdownPlan(optimized)
+			plan match {
+				case WholePushdown(child, queryable) =>
+					mbSession.toDT(plan, queryable).write().format(format).options(options).mode(saveMode).save()
+				case _ =>
+					mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
 			}
 		} catch {
 			case e: ColumnPrivilegeException =>
 				throw e
 			case _: Throwable =>
-				val (plan, wholePushdown) = mbSession.pushdownPlan(optimized, pushdown = false)
-				if (wholePushdown.isDefined) {
-					mbSession.toDT(plan, wholePushdown.get).write().format(format).options(options).mode(saveMode).save()
-				} else {
-					mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
+				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
+				plan match {
+					case WholePushdown(child, queryable) =>
+						mbSession.toDF(child).write.format(format).options(options).mode(saveMode).save()
+					case _ =>
+						mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
 				}
 		}
 		UnitData

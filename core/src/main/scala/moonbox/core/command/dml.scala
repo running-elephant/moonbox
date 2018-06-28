@@ -4,6 +4,7 @@ import moonbox.core.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, TablePrivilegeManager}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
+import org.apache.spark.sql.optimizer.WholePushdown
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -249,14 +250,25 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
 	// TODO
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {
-		val (logicalPlan, _) = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
-		val queryExecution = mbSession.toDF(logicalPlan).queryExecution.executedPlan
-		val outputString =
-			if (extended) {
-				queryExecution.toString()
-			} else {
-				queryExecution.simpleString
-			}
+		val logicalPlan = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
+		val outputString = logicalPlan match {
+			case w@WholePushdown(child, _) =>
+				val executedPlan = mbSession.toDF(child).queryExecution.executedPlan
+				if (extended) {
+					w.simpleString + "\n\t" +
+					executedPlan.toString()
+				} else {
+					w.simpleString + "\n\t" +
+					executedPlan.simpleString
+				}
+			case _ =>
+				val executedPlan = mbSession.toDF(logicalPlan).queryExecution.executedPlan
+				if (extended) {
+					executedPlan.toString()
+				} else {
+					executedPlan.simpleString
+				}
+		}
 		Seq(Row(outputString))
 	} catch { case e: TreeNodeException[_] =>
 		("Error occurred during query planning: \n" + e.getMessage).split("\n").map(Row(_))
