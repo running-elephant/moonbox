@@ -33,6 +33,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getUser(userId).ddl
 	}
 
+	def canDcl(userId: Long): Boolean = {
+		catalog.getUser(userId).dcl
+	}
+
 	def canAccount(userId: Long): Boolean = {
 		catalog.getUser(userId).account
 	}
@@ -45,8 +49,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getUser(userId).grantDdl
 	}
 
-	def canGrantDmlOn(userId: Long): Boolean = {
-		catalog.getUser(userId).grantDmlOn
+	def canGrantDcl(userId: Long): Boolean = {
+		catalog.getUser(userId).grantDcl
 	}
 
 	def createOrganization(
@@ -238,11 +242,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 			)
 		}
 	}
-
-	/*def tableExists(databaseId: Long, table: String): Boolean = {
-		// TODO
-		catalog.tableExists(databaseId, table)
-	}*/
 
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
 		val database = catalog.getDatabase(databaseId)
@@ -457,47 +456,47 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getUserGroupRelsByGroup(groupId)
 	}
 
-	def createUserTableRel(userTableRels: Seq[CatalogUserTableRel], user: String, organization: String, db: String, table: String): Unit = {
-		catalog.createUserTableRel(userTableRels)(user, organization, db, table)
+	def createDatabasePrivilege(dbPrivileges: Seq[CatalogDatabasePrivilege], user: String, organization: String, db: String): Unit = {
+		catalog.createDatabasePrivilege(dbPrivileges:_*)(user, organization, db)
 	}
 
-	/*def createUserPhysicalTableRel(userTableRels: Seq[CatalogUserPhysicalTableRel], user: String, organization: String, db: String, table: String): Unit = {
-		catalog.createUserPhysicalTableRel(userTableRels)(user, organization, db, table)
-	}*/
-
-	/*def dropUserLogicalRels(userId: Long, tableId: Long, columns: Seq[String], user: String, organization: String, db: String, table: String): Unit = {
-		catalog.dropUserLogicalTableRels(userId, tableId, columns)(user, organization, db, table)
-	}*/
-
-	def dropUserTableRel(userId: Long, databaseId: Long, table: String, columns: Seq[String], user: String, organization: String, db: String) = {
-		catalog.dropUserTableRels(userId, databaseId, table, columns)(user, organization, db)
+	def dropDatabasePrivilege(userId: Long, databaseId: Long, privileges: Seq[String], user: String, organization: String, database: String): Unit = {
+		catalog.dropDatabasePrivilege(userId, databaseId, privileges:_*)(user, organization, database)
 	}
 
-	/*def dropUserLogicalTableRels(tableId: Long)(organization: String, database: String, table: String): Unit = {
-		catalog.dropUserLogicalTableRels(tableId)(organization, database, table)
+	def getDatabasePrivilege(userId: Long, databaseId: Long, privilege: String): Option[CatalogDatabasePrivilege] = {
+		catalog.getDatabasePrivilege(userId, databaseId, privilege)
 	}
 
-	def dropUserPhysicalTableRels(databaseId: Long, table: String)(organization: String, database: String): Unit = {
-		catalog.dropUserPhysicalTableRels(databaseId, table)(organization, database)
-	}*/
-
-	/*def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel] = {
-		catalog.getUserLogicalTableRels(userId, tableId)
-	}*/
-
-	def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel] = {
-		catalog.getUserTableRels(userId, databaseId, table)
+	def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege] = {
+		catalog.getDatabasePrivilege(userId, databaseId)
 	}
 
-	/*def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean) = {
-		catalog.createColumns(columnDefinition, ignoreIfExists)
+	def createTablePrivilege(tablePrivileges: Seq[CatalogTablePrivilege], user: String, organization: String, db: String, table: String): Unit = {
+		catalog.createTablePrivilege(tablePrivileges:_*)(user, organization, db, table)
 	}
 
-	def getColumns(columns: Seq[Long]): Seq[CatalogColumn] = {
-		catalog.getColumns(columns)
+	def dropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[String], user: String, organization: String, database: String): Unit = {
+		catalog.dropTablePrivilege(userId, databaseId, table, privileges:_*)(user, organization, database)
 	}
 
-	def getColumns(tableId: Long): Seq[CatalogColumn] = {
-		catalog.getColumns(tableId)
-	}*/
+	def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege] = {
+		catalog.getTablePrivilege(userId, databaseId, table, privilege)
+	}
+
+	def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege] = {
+		catalog.getTablePrivilege(userId, databaseId, table)
+	}
+
+	def createColumnPrivilege(columnPrivileges: Seq[CatalogColumnPrivilege], user: String, organization: String, db: String, table: String): Unit = {
+		catalog.createColumnPrivilege(columnPrivileges:_*)(user, organization, db, table)
+	}
+
+	def dropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])], user: String, organization: String, database: String): Unit = {
+		catalog.dropColumnPrivilege(userId, databaseId, table, privileges)(user, organization, database)
+	}
+
+	def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege] = {
+		catalog.getColumnPrivilege(userId, databaseId, table, privilege)
+	}
 }

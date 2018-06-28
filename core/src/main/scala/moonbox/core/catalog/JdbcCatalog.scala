@@ -23,7 +23,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.organizationExists(orgDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -46,7 +46,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
+	override protected def doDropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getOrganization(org)).flatMap {
 			case Some(catalogOrganization) =>
 				if (cascade) {
@@ -83,7 +83,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameOrganization(org: String, newOrg: String, updateBy: Long): Unit = await {
+	override protected def doRenameOrganization(org: String, newOrg: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.organizationExists(org)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.organizationExists(newOrg)).flatMap {
@@ -138,7 +138,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Group -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.groupExists(groupDefinition.organizationId, groupDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -150,7 +150,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropGroup(organizationId: Long, group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
+	override protected def doDropGroup(organizationId: Long, group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getGroup(organizationId, group)).flatMap {
 			case Some(catalogGroup) =>
 				if (cascade) {
@@ -176,8 +176,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-
-	override def doRenameGroup(organizationId: Long, group: String, newGroup: String, updateBy: Long): Unit = await {
+	override protected def doRenameGroup(organizationId: Long, group: String, newGroup: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.groupExists(organizationId, group)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.groupExists(organizationId, newGroup)).flatMap {
@@ -237,7 +236,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// User -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateUser(userDefinition: CatalogUser, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateUser(userDefinition: CatalogUser, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.userExists(userDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -249,7 +248,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropUser(organizationId: Long, organization: String, user: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropUser(organizationId: Long, organization: String, user: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getUser(organizationId, user)).flatMap {
 			case Some(catalogUser) =>
 				// delete user group relation
@@ -258,7 +257,9 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				jdbcDao.actionTransactionally(
 					for (
 						_ <- jdbcDao.deleteUserGroupRelByUser(catalogUser.id.get);
-						_ <- jdbcDao.deleteUserTableRelsByUser(catalogUser.id.get);
+						_ <- jdbcDao.deleteDatabasePrivilegeByUser(catalogUser.id.get);
+						_ <- jdbcDao.deleteTablePrivilegeByUser(catalogUser.id.get);
+						_ <- jdbcDao.deleteColumnPrivilegeByUser(catalogUser.id.get);
 						_ <- jdbcDao.deleteUser(catalogUser.id.get)
 					) yield ()
 				)
@@ -270,7 +271,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameUser(organizationId: Long, user: String, newUser: String, updateBy: Long): Unit = await {
+	override protected def doRenameUser(organizationId: Long, user: String, newUser: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.userExists(organizationId, user)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.userExists(organizationId, newUser)).flatMap {
@@ -295,8 +296,15 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def getUsers(organizationId: Long, users: Seq[String]): Seq[CatalogUser] = await {
-		jdbcDao.action(jdbcDao.getUsers(organizationId, users))
+	override def getUsers(organizationId: Long, users: Seq[String]): Seq[CatalogUser] = {
+		val catalogUsers = await {
+			jdbcDao.action(jdbcDao.getUsers(organizationId, users))
+		}
+		if (catalogUsers.size != users.size) {
+			val notExistsUsers = users.diff(catalogUsers.map(_.name))
+			throw new NoSuchUserException(notExistsUsers.mkString(", "))
+		}
+		catalogUsers
 	}
 
 	override def getUsers(userIds: Seq[Long]): Seq[CatalogUser] = await {
@@ -335,90 +343,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Datasource -- belong to organization
-	// ----------------------------------------------------------------------------
-
-	/*override def doCreateDatasource(dsDefinition: CatalogDatasource, ignoreIfExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.datasourceExists(dsDefinition.organizationId, dsDefinition.name)).flatMap {
-			case true =>
-				ignoreIfExists match {
-					case true => Future(Unit)
-					case false => throw new DatasourceExistsException(dsDefinition.name)
-				}
-			case false =>
-				jdbcDao.action(jdbcDao.createDatasource(dsDefinition))
-		}
-	}
-
-	override def doDropDatasource(organizationId: Long, datasoruce: String, ignoreIfNotExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.datasourceExists(organizationId, datasoruce)).flatMap {
-			case true =>
-				jdbcDao.action(jdbcDao.deleteDatasource(organizationId, datasoruce))
-			case false =>
-				ignoreIfNotExists match {
-					case true => Future(Unit)
-					case false => throw new NoSuchDatasourceException(datasoruce)
-				}
-		}
-	}
-
-	override def doRenameDatasource(organizationId: Long, ds: String, newDs: String, updateBy: Long): Unit = await {
-		jdbcDao.action(jdbcDao.datasourceExists(organizationId, ds)).flatMap {
-			case true =>
-				jdbcDao.action(jdbcDao.datasourceExists(organizationId, newDs)).flatMap {
-					case false =>
-						jdbcDao.action(jdbcDao.renameDatasource(organizationId, ds, newDs)(updateBy))
-					case true =>
-						throw new DatasourceExistsException(newDs)
-				}
-			case false =>
-				throw new NoSuchDatasourceException(ds)
-		}
-	}
-
-	override def alterDatasource(dsDefinition: CatalogDatasource): Unit = await {
-		jdbcDao.action(jdbcDao.updateDatasource(dsDefinition))
-	}
-
-	override def getDatasource(organizationId: Long, datasoruce: String): CatalogDatasource = await {
-		jdbcDao.action(jdbcDao.getDatasource(organizationId, datasoruce)).map {
-			case Some(ds) => ds
-			case None => throw new NoSuchDatasourceException(datasoruce)
-		}
-	}
-
-	override def getDatasource(datasourceId: Long): CatalogDatasource = await {
-		jdbcDao.action(jdbcDao.getDatasource(datasourceId)).map {
-			case Some(ds) => ds
-			case None => throw new NoSuchDatasourceException(s"Id $datasourceId")
-		}
-	}
-
-	override def getDatasourceOption(organizationId: Long, datasoruce: String): Option[CatalogDatasource] = await {
-		jdbcDao.action(jdbcDao.getDatasource(organizationId, datasoruce))
-	}
-
-	override def getDatasourceOption(organizationId: Long): Option[CatalogDatasource] = await {
-		jdbcDao.action(jdbcDao.getDatasource(organizationId))
-	}
-
-	override def datasourceExists(organizationId: Long, datasoruce: String): Boolean = await {
-		jdbcDao.action(jdbcDao.datasourceExists(organizationId, datasoruce))
-	}
-
-	override def listDatasources(organizationId: Long): Seq[CatalogDatasource] = await {
-		jdbcDao.action(jdbcDao.listDatasources(organizationId))
-	}
-
-	override def listDatasources(organizationId: Long, pattern: String): Seq[CatalogDatasource] = await {
-		jdbcDao.action(jdbcDao.listDatasources(organizationId, pattern))
-	}*/
-
-	// ----------------------------------------------------------------------------
 	// Application -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.applicationExists(appDefinition.organizationId, appDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -430,7 +358,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropApplication(organizationId: Long, app: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropApplication(organizationId: Long, app: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.applicationExists(organizationId, app)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.deleteApplication(organizationId, app))
@@ -442,7 +370,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameApplication(organizationId: Long, app: String, newApp: String, updateBy: Long): Unit = await {
+	override protected def doRenameApplication(organizationId: Long, app: String, newApp: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.applicationExists(organizationId, app)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.applicationExists(organizationId, newApp)).flatMap {
@@ -498,7 +426,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// timedevent -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.timedEventExists(eventDefinition.organizationId, eventDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -510,7 +438,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameTimedEvent(organizationId: Long, event: String, newEvent: String, updateBy: Long): Unit = await {
+	override protected def doRenameTimedEvent(organizationId: Long, event: String, newEvent: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.timedEventExists(organizationId, event)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.timedEventExists(organizationId, newEvent)).flatMap {
@@ -535,7 +463,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropTimedEvent(organizationId: Long, event: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropTimedEvent(organizationId: Long, event: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.timedEventExists(organizationId, event)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.deleteTimedEvent(organizationId, event))
@@ -563,7 +491,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Database -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override def doCreateDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.databaseExists(dbDefinition.organizationId, dbDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
@@ -575,8 +503,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropDatabase(organizationId: Long, database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
-		// TODO drop user table rels
+	override protected def doDropDatabase(organizationId: Long, database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(organizationId, database)).flatMap {
 			case Some(db) =>
 				if (cascade) {
@@ -609,7 +536,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameDatabase(organizationId: Long, db: String, newDb: String, updateBy: Long): Unit = await {
+	override protected def doRenameDatabase(organizationId: Long, db: String, newDb: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.databaseExists(organizationId, db)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.databaseExists(organizationId, newDb)).flatMap {
@@ -665,7 +592,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
 
-	override def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(tableDefinition.databaseId)).flatMap {
 			case Some(database) =>
 				jdbcDao.action(jdbcDao.tableExists(tableDefinition.databaseId, tableDefinition.name)).flatMap {
@@ -679,21 +606,6 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 						}
 					case false =>
 						jdbcDao.action(jdbcDao.createTable(tableDefinition))
-						/*jdbcDao.actionTransactionally(
-							jdbcDao.createTable(tableDefinition).flatMap { tableId =>
-								val catalogColumns = columns.map { field =>
-									CatalogColumn(
-										name = field.name,
-										dataType = field.dataType.toString,
-										readOnly = true,
-										tableId = tableId,
-										createBy = tableDefinition.createBy,
-										updateBy = tableDefinition.updateBy
-									)
-								}
-								jdbcDao.createColumns(catalogColumns)
-							}
-						)*/
 				}
 			case None =>
 				throw new NoSuchDatabaseException(s"Id ${tableDefinition.databaseId}")
@@ -701,14 +613,15 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	}
 
-	override def doDropTable(databaseId: Long, table: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropTable(databaseId: Long, table: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getTable(databaseId, table)).flatMap {
 			case Some(catalogTable) =>
 				// delete user table column relation
 				// delete table
 				jdbcDao.actionTransactionally(
 					for (
-						_ <- jdbcDao.deleteUserTableRels(databaseId, table);
+						_ <- jdbcDao.deleteTablePrivilege(databaseId, table);
+						_ <- jdbcDao.deleteColumnPrivilege(databaseId, table);
 						_ <- jdbcDao.deleteTable(databaseId, table)
 					) yield ()
 				)
@@ -720,7 +633,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameTable(databaseId: Long, table: String, newTable: String, updateBy: Long): Unit = await {
+	override protected def doRenameTable(databaseId: Long, table: String, newTable: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.tableExists(databaseId, table)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.tableExists(databaseId, newTable)).flatMap {
@@ -773,93 +686,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Column -- belong to table
-	// ----------------------------------------------------------------------------
-
-	/*
-	override def createColumns(columnDefinition: Seq[CatalogColumn], ignoreIfExists: Boolean): Seq[Long] = await {
-		val groupedColumns = columnDefinition.groupBy(col => columnExists(col.tableId, col.name))
-		groupedColumns.get(true) match {
-			case Some(exists) =>
-				ignoreIfExists match {
-					case true => Future(Seq())
-					case false => throw new ColumnExistsException(
-						getTable(exists.head.tableId).name, exists.head.name)
-				}
-			case None =>
-				jdbcDao.action(jdbcDao.createColumns(columnDefinition))
-		}
-	}
-
-	override def dropColumn(tableId: Long, column: String, ignoreIfNotExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.columnExists(tableId, column)).flatMap {
-			case true =>
-				ignoreIfNotExists match {
-					case true => Future(Unit)
-					case false => throw new NoSuchColumnException(
-						getTable(tableId).name, column
-					)
-				}
-			case false =>
-				jdbcDao.action(jdbcDao.deleteColumn(tableId, column))
-		}
-	}
-
-	override def dropColumns(tableId: Long): Unit = await {
-		jdbcDao.action(jdbcDao.deleteColumns(tableId))
-	}
-
-	override def alterColumn(columnDefinition: CatalogColumn): Unit = await {
-		jdbcDao.action(jdbcDao.updateColumn(columnDefinition))
-	}
-
-	override def getColumn(tableId: Long, column: String): CatalogColumn = await {
-		jdbcDao.action(jdbcDao.getColumn(tableId, column)).map {
-			case Some(col) => col
-			case None => throw new NoSuchColumnException(getTable(tableId).name, column)
-		}
-	}
-
-	override def getColumn(column: Long): CatalogColumn = await {
-		jdbcDao.action(jdbcDao.getColumn(column)).map {
-			case Some(col) => col
-			case None => throw new NoSuchColumnException("", s"Id $column")
-		}
-	}
-
-	override def getColumnOption(tableId: Long, column: String): Option[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.getColumn(tableId, column))
-	}
-
-	override def getColumnOption(column: Long): Option[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.getColumn(column))
-	}
-
-	override def getColumns(tableId: Long, columns: Seq[String]): Seq[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.getColumns(tableId, columns))
-	}
-
-	override def getColumns(tableId: Long): Seq[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.getColumns(tableId))
-	}
-
-	override def getColumns(columns: Seq[Long]): Seq[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.getColumns(columns))
-	}
-
-	override def columnExists(tableId: Long, column: String): Boolean = await {
-		jdbcDao.action(jdbcDao.columnExists(tableId, column))
-	}
-
-	override def listColumns(tableId: Long): Seq[CatalogColumn] = await {
-		jdbcDao.action(jdbcDao.listColumns(tableId))
-	}
-*/
-	// ----------------------------------------------------------------------------
 	// Function -- belong to database
 	// ----------------------------------------------------------------------------
 
-	override def doCreateFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(funcDefinition.databaseId)).flatMap {
 			case Some(database) =>
 				jdbcDao.action(jdbcDao.functionExists(funcDefinition.databaseId, funcDefinition.name)).flatMap {
@@ -879,7 +709,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	}
 
-	override def doDropFunction(databaseId: Long, func: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropFunction(databaseId: Long, func: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.functionExists(databaseId, func)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.deleteFunction(databaseId, func))
@@ -891,7 +721,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameFunction(databaseId: Long, func: String, newFunc: String, updateBy: Long): Unit = await {
+	override protected def doRenameFunction(databaseId: Long, func: String, newFunc: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.functionExists(databaseId, func)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.functionExists(databaseId, newFunc)).flatMap {
@@ -947,7 +777,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// View -- belong to database
 	// ----------------------------------------------------------------------------
 
-	override def doCreateView(viewDefinition: CatalogView, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateView(viewDefinition: CatalogView, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(viewDefinition.databaseId)).flatMap {
 			case Some(database) =>
 				jdbcDao.action(jdbcDao.viewExists(viewDefinition.databaseId, viewDefinition.name)).flatMap {
@@ -966,7 +796,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	}
 
-	override def doDropView(databaseId: Long, view: String, ignoreIfNotExists: Boolean): Unit = await {
+	override protected def doDropView(databaseId: Long, view: String, ignoreIfNotExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.viewExists(databaseId, view)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.deleteView(databaseId, view))
@@ -978,7 +808,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doRenameView(databaseId: Long, view: String, newView: String, updateBy: Long): Unit = await {
+	override protected def doRenameView(databaseId: Long, view: String, newView: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.viewExists(databaseId, view)).flatMap {
 			case true =>
 				jdbcDao.action(jdbcDao.viewExists(databaseId, newView)).flatMap {
@@ -1034,7 +864,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// UserGroupRel --   the relation of user - group
 	// ----------------------------------------------------------------------------
 
-	override def doCreateUserGroupRel(userGroupRels: CatalogUserGroupRel*): Unit = await {
+	override protected def doCreateUserGroupRel(userGroupRels: CatalogUserGroupRel*): Unit = await {
 		// exclude exists relation
 		val groupIdToRels = userGroupRels.groupBy(rels => rels.groupId).toSeq
 		require(groupIdToRels.length == 1)
@@ -1045,15 +875,15 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def doDropUserGroupRel(groupId: Long, userIds: Seq[Long]): Unit = await {
+	override protected def doDropUserGroupRel(groupId: Long, userIds: Seq[Long]): Unit = await {
 		jdbcDao.action(jdbcDao.deleteUserGroupRel(groupId, userIds))
 	}
 
-	override def doDropUserGroupRelByGroup(groupId: Long): Unit = await {
+	override protected def doDropUserGroupRelByGroup(groupId: Long): Unit = await {
 		jdbcDao.action(jdbcDao.deleteUserGroupRelByGroup(groupId))
 	}
 
-	override def doDropUserGroupRelByUser(userId: Long): Unit = await {
+	override protected def doDropUserGroupRelByUser(userId: Long): Unit = await {
 		jdbcDao.action(jdbcDao.deleteUserGroupRelByUser(userId))
 	}
 
@@ -1066,61 +896,72 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
-	// UserTableRel --   the relation of user - table - column
+	// database privilege --   the privilege relation of user - database
 	// ----------------------------------------------------------------------------
-
-	/*override def doCreateUserLogicalTableRel(userTableRelDefinition: Seq[CatalogUserLogicalTableRel]): Unit = await {
-		val rels = userTableRelDefinition.groupBy(rel => (rel.userId, rel.tableId)).toSeq
-		assert(rels.length == 1)
-		val (userId, tableId) = rels.head._1
-		jdbcDao.action(jdbcDao.getUserLogicalTableRels(userId, tableId)).flatMap { existRels =>
-			val existColumns = existRels.map(_.column)
-			val needCreateRels = rels.head._2.filterNot(rel => existColumns.contains(rel.column))
-			jdbcDao.action(jdbcDao.createUserLogicalTableRel(needCreateRels:_*))
+	override protected def doCreateDatabasePrivilege(dbPrivileges: CatalogDatabasePrivilege*): Unit = await {
+		val needCreate = dbPrivileges.filterNot { priv =>
+			await(jdbcDao.action(jdbcDao.getDatabasePrivilege(priv.userId, priv.databaseId, priv.privilegeType))).isDefined
 		}
-	}*/
+		jdbcDao.action(jdbcDao.createDatabasePrivilege(needCreate:_*))
+	}
 
-	override def doCreateUserTableRel(userTableRelDefinition: Seq[CatalogUserTableRel]): Unit = await {
-		val rels = userTableRelDefinition.groupBy(rel => (rel.userId, rel.databaseId, rel.table)).toSeq
-		assert(rels.length == 1)
-		val (userId, databaseId, table) = rels.head._1
-		jdbcDao.action(jdbcDao.getUserTableRels(userId, databaseId, table)).flatMap { existRels =>
-			val existColumns = existRels.map(_.column)
-			val needCreateRels = rels.head._2.filterNot(rel => existColumns.contains(rel.column))
-			jdbcDao.action(jdbcDao.createUserTableRel(needCreateRels:_*))
+	override protected def doDropDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*): Unit = await {
+		jdbcDao.action(jdbcDao.deleteDatabasePrivilege(userId, databaseId, privileges:_*))
+	}
+
+	override def getDatabasePrivilege(userId: Long, databaseId: Long, privilege: String): Option[CatalogDatabasePrivilege] = await {
+		jdbcDao.action(jdbcDao.getDatabasePrivilege(userId, databaseId, privilege))
+	}
+
+	override def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege] = await {
+		jdbcDao.action(jdbcDao.getDatabasePrivilege(userId, databaseId))
+	}
+
+	// ----------------------------------------------------------------------------
+	// table privilege --   the privilege relation of user - table
+	// ----------------------------------------------------------------------------
+	override protected def doCreateTablePrivilege(tablePrivilege: CatalogTablePrivilege*): Unit = await {
+		val needCreate = tablePrivilege.filterNot { priv =>
+			await(jdbcDao.action(jdbcDao.getTablePrivilege(priv.userId, priv.databaseId, priv.table, priv.privilegeType))).isDefined
 		}
+		jdbcDao.action(jdbcDao.createTablePrivilege(needCreate:_*))
 	}
 
-	/*override def doDropUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserLogicalTableRels(userId, tableId, columns))
-	}*/
-
-	override def doDropUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserTableRels(userId, databaseId, table, columns))
+	override protected def doDropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*): Unit = await {
+		jdbcDao.action(jdbcDao.deleteTablePrivilege(userId, databaseId, table, privileges:_*))
 	}
 
-	/*override def doDropUserLogicalTableRels(tableId: Long): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserLogicalTableRels(tableId))
-	}*/
-
-	override def doDropUserTableRels(databaseId: Long, table: String): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserTableRels(databaseId, table))
+	override def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege] = await {
+		jdbcDao.action(jdbcDao.getTablePrivilege(userId, databaseId, table, privilege))
 	}
 
-	/*override def doDropUserPhysicalTableRelsByUser(userId: Long): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserPhysicalTableRelsByUser(userId))
-	}*/
-
-	override def doDropUserTableRelsByUser(userId: Long): Unit = await {
-		jdbcDao.action(jdbcDao.deleteUserTableRelsByUser(userId))
+	override def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege] = await {
+		jdbcDao.action(jdbcDao.getTablePrivilege(userId, databaseId, table))
 	}
 
-	/*override def getUserLogicalTableRels(userId: Long, tableId: Long): Seq[CatalogUserLogicalTableRel] = await {
-		jdbcDao.action(jdbcDao.getUserLogicalTableRels(userId, tableId))
-	}*/
+	// ----------------------------------------------------------------------------
+	// column privilege --   the privilege relation of user - table - column
+	// ----------------------------------------------------------------------------
+	override protected def doCreateColumnPrivilege(columnPrivilege: CatalogColumnPrivilege*): Unit = await {
+		val needCreate = columnPrivilege.groupBy(_.privilegeType).flatMap { case (privilege, columnPrivileges) =>
+			val userId = columnPrivileges.head.userId
+			val databaseId = columnPrivileges.head.databaseId
+			val table = columnPrivileges.head.table
+			val existColumns = await(jdbcDao.action(jdbcDao.getColumnPrivilege(userId, databaseId, table, privilege))).map(_.column)
+			columnPrivileges.filterNot(col => existColumns.contains(col.column))
+		}.toSeq
+		jdbcDao.action(jdbcDao.createColumnPrivilege(needCreate:_*))
+	}
 
-	override def getUserTableRels(userId: Long, databaseId: Long, table: String): Seq[CatalogUserTableRel] = await {
-		jdbcDao.action(jdbcDao.getUserTableRels(userId, databaseId, table))
+	override protected def doDropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])]): Unit = await {
+		val dropActions = privileges.map { case (privilegeType, columns) =>
+			jdbcDao.deleteColumnPrivilege(userId, databaseId, table, columns, privilegeType)
+		}
+		jdbcDao.actionTransactionally(dropActions:_*)
+	}
+
+	override def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege] = await {
+		jdbcDao.action(jdbcDao.getColumnPrivilege(userId, databaseId, table, privilege))
 	}
 
 }

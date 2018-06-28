@@ -1,15 +1,14 @@
 package moonbox.core.command
 
-import moonbox.core.catalog.{CatalogGroup, CatalogSession, CatalogUser, FunctionResource}
-import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
+import moonbox.core.catalog._
+import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, TablePrivilegeManager}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
+import org.apache.spark.sql.optimizer.WholePushdown
 
 import scala.collection.mutable.ArrayBuffer
 
 sealed trait DML
-
-case object ShowSysInfo extends MbCommand with DML
 
 case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
@@ -24,17 +23,6 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 		Seq.empty[Row]
 	}
 }
-
-/*case class ShowDatasources(
-	pattern: Option[String]) extends MbRunnableCommand with DML {
-
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val datasources = pattern.map { p =>
-			mbSession.catalog.listDatasource(ctx.organizationId, p)
-		}.getOrElse(mbSession.catalog.listDatasource(ctx.organizationId))
-		datasources.map { d => Row(d.name)}
-	}
-}*/
 
 case class SetVariables(name: String, value: String, isGlobal: Boolean)
 	extends MbRunnableCommand with DML {
@@ -129,23 +117,6 @@ case class ShowApplications(
 	}
 }
 
-/*case class DescDatasource(name: String, extended: Boolean) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val datasource = mbSession.catalog.getDatasource(ctx.organizationId, name)
-		val result = Row("Datasource Name", datasource.name) ::
-			Row("Description", datasource.description.getOrElse("")) :: Nil
-		if (extended) {
-			val properties = if (datasource.properties.isEmpty) {
-				""
-			} else {
-				datasource.properties.toSeq.mkString("(", ", ", ")")
-			}
-			result :+ Row("Properties", properties)
-		}
-		result
-	}
-}*/
-
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
@@ -157,23 +128,17 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 }
 
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
-	// TODO
+
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
 
 		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
-		val catalogColumns =
-			if (catalogTable.createBy == ctx.userId || !mbSession.columnPermission) {
-				mbSession.catalog.getColumns(databaseId, table.table)(mbSession)
-			} else {
-				val userTableRels = mbSession.catalog.getUserTableRels(ctx.userId, databaseId, table.table).map(_.column)
-				mbSession.catalog.getColumns(databaseId, table.table)(mbSession).filter(column => userTableRels.contains(column.name))
-			}
+
 		result.append(Row("Table Name", catalogTable.name))
-		result.append(Row("Description", catalogTable.description.getOrElse("")))
-		result.append(Row("IsStream", catalogTable.isStream))
+		result.append(Row("Description", catalogTable.description.getOrElse("No Description.")))
+		//result.append(Row("IsStream", catalogTable.isStream))
 
 		if (extended) {
 			val properties = if (catalogTable.properties.isEmpty) {
@@ -187,7 +152,20 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 			}
 			result.append(Row("Properties", properties))
 		}
-		result.append(Row("Columns", catalogColumns.map(col => (col.name, col.dataType)).mkString(", ")))
+		val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
+
+		val insertPrivilege = privilegeManager.insertable()
+		val deletePrivilege = privilegeManager.deletable()
+		val truncatePrivilege = privilegeManager.truncatable()
+
+		val selectPrivileges = privilegeManager.selectable()
+		val updatePrivileges = privilegeManager.updatable()
+
+		result.append(Row("Insert", insertPrivilege))
+		result.append(Row("Delete", deletePrivilege))
+		result.append(Row("Truncate", truncatePrivilege))
+		result.append(Row("Select", selectPrivileges.map(col => (col.name, col.dataType)).mkString(", ")))
+		result.append(Row("Update", updatePrivileges.map(col => (col.name, col.dataType)).mkString(", ")))
 		result
 	}
 }
@@ -234,9 +212,10 @@ case class DescUser(user: String) extends MbRunnableCommand with DML {
 		val result = Row("User Name", catalogUser.name) ::
 			Row("Account", catalogUser.account) ::
 			Row("DDL", catalogUser.ddl) ::
+			Row("DCL", catalogUser.dcl) ::
 			Row("Grant Account", catalogUser.grantAccount) ::
 			Row("Grant DDL", catalogUser.grantDdl) ::
-			Row("Grant DML ON", catalogUser.grantDmlOn) ::
+			Row("Grant DCL", catalogUser.grantDcl) ::
 			Row("IsSA", catalogUser.isSA) :: Nil
 		result
 	}
@@ -269,14 +248,25 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
 	// TODO
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {
-		val (logicalPlan, _) = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
-		val queryExecution = mbSession.toDF(logicalPlan).queryExecution.executedPlan
-		val outputString =
-			if (extended) {
-				queryExecution.toString()
-			} else {
-				queryExecution.simpleString
-			}
+		val logicalPlan = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
+		val outputString = logicalPlan match {
+			case w@WholePushdown(child, _) =>
+				val executedPlan = mbSession.toDF(child).queryExecution.executedPlan
+				if (extended) {
+					w.simpleString + "\n+-" +
+					executedPlan.toString()
+				} else {
+					w.simpleString + "\n+-" +
+					executedPlan.simpleString
+				}
+			case _ =>
+				val executedPlan = mbSession.toDF(logicalPlan).queryExecution.executedPlan
+				if (extended) {
+					executedPlan.toString()
+				} else {
+					executedPlan.simpleString
+				}
+		}
 		Seq(Row(outputString))
 	} catch { case e: TreeNodeException[_] =>
 		("Error occurred during query planning: \n" + e.getMessage).split("\n").map(Row(_))

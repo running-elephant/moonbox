@@ -1,7 +1,7 @@
 package moonbox.core.paser
 
-import moonbox.core.catalog.{FunctionResource, JarResource}
-import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
+import moonbox.core.catalog.{FunctionResource}
+import moonbox.core.{MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MbParser
 import org.apache.spark.sql.types._
@@ -168,39 +168,6 @@ class MbParserSuite extends FunSuite {
 		)
 	}
 
-	/*test("datasource") {
-		assertEquals(
-			MountDatasource("datasource", Map("key" -> "value", "key1" -> "value1"), ignoreIfExists = false),
-			"MOUNT DATASOURCE datasource OPTIONS(key 'value', key1 'value1')"
-		)
-
-		assertEquals(
-			MountDatasource("datasource", Map("key" -> "value", "key1" -> "value1"), ignoreIfExists = true),
-			"MOUNT DATASOURCE IF NOT EXISTS datasource OPTIONS(key = 'value', key1 = 'value1')"
-		)
-
-		assertEquals(
-			AlterDatasourceSetName("datasource", "datasource1"),
-			"RENAME DATASOURCE datasource TO datasource1",
-			"ALTER DATASOURCE datasource RENAME TO datasource1"
-		)
-
-		assertEquals(
-			AlterDatasourceSetOptions("datasource", Map("key" -> "value", "key1" -> "value1")),
-			"ALTER DATASOURCE datasource SET OPTIONS(key 'value', key1 'value1')"
-		)
-
-		assertEquals(
-			UnmountDatasource("datasource", ignoreIfNotExists = false),
-			"UNMOUNT DATASOURCE datasource"
-		)
-
-		assertEquals(
-			UnmountDatasource("datasource", ignoreIfNotExists = true),
-			"UNMOUNT DATASOURCE IF EXISTS datasource"
-		)
-	}*/
-
 	test("database") {
 		assertEquals(
 			CreateDatabase("database", Some("for testing"), ignoreIfExists = true),
@@ -255,35 +222,6 @@ class MbParserSuite extends FunSuite {
 			"MOUNT TABLE table(name string, age int) OPTIONS(key 'value')"
 		)
 
-		/*assertEquals(
-			MountTableWithDatasoruce("datasource",
-				Seq(
-					(MbTableIdentifier("table", None), Some(
-						StructType(Seq(
-							StructField("name", StringType),
-							StructField("age", IntegerType)
-						))
-					), Map("dbtable" -> "table")),
-					(MbTableIdentifier("table1", None), None, Map("dbtable" -> "table1"))
-				),
-				isStream = false,
-				ignoreIfExists = false
-			),
-			"WITH DATASOURCE datasource MOUNT TABLE table(name string, age int) OPTIONS(dbtable 'table'), table1 OPTIONS(dbtable 'table1')"
-		)
-
-		assertEquals(
-			MountTableWithDatasoruce("datasource",
-				Seq(
-					(MbTableIdentifier("table", Some("db")), None, Map("dbtable" -> "table")),
-					(MbTableIdentifier("table1", Some("db1")), None, Map("dbtable" -> "table1"))
-				),
-				isStream = true,
-				ignoreIfExists = true
-			),
-			"WITH DATASOURCE datasource MOUNT STREAM TABLE IF NOT EXISTS db.table OPTIONS(dbtable 'table'), db1.table1 OPTIONS(dbtable 'table1')"
-		)*/
-
 		assertEquals(
 			AlterTableSetName(MbTableIdentifier("table", None), MbTableIdentifier("table1", None)),
 			"RENAME TABLE table TO table1",
@@ -300,31 +238,6 @@ class MbParserSuite extends FunSuite {
 			AlterTableSetOptions(MbTableIdentifier("table", Some("db")), Map("key" -> "value")),
 			"ALTER TABLE db.table SET OPTIONS(key 'value')"
 		)
-
-		/*assertEquals(
-			AlterTableAddColumns(MbTableIdentifier("table", None),
-				StructType(Seq(
-					StructField("name", StringType),
-					StructField("age", IntegerType)
-				))
-			),
-			"ALTER TABLE table ADD COLUMNS (name string, age int)"
-		)
-
-		assertEquals(
-			AlterTableChangeColumn(MbTableIdentifier("table", None),
-				StructField("age", ShortType)
-			),
-			"ALTER TABLE table CHANGE COLUMN age smallint"
-		)
-
-		assertEquals(
-			AlterTableDropColumn(
-				MbTableIdentifier("table", None),
-				"name"
-			),
-			"ALTER TABLE table DROP COLUMN name"
-		)*/
 
 		assertEquals(
 			UnmountTable(MbTableIdentifier("table", Some("db")), ignoreIfNotExists = true),
@@ -401,12 +314,12 @@ class MbParserSuite extends FunSuite {
 	test("application") {
 		assertEquals(
 			CreateApplication("app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view"
+			"CREATE APPLICATION IF NOT EXISTS app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view)"
 		)
 
 		assertEquals(
 			CreateApplication("app", Seq("SELECT * FROM table"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS SELECT * FROM table"
+			"CREATE APPLICATION IF NOT EXISTS app AS (SELECT * FROM table)"
 		)
 		assertEquals(
 			AlterApplicationSetName(
@@ -419,7 +332,7 @@ class MbParserSuite extends FunSuite {
 			AlterApplicationSetQuery(
 				"app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view")
 			),
-			"ALTER APPLICATION app AS CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view "
+			"ALTER APPLICATION app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view) "
 		)
 		assertEquals(
 			DropApplication(
@@ -432,8 +345,8 @@ class MbParserSuite extends FunSuite {
 	test("event") {
 		assertEquals(
 			CreateTimedEvent("once", None, "* * * * * *", Some("for test"), "app1", enable = false, ignoreIfExists = false),
-			"CREATE EVENT once ON SCHEDULE AT * * * * * * COMMENT 'for test' DO CALL app1",
-			"CREATE DEFINER CURRENT_USER EVENT once ON SCHEDULE AT * * * * * * DISABLE COMMENT 'for test' DO CALL app1"
+			"CREATE EVENT once ON SCHEDULE AT '* * * * * *' COMMENT 'for test' DO CALL app1",
+			"CREATE DEFINER CURRENT_USER EVENT once ON SCHEDULE AT '* * * * * *' DISABLE COMMENT 'for test' DO CALL app1"
 		)
 
 		assertEquals(
@@ -449,11 +362,11 @@ class MbParserSuite extends FunSuite {
 
 		assertEquals(
 			AlterTimedEventSetSchedule("once", "* * * 23 2 18"),
-			"ALTER EVENT once ON SCHEDULE AT * * * 23 2 18"
+			"ALTER EVENT once ON SCHEDULE AT '* * * 23 2 18'"
 		)
 
 		assertEquals(
-			AlterTimedEventSetEnable("once", true),
+			AlterTimedEventSetEnable("once", enable = true),
 			"ALTER EVENT once ENABLE"
 		)
 
@@ -469,18 +382,6 @@ class MbParserSuite extends FunSuite {
 			"SHOW SYSINFO"
 		)
 	}
-
-	/*test("show datasources") {
-		assertEquals(
-			ShowDatasources(pattern = Some("abc%")),
-			"SHOW DATASOURCES LIKE 'abc%'"
-		)
-
-		assertEquals(
-			ShowDatasources(pattern = None),
-			"SHOW DATASOURCES"
-		)
-	}*/
 
 	test("show databases") {
 		assertEquals(
@@ -589,20 +490,6 @@ class MbParserSuite extends FunSuite {
 			"SHOW APPLICATIONS LIKE 'abc%'"
 		)
 	}
-
-	/*test("desc datasource") {
-		assertEquals(
-			DescDatasource("ds", extended = false),
-			"DESC DATASOURCE ds",
-			"DESCRIBE DATASOURCE ds"
-		)
-
-		assertEquals(
-			DescDatasource("ds", extended = true),
-			"DESC DATASOURCE EXTENDED ds",
-			"DESCRIBE DATASOURCE EXTENDED ds"
-		)
-	}*/
 
 	test("desc database") {
 		assertEquals(
@@ -740,257 +627,149 @@ class MbParserSuite extends FunSuite {
 
 	test("grant and revoke grant") {
 		assertEquals(
-			GrantGrantToUser(Seq(GrantAccount, GrantDdl, GrantDmlOn), Seq("user1", "user2")),
-			"GRANT GRANT OPTION ACCOUNT, DDL, DMLON TO USER user1, user2"
+			GrantGrantToUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("user1", "user2")),
+			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO USER user1, user2"
 		)
 		assertEquals(
-			GrantGrantToGroup(Seq(GrantAccount, GrantDdl, GrantDmlOn), Seq("group1", "group2")),
-			"GRANT GRANT OPTION ACCOUNT, DDL, DMLON TO Group group1, group2"
+			GrantGrantToGroup(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("group1", "group2")),
+			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO Group group1, group2"
 		)
 
 		assertEquals(
-			RevokeGrantFromUser(Seq(GrantAccount, GrantDdl, GrantDmlOn), Seq("user1", "user2")),
-			"REVOKE GRANT OPTION ACCOUNT, DDL, DMLON FROM USER user1, user2"
+			RevokeGrantFromUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("user1", "user2")),
+			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER user1, user2"
 		)
 		assertEquals(
-			RevokeGrantFromGroup(Seq(GrantAccount, GrantDdl, GrantDmlOn), Seq("group1", "group2")),
-			"REVOKE GRANT OPTION ACCOUNT, DDL, DMLON FROM Group group1, group2"
+			RevokeGrantFromGroup(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("group1", "group2")),
+			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM Group group1, group2"
 		)
 	}
 
-	test("grant and revoke account") {
+	test("grant and revoke privilege") {
 		assertEquals(
-			GrantAccountToUser(Seq("user1", "user2")),
-			"GRANT ACCOUNT TO USER user1, user2"
+			GrantPrivilegeToUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL), Seq("user1", "user2")),
+			"GRANT ACCOUNT, DDL TO USER user1, user2"
 		)
 
 		assertEquals(
-			GrantAccountToGroup(Seq("group1", "group2")),
+			GrantPrivilegeToGroup(Seq(PrivilegeType.ACCOUNT), Seq("group1", "group2")),
 			"GRANT ACCOUNT TO GROUP group1, group2"
 		)
 
 		assertEquals(
-			RevokeAccountFromUser(Seq("user1", "user2")),
+			RevokePrivilegeFromUser(Seq(PrivilegeType.ACCOUNT), Seq("user1", "user2")),
 			"REVOKE ACCOUNT FROM USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeAccountFromGroup(Seq("group1", "group2")),
+			RevokePrivilegeFromGroup(Seq(PrivilegeType.ACCOUNT), Seq("group1", "group2")),
 			"REVOKE ACCOUNT FROM GROUP group1, group2"
 		)
 	}
 
-	test("grant and revoke ddl") {
+	test("grant resource to user") {
 		assertEquals(
-			GrantDdlToUser(Seq("user1", "user2")),
-			"GRANT DDL TO USER user1, user2"
+			GrantResourceToUser(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
+			"GRANT SELECT ON db.t1 TO USER user1, user2"
 		)
 
 		assertEquals(
-			GrantDdlToGroup(Seq("group1", "group2")),
-			"GRANT DDL TO GROUP group1, group2"
+			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
+			"GRANT SELECT(id, name) ON db.t1 TO USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeDdlFromUser(Seq("user1", "user2")),
-			"REVOKE DDL FROM USER user1, user2"
+			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
+			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeDdlFromGroup(Seq("group1", "group2")),
-			"REVOKE DDL FROM GROUP group1, group2"
-		)
-	}
-
-	test("grant dml on to user") {
-		assertEquals(
-			GrantDmlOnToUser(Seq(MbColumnIdentifier("*", "*", Some("db"))), Seq("user1", "user2")),
-			"GRANT DML ON db.*.* TO USER user1, user2"
-		)
-
-		assertEquals(
-			GrantDmlOnToUser(Seq(MbColumnIdentifier("*", "table", Some("db"))), Seq("user1", "user2")),
-			"GRANT DML ON db.table.* TO USER user1, user2"
-		)
-
-		assertEquals(
-			GrantDmlOnToUser(Seq(
-				MbColumnIdentifier("col1", "table", Some("db")),
-				MbColumnIdentifier("col2", "table", Some("db"))
-			), Seq("user1", "user2")),
-			"GRANT DML ON db.table.{col1, col2} TO USER user1, user2"
-		)
-
-		assertEquals(
-			GrantDmlOnToUser(Seq(
-				MbColumnIdentifier("col1", "table1", None),
-				MbColumnIdentifier("col2", "table1", None),
-				MbColumnIdentifier("col1", "table2", None),
-				MbColumnIdentifier("col2", "table2", None)
-			), Seq("user1", "user2")),
-			"GRANT DML ON table1.{col1, col2}, table2.{col1, col2} TO USER user1, user2"
-		)
-
-		assertEquals(
-			GrantDmlOnToUser(Seq(
-				MbColumnIdentifier("col1", "table", Some("db1")),
-				MbColumnIdentifier("col2", "table", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("user1", "user2")),
-			"GRANT DML ON db1.table.{col1, col2}, db2.*.* TO USER user1, user2"
-		)
-
-		assertEquals(
-			GrantDmlOnToUser(Seq(
-				MbColumnIdentifier("*", "table1", Some("db1")),
-				MbColumnIdentifier("*", "table2", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("user1", "user2")),
-			"GRANT DML ON db1.{table1, table2}.*, db2.*.* TO USER user1, user2"
+			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name")),
+				UpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			),
+				MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
+			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO USER user1, user2"
 		)
 	}
 
-	test("revoke dml on from user") {
+	test("revoke resource from user") {
 		assertEquals(
-			RevokeDmlOnFromUser(Seq(MbColumnIdentifier("*", "*", Some("db"))), Seq("user1", "user2")),
-			"REVOKE DML ON db.*.* FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
+			"REVOKE SELECT ON db.t1 FROM USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromUser(Seq(MbColumnIdentifier("*", "table", Some("db"))), Seq("user1", "user2")),
-			"REVOKE DML ON db.table.* FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
+			"REVOKE SELECT(id, name) ON db.t1 FROM USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromUser(Seq(
-				MbColumnIdentifier("col1", "table", Some("db")),
-				MbColumnIdentifier("col2", "table", Some("db"))
-			), Seq("user1", "user2")),
-			"REVOKE DML ON db.table.{col1, col2} FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
+			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM USER user1, user2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromUser(Seq(
-				MbColumnIdentifier("col1", "table1", None),
-				MbColumnIdentifier("col2", "table1", None),
-				MbColumnIdentifier("col1", "table2", None),
-				MbColumnIdentifier("col2", "table2", None)
-			), Seq("user1", "user2")),
-			"REVOKE DML ON table1.{col1, col2}, table2.{col1, col2} FROM USER user1, user2"
-		)
-
-		assertEquals(
-			RevokeDmlOnFromUser(Seq(
-				MbColumnIdentifier("col1", "table", Some("db1")),
-				MbColumnIdentifier("col2", "table", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("user1", "user2")),
-			"REVOKE DML ON db1.table.{col1, col2}, db2.*.* FROM USER user1, user2"
-		)
-
-		assertEquals(
-			RevokeDmlOnFromUser(Seq(
-				MbColumnIdentifier("*", "table1", Some("db1")),
-				MbColumnIdentifier("*", "table2", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("user1", "user2")),
-			"REVOKE DML ON db1.{table1, table2}.*, db2.*.* FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name")),
+				UpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			),
+				MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
+			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM USER user1, user2"
 		)
 	}
 
-	test("grant dml on to group") {
+	test("grant resources to group") {
 		assertEquals(
-			GrantDmlOnToGroup(Seq(MbColumnIdentifier("*", "*", Some("db"))), Seq("group1", "group2")),
-			"GRANT DML ON db.*.* TO GROUP group1, group2"
+			GrantResourceToGroup(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
+			"GRANT SELECT ON db.t1 TO GROUP group1, group2"
 		)
 
 		assertEquals(
-			GrantDmlOnToGroup(Seq(MbColumnIdentifier("*", "table", Some("db"))), Seq("group1", "group2")),
-			"GRANT DML ON db.table.* TO GROUP group1, group2"
+			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
+			"GRANT SELECT(id, name) ON db.t1 TO GROUP group1, group2"
 		)
 
 		assertEquals(
-			GrantDmlOnToGroup(Seq(
-				MbColumnIdentifier("col1", "table", Some("db")),
-				MbColumnIdentifier("col2", "table", Some("db"))
-			), Seq("group1", "group2")),
-			"GRANT DML ON db.table.{col1, col2} TO GROUP group1, group2"
+			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
+			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO GROUP group1, group2"
 		)
 
 		assertEquals(
-			GrantDmlOnToGroup(Seq(
-				MbColumnIdentifier("col1", "table1", None),
-				MbColumnIdentifier("col2", "table1", None),
-				MbColumnIdentifier("col1", "table2", None),
-				MbColumnIdentifier("col2", "table2", None)
-			), Seq("group1", "group2")),
-			"GRANT DML ON table1.{col1, col2}, table2.{col1, col2} TO GROUP group1, group2"
-		)
-
-		assertEquals(
-			GrantDmlOnToGroup(Seq(
-				MbColumnIdentifier("col1", "table", Some("db1")),
-				MbColumnIdentifier("col2", "table", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("group1", "group2")),
-			"GRANT DML ON db1.table.{col1, col2}, db2.*.* TO GROUP group1, group2"
-		)
-
-		assertEquals(
-			GrantDmlOnToGroup(Seq(
-				MbColumnIdentifier("*", "table1", Some("db1")),
-				MbColumnIdentifier("*", "table2", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("group1", "group2")),
-			"GRANT DML ON db1.{table1, table2}.*, db2.*.* TO GROUP group1, group2"
+			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name")),
+				UpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
+			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO GROUP group1, group2"
 		)
 	}
 
-	test("revoke dml on from group") {
+	test("revoke resoruces from group") {
 		assertEquals(
-			RevokeDmlOnFromGroup(Seq(MbColumnIdentifier("*", "*", Some("db"))), Seq("group1", "group2")),
-			"REVOKE DML ON db.*.* FROM GROUP group1, group2"
+			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
+			"REVOKE SELECT ON db.t1 FROM GROUP group1, group2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromGroup(Seq(MbColumnIdentifier("*", "table", Some("db"))), Seq("group1", "group2")),
-			"REVOKE DML ON db.table.* FROM GROUP group1, group2"
+			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
+			"REVOKE SELECT(id, name) ON db.t1 FROM GROUP group1, group2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromGroup(Seq(
-				MbColumnIdentifier("col1", "table", Some("db")),
-				MbColumnIdentifier("col2", "table", Some("db"))
-			), Seq("group1", "group2")),
-			"REVOKE DML ON db.table.{col1, col2} FROM GROUP group1, group2"
+			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
+			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM GROUP group1, group2"
 		)
 
 		assertEquals(
-			RevokeDmlOnFromGroup(Seq(
-				MbColumnIdentifier("col1", "table1", None),
-				MbColumnIdentifier("col2", "table1", None),
-				MbColumnIdentifier("col1", "table2", None),
-				MbColumnIdentifier("col2", "table2", None)
-			), Seq("group1", "group2")),
-			"REVOKE DML ON table1.{col1, col2}, table2.{col1, col2} FROM GROUP group1, group2"
-		)
-
-		assertEquals(
-			RevokeDmlOnFromGroup(Seq(
-				MbColumnIdentifier("col1", "table", Some("db1")),
-				MbColumnIdentifier("col2", "table", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("group1", "group2")),
-			"REVOKE DML ON db1.table.{col1, col2}, db2.*.* FROM GROUP group1, group2"
-		)
-
-		assertEquals(
-			RevokeDmlOnFromGroup(Seq(
-				MbColumnIdentifier("*", "table1", Some("db1")),
-				MbColumnIdentifier("*", "table2", Some("db1")),
-				MbColumnIdentifier("*", "*", Some("db2"))
-			), Seq("group1", "group2")),
-			"REVOKE DML ON db1.{table1, table2}.*, db2.*.* FROM GROUP group1, group2"
+			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name")),
+				UpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
+			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM GROUP group1, group2"
 		)
 	}
 }

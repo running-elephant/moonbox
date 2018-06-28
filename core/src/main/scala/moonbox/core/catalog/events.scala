@@ -147,6 +147,93 @@ case class DropTimedEventEvent(organization: String, event: String) extends Time
 case class RenameTimedEventPreEvent(organization: String, event: String) extends TimedEventEvent
 case class RenameTimedEventEvent(organization: String, event: String) extends TimedEventEvent
 
+trait DatabasePrivilegeEvent extends CatalogEvent
+
+case class CreateDatabasePrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	privileges: Seq[String]) extends DatabasePrivilegeEvent
+
+case class CreateDatabasePrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	privileges: Seq[String]) extends DatabasePrivilegeEvent
+
+case class DropDatabasePrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	privileges: Seq[String]) extends DatabasePrivilegeEvent
+case class DropDatabasePrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	privileges: Seq[String]) extends DatabasePrivilegeEvent
+
+trait TablePrivilegeEvent extends CatalogEvent
+
+case class CreateTablePrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[String]) extends TablePrivilegeEvent
+
+case class CreateTablePrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[String]) extends TablePrivilegeEvent
+
+case class DropTablePrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[String]) extends TablePrivilegeEvent
+case class DropTablePrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[String]) extends TablePrivilegeEvent
+
+trait ColumnPrivilegeEvent extends CatalogEvent
+
+case class CreateColumnPrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[(String, Seq[String])]) extends ColumnPrivilegeEvent
+
+case class CreateColumnPrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[(String, Seq[String])]) extends ColumnPrivilegeEvent
+
+case class DropColumnPrivilegePreEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[(String, Seq[String])]) extends ColumnPrivilegeEvent
+case class DropColumnPrivilegeEvent(
+	organization: String,
+	user: String,
+	database: String,
+	table: String,
+	privileges: Seq[(String, Seq[String])]) extends ColumnPrivilegeEvent
+
+
+/*
+
+
 trait UserTableRelEvent extends CatalogEvent
 
 case class CreateUserTableRelPreEvent(
@@ -189,6 +276,10 @@ case class DropUserTableRelsByUserPreEvent(
 case class DropUserTableRelsByUserEvent(
 	organization: String,
 	user: String) extends UserTableRelEvent
+*/
+
+
+
 
 
 trait UserGroupRelEvent extends CatalogEvent

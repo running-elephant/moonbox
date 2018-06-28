@@ -5,6 +5,7 @@ import java.util.concurrent.{CountDownLatch, TimeUnit}
 import moonbox.common.MbConf
 import moonbox.common.util.Utils
 import moonbox.core.catalog._
+import moonbox.core.command.PrivilegeType.PrivilegeType
 import moonbox.core.config._
 import slick.dbio.Effect.{Read, Write}
 import slick.jdbc.meta.MTable
@@ -34,6 +35,10 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 
 	def actionTransactionally[R](transactionAction: DBIOAction[R, NoStream, Effect.All]): Future[R] = {
 		database.run(transactionAction.transactionally)
+	}
+
+	def actionTransactionally(transactionAction: DBIOAction[_, NoStream, Effect.All]*): Future[Unit] = {
+		database.run(DBIO.seq(transactionAction:_*).transactionally)
 	}
 
 	// -----------------------------------------------------------------
@@ -101,9 +106,10 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 							password = "123456",
 							account = true,
 							ddl = true,
+							dcl = true,
 							grantAccount = true,
 							grantDdl = true,
-							grantDmlOn = true,
+							grantDcl = true,
 							isSA = true,
 							organizationId = -1,
 							createBy = -1,
@@ -287,6 +293,15 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 			(ddl, updateBy, Utils.now))
 	}
 
+	def setUserDcl(dcl: Boolean, users: Long*)(updateBy: Long) = {
+		update[CatalogUser, CatalogUserTable,
+			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
+			(Boolean, Long, Long)](
+			catalogUsers, _.id inSet users,
+			t => (t.dcl, t.updateBy, t.updateTime),
+			(dcl, updateBy, Utils.now))
+	}
+
 	def setUserGrantAccount(grantAccount: Boolean, users: Long*)(updateBy: Long) = {
 		update[CatalogUser, CatalogUserTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
@@ -305,13 +320,13 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 			(grantDdl, updateBy, Utils.now))
 	}
 
-	def setUserGrantDmlOn(grantDmlOn: Boolean, users: Long*)(updateBy: Long) = {
+	def setUserGrantDcl(grantDcl: Boolean, users: Long*)(updateBy: Long) = {
 		update[CatalogUser, CatalogUserTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
 			catalogUsers, _.id inSet users,
-			t => (t.grantDmlOn, t.updateBy, t.updateTime),
-			(grantDmlOn, updateBy, Utils.now))
+			t => (t.grantDcl, t.updateBy, t.updateTime),
+			(grantDcl, updateBy, Utils.now))
 	}
 
 	def getUser(userId: Long) = {
@@ -356,61 +371,6 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		query[CatalogUser, CatalogUserTable](
 			catalogUsers,  t => t.organizationId === organizationId && t.name.like(pattern))
 	}
-
-	// -----------------------------------------------------------------
-	// Datasource
-	// -----------------------------------------------------------------
-
-	/*def createDatasource(datasource: CatalogDatasource) = {
-		insert(datasource, catalogDatasources)
-	}
-
-	def deleteDatasource(datasourceId: Long) = {
-		delete[CatalogDatasource, CatalogDatasourceTable](catalogDatasources, _.id === datasourceId)
-	}
-
-	def deleteDatasource(organizationId: Long, datasource: String) = {
-		delete[CatalogDatasource, CatalogDatasourceTable](
-			catalogDatasources, t => t.organizationId === organizationId && t.name === datasource)
-	}
-
-	def renameDatasource(organizationId: Long, datasource: String, newDatasource: String)(updateBy: Long) = {
-		update[CatalogDatasource, CatalogDatasourceTable,
-			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
-			(String, Long, Long)](
-			catalogDatasources, t => t.organizationId === organizationId && t.name === datasource,
-			t => (t.name, t.updateBy, t.updateTime),
-			(newDatasource, updateBy, Utils.now))
-	}
-
-	def updateDatasource(dsDefinition: CatalogDatasource) = {
-		updateEntity[CatalogDatasource, CatalogDatasourceTable](
-			catalogDatasources, t => t.id === dsDefinition.id.get, dsDefinition
-		)
-	}
-
-	def getDatasource(datasourceId: Long) = {
-		queryOneOption[CatalogDatasource, CatalogDatasourceTable](catalogDatasources, _.id === datasourceId)
-	}
-
-	def getDatasource(organizationId: Long, datasource: String) = {
-		queryOneOption[CatalogDatasource, CatalogDatasourceTable](
-			catalogDatasources, t => t.organizationId === organizationId && t.name === datasource)
-	}
-
-	def datasourceExists(organizationId: Long, datasource: String) = {
-		exists[CatalogDatasource, CatalogDatasourceTable](
-			catalogDatasources, t => t.organizationId === organizationId && t.name === datasource)
-	}
-
-	def listDatasources(organizationId: Long) = {
-		query[CatalogDatasource, CatalogDatasourceTable](catalogDatasources, _.organizationId === organizationId)
-	}
-
-	def listDatasources(organizationId: Long, pattern: String) = {
-		query[CatalogDatasource, CatalogDatasourceTable](
-			catalogDatasources, t => t.organizationId === organizationId && t.name.like(pattern))
-	}*/
 
 	// -----------------------------------------------------------------
 	// Application
@@ -649,81 +609,6 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	// -----------------------------------------------------------------
-	// Column
-	// -----------------------------------------------------------------
-	/*
-		def createColumns(columns: Seq[CatalogColumn]) = {
-			require(Utils.allEquals(columns.map(_.tableId).toList))
-			insertMultiple[CatalogColumn, CatalogColumnTable](columns, catalogColumns)
-		}
-
-		def deleteColumn(columnId: Long) = {
-			delete[CatalogColumn, CatalogColumnTable](
-				catalogColumns, _.id === columnId
-			)
-		}
-
-		def deleteColumn(tableId: Long, column: String) = {
-			delete[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.tableId === tableId && t.name === column
-			)
-		}
-
-		def deleteColumns(tableId: Long) = {
-			delete[CatalogColumn, CatalogColumnTable](
-				catalogColumns, _.tableId === tableId
-			)
-		}
-
-		def updateColumn(column: CatalogColumn) = {
-			updateEntity[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.id === column.id.get, column
-			)
-		}
-
-		def getColumn(columnId: Long) = {
-			queryOneOption[CatalogColumn, CatalogColumnTable](
-				catalogColumns, _.id === columnId
-			)
-		}
-
-		def getColumn(tableId: Long, column: String) = {
-			queryOneOption[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.tableId === tableId && t.name === column
-			)
-		}
-
-		def getColumns(columns: Seq[Long]) = {
-			query[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.id.inSet(columns)
-			)
-		}
-
-		def getColumns(tableId: Long) = {
-			query[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.tableId === tableId
-			)
-		}
-
-		def getColumns(tableId: Long, columns: Seq[String]) = {
-			query[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.tableId === tableId && t.name.inSet(columns)
-			)
-		}
-
-		def columnExists(tableId: Long, column: String) = {
-			exists[CatalogColumn, CatalogColumnTable](
-				catalogColumns, t => t.tableId === tableId && t.name === column
-			)
-		}
-
-		def listColumns(tableId: Long) = {
-			query[CatalogColumn, CatalogColumnTable](
-				catalogColumns, _.tableId === tableId
-			)
-		}*/
-
-	// -----------------------------------------------------------------
 	// Function
 	// -----------------------------------------------------------------
 
@@ -866,78 +751,164 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	// -----------------------------------------------------------------
-	// UserTableRel
+	// database privileges
 	// -----------------------------------------------------------------
-
-	def createUserTableRel(rels: CatalogUserTableRel*) = {
-		insertMultiple[CatalogUserTableRel, CatalogUserTableRelTable](
-			rels, catalogUserTableRels
+	def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*) = {
+		insertMultiple[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			dbPrivilege, catalogDatabasePrivileges
 		)
 	}
 
-	/*def createUserPhysicalTableRel(rels: CatalogUserPhysicalTableRel*) = {
-		insertMultiple[CatalogUserPhysicalTableRel, CatalogUserPhysicalTableRelTable](
-			rels, catalogUserPhysicalTableRels
-		)
-	}*/
-
-	/*// Using for revoking columns
-	def deleteUserLogicalTableRels(userId: Long, tableId: Long, columns: Seq[String]) = {
-		delete[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
-			catalogUserLogicalTableRels,
-			t => t.userId === userId && t.tableId === tableId && t.columnName.inSet(columns)
-		)
-	}*/
-
-	// Using for revoking columns
-	def deleteUserTableRels(userId: Long, databaseId: Long, table: String, columns: Seq[String]) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels,
-			t => t.userId === userId && t.databaseId === databaseId && t.table === table && t.columnName.inSet(columns)
+	def deleteDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*) = {
+		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.privilegeType.inSet(privileges)
 		)
 	}
 
-	/*// Using for unmounting table directly or dropping local database
-	def deleteUserLogicalTableRels(tableId: Long) = {
-		delete[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
-			catalogUserLogicalTableRels,
-			t => t.tableId === tableId
-		)
-	}*/
-
-	// Using for unmounting physical database
-	def deleteUserTableRels(databaseId: Long, table: String) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels,
-			t => t.databaseId === databaseId && t.table === table
+	def deleteDatabasePrivilege(userId: Long, databaseId: Long) = {
+		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId
 		)
 	}
 
-	// Using for dropping user
-	def deleteUserTableRelsByUser(userId: Long) = {
-		delete[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels,
-			t => t.userId === userId
+	def deleteDatabasePrivilege(databaseId: Long) = {
+		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t =>  t.databaseId === databaseId
 		)
 	}
 
-	/*// Using for dropping user
-	def deleteUserPhysicalTableRelsByUser(userId: Long) = {
-		delete[CatalogUserPhysicalTableRel, CatalogUserPhysicalTableRelTable](
-			catalogUserPhysicalTableRels,
-			t => t.userId === userId
+	def deleteDatabasePrivilegeByUser(userId: Long) = {
+		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t =>  t.userId === userId
 		)
-	}*/
+	}
 
-	/*def getUserLogicalTableRels(userId: Long, tableId: Long) = {
-		query[CatalogUserLogicalTableRel, CatalogUserLogicalTableRelTable](
-			catalogUserLogicalTableRels, t => t.userId === userId && t.tableId === tableId
+	def getDatabasePrivilege(userId: Long, databaseId: Long, privilegeType: String) = {
+		queryOneOption[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.privilegeType === privilegeType
 		)
-	}*/
+	}
 
-	def getUserTableRels(userId: Long, databaseId: Long, table: String) = {
-		query[CatalogUserTableRel, CatalogUserTableRelTable](
-			catalogUserTableRels, t => t.userId === userId && t.databaseId === databaseId && t.table === table
+	def getDatabasePrivilege(userId: Long, databaseId: Long) = {
+		query[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId
+		)
+	}
+
+	// -----------------------------------------------------------------
+	// table privileges
+	// -----------------------------------------------------------------
+	def createTablePrivilege(tablePrivilege: CatalogTablePrivilege*) = {
+		insertMultiple[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			tablePrivilege, catalogTablePrivileges
+		)
+	}
+
+	def deleteTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*) = {
+		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.table === table &&
+				t.privilegeType.inSet(privileges)
+		)
+	}
+
+	def deleteTablePrivilege(userId: Long, databaseId: Long, table: String) = {
+		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.table === table
+		)
+	}
+
+	def deleteTablePrivilege(databaseId: Long, table: String) = {
+		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.databaseId === databaseId && t.table === table
+		)
+	}
+
+	def deleteTablePrivilege(databaseId: Long) = {
+		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.databaseId === databaseId
+		)
+	}
+
+	def deleteTablePrivilegeByUser(userId: Long) = {
+		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.userId === userId
+		)
+	}
+
+	def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilegeType: String) = {
+		queryOneOption[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table && t.privilegeType === privilegeType
+		)
+	}
+
+	def getTablePrivilege(userId: Long, databaseId: Long, table: String) = {
+		query[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table
+		)
+	}
+
+	// -----------------------------------------------------------------
+	// column privileges
+	// -----------------------------------------------------------------
+	def createColumnPrivilege(columnPrivilege: CatalogColumnPrivilege*) = {
+		insertMultiple[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			columnPrivilege, catalogColumnPrivileges
+		)
+	}
+
+	def deleteColumnPrivilege(userId: Long, databaseId: Long, table: String, columns: Seq[String], privilege: String) = {
+		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.table === table &&
+				t.privilegeType === privilege && t.columnName.inSet(columns)
+		)
+	}
+
+	def deleteColumnPrivilege(userId: Long, databaseId: Long, table: String, column: String) = {
+		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.table === table && t.columnName === column
+		)
+	}
+
+	def deleteColumnPrivilege(databaseId: Long, table: String) = {
+		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t =>  t.databaseId === databaseId && t.table === table
+		)
+	}
+
+	def deleteColumnPrivilege(databaseId: Long) = {
+		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t =>  t.databaseId === databaseId
+		)
+	}
+
+	def deleteColumnPrivilegeByUser(userId: Long) = {
+		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t =>  t.userId === userId
+		)
+	}
+
+	def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilegeType: String) = {
+		query[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table && t.privilegeType === privilegeType
 		)
 	}
 
