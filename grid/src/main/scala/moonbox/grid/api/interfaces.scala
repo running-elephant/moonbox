@@ -15,7 +15,7 @@ sealed trait CloseSessionResponse
 case object ClosedSession extends MbApi with CloseSessionResponse
 case class CloseSessionFailed(error: String) extends MbApi with CloseSessionResponse
 
-case class JobQuery(sessionId: String, sqls: Seq[String]) extends MbApi
+case class JobQuery(sessionId: String, username: String, sqls: Seq[String]) extends MbApi
 
 case class JobSubmit(username: String, sqls: Seq[String], async: Boolean = true) extends MbApi
 

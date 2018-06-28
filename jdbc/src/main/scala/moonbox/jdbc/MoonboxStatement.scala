@@ -65,7 +65,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
       case resp: JdbcQueryOutbound =>
         if (resp.err.isDefined) {
           // Received an error message, then throw an exception
-          throw new SQLException(s"sql query error: ${resp.err.get}")
+          throw new SQLException(s"${resp.err.get}")
           // TODO: Or retry several times (retransmit the query message) ?
         } else {
           // TODO:
@@ -135,16 +135,16 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   }
 
   override def cancel() = {
-   /* beforeAction()
+    beforeAction()
     val msgId = client.getMessageId()
     val cancelMessage = JdbcCancelInbound(msgId, currentQueryId)
     val cancelResp = client.sendAndReceive(cancelMessage, getQueryTimeout)
     cancelResp match {
-      case JdbcCancelOutbound(_, Some(error), _) => throw new SQLException(s"Cancel query error: $error")
+      case JdbcCancelOutbound(_, Some(error), _) => throw new SQLException(s"Cancel query failed: $error")
       case JdbcCancelOutbound(_, None, Some(state)) => if (!state) throw new SQLException(s"Cancel query failed")
       case other => throw new SQLException(s"Cancel query error: $other")
     }
-    canceled = true*/
+    canceled = true
   }
 
   override def getWarnings = null

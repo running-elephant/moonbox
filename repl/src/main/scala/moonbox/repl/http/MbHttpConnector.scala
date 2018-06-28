@@ -152,4 +152,9 @@ class MbHttpConnector(timeout: Int) extends Connector {
       case _ => System.err.println("QueryOutbound mismatch")
     }
   }
+
+  override def cancel(): Unit = {
+      val _cancelInbound = CancelInbound(token, sessionId)
+      client.post(_cancelInbound, "/cancel")
+  }
 }

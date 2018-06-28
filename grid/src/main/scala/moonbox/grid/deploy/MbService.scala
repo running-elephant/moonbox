@@ -68,7 +68,7 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, master: ActorRef, 
 	def jobQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
 		isLogin(token).flatMap {
 			case Some(username) =>
-				askForCompute(JobQuery(sessionId, sqls)).mapTo[JobResultResponse].flatMap {
+				askForCompute(JobQuery(sessionId, username, sqls)).mapTo[JobResultResponse].flatMap {
 					case JobFailed(jobId, error) =>
 						Future(QueryOutbound(Some(jobId), error = Some(error)))
 					case JobCompleteWithCachedData(jobId) =>

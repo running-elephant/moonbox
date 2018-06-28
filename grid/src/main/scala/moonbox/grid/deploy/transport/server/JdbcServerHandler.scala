@@ -66,9 +66,22 @@ class JdbcServerHandler(channel2SessionIdAndToken: ConcurrentHashMap[Channel, (S
   def handleMessage(ctx: ChannelHandlerContext, msg: Any): Unit = {
     msg match {
       case cancel: JdbcCancelInbound =>
-        val token = channel2SessionIdAndToken.get(ctx.channel())._2
       // TODO: 1. invoke job cancel interface from service;
       // TODO: 2. send the canceled message id back and set the corresponding promise to failure
+      val sessionId = channel2SessionIdAndToken.get(ctx.channel())._1
+      val token = channel2SessionIdAndToken.get(ctx.channel())._2
+      mbService.jobCancel(token, sessionId).onComplete {
+        case Success(CancelOutbound(_, error)) =>
+          error match {
+            case Some(err) =>
+              logInfo(s"Query cancel failed, sessionId=$sessionId, since $err")
+              ctx.writeAndFlush(JdbcCancelOutbound(cancel.messageId, error, Some(false)))
+            case None =>
+              logInfo(s"Query cancel successfully, sessionId=$sessionId.")
+              ctx.writeAndFlush(JdbcCancelOutbound(cancel.messageId, None, Some(true)))
+          }
+        case Failure(e) => ctx.writeAndFlush(JdbcCancelOutbound(cancel.messageId, Some(e.getMessage), Some(false)))
+      }
       case echo: EchoInbound =>
         logInfo(s"Received message: $echo")
         ctx.writeAndFlush(EchoOutbound(echo.messageId, Some(echo.content)))

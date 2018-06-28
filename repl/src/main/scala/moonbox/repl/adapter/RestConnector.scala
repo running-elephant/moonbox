@@ -141,5 +141,18 @@ class RestConnector(timeout: Int) extends Connector with JsonSerializer  {
     }
   }
 
-
+  override def cancel(): Unit = {
+      val (err, cancel) = sender.send("/cancel", {
+          Marshal(CancelInbound(token, sessionId)).to[RequestEntity]
+      }, {
+          response => Unmarshal(response).to[CancelOutbound]
+      })
+      if (err.isDefined) {
+          System.err.println(err.get)
+      } else {
+          if (cancel.error.isDefined) {
+              System.err.println(cancel.error.get)
+          }
+      }
+  }
 }

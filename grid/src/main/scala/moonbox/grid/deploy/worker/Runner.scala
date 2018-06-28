@@ -33,14 +33,19 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				case Success(data) =>
 					successCallback(jobInfo.jobId, data, target, jobInfo.sessionId.isEmpty)
 				case Failure(e) =>
-					failureCallback(jobInfo.jobId, e, target, jobInfo.sessionId.isEmpty)
+                    if(e.getMessage.contains("cancelled job")){
+                        cancelCallback(jobInfo.jobId, e, target, false) //TaskKilledException can not catch
+                    }else{
+                        failureCallback(jobInfo.jobId, e, target, jobInfo.sessionId.isEmpty)
+                    }
 			}
 		case CancelJob(jobId) =>
+            logInfo(s"Runner::CancelJob [WARNING] !!! $jobId")
 			mbSession.cancelJob(jobId)
 		case KillRunner =>
 			logInfo(s"Runner::KillRunner $currentJob")
 			if(currentJob == null || currentJob.sessionId.isDefined) {  //if a runner have not a job OR it is an adhoc, release resources
-				clean()
+				//clean()
 				self ! PoisonPill
 			}
 	}
@@ -153,6 +158,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		val options = conf.getAll.filterKeys(_.startsWith("moonbox.cache")).+("jobId" -> jobId)
 		val optimized = mbSession.optimizedPlan(query.query)
 		try {
+			mbSession.mixcal.setJobGroup(jobId)  //cancel
 			val (plan, wholePushdown) = mbSession.pushdownPlan(optimized)
 			if (wholePushdown.isDefined) {
 				mbSession.toDT(plan, wholePushdown.get).write().format(format).options(options).save()
@@ -221,4 +227,14 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			self ! PoisonPill
 		}
 	}
+
+    private def cancelCallback(jobId: String, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
+        logWarning(e.getStackTrace.map(_.toString).mkString("\n"))
+        requester ! JobStateChanged(jobId, JobState.KILLED, Failed(e.getMessage))
+        if (shutdown) {
+            clean(JobState.KILLED)
+            self ! PoisonPill
+        }
+    }
+
 }

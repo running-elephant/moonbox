@@ -3,7 +3,7 @@ package moonbox.grid.deploy.worker
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale, UUID}
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props, Terminated}
 import akka.cluster.ClusterEvent.{CurrentClusterState, MemberUp}
 import akka.cluster.client.ClusterClientReceptionist
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
@@ -28,7 +28,9 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 	private val workerId = generateWorkerId()
 	private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT.key, WORKER_TIMEOUT.defaultValue.get)
 	private val STATEREPORT_INTERVAL = conf.get(WORKER_STATEREPORT_INTERVAL.key, WORKER_STATEREPORT_INTERVAL.defaultValue.get)
-	private val sessionIdToJobRunner = new mutable.HashMap[String, ActorRef]
+	private val sessionIdToJobRunner = new mutable.HashMap[String, ActorRef]  //adhoc
+	private val jobIdToJobRunner = new mutable.HashMap[String, ActorRef]      //batch id - runner
+    private val runnerToJobId = new mutable.HashMap[ActorRef, String]         //batch runner - id
 
 	private var cluster: Cluster = _
 
@@ -51,7 +53,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 
 		case AllocateSession(username, database) =>
 			val requester = sender()
-			logInfo(s"MbWorker::AllocateSession ${requester} ${username} ${database}")
+			logInfo(s"MbWorker::AllocateSession $requester $username $database")
 			Future {
 				val mbSession = MbSession.getMbSession(conf).bindUser(username, database)
 				val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
@@ -66,7 +68,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			}
 		case FreeSession(sessionId) =>
 			val requester = sender()
-			logInfo(s"MbWorker::FreeSession ${requester} ${sessionId}")
+			logInfo(s"MbWorker::FreeSession $requester $sessionId")
 			Future {
 				if (sessionIdToJobRunner.get(sessionId).isDefined) {
 					val runner = sessionIdToJobRunner.get(sessionId).head
@@ -81,7 +83,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 					requester ! FreeSessionFailed(e.getMessage)
 			}
 		case assign@AssignJobToWorker(jobInfo) =>
-			logInfo(s"MbWorker::AssignJobToWorker ${jobInfo}")
+			logInfo(s"MbWorker::AssignJobToWorker $jobInfo")
 			val requester = sender()
 			jobInfo.sessionId match {
 				case Some(sessionId) => // adhoc
@@ -94,19 +96,35 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 				case None => // batch
 					val mb = MbSession.getMbSession(conf).bindUser(jobInfo.username.get)
 					val runner = context.actorOf(Props(classOf[Runner], conf, mb))
+                    jobIdToJobRunner.put(jobInfo.jobId, runner)  //for cancel
+                    runnerToJobId.put(runner, jobInfo.jobId)
+                    context.watch(runner) // terminate
 					runner forward RunJob(jobInfo)
 			}
 
-		case kill@RemoveJobFromWorker(jobId) =>
-			logDebug(s"MbWorker::RemoveJobFromWorker ${jobId}")
-			sessionIdToJobRunner.get(jobId) match {
-				case Some(runner) => runner forward CancelJob(jobId)
-				case None => logWarning(s"JobRunner $jobId lost.")
-			}
+		case kill@RemoveJobFromWorker(jobInfo) =>
+			logInfo(s"MbWorker::RemoveJobFromWorker $jobInfo")
+            jobInfo.sessionId match {
+                case Some(sessionId) => // adhoc
+                    sessionIdToJobRunner.get(sessionId) match {
+                        case Some(runner) => runner forward CancelJob(jobInfo.jobId)
+                        case None => logWarning(s"JobRunner adhoc  $sessionId ${jobInfo.jobId} lost.")
+                    }
+                case None =>  //batch
+                    jobIdToJobRunner.get(jobInfo.jobId) match {
+                        case Some(runner) => runner forward CancelJob(jobInfo.jobId)
+                        case None => logWarning(s"JobRunner batch ${jobInfo.jobId} lost.")
+                    }
+            }
 
 		case r: RegisterWorkerFailed =>  logDebug(s"RegisterWorkerFailed ${r.message} ")
 		case r: RegisteredWorker =>			logDebug(s"RegisteredWorker ${r.master}")
-
+        case Terminated(actor)  => context.unwatch(actor)  //only for batch
+            val jobId: Option[String] = runnerToJobId.get(actor)
+            if(jobId.isDefined) {
+                jobIdToJobRunner.remove(jobId.get)
+            }
+            runnerToJobId.remove(actor)
 		case MasterChanged =>
 			logDebug(s"MbWorker::MasterChanged RegisterWorker")
 			context.system.scheduler.scheduleOnce(FiniteDuration(4, SECONDS),
@@ -117,11 +135,11 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			register(member)
 
 		case state: CurrentClusterState =>
-			logDebug(s"MbWorker::CurrentClusterState ${state}")
+			logDebug(s"MbWorker::CurrentClusterState $state")
 			state.members.filter(_.status == MemberStatus.Up).foreach(register)
 
 		case a =>
-			logWarning(s"MbWorker::receive UNKNOWN message ${a}")
+			logWarning(s"MbWorker::receive UNKNOWN message $a")
 
 	}
 
@@ -143,7 +161,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 					println(s"workerLatestState $master")
 					master ! WorkerLatestState(WorkerInfo(workerId, 100, 1000, self))
 				}
-			}
+            }
 		)
 	}
 

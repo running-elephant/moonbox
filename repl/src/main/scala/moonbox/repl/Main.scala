@@ -2,10 +2,11 @@ package moonbox.repl
 
 import moonbox.repl.adapter.{Connector, JdbcConnector, Utils}
 import moonbox.repl.http.MbHttpConnector
-import org.jline.reader.LineReaderBuilder
+import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.reader.impl.completer.StringsCompleter
-import org.jline.terminal.TerminalBuilder
-
+import org.jline.terminal.{Terminal, TerminalBuilder}
+import org.jline.terminal.Terminal.Signal
+import org.jline.terminal.Terminal.SignalHandler
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
@@ -20,16 +21,28 @@ object Main extends JsonSerializer {
   var password: String = _
   val delimiter: String = ";"
   var connector: Connector = _
-  val terminal = TerminalBuilder.builder /*.system(true).signalHandler(Terminal.SignalHandler.SIG_IGN)*/ .build()
+  val handler = new SignalHandler() {  //create Ctrl+C handler, NOTE: sun misc handler dose not work
+    override def handle(signal: Signal): Unit = {
+      if(signal.equals(Signal.INT)) {
+        new Thread() {
+          override def run() = {
+            if (connector != null) { connector.cancel() }
+          }
+        }.start()
+      }
+    }
+  }
+
+  val terminal: Terminal = TerminalBuilder.builder.signalHandler(handler).build()
   val autoCompleter = new StringsCompleter(MQLs.MQL.map(_.toLowerCase()): _*)
-  val lineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
+  val lineReader: LineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
 
   def main(args: Array[String]) {
     parse(args.toList)
     do {
       checkParameters()
       connector = if (method == "rest" || method == "r") {
-        // new RestConnector(timeout)
+        //new RestConnector(timeout)
         new MbHttpConnector(timeout)
       } else {
         new JdbcConnector(timeout)
@@ -43,31 +56,32 @@ object Main extends JsonSerializer {
   def repl(): Unit = {
     if (connector.prepare(host, port, user, password, "default")) {
       while (true) {
-        val stringBuilder = new StringBuilder
-        val line: String = lineReader.readLine(prompter, null, null, null).trim
-        if (line.length > 0) {
-          if (!line.endsWith(delimiter)) {
-            stringBuilder.append(line)
-            var endLine = false
-            while (!endLine) {
-              val line: String = lineReader.readLine(" " * (user.length - 1) + "->" + " ").trim
-              if (line.length > 0)
-                if (!line.endsWith(delimiter)) {
-                  stringBuilder.append(" " + line)
-                } else {
-                  if (line.equals(";"))
-                    stringBuilder.append(line)
-                  else
-                    stringBuilder.append(" " + line)
-                  endLine = true
-                }
-            }
-          } else {
-            stringBuilder.append(line)
-          }
-        }
-
         try {
+          val stringBuilder = new StringBuilder
+          val line: String = lineReader.readLine(prompter, null, null, null).trim
+
+          if (line.length > 0) {
+            if (!line.endsWith(delimiter)) {
+              stringBuilder.append(line)
+              var endLine = false
+              while (!endLine) {
+                val line: String = lineReader.readLine(" " * (user.length - 1) + "->" + " ").trim
+                if (line.length > 0)
+                  if (!line.endsWith(delimiter)) {
+                    stringBuilder.append(" " + line)
+                  } else {
+                    if (line.equals(";"))
+                      stringBuilder.append(line)
+                    else
+                      stringBuilder.append(" " + line)
+                    endLine = true
+                  }
+              }
+            } else {
+              stringBuilder.append(line)
+            }
+          }
+
           val multiLines = stringBuilder.toString().trim
           if (multiLines.length > 0) {
             lineReader.getHistory.add(multiLines)
@@ -77,6 +91,10 @@ object Main extends JsonSerializer {
 
           stringBuilder.clear()
         } catch {
+          case _: UserInterruptException =>
+            if (connector != null) {
+              connector.cancel()
+            }
           case e: Exception =>
             System.out.println(e.getMessage)
         }

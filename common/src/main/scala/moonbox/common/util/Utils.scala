@@ -3,7 +3,7 @@ package moonbox.common.util
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream, _}
 import java.lang.reflect.Field
 import java.nio.charset.StandardCharsets
-import java.util.{Collections, Properties, Map => JMap}
+import java.util.{Collections, Date, Properties, Map => JMap}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import moonbox.common.MbLogging
@@ -182,6 +182,11 @@ object Utils extends MbLogging {
 		case Nil => true
 		case head :: Nil => true
 		case head :: tails => head == tails.head && allEquals(tails)
+	}
+
+	def formatDate(time: Long): String =  {
+		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+		simpleFormat.format(new Date(time))
 	}
 
 }

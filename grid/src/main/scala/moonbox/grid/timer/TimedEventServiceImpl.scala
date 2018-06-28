@@ -120,6 +120,12 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 		}.toSeq
 	}
 
+	override def getTimedEvents(): Seq[EventRuntime] = {
+		timedScheduler.getTriggerKeys(GroupMatcher.anyGroup()).map { triggerKey =>
+			getTimedEvent(triggerKey.getGroup, triggerKey.getName)
+		}.toSeq
+	}
+
 	private def triggerStateConvert(state: TriggerState): EventState = {
 		state match {
 			case TriggerState.BLOCKED => EventState.BLOCKED

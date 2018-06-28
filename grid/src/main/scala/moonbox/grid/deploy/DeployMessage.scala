@@ -55,7 +55,7 @@ object DeployMessages {
 
 	case class AssignJobToWorker(jobInfo: JobInfo) extends DeployMessage
 
-	case class RemoveJobFromWorker(jobId: String) extends DeployMessage
+	case class RemoveJobFromWorker(jobInfo: JobInfo) extends DeployMessage
 
 	// Worker internal
 	case class RunJob(jobInfo: JobInfo) extends DeployMessage

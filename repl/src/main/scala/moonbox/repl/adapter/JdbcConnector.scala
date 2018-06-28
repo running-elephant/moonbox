@@ -1,10 +1,11 @@
 package moonbox.repl.adapter
 
-import java.sql.{Connection, DriverManager, ResultSetMetaData}
+import java.sql.{Connection, DriverManager, ResultSetMetaData, Statement}
 import java.util.Properties
 
 class JdbcConnector(timeout: Int) extends Connector {
   var connection: Connection = _
+  var stmt: Statement = _
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
@@ -25,7 +26,7 @@ class JdbcConnector(timeout: Int) extends Connector {
 
   override def process(sqls: Seq[String]): Unit = {
     val numShow = 500
-    val stmt = connection.createStatement()
+    stmt = connection.createStatement()
     stmt.setQueryTimeout(timeout)
     stmt.setFetchSize(200)
     sqls.foreach { sql =>
@@ -60,6 +61,12 @@ class JdbcConnector(timeout: Int) extends Connector {
 
   override def shutdown(): Unit = {
 
+  }
+
+  override def cancel(): Unit = {
+    if(stmt != null){
+        stmt.cancel()
+    }
   }
 
 }

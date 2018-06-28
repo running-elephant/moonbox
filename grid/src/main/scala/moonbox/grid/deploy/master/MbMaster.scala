@@ -14,6 +14,7 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
+import moonbox.core.command.{ShowEventInfo, ShowJobInfo, ShowSysInfo}
 import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
@@ -25,6 +26,7 @@ import moonbox.grid.deploy.worker.{MbWorker, WorkerInfo}
 import moonbox.grid.deploy.{DeployMessage, MbService}
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
 import moonbox.grid.{CachedData, UnitData, _}
+import org.apache.spark.sql.Row
 
 import scala.collection.JavaConverters._
 import scala.collection._
@@ -203,6 +205,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							}
 							jobInfo.client ! response
 							jobInfo.status = state //update status
+                            jobInfo.updateTime = Utils.now
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
 							persistenceEngine.removeJob(jobInfo)
@@ -210,11 +213,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							// do nothing
 					}
 
-				case JobState.FAILED =>
+				case JobState.FAILED | JobState.KILLED=>
 					runningJobs.get(jobId) match {
 						case Some(jobInfo) =>
 							jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
 							jobInfo.status = state //update status
+                            jobInfo.updateTime = Utils.now
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
 							persistenceEngine.removeJob(jobInfo)
@@ -290,6 +294,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
                 if(!sessionIdToWorker.contains(rworker.get._3)) {
                     sessionIdToWorker.put(rworker.get._3, rworker.get._1)
                 }
+                recoverWorkers.remove(member.address)
             }
             logInfo(s"new worker is $workers, new sessionId is $sessionIdToWorker")
         case _: CurrentClusterState =>
@@ -379,20 +384,31 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				case None =>
 					client ! CloseSessionFailed(s"Session $sessionId does not exist.")
 			}
-		case JobQuery(sessionId, sqls) =>
+		case JobQuery(sessionId, username, sqls) =>
 			val client = sender()
 			val now = Utils.now
 			val date = new Date(now)
 			val jobId = newJobId(date)
 			try {
-				val jobInfo = createJob(jobId, None, Some(sessionId), sqls, now, client)
-				sessionIdToWorker.get(sessionId) match {
-					case Some(worker) =>
-						runningJobs.put(jobInfo.jobId, jobInfo)
-						worker ! AssignJobToWorker(jobInfo)
-					case None =>
-						client ! JobFailed(jobInfo.jobId, "Session lost in master.")
-				}
+				val jobInfo = createJob(jobId, Some(username), Some(sessionId), sqls, now, client)
+                if (jobInfo.cmds.isEmpty) {
+                    client ! JobFailed(jobInfo.jobId, "no sql defined.")
+                } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
+                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length > 1) {
+                    client ! JobFailed(jobInfo.jobId, "System command must be used alone.")
+                } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
+                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length == 1) {
+                    doSystemCommand(jobInfo, client)
+                } else {
+                    sessionIdToWorker.get(sessionId) match {
+                        case Some(worker) =>
+                            jobInfo.status = JobState.RUNNING  //update status
+                            runningJobs.put(jobInfo.jobId, jobInfo)
+                            worker ! AssignJobToWorker(jobInfo)
+                        case None =>
+                            client ! JobFailed(jobInfo.jobId, "Session lost in master.")
+                    }
+                }
 			} catch {
 				case e: Exception =>
 					client ! JobFailed(jobId, e.getMessage)
@@ -405,11 +421,21 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			val jobId = newJobId(date)
 			try {
 				val jobInfo = createJob(jobId, Some(username), None, sqls, now, client)
-				waitingJobs.enqueue(jobInfo)
-				persistenceEngine.addJob(jobInfo)
-				if (async) {
-					client ! JobAccepted(jobInfo.jobId)
-				}
+                if (jobInfo.cmds.isEmpty) {
+                    client ! JobRejected("no sql defined.")
+                } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
+                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length > 1) {
+                    client ! JobFailed(jobInfo.jobId, "System command must be used alone.")
+                } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
+                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length == 1) {
+                    doSystemCommand(jobInfo, client)
+                } else {
+                    waitingJobs.enqueue(jobInfo)
+                    persistenceEngine.addJob(jobInfo)
+                    if (async) {
+                        client ! JobAccepted(jobInfo.jobId)
+                    }
+                }
 			} catch {
 				case e: Exception =>
 					client ! JobFailed(jobId, e.getMessage)
@@ -430,27 +456,114 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 					client ! JobFailed(jobId, s"Job $jobId does not exist or has been removed.")
 			}
 
-		case JobCancel(jobId) =>
+		case JobCancel(appId) =>
 			val client = sender()
-			waitingJobs.find(_.jobId == jobId) match {
+			waitingJobs.find(_.jobId == appId) match {
 				case Some(jobInfo) =>
-					waitingJobs.dequeueFirst(_.jobId == jobId)
+					waitingJobs.dequeueFirst(_.jobId == appId)
 					persistenceEngine.removeJob(jobInfo)
+                    client ! JobCancelSuccess (jobInfo.jobId)
 				case None =>
-					runningJobs.get(jobId) match {
-						case Some(jobInfo) =>
-							jobIdToWorker.get(jobId) match {
-								case Some(worker) =>
-									worker ! RemoveJobFromWorker(jobId)
-									client ! JobCancelSuccess(jobId)
-								case None =>
-									client ! JobCancelSuccess(jobId)
-							}
-						case None =>
-							client ! JobCancelSuccess(jobId)
-					}
+                    if(sessionIdToWorker.contains(appId)){  //adhoc, sessionid --> jobId
+                        runningJobs.filter(_._2.sessionId.isDefined).find(_._2.sessionId.get == appId).map(_._2) match {
+                            case Some (jobInfo) =>
+                                val worker = sessionIdToWorker(appId)
+                                worker ! RemoveJobFromWorker (jobInfo)
+                                client ! JobCancelSuccess (jobInfo.jobId)
+
+                            case None =>
+                                client ! JobCancelSuccess (appId)
+                        }
+                    }else {
+                        runningJobs.get(appId) match {  //batch --> jobId
+                            case Some(jobInfo) =>
+                                jobIdToWorker.get(appId) match {
+                                    case Some(worker) =>
+                                        worker ! RemoveJobFromWorker(jobInfo)
+                                        client ! JobCancelSuccess(appId)
+                                    case None =>
+                                        client ! JobCancelSuccess(appId)
+                                }
+                            case None =>
+                                client ! JobCancelSuccess (appId)
+                        }
+                    }
+
 			}
 	}
+
+    private def doSystemCommand(jobInfo: JobInfo, client: ActorRef): Unit = {
+        val jobId= jobInfo.jobId
+        if(jobInfo.cmds.last == ShowSysInfo){
+            val result = getSysInfo()
+            client ! JobCompleteWithDirectData(jobId, result)
+        } else if(jobInfo.cmds.last == ShowJobInfo) {
+            val result = getJobInfo()
+            client ! JobCompleteWithDirectData(jobId, result)
+        } else {
+            val result = getEventInfo()
+            client ! JobCompleteWithDirectData(jobId, result)
+        }
+    }
+
+    private def getSysInfo(): Seq[Seq[String]] = {
+        val aliveWorkerRow: Seq[Seq[String]] = workers.map{ elem =>
+            val workerInfo = elem._2
+            val actorAddress = elem._1.actorRef.path.address
+            Row(workerInfo.id, "alive", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0))
+        }.map(_.toSeq.map(_.toString)).toSeq
+
+        val deadWorkerRow: Seq[Seq[String]] = recoverWorkers.map{ elem =>
+            val workerInfo = elem._2._2
+            val actorAddress = elem._1
+            Row(workerInfo.id, "dead", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0))
+        }.map(_.toSeq.map(_.toString)).toSeq
+
+
+        Seq(Seq("worker id", "in cluster", "host", "port")) ++ aliveWorkerRow ++ deadWorkerRow
+    }
+
+    private def getEventInfo(): Seq[Seq[String]] = {
+        val eventInfo = timedEventService.getTimedEvents().map{ event =>
+            Row(event.group, event.name, event.cronDescription, event.status, event.startTime.getOrElse(""), event.endTime.getOrElse(""), event.preFireTime.getOrElse(""), event.nextFireTime.getOrElse(""))
+        }.map(_.toSeq.map(_.toString))
+        Seq(Seq("group", "name", "desc", "status", "start", "end", "prev", "next")) ++ eventInfo
+    }
+
+    private def getJobInfo(): Seq[Seq[String]] = {
+        val noExist = "*"
+        val waitingRows: Seq[Seq[String]] = waitingJobs.map{ jobInfo =>
+            Row(jobInfo.jobId, "batch",jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)}.map(_.toSeq.map(_.toString))
+
+        val runningRows: Seq[Seq[String]] = runningJobs.map{case (jobId, jobInfo) =>
+            val jobType = if(jobInfo.sessionId.isDefined) {"adhoc"} else {"batch"}
+            val workerId = if(jobInfo.sessionId.isDefined){
+                val sessionId = jobInfo.sessionId.get
+                if(sessionIdToWorker.contains(sessionId)){
+                    val worker = sessionIdToWorker(sessionId)
+                    if(workers.contains(worker)){ workers(worker).id } else {noExist}
+                }else {noExist}
+
+            }else {
+                if (jobIdToWorker.contains(jobId)) {
+                    val worker = jobIdToWorker(jobId)
+                    if(workers.contains(worker)){ workers(worker).id } else {noExist}
+                } else {noExist}
+            }
+
+            Row(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), workerId)}.map(_.toSeq.map(_.toString)).toSeq
+
+        val completeRows: Seq[Seq[String]] = completeJobs.map{case (jobId, jobInfo) =>
+            val jobType = if(jobInfo.sessionId.isDefined) {"adhoc"} else {"batch"}
+            Row(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)}.map(_.toSeq.map(_.toString)).toSeq
+
+        val failedRows: Seq[Seq[String]] = failedJobs.map{case (jobId, jobInfo) =>
+            val jobType = if(jobInfo.sessionId.isDefined) {"adhoc"} else {"batch"}
+            Row(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)}.map(_.toSeq.map(_.toString)).toSeq
+
+
+        Seq(Seq("job id", "type", "command", "status", "submit by", "submit time", "update time", "running worker")) ++ waitingRows ++ runningRows ++ completeRows ++ failedRows
+    }
 
 	/*private def timeOutDeadWorkers(): Unit = {
 		val currentTime = Utils.now
@@ -470,7 +583,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			worker match {
 				case Some(w) =>
 					jobIdToWorker.put(jobInfo.jobId, w)
-					runningJobs.put(jobInfo.jobId, waitingJobs.dequeue())
+					runningJobs.put(jobInfo.jobId, waitingJobs.dequeue().copy(status = JobState.RUNNING, updateTime = Utils.now))
 					w ! AssignJobToWorker(jobInfo)
 				case None =>
 			}
@@ -509,7 +622,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		nextJobNumber += 1
 		jobId
 	}
-
 
 	private def startMasterEndpoint(akkaSystem: ActorSystem): ActorRef = {
 		val singletonProps = ClusterSingletonProxy.props(

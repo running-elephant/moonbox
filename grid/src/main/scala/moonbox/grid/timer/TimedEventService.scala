@@ -10,5 +10,6 @@ trait TimedEventService {
 	def resumeTimedEvent(group: String, name: String): Unit
 	def getTimedEvent(group: String, name: String): EventRuntime
 	def getTimedEvents(group: String): Seq[EventRuntime]
+	def getTimedEvents(): Seq[EventRuntime]
 	def timedEventExists(group: String, name: String): Boolean
 }

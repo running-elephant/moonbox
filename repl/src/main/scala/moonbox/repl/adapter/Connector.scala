@@ -5,4 +5,5 @@ trait Connector {
   def process(sqls: Seq[String]): Unit
   def close(): Unit
   def shutdown(): Unit
+  def cancel(): Unit
 }
