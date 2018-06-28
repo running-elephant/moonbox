@@ -255,10 +255,10 @@ case class Explain(query: String, extended: Boolean = false) extends MbRunnableC
 			case w@WholePushdown(child, _) =>
 				val executedPlan = mbSession.toDF(child).queryExecution.executedPlan
 				if (extended) {
-					w.simpleString + "\n\t" +
+					w.simpleString + "\n+-" +
 					executedPlan.toString()
 				} else {
-					w.simpleString + "\n\t" +
+					w.simpleString + "\n+-" +
 					executedPlan.simpleString
 				}
 			case _ =>
