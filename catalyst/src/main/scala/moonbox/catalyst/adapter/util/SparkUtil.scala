@@ -226,7 +226,7 @@ object SparkUtil extends MbLogging{
             if(value != None) {
                 dataTypeConvert(value, field.dataType)
             }else{
-                logInfo(s"!can not find col $colName in resultlist")
+                logDebug(s"!can not find col $colName in resultlist")
                 null
             }
         }

@@ -92,14 +92,19 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
                 //batch save data to index
                 val ret1 = batchInsert(iter, schema)
                 logInfo(s"execute4Insert ($index,$typ) Append: batchInsert ${ret1._1} ${ret1._2}")
-            case Overwrite =>
-                if(client.checkExist(index, typ)) {
-                    //1 delete exist index
-                    val ret1 = client.deleteIndex(index)
-                    logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret1")
-                    //2 create new index with schema
-                    val ret2 = client.putSchema(index, typ, schema)
-                    logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret2")
+            case Overwrite =>  //in moonbox, the table must exist for parsing sql pass, so check exist will return true
+                if(client.checkExist(index, typ)) { //must true, NOTE: in spark, GEO point read from es then write to es, the type will lost
+                    if(client.version.head == 2) {
+                        //1 delete exist index, es2 no truncate
+                        val ret1 = client.deleteIndex(index)
+                        logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret1")
+                        //2 create new index with schema
+                        val ret2 = client.putSchema(index, typ, schema)
+                        logInfo(s"execute4Insert ($index,$typ) Overwrite: putSchema $ret2")
+                    }else {  //es5
+                        val ret1 = client.truncateIndex(index, typ)
+                        logInfo(s"execute4Insert ($index,$typ) Overwrite: truncateIndex $ret1")
+                    }
                 }
                 //3 batch insert data to index
                 val ret3 = batchInsert(iter, schema)
