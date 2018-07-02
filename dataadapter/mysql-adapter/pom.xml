@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-mysql-adapter</artifactId>
-
+    <name>Moonbox Project Data Adapter MySQL</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>

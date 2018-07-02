@@ -12,7 +12,7 @@
 
     <artifactId>moonbox-presto-adapter</artifactId>
 
-
+    <name>Moonbox Project Data Adapter Presto</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -30,6 +30,11 @@
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-jdbc</artifactId>
             <version>0.196</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>spark-presto-connector</artifactId>
+            <version>0.2.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

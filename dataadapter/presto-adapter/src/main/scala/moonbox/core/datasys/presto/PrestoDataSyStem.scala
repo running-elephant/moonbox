@@ -13,7 +13,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.rdd.MbJdbcRDD
-import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbPrestoDialect, MbSqlBuilder}
+import org.apache.spark.sql.sqlbuilder.{MbPrestoDialect, MbSqlBuilder}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
@@ -92,7 +92,7 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 	}
 
 	override def buildQuery(plan: LogicalPlan): DataTable = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, MbPrestoDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")

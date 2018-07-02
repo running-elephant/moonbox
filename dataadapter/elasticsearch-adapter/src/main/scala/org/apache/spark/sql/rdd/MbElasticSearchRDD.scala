@@ -3,7 +3,6 @@ package org.apache.spark.sql.rdd
 import java.util.Properties
 
 import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
-import moonbox.catalyst.adapter.jdbc.JdbcRow
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
