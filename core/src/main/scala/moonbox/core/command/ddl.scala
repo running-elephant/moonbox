@@ -5,7 +5,7 @@ import moonbox.core.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.types.{StructField, StructType}
+import org.apache.spark.sql.types.StructType
 
 sealed trait DDL
 
@@ -29,16 +29,6 @@ case class MountDatabase(
 		Seq.empty[Row]
 	}
 }
-
-/*case class AlterDatasourceSetName(
-	name: String,
-	newName: String) extends MbRunnableCommand with DDL {
-
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		mbSession.catalog.renameDatasource(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
-		Seq.empty[Row]
-	}
-}*/
 
 case class AlterDatabaseSetOptions(
 	name: String,
@@ -176,53 +166,6 @@ case class MountTable(
 		Seq.empty[Row]
 	}
 }
-
-/*case class MountTableWithDatasoruce(
-	datasource: String,
-	tables: Seq[(MbTableIdentifier, Option[StructType], Map[String, String])],
-	isStream: Boolean,
-	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
-
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val catalogDatasource = mbSession.catalog.getDatasource(ctx.organizationId, datasource)
-		tables.foreach { case (table, schema, props) =>
-			val (databaseId, database) = table.database match {
-				case Some(db) =>
-					val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
-					(currentDatabase.id.get, currentDatabase.name)
-				case None =>
-					(ctx.databaseId, ctx.databaseName)
-			}
-
-			val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
-			val typ = props("type")
-			val catalog = mbSession.mixcal.sparkSession.sessionState.catalog
-			val tableIdentifier = TableIdentifier(table.table, table.database)
-			if (catalog.tableExists(tableIdentifier)) {
-				catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
-			}
-			val createTableSql =
-				s"""
-				   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
-				   |using ${DataSystemFactory.typeToSparkDatasource(typ)}
-				   |options($propsString)
-			 """.stripMargin
-			mbSession.mixcal.sqlToDF(createTableSql)
-			val columns = schema.getOrElse(mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema)
-			val catalogTable = CatalogTable(
-				name = table.table,
-				description = None,
-				databaseId = databaseId,
-				properties = catalogDatasource.properties ++ props,
-				isStream = isStream,
-				createBy = ctx.userId,
-				updateBy = ctx.userId
-			)
-			mbSession.catalog.createTable(catalogTable, columns, ctx.organizationName, database, ignoreIfExists)
-		}
-		Seq.empty[Row]
-	}
-}*/
 
 case class AlterTableSetName(
 	table: MbTableIdentifier,

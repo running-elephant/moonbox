@@ -10,9 +10,8 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.datasys.{DataSystem, DataSystemFactory, Queryable}
-import org.apache.spark.sql.{DataFrame, MixcalContext, Row, SaveMode}
-
+import moonbox.core.datasys.Pushdownable
+import org.apache.spark.sql.{DataFrame, MixcalContext}
 import scala.collection.mutable
 
 class MbSession(conf: MbConf) extends MbLogging {
@@ -88,7 +87,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.treeToDF(plan)
 	}
 
-	def toDT(plan: LogicalPlan, datasys: Queryable): DataTable = {
+	def toDT(plan: LogicalPlan, datasys: Pushdownable): DataTable = {
 		datasys.buildQuery(plan)
 	}
 

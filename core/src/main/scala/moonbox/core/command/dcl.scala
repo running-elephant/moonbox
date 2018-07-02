@@ -5,7 +5,7 @@ import moonbox.core.catalog._
 import moonbox.core.command.PrivilegeType.PrivilegeType
 import moonbox.core.{MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.datasys.DataSystemFactory
+import moonbox.core.datasys.DataSystem
 
 sealed trait DCL
 
@@ -315,7 +315,7 @@ case class GrantResourceToUser(
 			}
 		} else {
 			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
-			val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
+			val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
 			val catalogColumns = mbSession.catalog.getColumns(catalogDatabase.id.get, tableIdentifier.table)(mbSession)
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false
@@ -455,7 +455,7 @@ case class RevokeResourceFromUser(
 			}
 		} else {
 			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
-			val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
+			val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
 
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false

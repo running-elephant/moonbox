@@ -1,21 +1,17 @@
 package org.apache.spark.sql
 
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.MbSession._
 import moonbox.core.config._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.datasys.DataSystemFactory
+import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
-
-import scala.collection.JavaConversions._
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
@@ -80,7 +76,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		val createTableSql =
 			s"""
 			   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
-			   |using ${DataSystemFactory.typeToSparkDatasource(typ)}
+			   |using ${DataSystem.lookupDataSource(typ)}
 			   |options($propsString)
 			 """.stripMargin
 		sqlToDF(createTableSql)
