@@ -100,7 +100,7 @@ mql
 
     | SHOW SYSINFO                                                                              # showSysInfo
     | SHOW JOB                                                                                  # showJob
-    | SHOW EVENT                                                                                # showEvent
+    | SHOW RUNNING EVENT                                                                        # showRunningEvent
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
     | SHOW VIEWS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                            # showViews
@@ -328,6 +328,7 @@ REMOVE: 'REMOVE';
 RENAME: 'RENAME';
 REPLACE: 'REPLACE';
 REVOKE: 'REVOKE';
+RUNNING: 'RUNNING';
 SA: 'SA';
 SCHEDULE: 'SCHEDULE';
 SELECT: 'SELECT';

@@ -14,7 +14,7 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.core.command.{ShowEventInfo, ShowJobInfo, ShowSysInfo}
+import moonbox.core.command.{ShowRunningEventInfo, ShowJobInfo, ShowSysInfo}
 import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
@@ -394,10 +394,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
                 if (jobInfo.cmds.isEmpty) {
                     client ! JobFailed(jobInfo.jobId, "no sql defined.")
                 } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
-                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length > 1) {
+                        jobInfo.cmds.contains(ShowRunningEventInfo)) && jobInfo.cmds.length > 1) {
                     client ! JobFailed(jobInfo.jobId, "System command must be used alone.")
                 } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
-                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length == 1) {
+                        jobInfo.cmds.contains(ShowRunningEventInfo)) && jobInfo.cmds.length == 1) {
                     doSystemCommand(jobInfo, client)
                 } else {
                     sessionIdToWorker.get(sessionId) match {
@@ -424,10 +424,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
                 if (jobInfo.cmds.isEmpty) {
                     client ! JobRejected("no sql defined.")
                 } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
-                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length > 1) {
+                        jobInfo.cmds.contains(ShowRunningEventInfo)) && jobInfo.cmds.length > 1) {
                     client ! JobFailed(jobInfo.jobId, "System command must be used alone.")
                 } else if ((jobInfo.cmds.contains(ShowSysInfo) || jobInfo.cmds.contains(ShowJobInfo) ||
-                        jobInfo.cmds.contains(ShowEventInfo)) && jobInfo.cmds.length == 1) {
+                        jobInfo.cmds.contains(ShowRunningEventInfo)) && jobInfo.cmds.length == 1) {
                     doSystemCommand(jobInfo, client)
                 } else {
                     waitingJobs.enqueue(jobInfo)
@@ -525,7 +525,12 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
     private def getEventInfo(): Seq[Seq[String]] = {
         val eventInfo = timedEventService.getTimedEvents().map{ event =>
-            Row(event.group, event.name, event.cronDescription, event.status, event.startTime.getOrElse(""), event.endTime.getOrElse(""), event.preFireTime.getOrElse(""), event.nextFireTime.getOrElse(""))
+            val startTime = if(event.startTime.isDefined){Utils.formatDate(event.startTime.get)} else {""}
+            val endTime  = if(event.endTime.isDefined){Utils.formatDate(event.endTime.get)} else {""}
+            val preTime  = if(event.preFireTime.isDefined){Utils.formatDate(event.preFireTime.get)} else {""}
+            val nextTime =if(event.nextFireTime.isDefined){Utils.formatDate(event.nextFireTime.get)} else {""}
+
+            Row(event.group, event.name, event.cronDescription, event.status, startTime, endTime, preTime, nextTime)
         }.map(_.toSeq.map(_.toString))
         Seq(Seq("group", "name", "desc", "status", "start", "end", "prev", "next")) ++ eventInfo
     }

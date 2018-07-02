@@ -189,4 +189,9 @@ object Utils extends MbLogging {
 		simpleFormat.format(new Date(time))
 	}
 
+	def formatDate(date: Date): String =  {
+		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+		simpleFormat.format(date)
+	}
+
 }

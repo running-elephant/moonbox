@@ -365,16 +365,19 @@ class EsRestClient(param: Map[String, String]) extends MbLogging{
 
     /** use logic from es connector, convert every type to json object **/
     private def buildJsonValue(dataType: DataType, value: Any): Any = {
+        if(value == null){
+            return JSONObject.NULL
+        }
         dataType match {
             case a: ArrayType =>  buildArray(a, value)//java collection
             case m: MapType =>    buildMap(m, value)  //java map
             case s: StructType => buildStruct(s, value)
+            case _: DecimalType => throw new Exception("Decimal types are not supported by Elasticsearch - consider using a different type (such as string)")
             case _: NumericType => value
             case _: TimestampType => value.asInstanceOf[Timestamp].getTime
             case _: DateType => value.asInstanceOf[Date].getTime
             case _: BooleanType => value.asInstanceOf[Boolean]
             case _: StringType => value.toString
-            case _: DecimalType => throw new Exception("Decimal types are not supported by Elasticsearch - consider using a different type (such as string)")
             case _ => value
         }
     }

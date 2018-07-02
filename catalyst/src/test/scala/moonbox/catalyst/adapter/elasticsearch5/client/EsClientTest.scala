@@ -1,5 +1,8 @@
 package moonbox.catalyst.adapter.elasticsearch5.client
 
+import java.sql.Timestamp
+import java.util.{Calendar, GregorianCalendar}
+
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
@@ -219,16 +222,17 @@ class EsClientTest extends FunSuite{
                     StructField("col5-b", StringType)
                 )))
             ))
+
         val data1 = Seq(
             Seq(
-                new java.sql.Timestamp(2018-1900, 10, 10, 10, 10, 10, 0),
-                new java.sql.Date(2018-1900, 10, 10),
+                Timestamp.valueOf("2018-10-10 10:10:00"),
+                new GregorianCalendar(2018, 10, 10).getTime(),
                 Seq(1l, 2l, 3l, 4l),
                 Map("aaa" -> 1l, "bbb"-> 2l),
                 Seq("ggg", "fff" )),
             Seq(
-                new java.sql.Timestamp(2019-1900, 2, 2, 10, 10, 10, 0),
-                new java.sql.Date(2019-1900, 10, 10),
+                Timestamp.valueOf("2019-02-02 10:10:10"),
+                new GregorianCalendar(2019, 10, 10).getTime(),
                 Seq(52l, 26l, 75l, 23l),
                 Map("ccc" -> 4l, "ddd"-> 5l),
                 Seq("tttt", "qqqq" ))

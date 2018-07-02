@@ -192,7 +192,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			val plan = mbSession.pushdownPlan(optimized)
 			plan match {
 				case WholePushdown(child, queryable) =>
-					mbSession.toDT(plan, queryable).write().format(format).options(options).mode(saveMode).save()
+					mbSession.toDT(child, queryable).write().format(format).options(options).mode(saveMode).save()
 				case _ =>
 					mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
 			}
