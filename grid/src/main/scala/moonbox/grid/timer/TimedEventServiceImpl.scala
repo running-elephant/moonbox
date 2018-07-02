@@ -31,7 +31,7 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 		new StdSchedulerFactory(props).getScheduler
 	}
 
-	private val descriptor = CronDescriptor.instance(Locale.US); //Locale.CHINA
+	private val descriptor = CronDescriptor.instance(Locale.US) //Locale.CHINA
 	private val parser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ))
 
 
@@ -48,7 +48,7 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 	override def stop(): Unit = {
 		if (!timedScheduler.isShutdown) {
 			timedScheduler.shutdown()
-			logInfo("Timer is stopped")
+			logInfo("Timer is stopped.")
 		}
 	}
 
