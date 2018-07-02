@@ -37,7 +37,7 @@ class CatalogLogin(catalogContext: CatalogContext) extends Login {
 
 	override def doLogin(username: String, password: String): Boolean = {
 		catalogContext.getUserOption(username) match {
-			case Some(user) if PasswordEncryptor.encryptSHA(user.password) == password => true
+			case Some(user) if user.password == PasswordEncryptor.encryptSHA(password) => true
 			case _ => false
 		}
 	}
