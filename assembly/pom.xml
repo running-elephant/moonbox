@@ -46,11 +46,11 @@
             <artifactId>moonbox-catalyst_2.11</artifactId>
             <version>0.2.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
+       <!-- <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-dataadapter_2.11</artifactId>
             <version>0.2.0-SNAPSHOT</version>
-        </dependency>
+        </dependency>-->
 
 
     </dependencies>
