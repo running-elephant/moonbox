@@ -20,9 +20,13 @@
         <module>client</module>
         <module>repl</module>
         <module>jdbc</module>
-        <module>dataadapter</module>
         <module>testkit</module>
         <module>assembly</module>
+        <module>dataadapter/elasticsearch-adapter</module>
+        <module>dataadapter/mongo-adapter</module>
+        <module>dataadapter/kudu-adapter</module>
+        <module>dataadapter/mysql-adapter</module>
+        <module>dataadapter/presto-adapter</module>
     </modules>
 
     <properties>

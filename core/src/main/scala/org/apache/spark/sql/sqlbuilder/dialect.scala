@@ -1,11 +1,12 @@
 package org.apache.spark.sql.sqlbuilder
 
 import org.apache.spark.sql.execution.datasources.LogicalRelation
-import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
-import org.apache.spark.sql.execution.datasources.presto.PrestoRelation
 
 
-abstract class MbDialect {
+trait MbDialect {
+	import MbDialect._
+
+	registerDialect(this)
 
 	def relation(relation: LogicalRelation): String
 
@@ -31,9 +32,6 @@ object MbDialect {
 
 	private[this] var dialects = List[MbDialect]()
 
-	registerDialect(MbMySQLDialect)
-	registerDialect(MbOracleDialect)
-
 	def get(name: String): MbDialect = {
 		val matchingDialects = dialects.filter(_.canHandle(name))
 		matchingDialects.headOption match {
@@ -44,27 +42,8 @@ object MbDialect {
 }
 
 
-object MbMySQLDialect extends MbDialect {
 
-	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("mysql")
-
-	override def quote(name: String): String = {
-		"`" + name.replace("`", "``") + "`"
-	}
-
-
-	override def explainSQL(sql: String): String = s"EXPLAIN $sql"
-
-	override def relation(relation: LogicalRelation): String = {
-		relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
-	}
-
-	override def maybeQuote(name: String): String = {
-		name
-	}
-}
-
-object MbOracleDialect extends MbDialect {
+/*object MbOracleDialect extends MbDialect {
 
 	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("oracle")
 
@@ -77,22 +56,9 @@ object MbOracleDialect extends MbDialect {
 	}
 
 	override def maybeQuote(name: String): String = name
-}
+}*/
 
-object MbPrestoDialect extends MbDialect {
 
-	override def relation(relation: LogicalRelation): String = {
-		relation.relation.asInstanceOf[PrestoRelation].props("dbtable")
-	}
-
-	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("presto")
-
-	override def quote(name: String): String = name
-
-	override def explainSQL(sql: String): String = s"EXPLAIN $sql"
-
-	override def maybeQuote(name: String): String = name
-}
 
 
 

@@ -12,6 +12,7 @@ import moonbox.grid._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.timer.{EventCall, EventEntity}
 import org.apache.spark.sql.SaveMode
+import moonbox.core.datasys.{DataSystem, Insertable}
 import org.apache.spark.sql.optimizer.WholePushdown
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -185,13 +186,14 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def insertInto(insert: InsertInto): JobResult = {
 		val options = mbSession.getCatalogTable(insert.table.table, insert.table.database).properties
+		val sinkDataSystem = DataSystem.lookupDataSystem(options)
 		val format = options("type")
 		val saveMode = if (insert.overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(insert.query)
 		try {
 			val plan = mbSession.pushdownPlan(optimized)
 			plan match {
-				case WholePushdown(child, queryable) =>
+				case WholePushdown(child, queryable) if sinkDataSystem.isInstanceOf[Insertable] =>
 					mbSession.toDT(child, queryable).write().format(format).options(options).mode(saveMode).save()
 				case _ =>
 					mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()

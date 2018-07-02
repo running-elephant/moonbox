@@ -4,9 +4,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.datasys.DataSystemFactory
-import org.apache.spark.sql.types.StructType
-
+import moonbox.core.datasys.DataSystem
 
 object CatalogContext {
 	val DEFAULT_DATABASE = "default"
@@ -229,7 +227,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		if (database.isLogical) {
 			catalog.getTable(databaseId, table)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			val datasys = DataSystem.lookupDataSystem(database.properties)
 			CatalogTable(
 				name = table,
 				description = None,
@@ -248,7 +246,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		if (database.isLogical) {
 			catalog.listTables(databaseId)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			val datasys = DataSystem.lookupDataSystem(database.properties)
 			val tableNames: Seq[String] = datasys.tableNames()
 			tableNames.map { name =>
 				CatalogTable(
@@ -271,7 +269,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		if (database.isLogical) {
 			catalog.listTables(databaseId, pattern)
 		} else {
-			val datasys = DataSystemFactory.getInstance(database.properties, null)
+			val datasys = DataSystem.lookupDataSystem(database.properties)
 			val tableNames: Seq[String] = datasys.tableNames()
 			tableNames.map { name =>
 				CatalogTable(
@@ -295,7 +293,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 			val props = catalog.getTable(databaseId, table).properties
 			mbSession.mixcal.registerTable(TableIdentifier(table, Some(database.name)), props)
 		} else {
-			val props = DataSystemFactory.getInstance(database.properties, mbSession.mixcal.sparkSession).tableProperties(table)
+			val props = DataSystem.lookupDataSystem(database.properties).tableProperties(table)
 			mbSession.mixcal.registerTable(tableIdentifier, props)
 		}
 		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>

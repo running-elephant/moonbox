@@ -1,18 +1,17 @@
 package moonbox.core
 
-import moonbox.core.catalog.{CatalogColumn, CatalogSession, CatalogTable}
+import moonbox.core.catalog.{CatalogColumn, CatalogTable}
 import moonbox.core.command._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.datasys.DataSystemFactory
+import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.execution.datasources.LogicalRelation
-import org.apache.spark.sql.types.StructType
 
 import scala.collection.mutable.ArrayBuffer
 
 class TablePrivilegeManager(mbSession: MbSession, catalogTable: CatalogTable) {
-	val physicalTableName = DataSystemFactory.getInstance(catalogTable.properties, mbSession.mixcal.sparkSession).tableName()
+	val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
 	val dbPrivileges = mbSession.catalog.getDatabasePrivilege(mbSession.catalogSession.userId, catalogTable.databaseId)
 	val tablePrivileges = mbSession.catalog.getTablePrivilege(mbSession.catalogSession.userId, catalogTable.databaseId, physicalTableName)
 
@@ -94,11 +93,7 @@ object ColumnSelectPrivilegeChecker {
 					attributeSet.append(aggregate.groupingExpressions.map(_.references):_*)
 				case other =>
 			}
-			/*plan.transformAllExpressions {
-				case expression =>
-					attributeSet.append(expression.references)
-					expression
-			}*/
+
 			val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
 			if (unavailableColumns.nonEmpty)
 				throw new ColumnPrivilegeException(
@@ -130,7 +125,5 @@ object ColumnSelectPrivilegeChecker {
 			case Filter(condition, _) =>
 				traverseExpression(condition)
 		}.flatten
-
-
 	}
 }

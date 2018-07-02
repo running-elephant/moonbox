@@ -1,11 +1,12 @@
 package org.apache.spark.sql.datasys
 
+import moonbox.core.datasys.{DataSystem, DataSystemRegister, Pushdownable}
+import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
-class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSystem(Map()) {
-	override val name: String = "spark"
+class SparkDataSystem extends DataSystem(Map()) with Pushdownable with DataSystemRegister {
 
 	override def isSupportAll: Boolean = true
 
@@ -22,7 +23,7 @@ class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSys
 	override val beGoodAtOperators: Seq[Class[_]] = Seq()
 	override val supportedJoinTypes: Seq[JoinType] = Seq()
 
-	override def buildScan(plan: LogicalPlan): DataFrame = {
+	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
 		Dataset.ofRows(sparkSession, plan)
 	}
 
@@ -31,4 +32,12 @@ class SparkDataSystem(@transient val sparkSession: SparkSession) extends DataSys
 	override def tableProperties(tableName: String): Map[String, String] = { throw new UnsupportedOperationException("unsupport method tableOption") }
 
 	override def tableName(): String = {  throw new UnsupportedOperationException("unsupport method tableName") }
+
+	override def buildQuery(plan: LogicalPlan): DataTable = {
+		throw new UnsupportedOperationException(s"unsupport call method buildQuery in spark datasystem")
+	}
+
+	override def shortName(): String = "spark"
+
+	override def dataSource(): String = ""
 }

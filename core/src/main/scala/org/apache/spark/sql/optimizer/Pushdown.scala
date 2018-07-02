@@ -4,7 +4,8 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, EqualTo}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
-import org.apache.spark.sql.datasys.{DataSystemFactory, Queryable, SparkDataSystem}
+import moonbox.core.datasys.{DataSystem, Pushdownable}
+import org.apache.spark.sql.datasys.SparkDataSystem
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.mutable
@@ -14,7 +15,6 @@ object Pushdown {
 }
 
 class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
-
 	override def apply(plan: LogicalPlan): LogicalPlan = {
 		val graph = buildDataSystemTree(plan)
 		val (whole, partial) = findReplacePoint(graph)
@@ -41,29 +41,26 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 				}
 			}
 		}
-		/*if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem]) {
-			parents.add(graph)
-		}
-		parents.filter(n => n.plan.find(l => n.dataSystem.isGoodAt(l.getClass)).isDefined)*/
-		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem] &&
-			graph.plan.find(l => graph.dataSystem.isGoodAt(l.getClass)).isDefined &&
-			graph.dataSystem.isInstanceOf[Queryable]
+
+		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem] && graph.dataSystem.isInstanceOf[Pushdownable]
+			&& graph.plan.find(l => graph.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined &&
+			  !graph.dataSystem.isInstanceOf[SparkDataSystem]
 		) {
 			(Some(graph), mutable.HashSet[MbTreeNode]())
 		} else {
-			(None, parents.filter(n => n.plan.find(l => n.dataSystem.isGoodAt(l.getClass)).isDefined))
+			(None, parents.filter(n => n.plan.find(l => n.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined))
 		}
 	}
 
 	private def wholePushdown(graph: MbTreeNode): LogicalPlan = {
-		WholePushdown(graph.plan, graph.dataSystem.asInstanceOf[Queryable])
+		WholePushdown(graph.plan, graph.dataSystem.asInstanceOf[Pushdownable])
 	}
 
 	private def replacePushdownSubtree(graph: MbTreeNode, points: mutable.HashSet[MbTreeNode]): LogicalPlan = {
 		graph.plan.transformDown {
 			case logicalPlan: LogicalPlan if points.map(_.plan).contains(logicalPlan) =>
 				val treeNode = points.find(_.plan.equals(logicalPlan)).get
-				treeNode.dataSystem.buildScan(treeNode.plan).logicalPlan
+				treeNode.dataSystem.asInstanceOf[Pushdownable].buildScan(treeNode.plan, sparkSession).logicalPlan
 		}
 	}
 
@@ -72,72 +69,74 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 		val childrenTreeNode = plan.children.map(buildDataSystemTree)
 		plan match {
 			case logical@LogicalRelation(relation, output, Some(catalogTable)) =>
-				// TODO JdbcRelation index
 				MbTreeNode(logical,
-					DataSystemFactory.getInstance(catalogTable.storage.properties, sparkSession), Nil)
+					DataSystem.lookupDataSystem(catalogTable.storage.properties), Nil)
 			case leaf: LeafNode =>
-				MbTreeNode(leaf, new SparkDataSystem(sparkSession), Nil)
+				MbTreeNode(leaf, new SparkDataSystem(), Nil)
 			case unary: UnaryNode =>
-				if (childrenTreeNode.head.dataSystem.isSupport(unary)) {
-					MbTreeNode(unary, childrenTreeNode.head.dataSystem, childrenTreeNode.map(SameDependency))
-				} else {
-					MbTreeNode(unary, new SparkDataSystem(sparkSession), childrenTreeNode.map(CrossDependency))
+				childrenTreeNode.head.dataSystem match {
+					case pushdown: Pushdownable if pushdown.isSupport(unary) =>
+						MbTreeNode(unary, childrenTreeNode.head.dataSystem, childrenTreeNode.map(SameDependency))
+					case _ =>
+						MbTreeNode(unary, new SparkDataSystem(), childrenTreeNode.map(CrossDependency))
 				}
 			case join@Join(left, right, joinType, condition) =>
 				val left = childrenTreeNode.head.dataSystem
 				val right = childrenTreeNode.tail.head.dataSystem
-				if (left.fastEquals(right)) {
-					if (left.isSupport(join)) {
-						val sqlConf = sparkSession.sessionState.conf
-						val leftChildCost = join.left.stats(sqlConf)
-						val rightChildCost = join.right.stats(sqlConf)
-						if (costUnderExpected(leftChildCost, rightChildCost) ||
-							costConsiderIndexUnderExpected(join, leftChildCost, rightChildCost, indexes)) {
-							MbTreeNode(join, left, childrenTreeNode.map(SameDependency))
+				(left, right) match {
+					case (l: Pushdownable, r: Pushdownable) if l.fastEquals(r) =>
+						if (l.isSupport(join)) {
+							val sqlConf = sparkSession.sessionState.conf
+							val leftChildCost = join.left.stats(sqlConf)
+							val rightChildCost = join.right.stats(sqlConf)
+							if (costUnderExpected(leftChildCost, rightChildCost) ||
+								costConsiderIndexUnderExpected(join, leftChildCost, rightChildCost, indexes)) {
+								MbTreeNode(join, left, childrenTreeNode.map(SameDependency))
+							} else {
+								MbTreeNode(join, new SparkDataSystem(), childrenTreeNode.map(SameDependency))
+							}
 						} else {
-							MbTreeNode(join, new SparkDataSystem(sparkSession), childrenTreeNode.map(SameDependency))
+							MbTreeNode(join, new SparkDataSystem(), childrenTreeNode.map(SameDependency))
 						}
-					} else {
-						MbTreeNode(join, new SparkDataSystem(sparkSession), childrenTreeNode.map(SameDependency))
-					}
-				} else {
-					val leftDependency = if (left.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
-					val rightDependency = if (right.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
-					MbTreeNode(
-						join,
-						new SparkDataSystem(sparkSession),
-						childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)})
+					case _ =>
+						val leftDependency = if (left.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
+						val rightDependency = if (right.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
+						MbTreeNode(
+							join,
+							new SparkDataSystem(),
+							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)})
 				}
 			case binary: BinaryNode =>
 				val left = childrenTreeNode.head.dataSystem
 				val right = childrenTreeNode.tail.head.dataSystem
-				if (left.fastEquals(right)) {
-					if (left.isSupport(binary)) {
-						MbTreeNode(binary, left, childrenTreeNode.map(SameDependency))
-					} else {
-						MbTreeNode(binary, new SparkDataSystem(sparkSession), childrenTreeNode.map(CrossDependency))
-					}
-				} else {
-					val leftDependency = if (left.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
-					val rightDependency = if (right.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
-					MbTreeNode(
-						binary,
-						new SparkDataSystem(sparkSession),
-						childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)}
-					)
+				(left, right) match {
+					case (l: Pushdownable, r: Pushdownable) if l.fastEquals(r) =>
+						if (l.isSupport(binary)) {
+							MbTreeNode(binary, left, childrenTreeNode.map(SameDependency))
+						} else {
+							MbTreeNode(binary, new SparkDataSystem(), childrenTreeNode.map(CrossDependency))
+						}
+					case _ =>
+						val leftDependency = if (left.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
+						val rightDependency = if (right.isInstanceOf[SparkDataSystem]) SameDependency else CrossDependency
+						MbTreeNode(
+							binary,
+							new SparkDataSystem(),
+							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)}
+						)
 				}
 			case union@Union(children) =>
-				if (dataSystemEquals(childrenTreeNode) && childrenTreeNode.head.dataSystem.isSupport(union)) {
+				if (dataSystemEquals(childrenTreeNode) && childrenTreeNode.head.dataSystem.asInstanceOf[Pushdownable].isSupport(union)) {
 					MbTreeNode(union, childrenTreeNode.head.dataSystem, childrenTreeNode.map(SameDependency))
 				} else {
-					MbTreeNode(union, new SparkDataSystem(sparkSession), childrenTreeNode.map { node =>
+					MbTreeNode(union, new SparkDataSystem(), childrenTreeNode.map { node =>
 						if (node.dataSystem.isInstanceOf[SparkDataSystem])
 							SameDependency(node)
 						else CrossDependency(node)
 					})
 				}
 			case _ =>
-				MbTreeNode(plan, new SparkDataSystem(sparkSession), childrenTreeNode.map(CrossDependency))
+				MbTreeNode(plan, new SparkDataSystem(), childrenTreeNode.map(CrossDependency))
 		}
 	}
 
@@ -170,7 +169,11 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 
 	private def dataSystemEquals(children: Seq[MbTreeNode]): Boolean = {
 		children.tail.forall { node =>
-			node.dataSystem.fastEquals(children.head.dataSystem)
+			(node.dataSystem, children.head.dataSystem) match {
+				case (l: Pushdownable, r: Pushdownable) =>
+					l.fastEquals(r)
+				case _ => false
+			}
 		}
 	}
 

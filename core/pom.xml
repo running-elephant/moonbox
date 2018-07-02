@@ -25,36 +25,8 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>spark-hbase-connector</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-catalyst_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>spark-presto-connector</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
             <artifactId>scala-reflect</artifactId>
             <groupId>org.scala-lang</groupId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kudu</groupId>
-            <artifactId>kudu-spark2_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kudu</groupId>
-            <artifactId>kudu-client</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.datastax.spark</groupId>
-            <artifactId>spark-cassandra-connector_2.11</artifactId>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -72,10 +44,7 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-yarn_2.11</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>com.typesafe.slick</groupId>
             <artifactId>slick_2.11</artifactId>
@@ -92,7 +61,6 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
-
     </dependencies>
 
     <build>
