@@ -19,6 +19,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
 
+	private val userConfiguration = new mutable.HashMap[String, String]()
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
@@ -57,11 +58,16 @@ class MbSession(conf: MbConf) extends MbLogging {
 		this
 	}
 
+	def setConfiguration(key: String, value: String): Unit = {
+		userConfiguration.put(key, value)
+	}
+
 	def cancelJob(jobId: String): Unit = {
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
 	def optimizedPlan(sqlText: String): LogicalPlan = {
+
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
 		val tableIdentifiers = collectDataSourceTable(parsedLogicalPlan)
 		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>

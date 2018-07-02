@@ -571,17 +571,17 @@ class MbParserSuite extends FunSuite {
 
 	test("set configuration") {
 		assertEquals(
-			SetVariables("key", "value", isGlobal = false),
+			SetConfiguration("key", "value", isGlobal = false),
 			"SET key = 'value'",
 			"SET key 'value'"
 		)
 		assertEquals(
-			SetVariables("key", "value", isGlobal = false),
+			SetConfiguration("key", "value", isGlobal = false),
 			"SET SESSION key = 'value'",
 			"SET SESSION key 'value'"
 		)
 		assertEquals(
-			SetVariables("key", "value", isGlobal = true),
+			SetConfiguration("key", "value", isGlobal = true),
 			"SET GLOBAL key = 'value'",
 			"SET GLOBAL key 'value'"
 		)

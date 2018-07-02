@@ -24,10 +24,15 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 	}
 }
 
-case class SetVariables(name: String, value: String, isGlobal: Boolean)
+case class SetConfiguration(name: String, value: String, isGlobal: Boolean)
 	extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		// TODO
+		if (isGlobal) {
+			throw new UnsupportedOperationException("Set global configuration doesn't support now.")
+		} else {
+			mbSession.setConfiguration(name, value)
+		}
 		Seq.empty[Row]
 	}
 }
@@ -114,6 +119,15 @@ case class ShowApplications(
 			mbSession.catalog.listApplications(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listApplications(ctx.organizationId))
 		applications.map { a => Row(a.name) }
+	}
+}
+
+case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val timedEvents = pattern.map { p =>
+			mbSession.catalog.listTimedEvents(ctx.organizationId, p)
+		}.getOrElse(mbSession.catalog.listTimedEvents(ctx.organizationId))
+		timedEvents.map { e => Row(e.name) }
 	}
 }
 
@@ -227,6 +241,21 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 		val catalogGroup: CatalogGroup = mbSession.catalog.getGroup(ctx.organizationId, group)
 		val result = Row("Group Name", catalogGroup.name) ::
 			Row("Description", catalogGroup.description.getOrElse("")) :: Nil
+		result
+	}
+}
+
+case class DescEvent(event: String) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val catalogTimedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, event)
+		val catalogUser = mbSession.catalog.getUser(catalogTimedEvent.definer)
+		val application = mbSession.catalog.getApplication(catalogTimedEvent.application)
+		val result = Row("Event Name", catalogTimedEvent.name) ::
+			Row("Definer", catalogUser.name) ::
+			Row("Schedule", catalogTimedEvent.schedule) ::
+			Row("Enable", catalogTimedEvent.enable) ::
+			Row("Application", application.cmds) ::
+			Row("Description", catalogTimedEvent.description.getOrElse("No Description.")) :: Nil
 		result
 	}
 }

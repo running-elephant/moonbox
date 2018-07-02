@@ -99,8 +99,9 @@ mql
     | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
 
     | SHOW SYSINFO                                                                              # showSysInfo
-    | SHOW JOB                                                                                  # showJob
+    | SHOW JOBS                                                                                 # showJobs
     | SHOW RUNNING EVENT                                                                        # showRunningEvent
+    | SHOW EVENTS (LIKE pattern=STRING)?                                                        # showEvents
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
     | SHOW VIEWS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                            # showViews
@@ -109,8 +110,9 @@ mql
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
 
+    | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
-    | (DESC | DESCRIBE) TABLE EXTENDED? tableIdentifier                                         # descTable
+    | (DESC | DESCRIBE) TABLE? EXTENDED? tableIdentifier                                        # descTable
     | (DESC | DESCRIBE) VIEW tableIdentifier                                                    # descView
     | (DESC | DESCRIBE) FUNCTION EXTENDED? funcIdentifier                                       # descFunction
     | (DESC | DESCRIBE) USER name=identifier                                                    # descUser
@@ -241,6 +243,7 @@ password
 
 identifier
     : IDENTIFIER
+    | BACKQUOTED_IDENTIFIER
     | nonReserved
     ;
 
@@ -297,6 +300,7 @@ ENABLE: 'ENABLE';
 EQ: '=' | '==';
 NEQ: '<>';
 EVENT: 'EVENT';
+EVENTS: 'EVENTS';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
 EXTENDED: 'EXTENDED';
@@ -313,7 +317,7 @@ IN: 'IN';
 INSERT: 'INSERT';
 INTO: 'INTO';
 LIKE: 'LIKE';
-JOB: 'JOB';
+JOBS: 'JOBS';
 MOUNT: 'MOUNT';
 NOT: 'NOT';
 ON: 'ON';
@@ -369,6 +373,10 @@ IDENTIFIER
     : (LETTER | DIGIT | '_' )+
     | '\'' (LETTER | DIGIT | '_' )+ '\''
     | '"' (LETTER | DIGIT | '_' )+ '"'
+    ;
+
+BACKQUOTED_IDENTIFIER
+    : '`' ( ~'`' | '``' )* '`'
     ;
 
 fragment DIGIT
