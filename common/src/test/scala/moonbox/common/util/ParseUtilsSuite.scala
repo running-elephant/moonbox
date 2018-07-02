@@ -112,4 +112,18 @@ class ParseUtilsSuite extends FunSuite {
 			("password", "123456"))
 		)
 	}
+
+	test("parse variable") {
+		val var1 = parseVariable("a$abc")
+		val var2 = parseVariable("select$_abc")
+		val var3 = parseVariable("; $abc_")
+		val var4 = parseVariable(" ;$a_2bc")
+		val var5 = parseVariable(" ;$a_2bc;$a_2bc  $d3")
+		assert(var1 == Seq("$abc"))
+		assert(var2 == Seq("$_abc"))
+		assert(var3 == Seq("$abc_"))
+		assert(var4 == Seq("$a_2bc"))
+		assert(var5.contains("$a_2bc"))
+		assert(var5.contains("$d3"))
+	}
 }

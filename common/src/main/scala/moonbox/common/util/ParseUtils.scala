@@ -2,6 +2,10 @@ package moonbox.common.util
 
 import fastparse.all._
 import fastparse.core.{Parsed, Parser}
+
+import scala.collection.mutable.ArrayBuffer
+
+
 object ParseUtils {
 
 	lazy val hostnameParser = P((CharIn('a' to 'z') | CharIn('A' to 'Z') | CharIn('0' to '9')).rep.!)
@@ -15,6 +19,21 @@ object ParseUtils {
 	lazy val delimiterParser = P((CharIn(" ").rep ~ CharIn("=").rep(min = 1,max = 2) ~ CharIn(" ").rep) | CharIn(" ").rep(min = 1))
 	lazy val keyValueParser = P(keyParser ~ delimiterParser ~ valueParser)
 	lazy val propertiesParser = P(keyValueParser.rep(sep = "," ~ " ".rep) ~ End)
+
+	lazy val variableParser = "(\\$[a-zA-Z_][a-zA-Z0-9_]*)".r
+
+	/*lazy val headCharInVariableParser = P(CharIn('a' to 'z') | CharIn('A' to 'Z') | CharIn("_"))
+	lazy val tailCharInVariableParser = P((CharIn('a' to 'z') | CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn("_")).rep)
+	lazy val variableParser = P(Start ~ (!CharIn("$")).rep ~ CharIn("$") ~ (headCharInVariableParser ~ tailCharInVariableParser).!)
+	lazy val variablesParser = P(((!"$").rep ~ (variableParser ~ Index)).rep)*/
+
+	def parseVariable(text: String): Seq[String] = {
+		val builder = new ArrayBuffer[String]()
+		for(str <- variableParser.findAllIn(text)) {
+			builder.+=:(str)
+		}
+		builder.distinct
+	}
 
 	def parseAddresses(servers: String): Seq[(String, Option[Int])] = {
 		val parse: Parsed[Seq[(String, Option[Int])], Char, String] = serversParser.parse(servers)
