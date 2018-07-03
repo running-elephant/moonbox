@@ -272,7 +272,7 @@
                         <useZincServer>false</useZincServer>
                         <args>
                             <arg>-unchecked</arg>
-                            <arg>-deprecation</arg>
+                            <arg>-deprecation:false</arg>
                             <arg>-feature</arg>
                         </args>
                         <jvmArgs>
