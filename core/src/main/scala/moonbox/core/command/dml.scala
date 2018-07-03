@@ -41,7 +41,6 @@ case class SetVariable(name: String, value: String, isGlobal: Boolean)
 case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val variables = pattern.map { p =>
-			// TODO pattern
 			mbSession.getVariables.filterKeys(key =>
 				Utils.escapeLikeRegex(p).r.pattern.matcher(key).matches()).toSeq
 		}.getOrElse {

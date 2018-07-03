@@ -266,7 +266,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable] = {
-		// TODO pattern
 		val database = catalog.getDatabase(databaseId)
 		if (database.isLogical) {
 			catalog.listTables(databaseId, pattern)
