@@ -361,8 +361,8 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitTableIdentifier(ctx: TableIdentifierContext): MbTableIdentifier = {
-		val database = Option(ctx.db).map(_.getText)
-		val table = ctx.table.getText
+		val database = Option(ctx.db).map(_.getText).map(ParserUtils.tripQuotes)
+		val table = ParserUtils.tripQuotes(ctx.table.getText)
 		MbTableIdentifier(table, database)
 	}
 

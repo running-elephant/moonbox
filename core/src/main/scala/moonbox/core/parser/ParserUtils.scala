@@ -9,7 +9,7 @@ object ParserUtils {
 	}
 
 	def tripQuotes(string: String): String = {
-		string.replaceAll("^\'|^\"|\"$|\'$", "")
+		string.replaceAll("^\'|^\"|^`|\"$|\'$|`$", "")
 	}
 
 	def unescapeSQLString(b: String): String = {
