@@ -43,6 +43,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		master ! RegisterWorker(workerId, self, 100, 1000)
 		//heartbeat()
 		workerLatestState()
+		logInfo(s"MbWorker start successfully.")
 	}
 
 	override def postStop(): Unit = {
@@ -196,14 +197,13 @@ object MbWorker extends MbLogging {
 		val akkaSystem = ActorSystem(param.clusterName, ConfigFactory.parseMap(param.akkaConfig.asJava))
 
 		try {
-			val worker = akkaSystem.actorOf(
+			akkaSystem.actorOf(
 				Props(
 					classOf[MbWorker],
 					param,
 					startMasterEndpoint(akkaSystem)),
 				WORKER_NAME
 			)
-			logInfo(s"MbWorker $worker start successfully.")
 		} catch {
 			case e: Exception =>
 				logError(e.getMessage)

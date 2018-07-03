@@ -14,7 +14,7 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.core.command.{ShowRunningEventInfo, ShowJobInfo, ShowSysInfo}
+import moonbox.core.command.{ShowJobInfo, ShowRunningEventInfo, ShowSysInfo}
 import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
@@ -143,8 +143,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			ScheduleJob
 		)
 
-    self ! MasterChanged
-
+    	self ! MasterChanged
+		logInfo(s"MbMaster start successfully.")
 	}
 
 	@scala.throws[Exception](classOf[Exception])
@@ -660,8 +660,7 @@ object MbMaster extends MbLogging {
 			ClusterSingletonManagerSettings(akkaSystem).withRole(ROLE)
 		)
 		try {
-			val master = akkaSystem.actorOf(masterProp, MASTER_NAME)
-			logInfo(s"MbMaster $master start successfully.")
+			akkaSystem.actorOf(masterProp, MASTER_NAME)
 		} catch {
 			case e: Exception =>
 				logError(e.getMessage)
