@@ -65,7 +65,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def getVariable(key: String): String = {
-		userVariable.getOrElse(key, throw new NoSuchElementException("Variable $key is not set."))
+		userVariable.getOrElse(key, """$""" + key)
 	}
 
 	def getVariables: Map[String, String] = {
