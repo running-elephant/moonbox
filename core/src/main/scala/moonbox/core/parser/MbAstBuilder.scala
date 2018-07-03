@@ -718,6 +718,11 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowApplications(pattern)
 	}
 
+	override def visitShowVariable(ctx: ShowVariableContext): MbCommand = {
+		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
+		ShowVariables(pattern)
+	}
+
 	override def visitDescDatabase(ctx: DescDatabaseContext): MbCommand = {
 		val database = ctx.name.getText
 		DescDatabase(database)
@@ -755,10 +760,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DescEvent(event)
 	}
 
-	override def visitSetConfiguration(ctx: SetConfigurationContext): MbCommand = {
+	override def visitSetVariable(ctx: SetVariableContext): MbCommand = {
 		val key = visitPropertyKey(ctx.property().key)
 		val value = Option(ctx.property().value.getText).orNull
-		SetConfiguration(key, value, ctx.GLOBAL() != null)
+		SetVariable(key, value, ctx.GLOBAL() != null)
 	}
 
 	override def visitExplain(ctx: ExplainContext): MbCommand = {

@@ -1,6 +1,7 @@
 package moonbox.core
 
 
+import moonbox.common.util.ParseUtils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import moonbox.core.command._
@@ -12,6 +13,7 @@ import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery,
 import org.apache.spark.sql.catalyst.plans.logical._
 import moonbox.core.datasys.Pushdownable
 import org.apache.spark.sql.{DataFrame, MixcalContext}
+
 import scala.collection.mutable
 
 class MbSession(conf: MbConf) extends MbLogging {
@@ -19,7 +21,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
 
-	private val userConfiguration = new mutable.HashMap[String, String]()
+	private val userVariable = new mutable.HashMap[String, String]()
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
@@ -58,8 +60,16 @@ class MbSession(conf: MbConf) extends MbLogging {
 		this
 	}
 
-	def setConfiguration(key: String, value: String): Unit = {
-		userConfiguration.put(key, value)
+	def setVariable(key: String, value: String): Unit = {
+		userVariable.put(key, value)
+	}
+
+	def getVariable(key: String): String = {
+		userVariable.getOrElse(key, throw new NoSuchElementException("Variable $key is not set."))
+	}
+
+	def getVariables: Map[String, String] = {
+		userVariable.toMap
 	}
 
 	def cancelJob(jobId: String): Unit = {
@@ -67,8 +77,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def optimizedPlan(sqlText: String): LogicalPlan = {
-
-		val parsedLogicalPlan = mixcal.parsedLogicalPlan(sqlText)
+		val preparedSql = prepareSql(sqlText)
+		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
 		val tableIdentifiers = collectDataSourceTable(parsedLogicalPlan)
 		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
 			(table, getCatalogTable(table.table, table.database))
@@ -111,6 +121,12 @@ class MbSession(conf: MbConf) extends MbLogging {
 			case Some(databaseName) =>
 				val database = catalog.getDatabase(catalogSession.organizationId, databaseName)
 				catalog.getTable(database.id.get, table)
+		}
+	}
+
+	private def prepareSql(sqlText: String): String = {
+		ParseUtils.parseVariable(sqlText).foldLeft[String](sqlText) { case (res, elem) =>
+			res.replaceAll(s"""\\$elem""", getVariable(elem.substring(1)))
 		}
 	}
 

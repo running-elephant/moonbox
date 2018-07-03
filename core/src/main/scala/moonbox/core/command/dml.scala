@@ -24,16 +24,33 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 	}
 }
 
-case class SetConfiguration(name: String, value: String, isGlobal: Boolean)
+case class SetVariable(name: String, value: String, isGlobal: Boolean)
 	extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		// TODO
 		if (isGlobal) {
 			throw new UnsupportedOperationException("Set global configuration doesn't support now.")
 		} else {
-			mbSession.setConfiguration(name, value)
+			mbSession.setVariable(name, value)
 		}
 		Seq.empty[Row]
+	}
+}
+
+case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+		val variables = pattern.map { p =>
+			// TODO pattern
+			mbSession.getVariables.filterKeys(key => true).toSeq
+		}.getOrElse {
+			mbSession.getVariables.toSeq
+		}
+		val sortedVariables = variables.sortWith { case ((k1, _), (k2, _)) => k1 < k2}
+		sortedVariables.map { case (k, v) =>
+			Row(s"$k : $v")
+		}.foldRight[List[Row]](Nil) { case (elem, res) =>
+			elem :: res
+		}
 	}
 }
 

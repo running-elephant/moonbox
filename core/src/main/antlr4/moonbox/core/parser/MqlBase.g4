@@ -109,6 +109,7 @@ mql
     | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
+    | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
 
     | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
@@ -119,7 +120,7 @@ mql
     | (DESC | DESCRIBE) GROUP name=identifier                                                   # descGroup
 
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
-    | SET (GLOBAL | SESSION?) property                                                          # setConfiguration
+    | SET (GLOBAL | SESSION?) property                                                          # setVariable
 
     | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier AS? query                                # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
@@ -229,7 +230,7 @@ propertyList
     ;
 
 property
-    : key=propertyKey (EQ? value=STRING)?
+    : key=propertyKey EQ? value=.*
     ;
 
 propertyKey
@@ -355,6 +356,7 @@ USE: 'USE';
 USING: 'USING';
 USER: 'USER';
 USERS: 'USERS';
+VARIABLES: 'VARIABLES';
 VIEW: 'VIEW';
 VIEWS: 'VIEWS';
 WITH: 'WITH';
