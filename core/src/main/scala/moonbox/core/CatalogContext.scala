@@ -1,5 +1,6 @@
 package moonbox.core
 
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog._
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -272,7 +273,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		} else {
 			val datasys = DataSystem.lookupDataSystem(database.properties)
 			val tableNames: Seq[String] = datasys.tableNames()
-			tableNames.map { name =>
+			Utils.filterPattern(tableNames, Utils.escapeLikeRegex(pattern))
+			.map { name =>
 				CatalogTable(
 					name = name,
 					description = None,

@@ -3,6 +3,7 @@ package moonbox.common.util
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream, _}
 import java.lang.reflect.Field
 import java.nio.charset.StandardCharsets
+import java.util.regex.Pattern
 import java.util.{Collections, Date, Properties, Map => JMap}
 
 import com.typesafe.config.{Config, ConfigFactory}
@@ -192,6 +193,35 @@ object Utils extends MbLogging {
 	def formatDate(date: Date): String =  {
 		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		simpleFormat.format(date)
+	}
+
+	// copy from spark
+	def escapeLikeRegex(pattern: String): String = {
+		val in = pattern.toIterator
+		val out = new StringBuilder()
+
+		def fail(message: String) = throw new Exception(
+			s"the pattern '$pattern' is invalid, $message")
+
+		while (in.hasNext) {
+			in.next match {
+				case '\\' if in.hasNext =>
+					val c = in.next
+					c match {
+						case '_' | '%' | '\\' => out ++= Pattern.quote(Character.toString(c))
+						case _ => fail(s"the escape character is not allowed to precede '$c'")
+					}
+				case '\\' => fail("it is not allowed to end with the escape character")
+				case '_' => out ++= "."
+				case '%' => out ++= ".*"
+				case c => out ++= Pattern.quote(Character.toString(c))
+			}
+		}
+		"(?s)" + out.result() // (?s) enables dotall mode, causing "." to match new lines
+	}
+
+	def filterPattern(source: Seq[String], pattern: String): Seq[String] = {
+		source.filter(name => pattern.r.pattern.matcher(name).matches())
 	}
 
 }

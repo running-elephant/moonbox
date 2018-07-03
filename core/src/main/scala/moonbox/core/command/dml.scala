@@ -1,5 +1,6 @@
 package moonbox.core.command
 
+import moonbox.common.util.Utils
 import moonbox.core.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, TablePrivilegeManager}
 import org.apache.spark.sql.Row
@@ -41,7 +42,8 @@ case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val variables = pattern.map { p =>
 			// TODO pattern
-			mbSession.getVariables.filterKeys(key => true).toSeq
+			mbSession.getVariables.filterKeys(key =>
+				Utils.escapeLikeRegex(p).r.pattern.matcher(key).matches()).toSeq
 		}.getOrElse {
 			mbSession.getVariables.toSeq
 		}
