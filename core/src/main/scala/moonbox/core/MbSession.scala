@@ -7,12 +7,12 @@ import moonbox.core.catalog.{CatalogSession, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import moonbox.core.execution.standalone.DataTable
-import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
+import org.apache.spark.sql.catalyst.analysis.{NoSuchPermanentFunctionException, UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import moonbox.core.datasys.Pushdownable
-import org.apache.spark.sql.{DataFrame, MixcalContext}
+import org.apache.spark.sql.{AnalysisException, DataFrame, MixcalContext}
 
 import scala.collection.mutable
 
@@ -79,14 +79,26 @@ class MbSession(conf: MbConf) extends MbLogging {
 	def optimizedPlan(sqlText: String): LogicalPlan = {
 		val preparedSql = prepareSql(sqlText)
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
-		val tableIdentifiers = collectDataSourceTable(parsedLogicalPlan)
+		val qualifiedLogicalPlan = qualifierFunctionName(parsedLogicalPlan)
+		val (tableIdentifiers, functionIdentifiers) = collectDataSourceTable(qualifiedLogicalPlan)
 		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
 			(table, getCatalogTable(table.table, table.database))
 		}
+
 		tableIdentifierToCatalogTable.foreach {
 			case (table, catalogTable) => mixcal.registerTable(table, catalogTable.properties)
 		}
-		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(parsedLogicalPlan)
+		functionIdentifiers.foreach { function =>
+			val (databaseId, databaseName) = if (function.database.isEmpty) {
+				(catalogSession.databaseId, catalogSession.databaseName)
+			} else {
+				val catalogDatabase = catalog.getDatabase(catalogSession.organizationId, function.database.get)
+				(catalogDatabase.id.get, catalogDatabase.name)
+			}
+			val catalogFunction = catalog.getFunction(databaseId, function.funcName)
+			mixcal.registerFunction(databaseName, catalogFunction)
+		}
+		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
 		if (columnPermission) {
 			ColumnSelectPrivilegeChecker.intercept(analyzedLogicalPlan, tableIdentifierToCatalogTable.toMap, this)
 		}
@@ -130,9 +142,19 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	private def collectDataSourceTable(plan: LogicalPlan): Seq[TableIdentifier] = {
+	private def qualifierFunctionName(plan: LogicalPlan): LogicalPlan = {
+		plan.transformAllExpressions {
+			case func@UnresolvedFunction(identifier, children, _) => {
+				val database = identifier.database.orElse(Some(catalogSession.databaseName))
+				func.copy(name = identifier.copy(database = database))
+			}
+		}
+	}
+
+	private def collectDataSourceTable(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
+		val functions = new mutable.HashSet[UnresolvedFunction]()
 		def traverseAll(plan: LogicalPlan): Unit = {
 			plan.foreach {
 				case With(_, cteRelations) =>
@@ -156,6 +178,10 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 		def traverseExpression(expr: Expression): Unit = {
 			expr.foreach {
+				case func@UnresolvedFunction(identifier, children, _) => {
+					functions.add(func)
+					children.foreach(traverseExpression)
+				}
 				case ScalarSubquery(child, _, _) => traverseAll(child)
 				case Exists(child, _, _) => traverseAll(child)
 				case ListQuery(child, _, _) => traverseAll(child)
@@ -164,12 +190,25 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 		traverseAll(plan)
 
-		tables.diff(logicalTables).filterNot { identifier =>
-			mixcal.sparkSession.sessionState.catalog.isTemporaryTable(identifier)
+		val needRegisterTables = tables.diff(logicalTables).filterNot { identifier =>
+			mixcal.sparkSession.sessionState.catalog.isTemporaryTable(identifier) ||
+			mixcal.sparkSession.sessionState.catalog.tableExists(identifier)
 		}.map { identifier =>
 			if (identifier.database.isDefined) identifier
 			else identifier.copy(database = Some(catalogSession.databaseName))
 		}.toSeq
+		val needRegisterFunctions = {
+			functions.filterNot { case UnresolvedFunction(identifier, children, _) =>
+				mixcal.sparkSession.sessionState.catalog.functionExists(identifier)
+			}
+		}.map { func  =>
+			if (func.name.database.isDefined) {
+				func.name
+			} else {
+				func.name.copy(database = Some(catalogSession.databaseName))
+			}
+		}.toSeq
+		(needRegisterTables, needRegisterFunctions)
 	}
 }
 

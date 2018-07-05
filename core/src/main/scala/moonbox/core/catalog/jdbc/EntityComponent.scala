@@ -38,6 +38,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val catalogGroups = TableQuery[CatalogGroupTable]
 	protected final val catalogUsers = TableQuery[CatalogUserTable]
 	protected final val catalogFunctions = TableQuery[CatalogFunctionTable]
+	protected final val catalogFunctionResources = TableQuery[CatalogFunctionResourceTable]
 	protected final val catalogViews = TableQuery[CatalogViewTable]
 	protected final val catalogApplications = TableQuery[CatalogApplicationTable]
 	protected final val catalogTimedEvents = TableQuery[CatalogTimedEventTable]
@@ -54,6 +55,7 @@ trait EntityComponent extends DatabaseComponent {
 		catalogGroups,
 		catalogUsers,
 		catalogFunctions,
+		catalogFunctionResources,
 		catalogViews,
 		catalogApplications,
 		catalogTimedEvents,
@@ -145,10 +147,29 @@ trait EntityComponent extends DatabaseComponent {
 		def description = column[Option[String]]("description")
 		def className = column[String]("className")
 		def methodName = column[Option[String]]("methodName")
-		def resources = column[Seq[FunctionResource]]("resources")
-		override def * = (id.?, name, databaseId, description, className, methodName,
-			resources, createBy, createTime, updateBy, updateTime
-			) <> (CatalogFunction.tupled, CatalogFunction.unapply)
+
+		override def * = {
+			(id.?, name, databaseId, description, className, methodName,
+				createBy, createTime, updateBy, updateTime
+				) <> ({ case (id, name, databaseId, description, className, methodName, createBy, createTime, updateBy, updateTime) =>
+				CatalogFunction(id, name, databaseId, description, className, methodName, Seq(), createBy, createTime, updateBy, updateTime)}
+				, { function: CatalogFunction =>
+				Some(
+					(function.id, function.name, function.databaseId, function.description, function.className, function.methodName,
+					function.createBy, function.createTime, function.updateBy, function.updateTime)
+				)
+			})
+		}
+	}
+
+	class CatalogFunctionResourceTable(tag: Tag) extends BaseTable[CatalogFunctionResource](tag, "function_resource") {
+		def funcId = column[Long]("funcId")
+		def resourceType = column[String]("resourceType")
+		def resource = column[String]("resource")
+		override def * : ProvenShape[CatalogFunctionResource] = {
+			(id.?, funcId, resourceType, resource, createBy, createTime, updateBy, updateTime) <>
+				(CatalogFunctionResource.tupled, CatalogFunctionResource.unapply)
+		}
 	}
 
 	class CatalogViewTable(tag: Tag) extends BaseTable[CatalogView](tag, "views") {

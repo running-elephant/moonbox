@@ -360,15 +360,15 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	protected def doRenameFunction(databaseId: Long, func: String, newFunc: String, updateBy: Long): Unit
 
-	def alterFunction(funcDefinition: CatalogFunction): Unit
+	//def alterFunction(funcDefinition: CatalogFunction): Unit
 
 	def getFunction(databaseId: Long, func: String): CatalogFunction
 
-	def getFunction(func: Long): CatalogFunction
+	/*def getFunction(func: Long): CatalogFunction
 
 	def getFunctionOption(databaseId: Long, func: String): Option[CatalogFunction]
 
-	def getFunctionOption(func: Long): Option[CatalogFunction]
+	def getFunctionOption(func: Long): Option[CatalogFunction]*/
 
 	def functionExists(databaseId: Long, func: String): Boolean
 

@@ -320,10 +320,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.renameFunction(databaseId, organization, database, func, newFunc, updateBy)
 	}
 
-	def alterFunction(funcDefinition: CatalogFunction): Unit = {
-		catalog.alterFunction(funcDefinition)
-	}
-
 	def functionExists(databaseId: Long, function: String): Boolean = {
 		catalog.functionExists(databaseId, function)
 	}

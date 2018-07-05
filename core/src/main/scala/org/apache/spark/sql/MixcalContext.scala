@@ -4,12 +4,14 @@ import java.util.Locale
 
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.catalog._
 import moonbox.core.config._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import moonbox.core.datasys.DataSystem
+import moonbox.core.udf.UdfUtils
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -80,6 +82,41 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 			   |options($propsString)
 			 """.stripMargin
 		sqlToDF(createTableSql)
+	}
+
+	def registerFunction(db: String, func: CatalogFunction): Unit = {
+		val funcName = s"$db.${func.name}"
+		val (nonSourceResources, sourceResources) = func.resources.partition { resource =>
+			resource.resourceType match {
+				case _: NonSourceResource => true
+				case _: SourceResource => false
+			}
+		}
+		nonSourceResources.foreach { nonSource =>
+			nonSource.resourceType match {
+				case JarResource =>
+					sparkSession.sparkContext.addJar(nonSource.uri)
+				case _ =>
+					sparkSession.sparkContext.addFile(nonSource.uri)
+			}
+		}
+		if (sourceResources.nonEmpty) {
+			sourceResources.foreach { source =>
+				source.resourceType match {
+					case ScalaResource =>
+						sparkSession.sessionState.functionRegistry.registerFunction(
+							funcName, UdfUtils.scalaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+					case _ =>
+						sparkSession.sessionState.functionRegistry.registerFunction(
+							funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+
+				}
+			}
+		} else {
+			sparkSession.sessionState.functionRegistry.registerFunction(
+				funcName, UdfUtils.nonSourceFunctionBuilder(funcName, func.className, func.methodName)
+			)
+		}
 	}
 
 }

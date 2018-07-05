@@ -90,6 +90,16 @@ case class CatalogFunction(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
+case class CatalogFunctionResource(
+	id: Option[Long] = None,
+	funcId: Long,
+	resourceType: String,
+	resource: String,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem
+
 case class CatalogView(
 	id: Option[Long] = None,
 	name: String,

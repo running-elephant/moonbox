@@ -700,20 +700,37 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 								database.name, funcDefinition.name)
 						}
 					case false =>
-						jdbcDao.action(jdbcDao.createFunction(funcDefinition))
+						jdbcDao.action(
+							jdbcDao.createFunction(funcDefinition).flatMap { funcId =>
+								val resources = funcDefinition.resources.map { resource =>
+									CatalogFunctionResource(
+										funcId = funcId,
+										resourceType = resource.resourceType.`type`,
+										resource = resource.uri,
+										createBy = funcDefinition.createBy,
+										createTime = funcDefinition.createTime,
+										updateBy = funcDefinition.updateBy,
+										updateTime = funcDefinition.updateTime
+									)
+								}
+								jdbcDao.createFunctionResources(resources:_*)
+							}
+						)
 				}
 			case None =>
 				throw new NoSuchDatabaseException(s"Id ${funcDefinition.databaseId}")
 		}
-
-
 	}
 
 	override protected def doDropFunction(databaseId: Long, func: String, ignoreIfNotExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.functionExists(databaseId, func)).flatMap {
-			case true =>
-				jdbcDao.action(jdbcDao.deleteFunction(databaseId, func))
-			case false =>
+		jdbcDao.action(jdbcDao.getFunction(databaseId, func)).flatMap {
+			case Some(catalogFunction) =>
+				jdbcDao.action(
+					jdbcDao.deleteFunctionResources(catalogFunction.id.get).flatMap { _ =>
+						jdbcDao.deleteFunction(databaseId, func)
+					}
+				)
+			case None =>
 				ignoreIfNotExists match {
 					case true => Future(Unit)
 					case false => throw new NoSuchFunctionException(getDatabase(databaseId).name, func)
@@ -735,18 +752,24 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def alterFunction(funcDefinition: CatalogFunction): Unit = await {
+	/*override def alterFunction(funcDefinition: CatalogFunction): Unit = await {
 		jdbcDao.action(jdbcDao.updateFunction(funcDefinition))
-	}
+	}*/
 
 	override def getFunction(databaseId: Long, func: String): CatalogFunction = await {
-		jdbcDao.action(jdbcDao.getFunction(databaseId, func)).map {
-			case Some(f) => f
+		jdbcDao.action(jdbcDao.getFunction(databaseId, func)).flatMap {
+			case Some(function) =>
+				jdbcDao.action(jdbcDao.listFunctionResources(function.id.get)).flatMap { catalogResources =>
+					val functionResources = catalogResources.map { catalogResource =>
+						FunctionResource(catalogResource.resourceType, catalogResource.resource)
+					}
+					Future(function.copy(resources = functionResources))
+				}
 			case None => throw new NoSuchFunctionException(getDatabase(databaseId).name, func)
 		}
 	}
 
-	override def getFunction(func: Long): CatalogFunction = await {
+	/*override def getFunction(func: Long): CatalogFunction = await {
 		jdbcDao.action(jdbcDao.getFunction(func)).map {
 			case Some(f) => f
 			case None => throw new NoSuchFunctionException("", s"Id $func")
@@ -759,18 +782,36 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	override def getFunctionOption(func: Long): Option[CatalogFunction] = await {
 		jdbcDao.action(jdbcDao.getFunction(func))
-	}
+	}*/
 
 	override def functionExists(databaseId: Long, func: String): Boolean = await {
 		jdbcDao.action(jdbcDao.functionExists(databaseId, func))
 	}
 
 	override def listFunctions(databaseId: Long): Seq[CatalogFunction] = await {
-		jdbcDao.action(jdbcDao.listFunctions(databaseId))
+		jdbcDao.action(jdbcDao.listFunctions(databaseId)).flatMap { functions =>
+			Future {
+				functions.groupBy(_._1).toSeq.map { case (func, tuples) =>
+					val resources = tuples.map { case (_, resource) =>
+						FunctionResource(resource.resourceType, resource.resource)
+					}
+					func.copy(resources = resources)
+				}
+			}
+		}
 	}
 
 	override def listFunctions(databaseId: Long, pattern: String): Seq[CatalogFunction] = await {
-		jdbcDao.action(jdbcDao.listFunctions(databaseId, pattern))
+		jdbcDao.action(jdbcDao.listFunctions(databaseId, pattern)).flatMap { functions =>
+			Future {
+				functions.groupBy(_._1).toSeq.map { case (func, tuples) =>
+					val resources = tuples.map { case (_, resource) =>
+						FunctionResource(resource.resourceType, resource.resource)
+					}
+					func.copy(resources = resources)
+				}
+			}
+		}
 	}
 
 	// ----------------------------------------------------------------------------

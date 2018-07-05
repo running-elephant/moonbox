@@ -103,7 +103,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 					case None =>
 						action(createUser(CatalogUser(
 							name = "ROOT",
-							password = "123456",
+							password = PasswordEncryptor.encryptSHA("123456"),
 							account = true,
 							ddl = true,
 							dcl = true,
@@ -643,11 +643,11 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 			t => (t.name, t.updateBy, t.updateTime), (newFunc, updateBy, Utils.now))
 	}
 
-	def updateFunction(funcDefinition: CatalogFunction) = {
+	/*def updateFunction(funcDefinition: CatalogFunction) = {
 		updateEntity[CatalogFunction, CatalogFunctionTable](
 			catalogFunctions, t => t.id === funcDefinition.id.get, funcDefinition
 		)
-	}
+	}*/
 
 	def getFunction(functionId: Long) = {
 		queryOneOption[CatalogFunction, CatalogFunctionTable](
@@ -668,16 +668,36 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	def listFunctions(databaseId: Long) = {
-		query[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, _.databaseId === databaseId
-		)
+		catalogFunctions.filter(_.databaseId === databaseId).join(catalogFunctionResources).on {
+			case (func, resource) => func.id === resource.funcId
+		}.result
 	}
 
 	def listFunctions(databaseId: Long, pattern: String) = {
-		query[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, t => t.databaseId === databaseId && t.name.like(pattern)
+		catalogFunctions.filter(t => t.databaseId === databaseId && t.name.like(pattern)).join(catalogFunctionResources).on {
+			case (func, resource) => func.id === resource.funcId
+		}.result
+	}
+
+	def createFunctionResources(functionResources: CatalogFunctionResource*) ={
+		insertMultiple[CatalogFunctionResource, CatalogFunctionResourceTable](
+			functionResources,
+			catalogFunctionResources
 		)
 	}
+
+	def deleteFunctionResources(funcId: Long) = {
+		delete[CatalogFunctionResource, CatalogFunctionResourceTable](
+			catalogFunctionResources, _.funcId === funcId
+		)
+	}
+
+	def listFunctionResources(funcId: Long) = {
+		query[CatalogFunctionResource, CatalogFunctionResourceTable](
+			catalogFunctionResources, _.funcId === funcId
+		)
+	}
+
 
 	// -----------------------------------------------------------------
 	// View

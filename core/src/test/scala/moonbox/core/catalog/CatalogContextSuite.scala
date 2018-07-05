@@ -87,7 +87,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 
 		val sa = catalog.getUser(1, "sa")
 		assert(sa.name == "sa")
-		assert(sa.password == "123456")
+		assert(sa.password == PasswordEncryptor.encryptSHA("123456"))
 		assert(sa.account)
 		assert(sa.ddl)
 		assert(sa.dcl)
@@ -342,16 +342,6 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		intercept[NoSuchFunctionException] {
 			catalog.getFunction(db.id.get, "function")
 		}
-
-		val function1 = catalog.getFunction(db.id.get, "function1")
-		catalog.alterFunction(function1.copy(
-			name = "function",
-			description = Some("for fun"),
-			updateBy = 1
-		))
-
-		assert(catalog.getFunction(db.id.get, "function").description.contains("for fun"))
-		assert(catalog.getFunction(db.id.get, "function").updateBy == 1)
 
 		intercept[NonEmptyException] {
 			catalog.dropDatabase(1, "org1", "db", ignoreIfNotExists = true, cascade = false)
