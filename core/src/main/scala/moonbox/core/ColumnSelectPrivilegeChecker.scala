@@ -6,6 +6,8 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import moonbox.core.datasys.DataSystem
+import moonbox.core.execution.standalone.DataTable
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.mutable.ArrayBuffer
@@ -60,6 +62,33 @@ class TablePrivilegeManager(mbSession: MbSession, catalogTable: CatalogTable) {
 	}
 }
 
+object TableInsertPrivilegeChecker {
+	def intercept(mbSession: MbSession, catalogTable: CatalogTable, dataTable: DataTable): DataTable = {
+		if (mbSession.columnPermission) {
+			val manager = new TablePrivilegeManager(mbSession, catalogTable)
+			if (manager.insertable()) {
+				dataTable
+			} else {
+				throw new TableInsertPrivilegeException(s"Table ${catalogTable.name} is not writable.")
+			}
+		} else {
+			dataTable
+		}
+	}
+	def intercept(mbSession: MbSession, catalogTable: CatalogTable, dataFrame: DataFrame): DataFrame = {
+		if (mbSession.columnPermission) {
+			val manager = new TablePrivilegeManager(mbSession, catalogTable)
+			if (manager.insertable()) {
+				dataFrame
+			} else {
+				throw new TableInsertPrivilegeException(s"Table ${catalogTable.name} is not writable.")
+			}
+		} else {
+			dataFrame
+		}
+	}
+}
+
 object ColumnSelectPrivilegeChecker {
 	def intercept(plan: LogicalPlan,
 		tableIdentifierToCatalogTable: Map[TableIdentifier, CatalogTable],
@@ -96,11 +125,10 @@ object ColumnSelectPrivilegeChecker {
 
 			val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
 			if (unavailableColumns.nonEmpty)
-				throw new ColumnPrivilegeException(
+				throw new ColumnSelectPrivilegeException(
 					s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)
 		}
 	}
-
 
 	private def collectLogicalRelation(plan: LogicalPlan): Seq[LogicalRelation] = {
 
