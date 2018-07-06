@@ -12,21 +12,27 @@ abstract class PersistenceEngine {
 
 	protected def read[T: ClassTag](prefix: String): Seq[T]
 
+	final def readJobs(): Seq[JobInfo] = {
+		read[JobInfo]("jobs")
+	}
+
 	final def addJob(job: JobInfo): Unit = {
-		persist(job.jobId, job)
+		persist("jobs/" + job.jobId, job)
 	}
 
 	final def removeJob(job: JobInfo): Unit = {
-		unpersist(job.jobId)
+		unpersist("jobs/" + job.jobId)
 	}
 
 	final def addWorker(worker: WorkerInfo): Unit = {
-		persist(worker.id, worker)
+		persist("workers/" + worker.id, worker)
 	}
 
 	final def removeWorker(worker: WorkerInfo): Unit = {
-		unpersist(worker.id)
+		unpersist("workers/" + worker.id)
 	}
+
+	def exist(path: String): Boolean
 
 	def close(): Unit = {}
 }

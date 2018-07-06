@@ -5,13 +5,9 @@ import akka.actor.ActorRef
 case class WorkerInfo(
 	id: String,
 	cores: Int,
-	memory: Int,
+	memory: Long,
 	endpoint: ActorRef) {
-	var coresUsed: Int = _
-	var memoryUsed: Int = _
+	var coresFree: Int = _
+	var memoryFree: Long = _
 	var lastHeartbeat: Long = _
-
-	def coresFree(): Int = cores - coresUsed
-
-	def memoryFree(): Int = memory - memoryUsed
 }

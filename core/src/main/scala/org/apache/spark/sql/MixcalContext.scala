@@ -12,6 +12,7 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
+import org.apache.spark.sql.resource.{ResourceMonitor, SparkResourceListener}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -119,11 +120,16 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 	}
 
+	def getResourceMonitor: ResourceMonitor = {
+		resourceMonitor
+	}
+
 }
 
 object MixcalContext extends MbLogging {
 	// TODO SparkContext.getOrCreate()
 	private var sparkContext: SparkContext = _
+	private var resourceMonitor: ResourceMonitor = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
 		synchronized {
@@ -131,7 +137,12 @@ object MixcalContext extends MbLogging {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
 					case (key, value) => key.startsWith("moonbox.mixcal")
 				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
+
+				val sparkListener = new SparkResourceListener(sparkConf)
 				sparkContext = new SparkContext(sparkConf)
+				sparkContext.addSparkListener(sparkListener)
+				resourceMonitor = new ResourceMonitor(sparkContext, sparkListener)
+
 				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
 				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
 				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)

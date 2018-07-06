@@ -121,7 +121,7 @@ package object config {
 	    .createWithDefaultString("off")
 	val RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down-unreachable-after")
 	    .stringConf
-	    .createWithDefaultString("off")
+	    .createWithDefaultString("60s")
     val RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE = ConfigBuilder("moonbox.rpc.akka.cluster.failure-detector.acceptable-heartbeat-pause")
         .timeConf
         .createWithDefaultString("10s")
@@ -163,5 +163,5 @@ package object config {
 
 	val WORKER_STATEREPORT_INTERVAL = ConfigBuilder("moonbox.worker.stateReport.interval")
 	    .timeConf
-	    .createWithDefaultString("3min")
+	    .createWithDefaultString("30s")
 }

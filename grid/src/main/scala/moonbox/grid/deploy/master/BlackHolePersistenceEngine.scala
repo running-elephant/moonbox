@@ -8,4 +8,6 @@ class BlackHolePersistenceEngine extends PersistenceEngine {
 	override def unpersist(name: String): Unit = {}
 
 	override def read[T: ClassTag](prefix: String): Seq[T] = Nil
+
+	override def exist(path: String) = false
 }
