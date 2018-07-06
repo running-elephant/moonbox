@@ -27,6 +27,7 @@
         <module>dataadapter/kudu-adapter</module>
         <module>dataadapter/mysql-adapter</module>
         <module>dataadapter/presto-adapter</module>
+        <module>dataadapter/oracle-adapter</module>
     </modules>
 
     <properties>
