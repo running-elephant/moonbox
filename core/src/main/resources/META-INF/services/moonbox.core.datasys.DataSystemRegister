@@ -1,1 +1,2 @@
 moonbox.core.datasys.redis.RedisDataSystemProvider
+moonbox.core.datasys.hive.HiveDataSystemProvider

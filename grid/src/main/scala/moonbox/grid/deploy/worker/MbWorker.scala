@@ -160,7 +160,18 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			new Runnable {
 				override def run(): Unit = {
 					println(s"workerLatestState $master")
-					master ! WorkerLatestState(WorkerInfo(workerId, 100, 1000, self))
+					//TODO: get sparkContext and ResourceMonitor
+					//val monitor = MbSession.getMbSession(conf).mixcal.getResourceMonitor
+					//val cpuCores = monitor.clusterFreeCore
+					//val memoryUsage = monitor.clusterFreeMemory
+					//val workerInfo = WorkerInfo(workerId, cpuCores._1, memoryUsage._1, self)
+					//workerInfo.coresFree = cpuCores._2
+					//workerInfo.memoryFree = memoryUsage._2
+					//master ! WorkerLatestState(workerInfo)
+					val workerInfo = WorkerInfo(workerId, 100, 1000, self)
+					workerInfo.coresFree = 100
+					workerInfo.memoryFree = 1000
+					master ! WorkerLatestState(workerInfo)
 				}
             }
 		)

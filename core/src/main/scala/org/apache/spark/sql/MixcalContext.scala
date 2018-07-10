@@ -12,8 +12,13 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
+import org.apache.spark.sql.resource.{ResourceMonitor, SparkResourceListener}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.catalyst.catalog.{FunctionResource => SparkFunctionResource}
+import org.apache.spark.sql.catalyst.catalog.{JarResource => SparkJarResource}
+import org.apache.spark.sql.catalyst.catalog.{FileResource => SparkFileResource}
+import org.apache.spark.sql.catalyst.catalog.{ArchiveResource => SparkArchiveResource}
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
@@ -92,14 +97,14 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 				case _: SourceResource => false
 			}
 		}
-		nonSourceResources.foreach { nonSource =>
+		val loadResources = nonSourceResources.map { nonSource =>
 			nonSource.resourceType match {
-				case JarResource =>
-					sparkSession.sparkContext.addJar(nonSource.uri)
-				case _ =>
-					sparkSession.sparkContext.addFile(nonSource.uri)
+				case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
+				case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
+				case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
 			}
 		}
+		sparkSession.sessionState.catalog.loadFunctionResources(loadResources)
 		if (sourceResources.nonEmpty) {
 			sourceResources.foreach { source =>
 				source.resourceType match {
@@ -109,7 +114,6 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 					case _ =>
 						sparkSession.sessionState.functionRegistry.registerFunction(
 							funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-
 				}
 			}
 		} else {
@@ -119,11 +123,16 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 	}
 
+	def getResourceMonitor: ResourceMonitor = {
+		resourceMonitor
+	}
+
 }
 
 object MixcalContext extends MbLogging {
 	// TODO SparkContext.getOrCreate()
 	private var sparkContext: SparkContext = _
+	private var resourceMonitor: ResourceMonitor = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
 		synchronized {
@@ -131,7 +140,12 @@ object MixcalContext extends MbLogging {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
 					case (key, value) => key.startsWith("moonbox.mixcal")
 				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
+
+				val sparkListener = new SparkResourceListener(sparkConf)
 				sparkContext = new SparkContext(sparkConf)
+				sparkContext.addSparkListener(sparkListener)
+				resourceMonitor = new ResourceMonitor(sparkContext, sparkListener)
+
 				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
 				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
 				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)

@@ -18,4 +18,6 @@ class HdfsPersistenceEngine(conf: MbConf) extends PersistenceEngine {
 	override def unpersist(name: String): Unit = ???
 
 	override def read[T: ClassTag](prefix: String): Seq[T] = ???
+
+	override def exist(path: String) = ???
 }

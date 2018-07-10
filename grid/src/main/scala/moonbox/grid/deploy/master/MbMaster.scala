@@ -69,7 +69,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	// for context dependent
 	private val sessionIdToWorker = new mutable.HashMap[String, ActorRef]()
 
-	private var cluster: Cluster = Cluster.get(akkaSystem)
+	private val cluster: Cluster = Cluster(context.system)//Cluster.get(akkaSystem)
+	cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
+
 	private var catalogContext: CatalogContext = _
 	private var persistenceEngine: PersistenceEngine = _
 	private var singletonMaster: ActorRef = _
@@ -92,7 +94,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
 		logInfo("PreStart master ...")
-        cluster = Cluster(context.system)
         cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 
 		catalogContext = new CatalogContext(conf)
@@ -115,12 +116,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		if (restServerEnabled) {
 			restServer = Some(new RestServer(param.host, param.restPort, conf, serviceImpl, akkaSystem))
 		}
-		restServerBoundPort = restServer.map(_.start())
-
 		if (tcpServerEnabled) {
 			tcpServer = Some(new TransportServer(param.host, param.tcpPort, conf, serviceImpl))
 		}
-		tcpServerBoundPort = tcpServer.map(_.start())
 
 		odbcServerBoundPort = startODBCServer(serviceImpl)
 		def startODBCServer(service: MbService): Option[Int] = try {
@@ -155,6 +153,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				new BlackHolePersistenceEngine
 		}
 
+		recovery()
+
 		val initialDelay = conf.get(SCHEDULER_INITIAL_WAIT.key, SCHEDULER_INITIAL_WAIT.defaultValue.get)
 		val interval = conf.get(SCHEDULER_INTERVAL.key, SCHEDULER_INTERVAL.defaultValue.get)
 
@@ -164,6 +164,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			self,
 			ScheduleJob
 		)
+
+		restServerBoundPort = restServer.map(_.start())
+		tcpServerBoundPort = tcpServer.map(_.start())
 
     	self ! MasterChanged
 		logInfo(s"MbMaster start successfully.")
@@ -182,6 +185,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			timedEventService.stop()
 		}
 		persistenceEngine.close()
+		cluster.leave(cluster.selfAddress)
 	}
 
 
@@ -205,8 +209,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			} else {
 				context.watch(sender())
 				val workerInfo = new WorkerInfo(id, cores, memory, endpoint)
+				workerInfo.coresFree = cores
+				workerInfo.memoryFree = memory
 				workers.put(sender(), workerInfo)
-				persistenceEngine.addWorker(workerInfo)
 				endpoint ! RegisteredWorker(self)
 				schedule()
 			}
@@ -230,7 +235,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
                             jobInfo.updateTime = Utils.now
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
-							persistenceEngine.removeJob(jobInfo)
 						case None =>
 							// do nothing
 					}
@@ -243,7 +247,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
                             jobInfo.updateTime = Utils.now
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
-							persistenceEngine.removeJob(jobInfo)
 						case None =>
 						// do nothing
 					}
@@ -532,17 +535,19 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
         val aliveWorkerRow: Seq[Seq[String]] = workers.map{ elem =>
             val workerInfo = elem._2
             val actorAddress = elem._1.actorRef.path.address
-            Row(workerInfo.id, "alive", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0))
+			Row(workerInfo.id, "alive", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0),
+				workerInfo.cores, workerInfo.coresFree, workerInfo.memory, workerInfo.memoryFree)
         }.map(_.toSeq.map(_.toString)).toSeq
 
         val deadWorkerRow: Seq[Seq[String]] = recoverWorkers.map{ elem =>
             val workerInfo = elem._2._2
             val actorAddress = elem._1
-            Row(workerInfo.id, "dead", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0))
+			Row(workerInfo.id, "dead", actorAddress.host.getOrElse(""), actorAddress.port.getOrElse(0),
+				workerInfo.cores, workerInfo.coresFree, workerInfo.memory, workerInfo.memoryFree)
         }.map(_.toSeq.map(_.toString)).toSeq
 
 
-        Seq(Seq("worker id", "in cluster", "host", "port")) ++ aliveWorkerRow ++ deadWorkerRow
+		Seq(Seq("worker id", "in cluster", "host", "port", "total cores", "free cores", "total memory", "free memory")) ++ aliveWorkerRow ++ deadWorkerRow
     }
 
     private def getEventInfo(): Seq[Seq[String]] = {
@@ -611,6 +616,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				case Some(w) =>
 					jobIdToWorker.put(jobInfo.jobId, w)
 					runningJobs.put(jobInfo.jobId, waitingJobs.dequeue().copy(status = JobState.RUNNING, updateTime = Utils.now))
+					persistenceEngine.removeJob(jobInfo)
 					w ! AssignJobToWorker(jobInfo)
 				case None =>
 			}
@@ -620,13 +626,15 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private def selectWorker(): Option[ActorRef] = {
 		// TODO
 		val candidate = workers.filter { case (ref, workerInfo) =>
-			workerInfo.coresFree() > 0 && workerInfo.memoryFree() > 0
+			(workerInfo.coresFree > 0 ) && (workerInfo.memoryFree > 0)
 		}
 		if (candidate.isEmpty) None
 		else {
-			val selected = candidate.toSeq.sortWith(_._2.coresFree() > _._2.coresFree()).head._1
+			val selected = candidate.toSeq.sortWith(_._2.coresFree > _._2.coresFree).head._1
 			Some(selected)
 		}
+//		val selected = workers.toSeq.sortWith(_._2.coresFree > _._2.coresFree).map(_._1).headOption
+//		selected
 	}
 
 	private def createJob(jobId: String, username: Option[String], sessionId: Option[String], sqls: Seq[String], createTime: Long, client: ActorRef): JobInfo = {
@@ -648,6 +656,16 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		val jobId = "job-%s-%05d".format(createDateFormat.format(submitDate), nextJobNumber)
 		nextJobNumber += 1
 		jobId
+	}
+
+	private def recovery(): Unit = {
+		try {
+			waitingJobs.enqueue(persistenceEngine.readJobs():_*)
+			logInfo(s"Recovery from ${persistenceEngine.getClass.getSimpleName}")
+		} catch {
+			case e: Throwable =>
+				logWarning(s"Recovery from ${persistenceEngine.getClass.getSimpleName} failed.")
+		}
 	}
 
 	private def startMasterEndpoint(akkaSystem: ActorSystem): ActorRef = {

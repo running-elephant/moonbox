@@ -120,7 +120,7 @@ mql
     | (DESC | DESCRIBE) GROUP name=identifier                                                   # descGroup
 
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
-    | SET (GLOBAL | SESSION?) property                                                          # setVariable
+    | SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                      # setVariable
 
     | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier AS? query                                # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
@@ -230,7 +230,7 @@ propertyList
     ;
 
 property
-    : key=propertyKey EQ? value=.*
+    : key=propertyKey EQ? value=STRING
     ;
 
 propertyKey

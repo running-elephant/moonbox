@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.pattern._
 import akka.util.Timeout
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.{ColumnPrivilegeException, MbSession}
+import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker}
 import moonbox.core.command._
 import moonbox.core.config.CACHE_IMPLEMENTATION
 import moonbox.grid.JobState.JobState
@@ -169,7 +169,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 					mbSession.toDF(plan).write.format(format).options(options).save()
 			}
 		} catch {
-			case e: ColumnPrivilegeException =>
+			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
 				logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
@@ -186,7 +186,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def insertInto(insert: InsertInto): JobResult = {
 		// TODO write privilege
-		val options = mbSession.getCatalogTable(insert.table.table, insert.table.database).properties
+		val sinkCatalogTable = mbSession.getCatalogTable(insert.table.table, insert.table.database)
+		val options = sinkCatalogTable.properties
 		val sinkDataSystem = DataSystem.lookupDataSystem(options)
 		val format = options("type")
 		val saveMode = if (insert.overwrite) SaveMode.Overwrite else SaveMode.Append
@@ -195,12 +196,15 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			val plan = mbSession.pushdownPlan(optimized)
 			plan match {
 				case WholePushdown(child, queryable) if sinkDataSystem.isInstanceOf[Insertable] =>
-					mbSession.toDT(child, queryable).write().format(format).options(options).mode(saveMode).save()
+					val dataTable = mbSession.toDT(child, queryable)
+					TableInsertPrivilegeChecker.intercept(mbSession, sinkCatalogTable, dataTable)
+					.write().format(format).options(options).mode(saveMode).save()
 				case _ =>
-					mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
+					val dataFrame = mbSession.toDF(plan)
+					TableInsertPrivilegeChecker.intercept(mbSession, sinkCatalogTable, dataFrame).write.format(format).options(options).mode(saveMode).save()
 			}
 		} catch {
-			case e: ColumnPrivilegeException =>
+			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case _: Throwable =>
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)

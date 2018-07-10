@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends PersistenceEngine with MbLogging {
 	private val ZK_CONNECTION_TIMEOUT_MILLIS = 15000
 	private val ZK_SESSION_TIMEOUT_MILLIS = 60000
-	private val WORKING_DIR = conf.get(PERSIST_WORKING_DIR.key, PERSIST_WORKING_DIR.defaultValueString + "/master_status")
+	private val WORKING_DIR = conf.get(PERSIST_WORKING_DIR.key, PERSIST_WORKING_DIR.defaultValueString)
 
 	private val zk = {
 		val servers = conf.get(PERSIST_SERVERS.key, PERSIST_SERVERS.defaultValueString)
@@ -38,8 +38,12 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	}
 
 	override def read[T: ClassTag](prefix: String): Seq[T] = {
-		zk.getChildren.forPath(WORKING_DIR).filter(_.startsWith(prefix)).flatMap { name =>
-			deserializeFromFile[T](name, zk.getData.forPath(WORKING_DIR + "/" + name))
+		if (exist(WORKING_DIR + "/" + prefix)) {
+			zk.getChildren.forPath(WORKING_DIR).filter(_.startsWith(prefix)).flatMap { name =>
+				deserializeFromFile[T](name, zk.getData.forPath(WORKING_DIR + "/" + name))
+			}
+		} else {
+			Seq[T]()
 		}
 	}
 
@@ -59,7 +63,7 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 			zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, serialized)
 		} catch {
 			case e: Exception =>
-				logWarning("Exception while serializing persist data.")
+				logWarning(s"Exception while serializing persist data. $path")
 		}
 	}
 
@@ -82,6 +86,10 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 				zk.delete().forPath(filename)
 				None
 		}
+	}
+
+	override def exist(path: String) = {
+		null != zk.checkExists().forPath(path)
 	}
 }
 
