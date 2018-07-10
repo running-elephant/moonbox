@@ -230,7 +230,7 @@ propertyList
     ;
 
 property
-    : key=propertyKey EQ? value=.*
+    : key=propertyKey EQ? value=STRING
     ;
 
 propertyKey
