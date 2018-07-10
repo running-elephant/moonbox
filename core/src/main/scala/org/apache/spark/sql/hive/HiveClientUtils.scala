@@ -8,6 +8,7 @@ import org.apache.spark.sql.hive.client.HiveClient
 
 object HiveClientUtils {
 	private val clients = new ConcurrentHashMap[String, HiveClient]()
+
 	def getHiveClient(props: Map[String, String]) = {
 		Option(clients.get(props("metastore.url"))).getOrElse {
 			val sparkConf = new SparkConf()

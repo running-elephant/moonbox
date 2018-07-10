@@ -93,14 +93,23 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 				case _: SourceResource => false
 			}
 		}
-		nonSourceResources.foreach { nonSource =>
+		val loadResources = nonSourceResources.map { nonSource =>
+			nonSource.resourceType match {
+				case JarResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.JarResource, nonSource.uri)
+				case FileResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.FileResource, nonSource.uri)
+				case ArchiveResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.ArchiveResource, nonSource.uri)
+			}
+		}
+		sparkSession.sessionState.catalog.loadFunctionResources(loadResources)
+
+		/*nonSourceResources.foreach { nonSource =>
 			nonSource.resourceType match {
 				case JarResource =>
 					sparkSession.sparkContext.addJar(nonSource.uri)
 				case _ =>
 					sparkSession.sparkContext.addFile(nonSource.uri)
 			}
-		}
+		}*/
 		if (sourceResources.nonEmpty) {
 			sourceResources.foreach { source =>
 				source.resourceType match {
