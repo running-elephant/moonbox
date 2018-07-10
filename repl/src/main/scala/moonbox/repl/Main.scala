@@ -106,10 +106,6 @@ object Main extends JsonSerializer {
           if (cleanedSqls.nonEmpty) {
             /* add line reader history */
             lineReader.getHistory.add(cleanedSqls.mkString("; "))
-            /* add moonbox history SQLs */
-            cleanedSqls.foreach { sql =>
-              historySqls.enqueue(sql)
-            }
             /* 100 history SQLs limited */
             while (historySqls.length > 100) {
               historySqls.dequeue()
@@ -146,6 +142,10 @@ object Main extends JsonSerializer {
         connector.shutdown()
         System.exit(0)
       case _ =>
+        /* add moonbox history SQLs */
+        sqlList.foreach { sql =>
+          historySqls.enqueue(sql)
+        }
         connector.process(sqlList)
     }
   }
