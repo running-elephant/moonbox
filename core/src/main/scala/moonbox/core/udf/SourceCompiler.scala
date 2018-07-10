@@ -15,9 +15,7 @@ object SourceCompiler {
 	}
 
 	def prepareScala(src: String, className: String): String = {
-		s"""$src
-		   |scala.reflect.classTag[$className].runtimeClass
-		 """.stripMargin
+		src + "\n" + s"scala.reflect.classTag[$className].runtimeClass"
 	}
 
 	def compileJava(src: String, className: String): Class[_] = {

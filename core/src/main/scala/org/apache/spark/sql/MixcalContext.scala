@@ -15,6 +15,10 @@ import moonbox.core.udf.UdfUtils
 import org.apache.spark.sql.resource.{ResourceMonitor, SparkResourceListener}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.catalyst.catalog.{FunctionResource => SparkFunctionResource}
+import org.apache.spark.sql.catalyst.catalog.{JarResource => SparkJarResource}
+import org.apache.spark.sql.catalyst.catalog.{FileResource => SparkFileResource}
+import org.apache.spark.sql.catalyst.catalog.{ArchiveResource => SparkArchiveResource}
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
@@ -95,21 +99,12 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 		val loadResources = nonSourceResources.map { nonSource =>
 			nonSource.resourceType match {
-				case JarResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.JarResource, nonSource.uri)
-				case FileResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.FileResource, nonSource.uri)
-				case ArchiveResource => org.apache.spark.sql.catalyst.catalog.FunctionResource(org.apache.spark.sql.catalyst.catalog.ArchiveResource, nonSource.uri)
+				case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
+				case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
+				case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
 			}
 		}
 		sparkSession.sessionState.catalog.loadFunctionResources(loadResources)
-
-		/*nonSourceResources.foreach { nonSource =>
-			nonSource.resourceType match {
-				case JarResource =>
-					sparkSession.sparkContext.addJar(nonSource.uri)
-				case _ =>
-					sparkSession.sparkContext.addFile(nonSource.uri)
-			}
-		}*/
 		if (sourceResources.nonEmpty) {
 			sourceResources.foreach { source =>
 				source.resourceType match {
@@ -119,7 +114,6 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 					case _ =>
 						sparkSession.sessionState.functionRegistry.registerFunction(
 							funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-
 				}
 			}
 		} else {

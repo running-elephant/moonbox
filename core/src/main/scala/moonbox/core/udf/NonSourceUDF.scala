@@ -2,6 +2,7 @@ package moonbox.core.udf
 
 import org.apache.spark.sql.catalyst.JavaTypeInference
 import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.util.UtilsWrapper
 
 object NonSourceUDF {
 	def apply(className: String, methodName: Option[String]): (AnyRef, DataType) = {
@@ -10,7 +11,7 @@ object NonSourceUDF {
 	}
 
 	private def getFunctionReturnType(className: String, methodName: Option[String]): (Int, DataType) = {
-		val clazz = Class.forName(className)
+		val clazz = Class.forName(className, true, UtilsWrapper.getContextOrSparkClassLoader)
 		val method = try {
 			UdfUtils.getMethod(clazz, methodName.getOrElse("call"))
 		} catch {
@@ -22,7 +23,7 @@ object NonSourceUDF {
 	}
 
 	private def generateFunction(className: String, methodName: Option[String], argumentNum: Int): AnyRef = {
-		lazy val clazz =  Class.forName(className)
+		lazy val clazz =  Class.forName(className, true,  UtilsWrapper.getContextOrSparkClassLoader)
 		lazy val instance = UdfUtils.newInstance(clazz)
 		lazy val method = try {
 			UdfUtils.getMethod(clazz, methodName.getOrElse("call"))

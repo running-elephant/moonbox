@@ -1,10 +1,10 @@
 package moonbox.core.udf
 
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.catalyst.analysis.FunctionRegistry.FunctionBuilder
 import org.apache.spark.sql.catalyst.expressions.{Expression, ScalaUDF}
 import org.apache.spark.sql.execution.aggregate.ScalaUDAF
 import org.apache.spark.sql.expressions.UserDefinedAggregateFunction
+import org.apache.spark.sql.util.UtilsWrapper
 
 object UdfUtils {
 
@@ -48,7 +48,7 @@ object UdfUtils {
 	}
 
 	def nonSourceFunctionBuilder(udfName: String, className: String, methodName: Option[String]): FunctionBuilder = {
-		val clazz = Class.forName(className, true, SparkContext.getClass.getClassLoader)
+		val clazz = Class.forName(className, true,  UtilsWrapper.getContextOrSparkClassLoader)
 		val superClassName = clazz.getSuperclass.getTypeName
 		if (superClassName.equals(classOf[UserDefinedAggregateFunction].getName)) { // udaf
 			(e: Seq[Expression]) => ScalaUDAF(e, NonSourceUDAF(className))
