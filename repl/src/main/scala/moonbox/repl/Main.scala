@@ -1,5 +1,8 @@
 package moonbox.repl
 
+import java.io.{PrintWriter, StringWriter}
+import java.util.Locale
+
 import moonbox.repl.adapter.{Connector, JdbcConnector, Utils}
 import moonbox.repl.http.MbHttpConnector
 import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
@@ -7,7 +10,10 @@ import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.terminal.{Terminal, TerminalBuilder}
 import org.jline.terminal.Terminal.Signal
 import org.jline.terminal.Terminal.SignalHandler
+
 import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 
 object Main extends JsonSerializer {
@@ -20,13 +26,16 @@ object Main extends JsonSerializer {
   var port: Int = 9099
   var password: String = _
   val delimiter: String = ";"
+  val historySqls: mutable.Queue[String] = new mutable.Queue[String]()
   var connector: Connector = _
-  val handler = new SignalHandler() {  //create Ctrl+C handler, NOTE: sun misc handler dose not work
+  val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
     override def handle(signal: Signal): Unit = {
-      if(signal.equals(Signal.INT)) {
+      if (signal.equals(Signal.INT)) {
         new Thread() {
           override def run() = {
-            if (connector != null) { connector.cancel() }
+            if (connector != null) {
+              connector.cancel()
+            }
           }
         }.start()
       }
@@ -58,45 +67,64 @@ object Main extends JsonSerializer {
       while (true) {
         try {
           val stringBuilder = new StringBuilder
-          val line: String = lineReader.readLine(prompter, null, null, null).trim
-
-          if (line.length > 0) {
-            if (!line.endsWith(delimiter)) {
-              stringBuilder.append(line)
+          var line: String = lineReader.readLine(prompter).trim
+          val sqlList: ArrayBuffer[String] = new ArrayBuffer[String]()
+          var braceCount: Int = 0
+          line.length match {
+            case len if len > 0 =>
               var endLine = false
               while (!endLine) {
-                val line: String = lineReader.readLine(" " * (user.length - 1) + "->" + " ").trim
-                if (line.length > 0)
-                  if (!line.endsWith(delimiter)) {
-                    stringBuilder.append(" " + line)
-                  } else {
-                    if (line.equals(";"))
-                      stringBuilder.append(line)
-                    else
-                      stringBuilder.append(" " + line)
-                    endLine = true
+                line.toCharArray.foreach {
+                  case ';' if braceCount == 0 && stringBuilder.nonEmpty =>
+                    sqlList += stringBuilder.toString()
+                    stringBuilder.clear()
+                  case other =>
+                    stringBuilder.append(other)
+                    other match {
+                      case '(' => braceCount += 1
+                      case ')' => braceCount -= 1
+                      case _ =>
+                    }
+                }
+                if (stringBuilder.isEmpty) {
+                  endLine = true
+                } else {
+                  if (line.length > 0) {
+                    if (braceCount != 0) {
+                      stringBuilder.append("\n")
+                      line = lineReader.readLine(" " * (user.length - 1) + "-> ").replaceAll("\\s+$", "") // trim end
+                    } else {
+                      stringBuilder.append(" ")
+                      line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
+                    }
                   }
+                }
               }
-            } else {
-              stringBuilder.append(line)
+            case _ => /* no-op */
+          }
+          val cleanedSqls = sqlList.map(_.trim).filterNot(_ == "")
+          if (cleanedSqls.nonEmpty) {
+            /* add line reader history */
+            lineReader.getHistory.add(cleanedSqls.mkString("; "))
+            /* add moonbox history SQLs */
+            cleanedSqls.foreach { sql =>
+              historySqls.enqueue(sql)
             }
+            /* 100 history SQLs limited */
+            while (historySqls.length > 100) {
+              historySqls.dequeue()
+            }
+            process(cleanedSqls)
           }
-
-          val multiLines = stringBuilder.toString().trim
-          if (multiLines.length > 0) {
-            lineReader.getHistory.add(multiLines)
-          }
-
-          process(multiLines.stripSuffix(delimiter)) //do process
-
-          stringBuilder.clear()
         } catch {
           case _: UserInterruptException =>
             if (connector != null) {
               connector.cancel()
             }
           case e: Exception =>
-            System.out.println(e.getMessage)
+            val stringWriter = new StringWriter()
+            e.printStackTrace(new PrintWriter(stringWriter))
+            System.out.println(stringWriter.toString)
         }
       }
     } else {
@@ -105,17 +133,19 @@ object Main extends JsonSerializer {
     }
   }
 
-  private def process(sqls: String): Unit = {
-    sqls.trim match {
+  private def process(sqlList: Seq[String]): Unit = {
+    sqlList.head.toUpperCase(Locale.ROOT) match {
       case "" =>
-      case "reconnect" | "r" =>
+      case "HISTORY" | "H" =>
+        val data = historySqls.zipWithIndex.map(u => Seq(historySqls.length - u._2, u._1 + ";"))
+        print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), 100))
+      case "RECONNECT" | "R" =>
         connector.close()
         repl()
-      case "exit" | "quit" =>
+      case "EXIT" | "QUIT" =>
         connector.shutdown()
         System.exit(0)
-      case trimmedSql =>
-        val sqlList = Utils.splitSql(trimmedSql, ';') //trimmedSql.split(";")
+      case _ =>
         connector.process(sqlList)
     }
   }

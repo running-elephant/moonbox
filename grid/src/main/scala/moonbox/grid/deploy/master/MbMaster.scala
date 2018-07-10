@@ -1,5 +1,6 @@
 package moonbox.grid.deploy.master
 
+import java.io.{PrintWriter, StringWriter}
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
@@ -83,6 +84,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private val tcpServerEnabled = conf.get(TCP_SERVER_ENABLE.key, TCP_SERVER_ENABLE.defaultValue.get)
 	private var tcpServer: Option[TransportServer] = None
 	private var tcpServerBoundPort: Option[Int] = None
+	private var odbcServerBoundPort: Option[Int] = None
 
 	private val mbParser = new MbParser
 
@@ -119,6 +121,26 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			tcpServer = Some(new TransportServer(param.host, param.tcpPort, conf, serviceImpl))
 		}
 		tcpServerBoundPort = tcpServer.map(_.start())
+
+		odbcServerBoundPort = startODBCServer(serviceImpl)
+		def startODBCServer(service: MbService): Option[Int] = try {
+      val className = conf.get("moonbox.odbc.server.className", "moonbox.odbc.server.MoonboxODBCServer")
+      val mbODBCServer = Class.forName(className)
+      val constructor = mbODBCServer.getConstructor(classOf[MbConf], classOf[MbService])
+      val method = mbODBCServer.getDeclaredMethod("start0")
+      val instance = constructor.newInstance(conf, service)
+      logInfo(s"Thrift server is started.")
+      Some(method.invoke(instance).asInstanceOf[Int])
+    } catch {
+      case _: ClassNotFoundException =>
+        logWarning(s"No thrift server implementation found.")
+        None
+      case e: Throwable =>
+        val writer = new StringWriter()
+        e.printStackTrace(new PrintWriter(writer))
+        logError(writer.toString)
+        None
+    }
 
 		persistenceEngine = PERSISTENCE_MODE match {
 			case "ZOOKEEPER" =>
