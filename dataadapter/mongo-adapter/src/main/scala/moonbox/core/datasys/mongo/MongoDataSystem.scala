@@ -1,5 +1,6 @@
 package moonbox.core.datasys.mongo
 
+import java.io.{PrintWriter, StringWriter}
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
@@ -24,7 +25,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
-	with Pushdownable with Insertable with Truncatable with MbLogging {
+  with Pushdownable with Insertable with Truncatable with MbLogging {
 
   //common
   val MONGO_SPARK_INPUT_PREFIX: String = "spark.mongodb.input."
@@ -345,6 +346,36 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
   override def tableName(): String = {
     props(MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY)
+  }
+
+  private def isClientActive(uri: String, timeout: Int = 3000): Boolean = {
+    val clientURI = new MongoClientURI(uri, MongoClientOptions.builder().serverSelectionTimeout(timeout))
+    val mongoClient = new MongoClient(clientURI)
+    mongoClient.getAddress
+    mongoClient.close()
+    true
+  }
+
+  override def test(): Boolean = {
+    try {
+      var testFlag: Boolean = false
+      val timeout: Int = 3000 // milliseconds
+      if (props.contains(MONGO_SPARK_INPUT_PREFIX + URI_KEY)) {
+        val uri = cleanedInputMap(URI_KEY)
+        testFlag = isClientActive(uri, timeout)
+      }
+      if (props.contains(MONGO_SPARK_OUTPUT_PREFIX + URI_KEY)) {
+        val uri = cleanedOutputMap(URI_KEY)
+        testFlag = isClientActive(uri, timeout)
+      }
+      testFlag
+    } catch {
+      case e: Throwable =>
+        val stringWriter = new StringWriter
+        e.printStackTrace(new PrintWriter(stringWriter))
+        logWarning(stringWriter.toString)
+        false
+    }
   }
 
 }

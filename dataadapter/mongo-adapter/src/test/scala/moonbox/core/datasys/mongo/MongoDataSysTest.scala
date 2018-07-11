@@ -186,4 +186,15 @@ class MongoDataSysTest extends FunSuite {
     MongoSpark.load(spark).show()
   }
 
+  test("mongo client test"){
+    val map = Map(
+      "spark.mongodb.input.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.output.uri" -> "mongodb://yan:123456@localhost:27017/test?authSource=test",
+      "spark.mongodb.input.database" -> "test",
+      "spark.mongodb.output.database" -> "test"
+    )
+    val mongoSys = new MongoDataSystem(map)
+    assert(!mongoSys.test())
+  }
+
 }
