@@ -348,7 +348,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
     props(MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY)
   }
 
-  private def isClientActive(uri: String, timeout: Int = 3000): Boolean = {
+  private def isClientInfoValid(uri: String, timeout: Int = 3000): Boolean = {
     val clientURI = new MongoClientURI(uri, MongoClientOptions.builder().serverSelectionTimeout(timeout))
     val mongoClient = new MongoClient(clientURI)
     mongoClient.getAddress
@@ -362,11 +362,11 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
       val timeout: Int = 3000 // milliseconds
       if (props.contains(MONGO_SPARK_INPUT_PREFIX + URI_KEY)) {
         val uri = cleanedInputMap(URI_KEY)
-        testFlag = isClientActive(uri, timeout)
+        testFlag = isClientInfoValid(uri, timeout)
       }
       if (props.contains(MONGO_SPARK_OUTPUT_PREFIX + URI_KEY)) {
         val uri = cleanedOutputMap(URI_KEY)
-        testFlag = isClientActive(uri, timeout)
+        testFlag = isClientInfoValid(uri, timeout)
       }
       testFlag
     } catch {
