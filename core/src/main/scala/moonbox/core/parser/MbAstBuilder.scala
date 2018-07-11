@@ -761,8 +761,8 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitSetVariable(ctx: SetVariableContext): MbCommand = {
-		val key = visitPropertyKey(ctx.property().key)
-		val value = Option(ctx.property().value.getText).orNull
+		val key = ctx.key.getText
+		val value = Option(ctx.value.getText).orNull
 		SetVariable(key, value, ctx.GLOBAL() != null)
 	}
 

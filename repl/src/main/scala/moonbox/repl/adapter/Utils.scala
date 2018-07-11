@@ -2,6 +2,7 @@ package moonbox.repl.adapter
 
 import org.json.JSONObject
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -34,15 +35,16 @@ object Utils {
       if (char == '(') stack.push('(')
       if (char == ')') stack.pop()
     }
-    splits(sql, splitIndex.toArray, 0).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
+    splits(sql, splitIndex.toArray, 0, Nil).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
   }
 
-  private def splits(sql: String, idxs: Array[Int], offset: Int): Seq[String] = {
+  @tailrec
+  private def splits(sql: String, idxs: Array[Int], offset: Int, res: Seq[String]): Seq[String] = {
     if (idxs.nonEmpty) {
       val head = idxs.head
       val (h, t) = sql.splitAt(head - offset)
-      h +: splits(t, idxs.tail, head)
-    } else sql :: Nil
+      splits(t, idxs.tail, head, h :: res.toList)
+    } else res
   }
 
   def parseJson2(json: String): Unit = {
@@ -50,7 +52,7 @@ object Utils {
     jsonObject.getJSONArray("fields")
   }
 
-  private def cell2String(cell: Any): String ={
+  private def cell2String(cell: Any): String = {
     cell match {
       case null => "null"
       case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
@@ -75,10 +77,10 @@ object Utils {
     }
   }
 
-  private def padWs(cell: String, len: Int, truncate: Int): String ={
+  private def padWs(cell: String, len: Int, truncate: Int): String = {
     var j = 0
     var paddedCell: String = cell
-    while (j < len - cell.length) {
+    while (j < len - cell.getBytes("GB2312").length) {
       if (truncate > 0) {
         paddedCell = " " + paddedCell
       } else {
@@ -89,6 +91,14 @@ object Utils {
     paddedCell
   }
 
+  /**
+    *
+    * @param _data rows of table
+    * @param schema a sequence of column names
+    * @param _numRows default is 500, denotes the max number of rows to show
+    * @param truncate 0 denotes not truncating
+    * @return
+    */
   def showString(_data: Seq[Seq[Any]], schema: Seq[String], _numRows: Int = 500, truncate: Int = 0): String = {
     val numRows = _numRows.max(0)
     val data = _data.take(numRows)
@@ -108,7 +118,7 @@ object Utils {
     if (schema.nonEmpty) {
       rows = schema +: rows
     }
-    if (rows.isEmpty){
+    if (rows.isEmpty) {
       return ""
     }
     val sb = new StringBuilder
@@ -118,7 +128,7 @@ object Utils {
     // Compute the width of each column
     for (row <- rows) {
       for ((cell, i) <- row.zipWithIndex) {
-        colWidths(i) = math.max(colWidths(i), cell.length)
+        colWidths(i) = math.max(colWidths(i), cell.getBytes("GB2312").length)
       }
     }
     // Create SeparateLine
@@ -132,7 +142,7 @@ object Utils {
       sb.append(sep)
     }
     // data
-    rows.tail.map {
+    rows.tail.foreach {
       _.zipWithIndex.map { case (cell, i) =>
         padWs(cell, colWidths(i), truncate)
       }.addString(sb, "|", "|", "|\n")
