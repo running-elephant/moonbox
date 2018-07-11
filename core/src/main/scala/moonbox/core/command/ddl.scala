@@ -150,7 +150,7 @@ case class MountTable(
 			throw new UnsupportedOperationException(s"Can't mount table in physical database $database")
 		} else {
 			// for verifying options
-			mbSession.mixcal.registerTable(TableIdentifier(table.table, table.database), props)
+			mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
 
 			val catalogTable = CatalogTable(
 				name = table.table,

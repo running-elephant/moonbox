@@ -8,6 +8,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import moonbox.core.datasys.DataSystem
 import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.mutable.ArrayBuffer
@@ -96,17 +97,22 @@ object ColumnSelectPrivilegeChecker {
 		val catalogSession = mbSession.catalogSession
 		if (tableIdentifierToCatalogTable.nonEmpty) {
 			val physicalColumns = new ArrayBuffer[AttributeSet]()
-			val availableColumns = collectLogicalRelation(plan).flatMap { logicalRelation =>
-				logicalRelation.catalogTable match {
+			val availableColumns = collectRelation(plan).flatMap { relation =>
+				val tableMate = if (relation.isInstanceOf[LogicalRelation]) {
+					relation.asInstanceOf[LogicalRelation].catalogTable
+				} else {
+					Some(relation.asInstanceOf[CatalogRelation].tableMeta)
+				}
+				tableMate match {
 					case Some(table) =>
 						val catalogTable = tableIdentifierToCatalogTable.get(table.identifier)
 						require(catalogTable.isDefined)
-						physicalColumns.append(logicalRelation.references)
+						physicalColumns.append(relation.references)
 						if (catalogTable.get.createBy == catalogSession.userId) {
-							logicalRelation.references
+							relation.references
 						} else {
 							val visibleColumns = new TablePrivilegeManager(mbSession, catalogTable.get).selectable().map(_.name)
-							logicalRelation.references.filter(attr => visibleColumns.contains(attr.name))
+							relation.references.filter(attr => visibleColumns.contains(attr.name))
 						}
 					case None =>
 						Seq()
@@ -130,25 +136,26 @@ object ColumnSelectPrivilegeChecker {
 		}
 	}
 
-	private def collectLogicalRelation(plan: LogicalPlan): Seq[LogicalRelation] = {
+	private def collectRelation(plan: LogicalPlan): Seq[LogicalPlan] = {
 
-		def traverseExpression(expr: Expression): Seq[LogicalRelation] = {
+		def traverseExpression(expr: Expression): Seq[LogicalPlan] = {
 			expr.flatMap {
-				case ScalarSubquery(child, _, _) => collectLogicalRelation(child)
-				case Exists(child, _, _) => collectLogicalRelation(child)
-				case ListQuery(child, _, _) => collectLogicalRelation(child)
+				case ScalarSubquery(child, _, _) => collectRelation(child)
+				case Exists(child, _, _) => collectRelation(child)
+				case ListQuery(child, _, _) => collectRelation(child)
 				case a => a.children.flatMap(traverseExpression)
 			}
 		}
 		plan.collect {
 			case l: LogicalRelation => Seq(l)
+			case c: CatalogRelation => Seq(c)
 			case project: Project =>
 				project.projectList.flatMap(traverseExpression)
 			case aggregate: Aggregate =>
 				aggregate.aggregateExpressions.flatMap(traverseExpression)
 			case With(_, cteRelations) =>
 				cteRelations.flatMap {
-					case (_, SubqueryAlias(_, child)) => collectLogicalRelation(child)
+					case (_, SubqueryAlias(_, child)) => collectRelation(child)
 				}
 			case Filter(condition, _) =>
 				traverseExpression(condition)
