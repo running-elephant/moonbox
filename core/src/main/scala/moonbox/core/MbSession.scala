@@ -145,8 +145,13 @@ class MbSession(conf: MbConf) extends MbLogging {
 	private def qualifierFunctionName(plan: LogicalPlan): LogicalPlan = {
 		plan.transformAllExpressions {
 			case func@UnresolvedFunction(identifier, children, _) => {
-				val database = identifier.database.orElse(Some(catalogSession.databaseName))
-				func.copy(name = identifier.copy(database = database))
+				if (mixcal.sparkSession.sessionState.catalog.functionExists(identifier)) {
+					func
+				} else {
+					val database = identifier.database.orElse(Some(catalogSession.databaseName))
+					func.copy(name = identifier.copy(database = database))
+				}
+
 			}
 		}
 	}
@@ -192,7 +197,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 		val needRegisterTables = tables.diff(logicalTables).filterNot { identifier =>
 			mixcal.sparkSession.sessionState.catalog.isTemporaryTable(identifier) ||
-			mixcal.sparkSession.sessionState.catalog.tableExists(identifier)
+				mixcal.sparkSession.sessionState.catalog.tableExists(identifier)
 		}.map { identifier =>
 			if (identifier.database.isDefined) identifier
 			else identifier.copy(database = Some(catalogSession.databaseName))
@@ -201,13 +206,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 			functions.filterNot { case UnresolvedFunction(identifier, children, _) =>
 				mixcal.sparkSession.sessionState.catalog.functionExists(identifier)
 			}
-		}.map { func  =>
-			if (func.name.database.isDefined) {
-				func.name
-			} else {
-				func.name.copy(database = Some(catalogSession.databaseName))
-			}
-		}.toSeq
+		}.map(_.name).toSeq
 		(needRegisterTables, needRegisterFunctions)
 	}
 }

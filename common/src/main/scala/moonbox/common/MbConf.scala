@@ -1,12 +1,8 @@
 package moonbox.common
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.{Map => JMap}
-
 import moonbox.common.config._
 import moonbox.common.util.Utils
-
-import scala.reflect.ClassTag
 import scala.collection.JavaConverters._
 
 class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLogging {

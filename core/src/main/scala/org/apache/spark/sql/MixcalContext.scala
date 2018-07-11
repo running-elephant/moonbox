@@ -15,17 +15,17 @@ import moonbox.core.udf.UdfUtils
 import org.apache.spark.sql.resource.{ResourceMonitor, SparkResourceListener}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.catalyst.catalog.{FunctionResource => SparkFunctionResource}
-import org.apache.spark.sql.catalyst.catalog.{JarResource => SparkJarResource}
-import org.apache.spark.sql.catalyst.catalog.{FileResource => SparkFileResource}
-import org.apache.spark.sql.catalyst.catalog.{ArchiveResource => SparkArchiveResource}
+import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
+import org.apache.spark.sql.hive.{HiveClientUtils, HiveTableScans}
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
 	import MixcalContext._
 	val sparkSession = {
 		SparkSession.clearDefaultSession()
-		SparkSession.builder().sparkContext(getSparkContext(conf)).getOrCreate()
+		SparkSession.builder().sparkContext(getSparkContext(conf))
+			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScans(sparkSession)))
+			.getOrCreate()
 	}
 	lazy val mbOptimizer = new MbOptimizer(sparkSession)
 
@@ -80,13 +80,18 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		if (catalog.tableExists(tableIdentifier)) {
 			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
 		}
-		val createTableSql =
-			s"""
-			   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
-			   |using ${DataSystem.lookupDataSource(typ)}
-			   |options($propsString)
+		if (typ == "hive") {
+			val catalogTable = HiveClientUtils.getHiveClient(props).getTable(props("hivedb"), props("hivetable"))
+			catalog.createTable(catalogTable.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL), ignoreIfExists = true)
+		} else {
+			val createTableSql =
+				s"""
+				   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
+				   |using ${DataSystem.lookupDataSource(typ)}
+				   |options($propsString)
 			 """.stripMargin
-		sqlToDF(createTableSql)
+			sqlToDF(createTableSql)
+		}
 	}
 
 	def registerFunction(db: String, func: CatalogFunction): Unit = {
