@@ -22,11 +22,6 @@ object ParseUtils {
 
 	lazy val variableParser = "(\\$[a-zA-Z_][a-zA-Z0-9_]*)".r
 
-	/*lazy val headCharInVariableParser = P(CharIn('a' to 'z') | CharIn('A' to 'Z') | CharIn("_"))
-	lazy val tailCharInVariableParser = P((CharIn('a' to 'z') | CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn("_")).rep)
-	lazy val variableParser = P(Start ~ (!CharIn("$")).rep ~ CharIn("$") ~ (headCharInVariableParser ~ tailCharInVariableParser).!)
-	lazy val variablesParser = P(((!"$").rep ~ (variableParser ~ Index)).rep)*/
-
 	def parseVariable(text: String): Seq[String] = {
 		val builder = new ArrayBuffer[String]()
 		for(str <- variableParser.findAllIn(text)) {
