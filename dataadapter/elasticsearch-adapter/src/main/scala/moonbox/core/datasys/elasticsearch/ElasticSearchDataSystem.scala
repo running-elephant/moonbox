@@ -165,6 +165,20 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
         if(res.length == 2){ res(1) }
         else{ throw new Exception(s"$ES_RESOURCE $res does not have 2 elements by / separator")}
     }
+
+    override def test(): Boolean = {
+        val prop: Properties = getProperties
+        var executor: EsCatalystQueryExecutor = null
+        try { //throw exception and close connection
+            executor = new EsCatalystQueryExecutor(prop)
+            true
+        } catch{
+            case e: Exception => logWarning(s"ElasticSearchDataSystem test() failed ${e.getMessage}")
+                false
+        } finally {
+            if(executor != null) { executor.close() }
+        }
+    }
 }
 
 object ElasticSearchDataSystem{

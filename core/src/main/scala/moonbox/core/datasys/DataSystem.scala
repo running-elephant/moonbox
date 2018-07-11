@@ -18,6 +18,7 @@ abstract class DataSystem(props: Map[String, String]) {
 
 	def tableName(): String
 
+	def test(): Boolean = true
 }
 
 object DataSystem extends MbLogging {
