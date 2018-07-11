@@ -9,5 +9,5 @@ class KuduDataSystemProvider extends DataSystemProvider with DataSystemRegister 
 
 	override def shortName(): String = "kudu"
 
-	override def dataSource(): String = "org.apache.kudu.sql.kudu"
+	override def dataSource(): String = "org.apache.kudu.spark.kudu"
 }

@@ -189,7 +189,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		val sinkCatalogTable = mbSession.getCatalogTable(insert.table.table, insert.table.database)
 		val options = sinkCatalogTable.properties
 		val sinkDataSystem = DataSystem.lookupDataSystem(options)
-		val format = options("type")
+		val format = DataSystem.lookupDataSource(options("type"))
 		val saveMode = if (insert.overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(insert.query)
 		try {
@@ -206,7 +206,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		} catch {
 			case e: ColumnSelectPrivilegeException =>
 				throw e
-			case _: Throwable =>
+			case e: Throwable =>
+				logWarning(e.getMessage)
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
 				plan match {
 					case WholePushdown(child, queryable) =>
