@@ -1,7 +1,10 @@
 package org.apache.spark.sql.sqlbuilder
 
-import org.apache.spark.sql.execution.datasources.LogicalRelation
+import java.sql.Connection
+import java.util.ServiceLoader
 
+import org.apache.spark.sql.execution.datasources.LogicalRelation
+import scala.collection.JavaConverters._
 
 trait MbDialect {
 	import MbDialect._
@@ -10,7 +13,7 @@ trait MbDialect {
 
 	def relation(relation: LogicalRelation): String
 
-	def canHandle(name: String): Boolean
+	def canHandle(url: String): Boolean
 
 	def explainSQL(sql: String): String
 
@@ -18,24 +21,31 @@ trait MbDialect {
 
 	def maybeQuote(name: String): String
 
+	def getIndexes(conn: Connection, url: String, tableName: String): Set[String]
+
+	def getTableStat(conn: Connection, url: String, tableName: String): ((Option[BigInt], Option[Long]))
+
 }
 
 object MbDialect {
+	private[this] var dialects = List[MbDialect]()
 
-	def registerDialect(dialect: MbDialect) : Unit = {
+	{
+		ServiceLoader.load(classOf[MbDialect])
+	}
+
+	def registerDialect(dialect: MbDialect) : Unit = synchronized {
 		dialects = dialect :: dialects.filterNot(_ == dialect)
 	}
 
-	def unregisterDialect(dialect : MbDialect) : Unit = {
+	def unregisterDialect(dialect : MbDialect) : Unit = synchronized {
 		dialects = dialects.filterNot(_ == dialect)
 	}
 
-	private[this] var dialects = List[MbDialect]()
-
-	def get(name: String): MbDialect = {
-		val matchingDialects = dialects.filter(_.canHandle(name))
+	def get(url: String): MbDialect = {
+		val matchingDialects = dialects.filter(_.canHandle(url))
 		matchingDialects.headOption match {
-			case None => throw new NoSuchElementException(s"no suitable MbDialect from $name")
+			case None => throw new NoSuchElementException(s"no suitable MbDialect from $url")
 			case Some(d) => d
 		}
 	}

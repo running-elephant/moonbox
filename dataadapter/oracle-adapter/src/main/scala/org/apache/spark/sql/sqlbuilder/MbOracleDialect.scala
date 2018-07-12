@@ -1,12 +1,14 @@
 package org.apache.spark.sql.sqlbuilder
 
+import java.sql.Connection
+
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
 
 
 object MbOracleDialect extends MbDialect {
 
-	override def canHandle(name: String): Boolean = name.equalsIgnoreCase("mysql")
+	override def canHandle(url: String): Boolean = url.toLowerCase().startsWith("jdbc:oracle")
 
 	override def quote(name: String): String = {
 		"`" + name.replace("`", "``") + "`"
@@ -20,5 +22,13 @@ object MbOracleDialect extends MbDialect {
 
 	override def maybeQuote(name: String): String = {
 		name
+	}
+
+	override def getIndexes(conn: Connection, url: String, tableName: String): Set[String] = {
+		Set[String]()
+	}
+
+	override def getTableStat(conn: Connection, url: String, tableName: String): (Option[BigInt], Option[Long]) = {
+		(None, None)
 	}
 }
