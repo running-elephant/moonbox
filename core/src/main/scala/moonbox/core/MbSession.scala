@@ -116,6 +116,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def toDT(plan: LogicalPlan, datasys: Pushdownable): DataTable = {
+		val qe = mixcal.sparkSession.sessionState.executePlan(plan)
+		qe.assertAnalyzed()
 		datasys.buildQuery(plan)
 	}
 
