@@ -188,5 +188,22 @@ class MysqlDataSystem(props: Map[String, String])
 		props("dbtable")
 	}
 
-
+	override def test(): Boolean = {
+		var connection: Connection = null
+		try  {
+			connection = getConnection()
+			if (connection != null) {
+				true
+			} else {
+				false
+			}
+		} catch {
+			case e: Exception =>
+				false
+		} finally {
+			if (connection != null) {
+				connection.close()
+			}
+		}
+	}
 }
