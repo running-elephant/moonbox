@@ -2,6 +2,7 @@ package moonbox.core.command
 
 import moonbox.common.util.Utils
 import moonbox.core.catalog._
+import moonbox.core.datasys.DataSystem
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -15,17 +16,21 @@ case class MountDatabase(
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-
-		val catalogDatabase = CatalogDatabase(
-			name = name,
-			properties = props,
-			description = None,
-			organizationId = ctx.organizationId,
-			isLogical = false,
-			createBy = ctx.userId,
-			updateBy = ctx.userId
-		)
-		mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
+		val validate = DataSystem.lookupDataSystem(props).test()
+		if (!validate) {
+			throw new Exception("Can't connect to the database. Please check your connecting parameters.")
+		} else {
+			val catalogDatabase = CatalogDatabase(
+				name = name,
+				properties = props,
+				description = None,
+				organizationId = ctx.organizationId,
+				isLogical = false,
+				createBy = ctx.userId,
+				updateBy = ctx.userId
+			)
+			mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
+		}
 		Seq.empty[Row]
 	}
 }
@@ -150,18 +155,23 @@ case class MountTable(
 			throw new UnsupportedOperationException(s"Can't mount table in physical database $database")
 		} else {
 			// for verifying options
-			mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
+			val validate = DataSystem.lookupDataSystem(props).test()
+			if (!validate) {
+				throw new Exception("Can't connect to the database. Please check your connecting parameters.")
+			} else {
+				mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
 
-			val catalogTable = CatalogTable(
-				name = table.table,
-				description = None,
-				databaseId = databaseId,
-				properties = props,
-				isStream = isStream,
-				createBy = ctx.userId,
-				updateBy = ctx.userId
-			)
-			mbSession.catalog.createTable(catalogTable, ctx.organizationName, database, ignoreIfExists)
+				val catalogTable = CatalogTable(
+					name = table.table,
+					description = None,
+					databaseId = databaseId,
+					properties = props,
+					isStream = isStream,
+					createBy = ctx.userId,
+					updateBy = ctx.userId
+				)
+				mbSession.catalog.createTable(catalogTable, ctx.organizationName, database, ignoreIfExists)
+			}
 		}
 		Seq.empty[Row]
 	}

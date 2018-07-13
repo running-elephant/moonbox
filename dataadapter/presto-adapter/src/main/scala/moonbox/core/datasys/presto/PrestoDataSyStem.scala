@@ -168,5 +168,23 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
 	override def tableName(): String = { "" }
 
+	override def test(): Boolean = {
+		var connection: Connection = null
+		try  {
+			connection = getConnection()
+			if (connection != null) {
+				true
+			} else {
+				false
+			}
+		} catch {
+			case e: Exception =>
+				false
+		} finally {
+			if (connection != null) {
+				connection.close()
+			}
+		}
+	}
 
 }

@@ -20,4 +20,20 @@ class HiveDataSystem(props: Map[String, String])
 	override def tableProperties(tableName: String): Map[String, String] = {
 		props.+("hivetable" -> tableName)
 	}
+
+	override def test(): Boolean = {
+		try {
+			val client = HiveClientUtils.getHiveClient(props)
+			if (client != null) {
+				true
+			} else {
+				false
+			}
+		} catch {
+			case e: Exception =>
+				false
+		} finally {
+			// we do not close hive client here
+		}
+	}
 }

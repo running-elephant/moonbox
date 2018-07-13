@@ -18,7 +18,7 @@ trait Pushdownable { self: DataSystem =>
 		beGoodAtOperators.contains(operator)
 	}
 
-	protected def isSupportAll: Boolean
+	def isSupportAll: Boolean
 
 	def isSupport(plan: LogicalPlan): Boolean = {
 		isSupportAll || {(plan match {

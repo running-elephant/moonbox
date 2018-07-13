@@ -28,6 +28,7 @@ import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql._
+import org.apache.spark.sql.sqlbuilder.MbDialect
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -115,7 +116,6 @@ case class MbJDBCRelation(parts: Array[Partition], jdbcOptions: JDBCOptions)(@tr
 
   override val schema: StructType = JDBCRDD.resolveTable(jdbcOptions)
 
-
   override def sizeInBytes: Long = dataLength
 
   def rowCount: Option[BigInt] = tableRows
@@ -124,47 +124,31 @@ case class MbJDBCRelation(parts: Array[Partition], jdbcOptions: JDBCOptions)(@tr
 	var conn: Connection = null
 	try {
 	  conn = JdbcUtils.createConnectionFactory(jdbcOptions)()
-	  val dbName = jdbcOptions.url.split("\\?").head.split("/").last
+	  val url = jdbcOptions.url
 	  val tbName = jdbcOptions.table
-	  // TODO Oracle
-	  val sql =
-		s"""
-		   |SHOW index FROM $dbName.$tbName
-		 """.stripMargin
-	  val rs = conn.createStatement().executeQuery(sql)
-	  val index = new scala.collection.mutable.HashSet[String]
-	  while (rs.next()) {
-		index.add(rs.getString("Column_name"))
-	  }
-	  index.toSet
+	  MbDialect.get(url).getIndexes(conn, url, tbName)
 	} catch {
 	  case e: Exception =>
-		logError(e.getMessage)
+		logWarning(e.getMessage)
 		Set[String]()
 	} finally {
 	  if (conn != null) conn.close()
 	}
   }
 
-  val (tableRows, dataLength): (Option[BigInt], Long) = {
+  lazy val (tableRows, dataLength): (Option[BigInt], Long) = {
 	var conn: Connection = null
 	try {
 	  conn = JdbcUtils.createConnectionFactory(jdbcOptions)()
-	  val dbName = jdbcOptions.url.split("\\?").head.split("/").last
+	  val url = jdbcOptions.url
 	  val tbName = jdbcOptions.table
-	  // TODO Oracle
-	  val sql = s"""
-				   |SELECT TABLE_ROWS, DATA_LENGTH FROM information_schema.tables
-				   |WHERE TABLE_SCHEMA = '$dbName' AND TABLE_NAME = '$tbName'""".stripMargin
-	  val rs = conn.createStatement().executeQuery(sql)
-	  if (rs.next())
-	  	(Some(BigInt(rs.getLong(1))), rs.getLong(2))
-	  else {
-		(None, super.sizeInBytes)
+	  MbDialect.get(url).getTableStat(conn, url, tbName) match {
+		  case (rowCount, Some(length)) => (rowCount, length)
+		  case (rowCount, None) => (rowCount, super.sizeInBytes)
 	  }
 	} catch {
 	  case e: Exception =>
-		logError(e.getMessage)
+		logWarning(e.getMessage)
 		(None, super.sizeInBytes)
 	} finally {
 	  if (conn != null) conn.close()
