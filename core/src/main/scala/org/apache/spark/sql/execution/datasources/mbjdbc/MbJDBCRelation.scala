@@ -114,7 +114,9 @@ case class MbJDBCRelation(parts: Array[Partition], jdbcOptions: JDBCOptions)(@tr
 
   override val needConversion: Boolean = false
 
-  override val schema: StructType = JDBCRDD.resolveTable(jdbcOptions)
+  override val schema: StructType = {
+	  JDBCRDD.resolveTable(jdbcOptions)
+  }
 
   override def sizeInBytes: Long = dataLength
 

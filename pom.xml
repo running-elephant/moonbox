@@ -28,6 +28,7 @@
         <module>dataadapter/mysql-adapter</module>
         <module>dataadapter/presto-adapter</module>
         <module>dataadapter/oracle-adapter</module>
+        <module>dataadapter/sqlserver-adapter</module>
     </modules>
 
     <properties>

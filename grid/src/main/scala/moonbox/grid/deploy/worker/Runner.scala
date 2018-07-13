@@ -164,6 +164,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			val plan = mbSession.pushdownPlan(optimized)
 			plan match {
 				case WholePushdown(child, queryable) =>
+                    logInfo(s"WholePushdown $query")
 					mbSession.toDT(child, queryable).write().format(format).options(options).save()
 				case _ =>
 					mbSession.toDF(plan).write.format(format).options(options).save()
@@ -172,6 +173,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
+                e.printStackTrace()
 				logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
 				plan match {

@@ -31,7 +31,7 @@ object MbDialect {
 	private[this] var dialects = List[MbDialect]()
 
 	{
-		ServiceLoader.load(classOf[MbDialect])
+		for (x <- ServiceLoader.load(classOf[MbDialect]).asScala) {}
 	}
 
 	def registerDialect(dialect: MbDialect) : Unit = synchronized {
