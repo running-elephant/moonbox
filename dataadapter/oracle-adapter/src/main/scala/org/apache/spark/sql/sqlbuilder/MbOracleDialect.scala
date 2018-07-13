@@ -6,12 +6,12 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
 
 
-object MbOracleDialect extends MbDialect {
+class MbOracleDialect extends MbDialect {
 
 	override def canHandle(url: String): Boolean = url.toLowerCase().startsWith("jdbc:oracle")
 
 	override def quote(name: String): String = {
-		"`" + name.replace("`", "``") + "`"
+		"\"" + name.replace("`", "\"") + "\""
 	}
 
 	override def explainSQL(sql: String): String = s"EXPLAIN $sql"

@@ -43,7 +43,7 @@ class OracleDataSystem(props: Map[String, String])
 	}
 
 	override def buildQuery(plan: LogicalPlan): DataTable = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbOracleDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbOracleDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")
@@ -89,7 +89,7 @@ class OracleDataSystem(props: Map[String, String])
 		new DataTable(iter, schema, () => iter.closeIfNeeded())
 	}
 
-	override protected def isSupportAll: Boolean = false
+	override def isSupportAll: Boolean = false
 
 	override def fastEquals(other: DataSystem): Boolean = {
 		other match {
@@ -100,7 +100,7 @@ class OracleDataSystem(props: Map[String, String])
 	}
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbOracleDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbOracleDialect)
 		val sql = sqlBuilder.toSQL
 		logInfo(s"pushdown sql : $sql")
 		val rdd = new MbJdbcRDD(
@@ -127,6 +127,7 @@ class OracleDataSystem(props: Map[String, String])
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
+		classOf[Literal], classOf[AttributeReference], classOf[Alias],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[If],
 		classOf[IsNull], classOf[IsNotNull], classOf[Least], classOf[NaNvl],
 		classOf[NullIf], classOf[Nvl], classOf[Nvl2], classOf[CaseWhen],
@@ -175,7 +176,7 @@ class OracleDataSystem(props: Map[String, String])
 	private def socket: (String, Int) = {
 		val url = props("url").toLowerCase
 		val removeProtocol = url.stripPrefix("jdbc:oracle:thin:@")
-		val hostPort = removeProtocol.substring(0, removeProtocol.indexOf('/')).split(":")
+		val hostPort = removeProtocol.substring(0, removeProtocol.lastIndexOf(':')).split(":")
 		val host = hostPort(0)
 		val port = if (hostPort.length > 1) hostPort(1).toInt else 1521
 		(InetAddress.getByName(host).getHostAddress, port)
