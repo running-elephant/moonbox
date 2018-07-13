@@ -80,7 +80,7 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 	}
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbPrestoDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbPrestoDialect)
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
@@ -92,7 +92,7 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 	}
 
 	override def buildQuery(plan: LogicalPlan): DataTable = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbPrestoDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbPrestoDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")

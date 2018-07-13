@@ -5,7 +5,7 @@ import java.sql.Connection
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.presto.PrestoRelation
 
-object MbPrestoDialect extends MbDialect {
+class MbPrestoDialect extends MbDialect {
 
 	override def relation(relation: LogicalRelation): String = {
 		relation.relation.asInstanceOf[PrestoRelation].props("dbtable")

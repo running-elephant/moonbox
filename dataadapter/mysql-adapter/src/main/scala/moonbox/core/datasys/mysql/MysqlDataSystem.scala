@@ -107,7 +107,7 @@ class MysqlDataSystem(props: Map[String, String])
 	}
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbMySQLDialect)
 		val sql = sqlBuilder.toSQL
 		logInfo(s"pushdown sql : $sql")
 		val rdd = new MbJdbcRDD(
@@ -121,7 +121,7 @@ class MysqlDataSystem(props: Map[String, String])
 	}
 
 	override def buildQuery(plan: LogicalPlan): DataTable = {
-		val sqlBuilder = new MbSqlBuilder(plan, MbMySQLDialect)
+		val sqlBuilder = new MbSqlBuilder(plan, new MbMySQLDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")

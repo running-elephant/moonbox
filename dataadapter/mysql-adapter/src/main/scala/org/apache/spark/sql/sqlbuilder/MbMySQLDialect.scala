@@ -6,7 +6,7 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
 
 
-object MbMySQLDialect extends MbDialect {
+class MbMySQLDialect extends MbDialect {
 
 	override def canHandle(url: String): Boolean = url.toLowerCase().startsWith("jdbc:mysql")
 

@@ -9,7 +9,7 @@ class ElasticSearchDataSystemProvider extends DataSystemProvider
 		new ElasticSearchDataSystem(parameters)
 	}
 
-	override def shortName(): String = "elasticsearch"
+	override def shortName(): String = "es"
 
 	override def dataSource(): String = "org.elasticsearch.spark.sql"
 }
