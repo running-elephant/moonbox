@@ -93,8 +93,8 @@ object Utils {
 
   /**
     *
-    * @param _data rows of table
-    * @param schema a sequence of column names
+    * @param _data    rows of table
+    * @param schema   a sequence of column names
     * @param _numRows default is 500, denotes the max number of rows to show
     * @param truncate 0 denotes not truncating
     * @return
@@ -122,7 +122,13 @@ object Utils {
       return ""
     }
     val sb = new StringBuilder
-    val numCols = math.max(schema.length, data.head.length)
+    val numCols = {
+      if (data.nonEmpty) {
+        math.max(schema.length, data.head.length)
+      } else {
+        schema.length
+      }
+    }
     // Initialise the width of each column to a minimum value of '3'
     val colWidths = Array.fill(numCols)(3)
     // Compute the width of each column
@@ -147,7 +153,9 @@ object Utils {
         padWs(cell, colWidths(i), truncate)
       }.addString(sb, "|", "|", "|\n")
     }
-    sb.append(sep)
+    if (data.nonEmpty) {
+      sb.append(sep)
+    }
     // For Data that has more than "numRows" records
     val rowsString = if (numRows == 1) "row" else "rows"
     sb.append(s"Showing at most top $numRows $rowsString\n")
