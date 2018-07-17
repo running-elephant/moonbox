@@ -131,7 +131,7 @@ class SqlServerDataSystem(props: Map[String, String])
 	//std  - STDEV , encode  - CERTENCODED, split  - STRING_SPLIT, hash  -  HASHBYTES
 	//MSSQL Function: https://docs.microsoft.com/en-us/sql/t-sql/functions/functions?view=sql-server-2017
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[Literal], classOf[AttributeReference], classOf[Alias],
+		classOf[Literal], classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
 		classOf[Abs], classOf[Coalesce], classOf[IsNull], classOf[IsNotNull],
 		classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan], classOf[Ceil],
 		classOf[Cos], classOf[Cosh], classOf[CaseWhen], classOf[ToDegrees],

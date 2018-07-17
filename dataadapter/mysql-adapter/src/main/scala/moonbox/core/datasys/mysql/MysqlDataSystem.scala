@@ -38,7 +38,7 @@ class MysqlDataSystem(props: Map[String, String])
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[Literal], classOf[AttributeReference], classOf[Alias],
+		classOf[Literal], classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[If], classOf[IfNull],
 		classOf[IsNull], classOf[IsNotNull], classOf[Least], classOf[NullIf],
 		classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],

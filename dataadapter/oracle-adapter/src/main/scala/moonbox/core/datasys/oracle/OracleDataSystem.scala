@@ -127,7 +127,7 @@ class OracleDataSystem(props: Map[String, String])
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[Literal], classOf[AttributeReference], classOf[Alias],
+		classOf[Literal], classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[If],
 		classOf[IsNull], classOf[IsNotNull], classOf[Least], classOf[NaNvl],
 		classOf[NullIf], classOf[Nvl], classOf[Nvl2], classOf[CaseWhen],
