@@ -44,15 +44,16 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 
 		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem] && graph.dataSystem.isInstanceOf[Pushdownable]
 			&& (graph.plan.find(l => graph.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined ||
-			graph.dataSystem.asInstanceOf[Pushdownable].isSupportAll
-			) &&
-			  !graph.dataSystem.isInstanceOf[SparkDataSystem]
+				graph.dataSystem.asInstanceOf[Pushdownable].isSupportAll)
+			&& !graph.dataSystem.isInstanceOf[SparkDataSystem]
 		) {
 			(Some(graph), mutable.HashSet[MbTreeNode]())
 		} else {
-			(None, parents.filter(
-				n => n.plan.find(l => n.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined ||
-					n.dataSystem.asInstanceOf[Pushdownable].isSupportAll))
+			val partial = parents.filter(n => n.dataSystem.isInstanceOf[Pushdownable] && (
+					n.dataSystem.asInstanceOf[Pushdownable].isSupportAll ||
+					n.plan.find(l => n.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined)
+				)
+			(None, partial)
 		}
 	}
 

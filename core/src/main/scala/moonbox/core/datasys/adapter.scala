@@ -26,16 +26,25 @@ trait Pushdownable { self: DataSystem =>
 				supportedOperators.contains(plan.getClass) && supportedJoinTypes.contains(join.joinType)
 			case _ =>
 				supportedOperators.contains(plan.getClass)
-		}) && plan.expressions.forall {
-			case udf: ScalaUDF =>
-				udf.udfName match {
-					case Some(udfName) =>
-						supportedExpressions.contains(udf.getClass) && supportedUDF.contains(udfName)
-					case None => false
-				}
-			case udaf: ScalaUDAF => false
-			case expression => supportedExpressions.contains(expression.getClass)
+		}) && allExpressionSupport(plan)
 		}
+	}
+
+	private def allExpressionSupport(plan: LogicalPlan): Boolean = {
+		def traverseExpression(expression: Expression): Boolean ={
+			expression match {
+				case udf: ScalaUDF =>
+					udf.udfName match {
+						case Some(udfName) =>
+							supportedExpressions.contains(udf.getClass) && supportedUDF.contains(udfName)
+						case None => false
+					}
+				case udaf: ScalaUDAF => false
+				case expr => supportedExpressions.contains(expr.getClass) && expression.children.forall(traverseExpression)
+			}
+		}
+		plan.expressions.forall { expr =>
+			traverseExpression(expr)
 		}
 	}
 
