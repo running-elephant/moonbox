@@ -51,7 +51,7 @@ function sync_file_to_server(){
 }
 
 host_array=("master" "slave1" "slave2")
-moonbox_home="/home/yxgly/moonbox2"
+moonbox_home="/home/yxgly/moonbox3"
 
 
 ######################################
