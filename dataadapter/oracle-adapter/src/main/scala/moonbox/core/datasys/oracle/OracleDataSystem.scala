@@ -26,7 +26,7 @@ class OracleDataSystem(props: Map[String, String])
 	override def tableNames(): Seq[String] = {
 		val tables = new ArrayBuffer[String]()
 		val connection = getConnection()
-		val resultSet = connection.createStatement().executeQuery("show tables")
+		val resultSet = connection.createStatement().executeQuery("SELECT table_name FROM user_tables")
 		while (resultSet.next()) {
 			tables.+=:(resultSet.getString(1))
 		}
