@@ -62,22 +62,28 @@
         </dependencySet>
         <dependencySet>
             <includes>
+                <!--common-->
                 <include>edp.moonbox:moonbox-common_2.11</include>
                 <include>edp.moonbox:moonbox-core_2.11</include>
                 <include>redis.clients:jedis</include>
+                <!--mysql-->
                 <include>mysql:mysql-connector-java</include>
+                <include>edp.moonbox:moonbox-mysql-adapter</include>
+                <!--hbase-->
                 <include>edp.moonbox:spark-hbase-connector</include>
+                <include>edp.moonbox:moonbox-hbase-adapter</include>
+                <!--presto-->
                 <include>edp.moonbox:spark-presto-connector</include>
                 <include>com.lihaoyi:fastparse_2.11</include>
                 <include>com.lihaoyi:fastparse-utils_2.11</include>
                 <include>com.lihaoyi:sourcecode_2.11</include>
                 <include>com.facebook.presto:presto-jdbc</include>
-                <!-- cassandra need from here -->
-                <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
-                <!-- mongo need from here -->
+                <include>edp.moonbox:moonbox-presto-adapter</include>
+                <!-- mongo -->
                 <include>org.mongodb:mongo-java-driver</include>
                 <include>org.mongodb.spark:mongo-spark-connector_2.11</include>
-                <!-- elasticsearch need from here -->
+                <include>edp.moonbox:moonbox-mongo-adapter</include>
+                <!-- elasticsearch  -->
                 <include>edp.moonbox:moonbox-catalyst_2.11</include>
                 <include>org.elasticsearch:elasticsearch-spark-20_2.11</include>
                 <include>org.elasticsearch.client:rest</include>
@@ -87,12 +93,20 @@
                 <include>org.apache.httpcomponents:httpcore</include>
                 <include>commons-codec:commons-codec</include>
                 <include>org.json:json</include>
-                <!-- kafka need from here-->
+                <include>edp.moonbox:moonbox-elasticsearch-adapter</include>
+                <!-- kafka -->
                 <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
                 <include>org.apache.kafka:kafka-clients</include>
                 <!--kudu-->
                 <include>org.apache.kudu:kudu-client</include>
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
+                <include>edp.moonbox:moonbox-kudu-adapter</include>
+                <!--oracle-->
+                <include>com.oracle:ojdbc6</include>
+                <include>edp.moonbox:moonbox-oracle-adapter</include>
+                <!--sqlserver-->
+                <include>com.microsoft.sqlserver:sqljdbc4</include>
+                <include>edp.moonbox:moonbox-sqlserver-adapter</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
