@@ -29,6 +29,7 @@
         <module>dataadapter/oracle-adapter</module>
         <module>dataadapter/sqlserver-adapter</module>
         <module>dataadapter/hbase-adapter</module>
+        <module>dataadapter/cassandra-adapter</module>
         <module>assembly</module>
     </modules>
 
