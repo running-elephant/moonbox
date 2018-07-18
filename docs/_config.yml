@@ -12,6 +12,7 @@ include:
   - _static
   - _modules
 
-WH_VERSION_SHORT: 0.4.2
-SCALA_BINARY_VERSION: "${scala.binary.version}"
-SCALA_VERSION: "${scala.binary.version}.8"
+MOONBOX_VERSION: 0.2.1-SNAPSHOT
+MOONBOX_VERSION_SHORT: 0.2.0
+SCALA_BINARY_VERSION: "2.11"
+SCALA_VERSION: "2.11.8"
