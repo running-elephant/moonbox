@@ -1,5 +1,7 @@
 package moonbox.grid.deploy.worker
 
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.pattern._
 import akka.util.Timeout
@@ -15,7 +17,6 @@ import org.apache.spark.sql.SaveMode
 import moonbox.core.datasys.{DataSystem, Insertable}
 import org.apache.spark.sql.optimizer.WholePushdown
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -25,6 +26,10 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	private val awaitTimeout = new FiniteDuration(20, SECONDS)
 	private implicit val catalogSession = mbSession.catalogSession
 	private var currentJob: JobInfo = _
+    private implicit val contextExecutor = {
+        val executor = Executors.newFixedThreadPool(10)  //poolsize is temporarily set 10
+        ExecutionContext.fromExecutor(executor)
+    }
 
 	override def receive: Receive = {
 		case RunJob(jobInfo) =>
