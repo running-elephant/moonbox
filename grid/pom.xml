@@ -160,5 +160,10 @@
             <artifactId>moonbox-hbase-adapter</artifactId>
             <version>0.2.0-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-cassandra-adapter</artifactId>
+            <version>0.2.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 </project>

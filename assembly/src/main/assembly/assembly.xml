@@ -107,6 +107,10 @@
                 <!--sqlserver-->
                 <include>com.microsoft.sqlserver:sqljdbc4</include>
                 <include>edp.moonbox:moonbox-sqlserver-adapter</include>
+                <!--cassandra-->
+                <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
+                <include>com.datastax.cassandra:cassandra-driver-core</include>
+                <include>edp.moonbox:moonbox-cassandra-adapter</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
