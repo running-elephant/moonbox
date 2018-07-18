@@ -1,0 +1,17 @@
+highlighter: pygments
+markdown: kramdown
+google_analytics:
+show_downloads: true
+plugins:
+  - jekyll-redirect-from
+
+kramdown:
+  entity_output: numeric
+
+include:
+  - _static
+  - _modules
+
+WH_VERSION_SHORT: 0.4.2
+SCALA_BINARY_VERSION: "${scala.binary.version}"
+SCALA_VERSION: "${scala.binary.version}.8"
