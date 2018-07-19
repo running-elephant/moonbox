@@ -415,7 +415,13 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val className = ParserUtils.tripQuotes(ctx.className.getText)
 		val methodName = Option(ctx.methodName).map(_.getText).map(ParserUtils.tripQuotes)
 		val resources = ctx.resource().map { rctx =>
-			FunctionResource(rctx.identifier().getText.toLowerCase, ParserUtils.tripQuotes(rctx.STRING().getText))
+			val resourceType = rctx.identifier().getText.toLowerCase
+			val resource = if (resourceType.equals("java") || resourceType.equals("scala")) {
+				ParserUtils.tripQuotes(rctx.STRING().getText).trim.stripPrefix("(").stripSuffix(")")
+			} else {
+				ParserUtils.tripQuotes(rctx.STRING().getText).trim
+			}
+			FunctionResource(resourceType, resource)
 		}
 		val ignoreIfExists = ctx.EXISTS() != null
 		if (isTemp) {

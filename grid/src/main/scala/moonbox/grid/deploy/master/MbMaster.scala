@@ -79,6 +79,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private var timedEventService: TimedEventService = _
 	/*private var checkForWorkerTimeOutTask: Cancellable = _*/
 
+	private val timerServiceEnabled = conf.get(TIMER_SERVICE_ENABLE.key, TIMER_SERVICE_ENABLE.defaultValue.get)
+
 	private val restServerEnabled = conf.get(REST_SERVER_ENABLE.key, REST_SERVER_ENABLE.defaultValue.get)
 	private var restServer: Option[RestServer] = None
 	private var restServerBoundPort: Option[Int] = None
@@ -108,10 +110,13 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		singletonMaster = startMasterEndpoint(akkaSystem)
 		MbMaster.singleton = singletonMaster
 		resultGetter = akkaSystem.actorOf(Props(classOf[ResultGetter], conf), "result-getter")
-		timedEventService = new TimedEventServiceImpl(conf)
-		timedEventService.start()
 
 		val serviceImpl = new MbService(conf, catalogContext, singletonMaster, resultGetter)
+
+		if (timerServiceEnabled) {
+			timedEventService = new TimedEventServiceImpl(conf)
+			timedEventService.start()
+		}
 
 		if (restServerEnabled) {
 			restServer = Some(new RestServer(param.host, param.restPort, conf, serviceImpl, akkaSystem))
@@ -119,26 +124,6 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		if (tcpServerEnabled) {
 			tcpServer = Some(new TransportServer(param.host, param.tcpPort, conf, serviceImpl))
 		}
-
-		odbcServerBoundPort = startODBCServer(serviceImpl)
-		def startODBCServer(service: MbService): Option[Int] = try {
-      val className = conf.get("moonbox.odbc.server.className", "moonbox.odbc.server.MoonboxODBCServer")
-      val mbODBCServer = Class.forName(className)
-      val constructor = mbODBCServer.getConstructor(classOf[MbConf], classOf[MbService])
-      val method = mbODBCServer.getDeclaredMethod("start0")
-      val instance = constructor.newInstance(conf, service)
-      logInfo(s"Thrift server is started.")
-      Some(method.invoke(instance).asInstanceOf[Int])
-    } catch {
-      case _: ClassNotFoundException =>
-        logWarning(s"No thrift server implementation found.")
-        None
-      case e: Throwable =>
-        val writer = new StringWriter()
-        e.printStackTrace(new PrintWriter(writer))
-        logError(writer.toString)
-        None
-    }
 
 		persistenceEngine = PERSISTENCE_MODE match {
 			case "ZOOKEEPER" =>
@@ -165,6 +150,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			ScheduleJob
 		)
 
+		odbcServerBoundPort = startODBCServer(serviceImpl)
 		restServerBoundPort = restServer.map(_.start())
 		tcpServerBoundPort = tcpServer.map(_.start())
 
@@ -293,7 +279,16 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			}
         case UnreachableMember(member) =>
             logInfo(s"UnreachableMember $member")
-            workers.filter{elem => elem._1.path.address == member.address}
+			val unreachableWorkers = workers.filterKeys(_.path.address == member.address)
+			unreachableWorkers.foreach { case (actorRef, workerInfo) =>
+				sessionIdToWorker.find(_._2 == actorRef).foreach { case (sessionId, _) =>
+					recoverWorkers.put(member.address, (actorRef, workerInfo, sessionId))
+					sessionIdToWorker.remove(sessionId)
+				}
+			}
+			unreachableWorkers.foreach { case (ref, _) => workers.remove(ref) }
+
+/*            workers.filter{elem => elem._1.path.address == member.address}
                    .foreach{elem =>
                        recoverWorkers.update(member.address, (elem._1, elem._2, ""))
                        workers.remove(elem._1)
@@ -302,25 +297,27 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
             sessionIdToWorker.filter{elem => elem._2.path.address == member.address}
                     .foreach{elem =>
                         if(recoverWorkers.contains(member.address)){
-                            val rworker = recoverWorkers(member.address)
-                            recoverWorkers.update(member.address, (rworker._1, rworker._2, elem._1))  //update session id
+                            val worker = recoverWorkers(member.address)
+                            recoverWorkers.update(member.address, (worker._1, worker._2, elem._1))  //update session id
                         }
                         sessionIdToWorker.remove(elem._1)
-                    }
+                    }*/
             logInfo(s"new worker is $workers, new sessionId is $sessionIdToWorker")
 
         case ReachableMember(member) =>
             logInfo(s"ReachableMember $member")
-            val rworker = recoverWorkers.get(member.address)
-            if(rworker.isDefined){
-                if(!workers.contains(rworker.get._1)) {
-                    workers.put(rworker.get._1, rworker.get._2)
-                }
-                if(!sessionIdToWorker.contains(rworker.get._3)) {
-                    sessionIdToWorker.put(rworker.get._3, rworker.get._1)
-                }
-                recoverWorkers.remove(member.address)
-            }
+            val worker = recoverWorkers.get(member.address)
+			worker match {
+				case Some((actorRef, workerInfo, sessionId)) =>
+					if(!workers.contains(actorRef)) {
+						workers.put(actorRef, workerInfo)
+					}
+					if(!sessionIdToWorker.contains(sessionId)) {
+						sessionIdToWorker.put(sessionId, actorRef)
+					}
+					recoverWorkers.remove(member.address)
+				case None =>
+			}
             logInfo(s"new worker is $workers, new sessionId is $sessionIdToWorker")
         case _: CurrentClusterState =>
 
@@ -331,6 +328,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		case RegisterTimedEvent(event) =>
 			val target = sender()
 			Future {
+				checkTimedServcieValid()
 				if (!timedEventService.timedEventExists(event.group, event.name)) {
 					timedEventService.addTimedEvent(event)}
 			}.onComplete {
@@ -343,6 +341,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		case UnregisterTimedEvent(group, name) =>
 			val target = sender()
 			Future {
+				checkTimedServcieValid()
 				timedEventService.deleteTimedEvent(group, name)
 			}.onComplete {
 				case Success(_) =>
@@ -552,10 +551,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
     private def getEventInfo(): Seq[Seq[String]] = {
         val eventInfo = timedEventService.getTimedEvents().map{ event =>
-            val startTime = if(event.startTime.isDefined){Utils.formatDate(event.startTime.get)} else {""}
-            val endTime  = if(event.endTime.isDefined){Utils.formatDate(event.endTime.get)} else {""}
-            val preTime  = if(event.preFireTime.isDefined){Utils.formatDate(event.preFireTime.get)} else {""}
-            val nextTime =if(event.nextFireTime.isDefined){Utils.formatDate(event.nextFireTime.get)} else {""}
+            val startTime = event.startTime.map(Utils.formatDate).getOrElse("")
+            val endTime  = event.endTime.map(Utils.formatDate).getOrElse("")
+            val preTime  = event.preFireTime.map(Utils.formatDate).getOrElse("")
+            val nextTime = event.nextFireTime.map(Utils.formatDate).getOrElse("")
 
             Row(event.group, event.name, event.cronDescription, event.status, startTime, endTime, preTime, nextTime)
         }.map(_.toSeq.map(_.toString))
@@ -679,6 +678,29 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		ClusterClientReceptionist(akkaSystem).registerService(endpoint)
 		logInfo(s"startMasterEndpoint $endpoint")
 		endpoint
+	}
+
+	private def startODBCServer(service: MbService): Option[Int] = try {
+		val className = conf.get(ODBC_SERVER_CLASS.key, ODBC_SERVER_CLASS.defaultValueString)
+		val mbODBCServer = Class.forName(className)
+		val constructor = mbODBCServer.getConstructor(classOf[MbConf], classOf[MbService])
+		val method = mbODBCServer.getDeclaredMethod("start0")
+		val instance = constructor.newInstance(conf, service)
+		logInfo(s"Thrift server is started.")
+		Some(method.invoke(instance).asInstanceOf[Int])
+	} catch {
+		case _: ClassNotFoundException =>
+			logWarning(s"No thrift server implementation found.")
+			None
+		case e: Exception =>
+			logError(e.getMessage)
+			None
+	}
+
+	private def checkTimedServcieValid(): Unit = {
+		if (!timerServiceEnabled || timedEventService == null) {
+			throw new Exception("Timer Service is out of service.")
+		}
 	}
 }
 
