@@ -185,9 +185,9 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 				""
 			} else {
 				catalogTable.properties.filterNot { case (key, value) =>
-					key.equalsIgnoreCase("user") ||
-					key.equalsIgnoreCase("username") ||
-					key.equalsIgnoreCase("password")
+					key.toLowerCase.contains("user") ||
+						key.toLowerCase.contains("username") ||
+						key.toLowerCase.contains("password")
 				}.toSeq.mkString("(", ", ", ")")
 			}
 			result.append(Row("Properties", properties))
