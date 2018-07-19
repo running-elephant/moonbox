@@ -162,6 +162,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>cassandra</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-cassandra-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>dist</id>
             <build>
                 <plugins>

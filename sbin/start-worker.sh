@@ -2,11 +2,6 @@
 
 local_host=`hostname`
 date=`date +%Y%m%d_%H%M%S`
-JAVA_OPTS="$JAVA_OPTS-Dcom.sun.management.jmxremote
-        -Dcom.sun.management.jmxremote.port=9999
-        -Dcom.sun.management.jmxremote.authenticate=false
-        -Dcom.sun.management.jmxremote.ssl=false
-        -Djava.rmi.server.hostname=$local_host"
 
 #import env firstly
 if [ -z "${MOONBOX_HOME}" ]; then
@@ -37,11 +32,11 @@ if [ $# -ne 3 ]; then
     rm -f ${tmp_file}
 
     echo "start MbWorker --host ${local_host} --masters ${master_url} --port [random port]"
-    java ${JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${local_host}  --masters ${master_url}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
+    java ${WORKER_JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${local_host}  --masters ${master_url}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
 
 else
     echo "start MbWorker --host ${1} --port ${2} --masters ${3} "
-    java ${JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${1} --port ${2} --masters ${3}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
+    java ${WORKER_JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${1} --port ${2} --masters ${3}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
 fi
 
 if [ $? -eq 0 ]; then
