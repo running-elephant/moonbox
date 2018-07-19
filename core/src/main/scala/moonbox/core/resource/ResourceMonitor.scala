@@ -1,12 +1,15 @@
-package org.apache.spark.sql.resource
+package moonbox.core.resource
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.util.StringTokenizer
 
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.MixcalContext
+import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 
 
-class ResourceMonitor(sparkContext: SparkContext, resourceListener: SparkResourceListener){
+class ResourceMonitor {
+	private val mixCalResourceMonitor = MixcalContext.getMixcalResourceMonitor
 
     def workerTotalMemory: Long = {
         Runtime.getRuntime.totalMemory  // Worker JVM 可使用内存
@@ -46,23 +49,20 @@ class ResourceMonitor(sparkContext: SparkContext, resourceListener: SparkResourc
     }
 
     /** executor.cores: default 1 in YARN mode, all the available cores on the worker in standalone */
-    def clusterFreeCore: (Int, Int) = {
-        if(sparkContext.isLocal){
-            val phyCpuCores = Runtime.getRuntime.availableProcessors //获取当前机器cpu核数
-            (phyCpuCores, phyCpuCores)
-        }else {
-            val coreNumPerExecutor: Int = sparkContext.conf.get("spark.executor.cores", "1").toInt
-            val activeExecutorIds = sparkContext.getExecutorIds  //for CoarseGrainedSchedulerBackend, NOT LocalSchedulerBackend
-            val totalCores = activeExecutorIds.size * coreNumPerExecutor
-            val changedCores = resourceListener.getExecutorInfo.filter(executor => activeExecutorIds.contains(executor._1)).values.sum
-            (totalCores, totalCores - changedCores)
-        }
+    def clusterTotalCores: Int = {
+		mixCalResourceMonitor.clusterTotalCores
+	}
+
+	def clusterFreeCores: Int = {
+		mixCalResourceMonitor.clusterFreeCores
     }
 
-    def clusterFreeMemory: (Long, Long) = {
-        val totalMemory = sparkContext.getExecutorMemoryStatus.map{block => block._2._1}.sum
-        val remainingMemory = sparkContext.getExecutorMemoryStatus.map{block => block._2._2}.sum
-        (totalMemory, remainingMemory)
+	def clusterTotalMemory: Long = {
+		mixCalResourceMonitor.clusterTotalMemory
+	}
+
+    def clusterFreeMemory: Long = {
+		mixCalResourceMonitor.clusterFreeMemory
     }
 
 }

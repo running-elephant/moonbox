@@ -217,4 +217,8 @@ object MbSession extends MbLogging {
 
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
 
+	def startMixcalEnv(conf: MbConf): Unit = {
+		MixcalContext.start(conf)
+	}
+
 }

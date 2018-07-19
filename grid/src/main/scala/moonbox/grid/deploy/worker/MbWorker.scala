@@ -11,6 +11,7 @@ import akka.cluster.{Cluster, Member, MemberStatus}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MbSession
+import moonbox.core.resource.ResourceMonitor
 import moonbox.grid.{Failed, JobState}
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
@@ -31,16 +32,31 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 	private val sessionIdToJobRunner = new mutable.HashMap[String, ActorRef]  //adhoc
 	private val jobIdToJobRunner = new mutable.HashMap[String, ActorRef]      //batch id - runner
     private val runnerToJobId = new mutable.HashMap[ActorRef, String]         //batch runner - id
-
+	private var resourceMonitor: ResourceMonitor = _
 	private var cluster: Cluster = _
 
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
-		cluster = Cluster(context.system)
+		try {
+			cluster = Cluster(context.system)
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				System.exit(1)
+		}
+
 		cluster.subscribe(self, classOf[MemberUp])
 		// TODO init sparkContext
+		try {
+			MbSession.startMixcalEnv(conf)
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				System.exit(1)
+		}
+		resourceMonitor = new ResourceMonitor
 		logDebug(s"MbWorker::preStart RegisterWorker")
-		master ! RegisterWorker(workerId, self, 100, 1000)
+		master ! RegisterWorker(workerId, self, resourceMonitor.clusterTotalCores, resourceMonitor.clusterTotalMemory)
 		//heartbeat()
 		workerLatestState()
 		logInfo(s"MbWorker start successfully.")
@@ -78,8 +94,8 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 				}
 				sessionId
 			}.onComplete {
-				case Success(sessionId) =>
-					requester ! FreedSession(sessionId)
+				case Success(seid) =>
+					requester ! FreedSession(seid)
 				case Failure(e) =>
 					requester ! FreeSessionFailed(e.getMessage)
 			}
@@ -129,7 +145,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 		case MasterChanged =>
 			logDebug(s"MbWorker::MasterChanged RegisterWorker")
 			context.system.scheduler.scheduleOnce(FiniteDuration(4, SECONDS),
-				master, RegisterWorker(workerId, self, 100, 1000))
+				master, RegisterWorker(workerId, self, resourceMonitor.clusterTotalCores, resourceMonitor.clusterTotalMemory))
 
 		case m@MemberUp(member) =>
 			logDebug(s"MbWorker::MemberUp and register to $member")
@@ -160,17 +176,9 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			new Runnable {
 				override def run(): Unit = {
 					println(s"workerLatestState $master")
-					//TODO: get sparkContext and ResourceMonitor
-					//val monitor = MbSession.getMbSession(conf).mixcal.getResourceMonitor
-					//val cpuCores = monitor.clusterFreeCore
-					//val memoryUsage = monitor.clusterFreeMemory
-					//val workerInfo = WorkerInfo(workerId, cpuCores._1, memoryUsage._1, self)
-					//workerInfo.coresFree = cpuCores._2
-					//workerInfo.memoryFree = memoryUsage._2
-					//master ! WorkerLatestState(workerInfo)
-					val workerInfo = WorkerInfo(workerId, 100, 1000, self)
-					workerInfo.coresFree = 100
-					workerInfo.memoryFree = 1000
+					val workerInfo = WorkerInfo(workerId, resourceMonitor.clusterTotalCores, resourceMonitor.clusterTotalMemory, self)
+					workerInfo.coresFree = resourceMonitor.clusterFreeCores
+					workerInfo.memoryFree = resourceMonitor.clusterFreeMemory
 					master ! WorkerLatestState(workerInfo)
 				}
             }
@@ -190,7 +198,7 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 	private def register(m: Member): Unit = {
 		logDebug(s"register to $master, ${m.hasRole(MbMaster.ROLE)}")
 		if (m.hasRole(MbMaster.ROLE)) {
-			master ! RegisterWorker(workerId, self, 100, 1000)
+			master ! RegisterWorker(workerId, self, resourceMonitor.clusterTotalCores, resourceMonitor.clusterTotalMemory)
 		}
 	}
 

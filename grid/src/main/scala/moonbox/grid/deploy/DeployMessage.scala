@@ -15,7 +15,7 @@ object DeployMessages {
 		id: String,
 		worker: ActorRef,
 		cores: Int,
-		memory: Int) extends DeployMessage {
+		memory: Long) extends DeployMessage {
 	}
 
 	case class JobStateChanged(

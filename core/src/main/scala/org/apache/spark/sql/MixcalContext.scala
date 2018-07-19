@@ -11,8 +11,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import moonbox.core.datasys.DataSystem
+import moonbox.core.resource.ResourceMonitor
 import moonbox.core.udf.UdfUtils
-import org.apache.spark.sql.resource.{ResourceMonitor, SparkResourceListener}
+import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
@@ -128,18 +129,22 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	def getResourceMonitor: ResourceMonitor = {
-		resourceMonitor
-	}
-
 }
 
 object MixcalContext extends MbLogging {
 	// TODO SparkContext.getOrCreate()
 	private var sparkContext: SparkContext = _
-	private var resourceMonitor: ResourceMonitor = _
+	private var resourceMonitor: SparkResourceMonitor = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
+		sparkContext
+	}
+
+	def getMixcalResourceMonitor: SparkResourceMonitor = {
+		resourceMonitor
+	}
+
+	def start(conf: MbConf): Unit = {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
@@ -149,7 +154,7 @@ object MixcalContext extends MbLogging {
 				val sparkListener = new SparkResourceListener(sparkConf)
 				sparkContext = new SparkContext(sparkConf)
 				sparkContext.addSparkListener(sparkListener)
-				resourceMonitor = new ResourceMonitor(sparkContext, sparkListener)
+				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
 
 				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
 				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
@@ -159,7 +164,6 @@ object MixcalContext extends MbLogging {
 			} else {
 				logInfo("Using an exists sparkContext.")
 			}
-			sparkContext
 		}
 	}
 }
