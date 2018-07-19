@@ -153,8 +153,16 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val database = mbSession.catalog.getDatabase(ctx.organizationId, name)
+		val isLogical = database.isLogical
+		val properties = database.properties.filterNot { case (key, _) =>
+			key.toLowerCase.contains("user") ||
+					key.toLowerCase.contains("username") ||
+					key.toLowerCase.contains("password")
+		}.toSeq.mkString("(", ", ", ")")
 		val result = Row("Database Name", database.name) ::
-			Row("Description", database.description.getOrElse("")) :: Nil
+				Row("IsLogical", isLogical) ::
+				Row("Properties", properties) ::
+				Row("Description", database.description.getOrElse("")) :: Nil
 		result
 	}
 }

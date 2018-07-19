@@ -1,12 +1,13 @@
 package moonbox.grid.deploy.worker
 
 import java.util.concurrent.Executors
+
 import scala.concurrent.ExecutionContext
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.pattern._
 import akka.util.Timeout
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker}
+import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker, TableInsertPrivilegeException}
 import moonbox.core.command._
 import moonbox.core.config.CACHE_IMPLEMENTATION
 import moonbox.grid.JobState.JobState
@@ -213,6 +214,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		} catch {
 			case e: ColumnSelectPrivilegeException =>
 				throw e
+            case e: TableInsertPrivilegeException =>
+                throw e
 			case e: Throwable =>
 				logWarning(e.getMessage)
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
