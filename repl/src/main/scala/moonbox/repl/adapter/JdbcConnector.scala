@@ -25,7 +25,7 @@ class JdbcConnector(timeout: Int) extends Connector {
   }
 
   override def process(sqls: Seq[String]): Unit = {
-    val numShow = 500
+    val numShow = max_count
     stmt = connection.createStatement()
     stmt.setQueryTimeout(timeout)
     stmt.setFetchSize(200)
@@ -48,7 +48,7 @@ class JdbcConnector(timeout: Int) extends Connector {
         dataBuf :+= colData
         rowCount += 1
       }
-      print(Utils.showString(dataBuf, schema, numShow, 45))
+      print(Utils.showString(dataBuf, schema, numShow, truncate))
     }
   }
 

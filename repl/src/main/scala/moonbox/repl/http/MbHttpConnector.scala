@@ -117,7 +117,7 @@ class MbHttpConnector(timeout: Int) extends Connector {
   private def showResult(queryOutbound: QueryOutbound): Unit = {
     queryOutbound match {
       case QueryOutbound(jobId, None, schema, Some(data), size) =>
-        val numShow = 500
+        val numShow = max_count
         var dataBuf: Seq[Seq[Any]] = Nil
         val parsedSchema: Seq[String] = if (schema.isDefined) {
           Utils.parseJson(schema.get).map(s => s"${s._1}(${s._2})").toSeq
@@ -147,7 +147,7 @@ class MbHttpConnector(timeout: Int) extends Connector {
             dataBuf = dataBuf ++ data
           }
         }
-        print(Utils.showString(dataBuf, parsedSchema, numShow, 45))
+        print(Utils.showString(dataBuf, parsedSchema, numShow, truncate))
       case QueryOutbound(_, None, _, _, _) =>
       case _ => System.err.println("QueryOutbound mismatch")
     }

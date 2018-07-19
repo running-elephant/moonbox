@@ -25,7 +25,8 @@ object Main extends JsonSerializer {
   var host: String = "localhost"
   var port: Int = 9099
   var password: String = _
-  val delimiter: String = ";"
+  val DELIMITER: String = ";"
+  val PARAMETER_PREFIX: String = "%SET "
   val historySqls: mutable.Queue[String] = new mutable.Queue[String]()
   var connector: Connector = _
   val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
@@ -129,9 +130,39 @@ object Main extends JsonSerializer {
     }
   }
 
+  private def processParams(kv: String, sqlList: Seq[String]): Unit = {
+    val idx = kv.indexOf("=")
+    if (idx != -1) {
+      try {
+        val k = kv.substring(0, idx).trim
+        val v = kv.substring(idx + 1).trim
+        k match {
+          case "MAX_COUNT" => connector.max_count = v.toInt
+          case "TRUNCATE" => connector.truncate = v.toInt
+          case other => Console.err.println(s"Unknown parameter key: $other")
+        }
+      } catch {
+        case _: NumberFormatException => Console.err.println("Value format invalid: should be Int.")
+        case _: IndexOutOfBoundsException => Console.err.println("Invalid parameter set statement.")
+        case other: Exception => throw other
+      }
+    } else {
+      connector.process(sqlList)
+    }
+  }
+
   private def process(sqlList: Seq[String]): Unit = {
     sqlList.head.toUpperCase(Locale.ROOT) match {
       case "" =>
+      case stmt if stmt.startsWith(PARAMETER_PREFIX) =>
+        sqlList.foreach { sql =>
+          historySqls.enqueue(sql)
+        }
+        processParams(stmt.stripPrefix(PARAMETER_PREFIX).trim, sqlList)
+        val s = sqlList.tail
+        if (s.nonEmpty) {
+          connector.process(s)
+        }
       case "HISTORY" | "H" =>
         val data = historySqls.zipWithIndex.map(u => Seq(historySqls.length - u._2, u._1 + ";"))
         print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), 100))
