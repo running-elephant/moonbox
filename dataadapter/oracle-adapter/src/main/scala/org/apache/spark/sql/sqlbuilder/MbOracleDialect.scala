@@ -31,4 +31,8 @@ class MbOracleDialect extends MbDialect {
 	override def getTableStat(conn: Connection, url: String, tableName: String): (Option[BigInt], Option[Long]) = {
 		(None, None)
 	}
+
+	override def limitSQL(sql: String, limit: String): String = {
+		s"select * from ($sql) where rownum <= $limit"
+	}
 }

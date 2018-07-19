@@ -82,11 +82,14 @@ class MbSqlBuilder(plan: LogicalPlan, dialect: MbDialect) extends MbLogging {
 			}
 			build(logicalPlanToSQL(child), whereOrHaving, expressionToSQL(condition))
 		case Limit(limitExpr, child) =>
-			s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
+			dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
+			//s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
 		case GlobalLimit(limitExpr, child) =>
-			s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
+			dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
+			//s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
 		case LocalLimit(limitExpr, child) =>
-			s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
+			dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
+			//s"${logicalPlanToSQL(child)} LIMIT ${expressionToSQL(limitExpr)}"
 		case s: Sort =>
 			build(
 				logicalPlanToSQL(s.child),

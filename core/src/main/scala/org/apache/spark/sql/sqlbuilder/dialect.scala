@@ -25,6 +25,9 @@ trait MbDialect {
 
 	def getTableStat(conn: Connection, url: String, tableName: String): ((Option[BigInt], Option[Long]))
 
+	def limitSQL(sql: String, limit: String): String = {
+		s"$sql LIMIT $limit"
+	}
 }
 
 object MbDialect {
