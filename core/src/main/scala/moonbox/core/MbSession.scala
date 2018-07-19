@@ -100,7 +100,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
 		if (columnPermission) {
-			ColumnSelectPrivilegeChecker.intercept(analyzedLogicalPlan, tableIdentifierToCatalogTable.toMap, this)
+			ColumnSelectPrivilegeChecker.intercept(analyzedLogicalPlan, this)
 		}
 		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 	}

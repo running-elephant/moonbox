@@ -92,48 +92,46 @@ object TableInsertPrivilegeChecker {
 
 object ColumnSelectPrivilegeChecker {
 	def intercept(plan: LogicalPlan,
-		tableIdentifierToCatalogTable: Map[TableIdentifier, CatalogTable],
 		mbSession: MbSession): Unit = {
 		val catalogSession = mbSession.catalogSession
-		if (tableIdentifierToCatalogTable.nonEmpty) {
-			val physicalColumns = new ArrayBuffer[AttributeSet]()
-			val availableColumns = collectRelation(plan).flatMap { relation =>
-				val tableMate = if (relation.isInstanceOf[LogicalRelation]) {
-					relation.asInstanceOf[LogicalRelation].catalogTable
-				} else {
-					Some(relation.asInstanceOf[CatalogRelation].tableMeta)
-				}
-				tableMate match {
-					case Some(table) =>
-						val catalogTable = tableIdentifierToCatalogTable.get(table.identifier)
-						require(catalogTable.isDefined)
-						physicalColumns.append(relation.references)
-						if (catalogTable.get.createBy == catalogSession.userId) {
-							relation.references
-						} else {
-							val visibleColumns = new TablePrivilegeManager(mbSession, catalogTable.get).selectable().map(_.name)
-							relation.references.filter(attr => visibleColumns.contains(attr.name))
-						}
-					case None =>
-						Seq()
-				}
+		// TODO
+		val physicalColumns = new ArrayBuffer[AttributeSet]()
+		val availableColumns = collectRelation(plan).flatMap { relation =>
+			val tableMate = if (relation.isInstanceOf[LogicalRelation]) {
+				relation.asInstanceOf[LogicalRelation].catalogTable
+			} else {
+				Some(relation.asInstanceOf[CatalogRelation].tableMeta)
 			}
-			val attributeSet = new ArrayBuffer[AttributeSet]()
-
-			plan.foreach {
-				case project: Project =>
-					attributeSet.append(project.projectList.map(_.references):_*)
-				case aggregate: Aggregate =>
-					attributeSet.append(aggregate.aggregateExpressions.map(_.references):_*)
-					attributeSet.append(aggregate.groupingExpressions.map(_.references):_*)
-				case other =>
+			tableMate match {
+				case Some(table) =>
+					val catalogTable = mbSession.getCatalogTable(table.identifier.table, table.identifier.database)//tableIdentifierToCatalogTable.get(table.identifier)
+					physicalColumns.append(relation.references)
+					if (catalogTable.createBy == catalogSession.userId) {
+						relation.references
+					} else {
+						val visibleColumns = new TablePrivilegeManager(mbSession, catalogTable).selectable().map(_.name)
+						relation.references.filter(attr => visibleColumns.contains(attr.name))
+					}
+				case None =>
+					Seq()
 			}
-
-			val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
-			if (unavailableColumns.nonEmpty)
-				throw new ColumnSelectPrivilegeException(
-					s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)
 		}
+		val attributeSet = new ArrayBuffer[AttributeSet]()
+
+		plan.foreach {
+			case project: Project =>
+				attributeSet.append(project.projectList.map(_.references):_*)
+			case aggregate: Aggregate =>
+				attributeSet.append(aggregate.aggregateExpressions.map(_.references):_*)
+				attributeSet.append(aggregate.groupingExpressions.map(_.references):_*)
+			case other =>
+		}
+
+		val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
+		if (unavailableColumns.nonEmpty)
+			throw new ColumnSelectPrivilegeException(
+				s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)
+
 	}
 
 	private def collectRelation(plan: LogicalPlan): Seq[LogicalPlan] = {
