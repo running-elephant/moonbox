@@ -56,6 +56,10 @@ package object config {
 	    .intConf
 	    .createWithDefault(16)
 
+	val TIMER_SERVICE_ENABLE = ConfigBuilder("moonbox.timer.enable")
+	    .booleanConf
+	    .createWithDefault(false)
+
 	val REST_SERVER_ENABLE = ConfigBuilder("moonbox.rest.server.enable")
 		.booleanConf
 		.createWithDefault(true)
@@ -79,6 +83,10 @@ package object config {
 	val TCP_SERVER_PORT = ConfigBuilder("moonbox.tcp.server.port")
 	    .intConf
 	    .createWithDefault(10010)
+
+	val ODBC_SERVER_CLASS = ConfigBuilder("moonbox.odbc.server.className")
+	    .stringConf
+	    .createWithDefaultString("moonbox.odbc.server.MoonboxODBCServer")
 
 	val PERSIST_ENABLE = ConfigBuilder("moonbox.persist.enable")
 	    .booleanConf.createWithDefault(true)
