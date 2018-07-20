@@ -171,7 +171,7 @@ object Main extends JsonSerializer {
       case "RECONNECT" | "R" =>
         connector.close()
         repl()
-      case "EXIT" | "QUIT" =>
+      case "EXIT" | "QUIT" | "Q" =>
         connector.shutdown()
         System.exit(0)
       case _ =>

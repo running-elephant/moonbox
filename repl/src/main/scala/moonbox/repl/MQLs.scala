@@ -46,7 +46,21 @@ object MQLs {
 		"GRANT DML ON db.table.* TO USER name",
 		"GRANT DML ON table.col, table.col TO USER name",
 		"REVOKE DDL FROM USER name",
-		"REVOKE DML ON db.table.* FROM GROUP name"
+		"REVOKE DML ON db.table.* FROM GROUP name",
+		"CREATE APPLICATION name AS (INSERT ...)",
+		"CREATE EVENT name ON SCHEDULE AT '...' DO CALL name",
+		"ALTER EVENT name ENABLE",
+		"ALTER EVENT name DISABLE",
+		"ALTER EVENT name ON SCHEDULE AT '...'",
+		"SHOW RUNNING EVENT",
+		"SHOW SYSINFO",
+		"SHOW JOBS",
+		"%SET TRUNCATE=0",
+		"%SET MAX_COUNT=500",
+		"HISTORY",
+		"RECONNECT",
+		"QUIT",
+		"EXIT"
 	)
 
 }

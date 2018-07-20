@@ -34,7 +34,7 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[AttributeReference], classOf[Alias],
+		classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
 		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[IsNaN], classOf[NullIf],
 		classOf[Least], classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],
 		classOf[Atan2], classOf[Cbrt], classOf[Ceil], classOf[Cos], classOf[Cosh],
