@@ -162,6 +162,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>mongo</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-mongo-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>cassandra</id>
             <dependencies>
                 <dependency>

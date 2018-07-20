@@ -70,6 +70,14 @@
                 <include>mysql:mysql-connector-java</include>
                 <include>edp.moonbox:moonbox-mysql-adapter</include>
                 <!--hbase-->
+                <include>org.apache.hbase:hbase-client</include>
+                <include>org.apache.hbase:hbase-common</include>
+                <include>org.apache.hbase:hbase-hadoop2-compat</include>
+                <include>org.apache.hbase:hbase-hadoop-compat</include>
+                <include>org.apache.hbase:hbase-prefix-tree</include>
+                <include>org.apache.hbase:hbase-procedure</include>
+                <include>org.apache.hbase:hbase-protocol</include>
+                <include>org.apache.hbase:hbase-server</include>
                 <include>edp.moonbox:spark-hbase-connector</include>
                 <include>edp.moonbox:moonbox-hbase-adapter</include>
                 <!--presto-->
@@ -109,7 +117,6 @@
                 <include>edp.moonbox:moonbox-sqlserver-adapter</include>
                 <!--cassandra-->
                 <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
-                <include>com.datastax.cassandra:cassandra-driver-core</include>
                 <include>edp.moonbox:moonbox-cassandra-adapter</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
