@@ -76,9 +76,11 @@ object Main extends JsonSerializer {
               var endLine = false
               while (!endLine) {
                 line.toCharArray.foreach {
-                  case ';' if braceCount == 0 && stringBuilder.nonEmpty =>
-                    sqlList += stringBuilder.toString()
-                    stringBuilder.clear()
+                  case ';' if braceCount == 0 =>
+                    if (stringBuilder.nonEmpty) {
+                      sqlList += stringBuilder.toString()
+                      stringBuilder.clear()
+                    }
                   case other =>
                     stringBuilder.append(other)
                     other match {

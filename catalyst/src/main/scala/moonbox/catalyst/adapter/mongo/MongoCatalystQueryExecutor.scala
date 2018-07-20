@@ -10,12 +10,12 @@ import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystPlanner, CatalystQueryExecutor, Strategy}
 import moonbox.common.MbLogging
-import org.apache.spark.sql.{Row, UDFRegistration}
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, GetStructField}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{Row, UDFRegistration}
 import org.bson.{BsonDocument, Document}
 
 import scala.collection.JavaConverters._
@@ -96,13 +96,13 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
   }
 
   private def getBsonIterator(plan: LogicalPlan, context: CatalystContext = new CatalystContext): (Iterator[Document], StructType, CatalystContext) = {
-    val tableSchema = getTableSchema(client.client, client.database, client.collectionName)
-    val (jsonPipeline, outputSchema) = query(client.collectionName, tableSchema, plan, context)
+//    val tableSchema = getTableSchema(client.client, client.database, client.collectionName)
+    val (jsonPipeline, outputSchema) = translate(plan, context)
     val coll = client.client.getDatabase(client.database).getCollection(client.collectionName)
     (coll.aggregate(jsonPipeline.map(Document.parse).toList.asJava).iterator().asScala, outputSchema, context)
   }
 
-  private def query(tableName: String, schema: StructType, plan: LogicalPlan, context: CatalystContext) = {
+  private def translate(plan: LogicalPlan, context: CatalystContext): (Seq[String], StructType) = {
     recordFieldNames(plan, context)
     logInfo(s"index -> columnName: ${context.index2FieldName.mkString("(", ", ", ")")}")
     val next: CatalystPlan = planner.plan(plan).next()

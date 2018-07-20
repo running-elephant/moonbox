@@ -5,20 +5,21 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.mongodb._
-import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.client.model.{InsertOneModel, ReplaceOneModel, UpdateOneModel, UpdateOptions}
+import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.spark.MongoSpark
 import com.mongodb.spark.config.{ReadConfig, WriteConfig}
+import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.catalyst.adapter.mongo.{MapFunctions, MongoCatalystQueryExecutor}
 import moonbox.catalyst.core.parser.udf.{ArrayFilter, ArrayMap}
 import moonbox.common.MbLogging
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import moonbox.core.datasys._
 import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.bson.{BsonDocument, Document}
 
 import scala.collection.JavaConverters._
@@ -52,23 +53,40 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
   val cleanedOutputMap: Map[String, String] = props.filterKeys(!_.startsWith(MONGO_SPARK_INPUT_PREFIX)).map { case (k, v) => k.stripPrefix(MONGO_SPARK_OUTPUT_PREFIX) -> v }
 
-  var readClientURI: MongoClientURI = _
-  var writeClientURI: MongoClientURI = _
-
-  def readExecutor: MongoCatalystQueryExecutor = {
+  lazy val readClientURI: MongoClientURI = {
     val uri = cleanedInputMap(URI_KEY)
     val clientOptions = getMongoClientOptions(cleanedInputMap)
-    readClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
+    new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
+  }
+  lazy val writeClientURI: MongoClientURI = {
+    val uri = cleanedOutputMap(URI_KEY)
+    val clientOptions = getMongoClientOptions(cleanedOutputMap)
+    new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
+  }
+
+  private def extractUriProps(uri: MongoClientURI, inMap: Map[String, String]): Map[String, String] = {
+    val uriDbName = uri.getDatabase
+    val uriCollectionName = uri.getCollection
+    var map = inMap
+    if (uriDbName != null && uriDbName != "" && !inMap.contains(DATABASE_KEY)) {
+      map += (DATABASE_KEY -> uriDbName)
+    }
+    if (uriDbName != null && uriDbName != "" && !inMap.contains(COLLECTION_KEY)) {
+      map += Tuple2(COLLECTION_KEY, uriCollectionName)
+    }
+    map
+  }
+
+  def readExecutor: MongoCatalystQueryExecutor = {
+    val map = extractUriProps(readClientURI, cleanedInputMap)
     val readClient = new MongoClient(readClientURI)
-    new MongoCatalystQueryExecutor(readClient, map2Property(cleanedInputMap))
+    new MongoCatalystQueryExecutor(readClient, map2Property(map))
   }
 
   def writeExecutor: MongoCatalystQueryExecutor = {
-    val uri = cleanedOutputMap(URI_KEY)
-    val clientOptions = getMongoClientOptions(cleanedOutputMap)
-    writeClientURI = new MongoClientURI(uri, MongoClientOptions.builder(clientOptions))
     val writeClient = new MongoClient(writeClientURI)
-    new MongoCatalystQueryExecutor(writeClient, map2Property(cleanedOutputMap))
+    val map = extractUriProps(writeClientURI, cleanedOutputMap)
+    new MongoCatalystQueryExecutor(writeClient, map2Property(map))
   }
 
   lazy val readDatabase: String = {
@@ -199,7 +217,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
   )
   override val supportedJoinTypes: Seq[JoinType] = Seq()
   override val supportedExpressions: Seq[Class[_]] = Seq(
-    classOf[AttributeReference], classOf[Alias], classOf[Literal],
+    classOf[AttributeReference], classOf[Alias], classOf[Literal], classOf[AggregateExpression],
     classOf[Abs], classOf[Not], classOf[And], classOf[Or], classOf[EqualTo], classOf[Max], classOf[Min], classOf[Average], classOf[Count], classOf[Add], classOf[Subtract], classOf[Multiply], classOf[Divide],
     classOf[Sum], classOf[GreaterThan], classOf[GreaterThanOrEqual], classOf[LessThan], classOf[LessThanOrEqual], classOf[Not],
     classOf[ArrayMap], classOf[ArrayFilter], classOf[IsNull], classOf[IsNotNull], classOf[Lower], classOf[Upper], classOf[Substring], classOf[Hour], classOf[Second], classOf[Month], classOf[Minute],
@@ -234,7 +252,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
   override def buildQuery(plan: LogicalPlan): DataTable = {
     val schema = plan.schema
-    val iter: Iterator[Row] = readExecutor.toRowIterator(plan)
+    val iter: Iterator[Row] = readExecutor.toIterator(plan, in => new JdbcRow(in: _*))
     new DataTable(iter, schema, () => readExecutor.close())
   }
 
@@ -344,9 +362,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
     props + ((MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY) -> tableName)
   }
 
-  override def tableName(): String = {
-    props(MONGO_SPARK_INPUT_PREFIX + COLLECTION_KEY)
-  }
+  override def tableName(): String = readCollection
 
   private def isClientInfoValid(uri: String, timeout: Int = 3000): Boolean = {
     val clientURI = new MongoClientURI(uri, MongoClientOptions.builder().serverSelectionTimeout(timeout))

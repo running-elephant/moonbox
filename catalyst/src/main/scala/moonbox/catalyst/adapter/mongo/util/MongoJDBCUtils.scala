@@ -57,7 +57,7 @@ object MongoJDBCUtils {
       bsonValue.asDecimal128.getValue.bigDecimalValue()
     } else if (bsonValue.isDocument) {
       if (fieldName.isEmpty)
-        bsonValue.asDocument()
+        bsonValue.asDocument().toString
       else
         bsonValue2Value(bsonValue.asDocument().get(fieldName.head), fieldName.tail)
     } else if (bsonValue.isDouble) {
@@ -71,27 +71,27 @@ object MongoJDBCUtils {
       bsonValue.asJavaScript().getCode
     } else if (bsonValue.isJavaScriptWithScope) {
       /**javaScriptWithScope*/
-      bsonValue.asJavaScriptWithScope
+      bsonValue.asJavaScriptWithScope.getCode
     } else if (bsonValue.isNull) {
       null
     } else if (bsonValue.isNumber) {
       /** Actually this condition is inaccessible */
-      bsonValue2Value(bsonValue.asNumber(), fieldName)
+      bsonValue.asNumber()
     } else if (bsonValue.isObjectId) {
       // TODO: handle ObjectId
       // return the ObjectId object
-      bsonValue.asObjectId().getValue
+      bsonValue.asObjectId().getValue.toString
     } else if (bsonValue.isRegularExpression) {
       // TODO: handle regx
       // return the RegularExpression object
-      bsonValue.asRegularExpression()
+      bsonValue.asRegularExpression().toString
     } else if (bsonValue.isString) {
       bsonValue.asString().getValue
     } else if (bsonValue.isSymbol) {
       /** deprecated */
       bsonValue.asSymbol().getSymbol
     } else if (bsonValue.isTimestamp) {
-      bsonValue.asTimestamp()
+      new Timestamp(bsonValue.asTimestamp().getValue)
     }
   }
 
