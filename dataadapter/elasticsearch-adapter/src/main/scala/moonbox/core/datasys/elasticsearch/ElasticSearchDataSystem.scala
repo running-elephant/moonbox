@@ -36,7 +36,7 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 	)
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[Literal], classOf[AttributeReference], classOf[Alias],
+		classOf[Literal], classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
 		classOf[IsNull], classOf[IsNotNull],
 		classOf[Average], classOf[Count], classOf[Max], classOf[Min], classOf[Sum],
 		classOf[Add], classOf[Subtract], classOf[Multiply], classOf[Divide],
