@@ -1,41 +1,36 @@
 moonbox {
   jwt {
-    algorithm = "HS256"
-    secret = "moonbox_secret"
+    # algorithm = "HS256"
+    # secret = "moonbox_secret"
   }
+
   login {
-    anonymous.enable = false
-    implementation = "built-in"
+    # implementation = "built-in"
   }
+
   port {
-    maxRetries = 16
+    # maxRetries = 16
   }
+
   schedule {
-    initial.wait = 5
-    interval = 1
+    # initial.wait = 5
+    # interval = 1
   }
+
   timer {
-    enable = false
-    org.quartz.scheduler.instanceName = "EventScheduler"
-    org.quartz.threadPool.threadCount = 3
-    org.quartz.scheduler.skipUpdateCheck = true
-    org.quartz.jobStore.misfireThreshold = 3000
-    org.quartz.jobStore.class = "org.quartz.impl.jdbcjobstore.JobStoreTX"
-    org.quartz.jobStore.driverDelegateClass = "org.quartz.impl.jdbcjobstore.StdJDBCDelegate"
-    org.quartz.jobStore.useProperties = false
-    org.quartz.jobStore.tablePrefix = "QRTZ_"
-    org.quartz.jobStore.dataSource = "quartzDataSource"
-    org.quartz.dataSource.quartzDataSource.driver = "com.mysql.jdbc.Driver"
-    org.quartz.dataSource.quartzDataSource.URL = "jdbc:mysql://master:3306/quartz-test"
-    org.quartz.dataSource.quartzDataSource.user = "root"
-    org.quartz.dataSource.quartzDataSource.password =  "123456"
-    org.quartz.dataSource.quartzDataSource.maxConnections = 10
+    # enable = false
+    # org.quartz.scheduler.instanceName = "TimedEventScheduler"
+    # org.quartz.threadPool.threadCount = 3
+    # org.quartz.scheduler.skipUpdateCheck = true
+    # org.quartz.jobStore.misfireThreshold = 3000
+    # moonbox.timer.org.quartz.jobStore.class = "org.quartz.simpl.RAMJobStore"
   }
+
   rest {
     server {
       port = 8080
-      request.timeout = "600s"
-      idle.timeout = "600s"
+      # request.timeout = "600s"
+      # idle.timeout = "600s"
     }
   }
 
@@ -44,54 +39,34 @@ moonbox {
       port = 10010
     }
   }
+
   rpc {
-    implementation = "akka"
-    loglevel = "INFO"
-    akka.loglevel = "INFO"
+    # implementation = "akka"
+    # akka.loglevel = "INFO"
   }
+
   persist {
-    implementation = "NONE"
-    servers = ""
-    retry.times = 3
-    retry.wait = "1s"
+    # implementation = "NONE"
   }
+
   catalog {
     implementation = "mysql"
-    url = "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true"
-    user = "root"
-    password = "123456"
+    url = "jdbc:mysql://host:port/moonbox?createDatabaseIfNotExist=true"
+    user = "user"
+    password = "password"
     driver = "com.mysql.jdbc.Driver"
   }
 
   cache {
-    enable = true
     implementation = "redis"
-    servers = "10.143.131.38"
-    port = 6379
-    fetchSize = 100
+    redis.servers = "host:port"
   }
+
   mixcal {
     implementation = "spark"
     spark.master = "local[*]"
-    spark.loglevel = "INFO"
     spark.app.name = "test1"
     pushdown.enable = true
     column.permission.enable = true
-#    implementation = "spark"
-#    spark.master = "yarn"
-#    spark.submit.deployMode = "client"
-#    spark.hadoop.yarn.resourcemanager.hostname = "master"
-#    spark.hadoop.yarn.resourcemanager.address = "master:8032"
-#    spark.yarn.stagingDir = "hdfs://master:8020/tmp"
-#    spark.yarn.access.namenodes = "hdfs://master:8020"
-#    spark.loglevel = "ERROR"
-#    spark.app.name = "test1"
-#    spark.cores.max = 2
-#    spark.yarn.am.memory = "512m"
-#    spark.yarn.am.cores = 1
-#    spark.executor.instances = 2
-#    spark.executor.cores = 2
-#    spark.executor.memory = "1g"
-#    pushdown.enable = true
   }
 }
