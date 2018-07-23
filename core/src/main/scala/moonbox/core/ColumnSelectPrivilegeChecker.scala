@@ -127,11 +127,16 @@ object ColumnSelectPrivilegeChecker {
 			case other =>
 		}
 
-		val unavailableColumns = attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
-		if (unavailableColumns.nonEmpty)
-			throw new ColumnSelectPrivilegeException(
-				s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr =>s"'${attr.name}'").mkString(", ")}""".stripMargin)
+		val unavailableColumns: AttributeSet = if (physicalColumns.isEmpty) { // for `select literal`
+			attributeSet.reduce(_ ++ _) -- availableColumns
+		} else {
+			attributeSet.reduce(_ ++ _).filter(physicalColumns.reduce(_ ++ _).contains) -- availableColumns
+		}
 
+		if (unavailableColumns.nonEmpty) {
+			throw new ColumnSelectPrivilegeException(
+				s""" SELECT command denied to user ${catalogSession.userName} for column ${unavailableColumns.map(attr => s"'${attr.name}'").mkString(", ")}""".stripMargin)
+		}
 	}
 
 	private def collectRelation(plan: LogicalPlan): Seq[LogicalPlan] = {
