@@ -59,6 +59,28 @@ package object config {
 	val TIMER_SERVICE_ENABLE = ConfigBuilder("moonbox.timer.enable")
 	    .booleanConf
 	    .createWithDefault(false)
+	val TIMER_SERVICE_QUARTZ_INSTANCE_NAME = ConfigBuilder("moonbox.timer.org.quartz.scheduler.instanceName")
+	    .stringConf
+	    .createWithDefault("TimedEventScheduler")
+	val TIMER_SERVICE_QUARTZ_THREAD_COUNT = ConfigBuilder("moonbox.timer.org.quartz.threadPool.threadCount")
+	    .intConf
+	    .createWithDefault(3)
+	val TIMER_SERVICE_QUARTZ_SKIP_UPDATE_CHECK = ConfigBuilder("moonbox.timer.org.quartz.scheduler.skipUpdateCheck")
+	    .booleanConf
+	    .createWithDefault(true)
+	val TIMER_SERVICE_QUARTZ_MISFIRE_THRESHOLD = ConfigBuilder("moonbox.timer.org.quartz.jobStore.misfireThreshold")
+	    .intConf
+	    .createWithDefault(3000)
+	val TIMER_SERVICE_QUARTZ_JOBSTORE_CLASS = ConfigBuilder("moonbox.timer.org.quartz.jobStore.class")
+	    .stringConf
+	    .createWithDefault("org.quartz.simpl.RAMJobStore")
+
+	val TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG = Map(
+		TIMER_SERVICE_QUARTZ_INSTANCE_NAME.key -> TIMER_SERVICE_QUARTZ_INSTANCE_NAME.defaultValueString,
+		TIMER_SERVICE_QUARTZ_THREAD_COUNT.key -> TIMER_SERVICE_QUARTZ_THREAD_COUNT.defaultValueString,
+		TIMER_SERVICE_QUARTZ_SKIP_UPDATE_CHECK.key -> TIMER_SERVICE_QUARTZ_SKIP_UPDATE_CHECK.defaultValueString,
+		TIMER_SERVICE_QUARTZ_JOBSTORE_CLASS.key -> TIMER_SERVICE_QUARTZ_JOBSTORE_CLASS.defaultValueString
+	)
 
 	val REST_SERVER_ENABLE = ConfigBuilder("moonbox.rest.server.enable")
 		.booleanConf
@@ -88,21 +110,23 @@ package object config {
 	    .stringConf
 	    .createWithDefaultString("moonbox.odbc.server.MoonboxODBCServer")
 
+
 	val PERSIST_ENABLE = ConfigBuilder("moonbox.persist.enable")
-	    .booleanConf.createWithDefault(true)
+	    .booleanConf.createWithDefault(false)
 	val PERSIST_IMPLEMENTATION = ConfigBuilder("moonbox.persist.implementation")
 	    .stringConf
 	    .createWithDefaultString("NONE")
-	val PERSIST_SERVERS = ConfigBuilder("moonbox.persist.servers")
+
+	val PERSIST_SERVERS = ConfigBuilder("moonbox.persist.zookeeper.servers")
 	    .stringConf
 	    .createWithDefaultString("localhost:2181")
-	val PERSIST_WORKING_DIR = ConfigBuilder("moonbox.persist.dir")
+	val PERSIST_WORKING_DIR = ConfigBuilder("moonbox.persist.zookeeper.dir")
 	    .stringConf
 	    .createWithDefaultString("/moonbox")
-	val PERSIST_RETRY_TIMES = ConfigBuilder("moonbox.persist.retry.times")
+	val PERSIST_RETRY_TIMES = ConfigBuilder("moonbox.persist.zookeeper.retry.times")
 	    .intConf
 	    .createWithDefault(3)
-	val PERSIST_RETRY_WAIT = ConfigBuilder("moonbox.persist.retry.wait")
+	val PERSIST_RETRY_WAIT = ConfigBuilder("moonbox.persist.zookeeper.retry.wait")
 	    .timeConf
 	    .createWithDefaultString("1s")
 

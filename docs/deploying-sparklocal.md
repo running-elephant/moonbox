@@ -54,10 +54,38 @@ moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，�
 
 - 运行参数
 
-  用于配置运行时参数，配置文件为$MOONBOX_HOME/conf/moonbox-defaults.conf。
+  用于配置运行时参数，配置文件为$MOONBOX_HOME/conf/moonbox-defaults.conf。以下为moonbox最简配置，请根据实际情况修改，更多配置请参考Configuration章节。
 
   ```
-
+  moonbox {
+      rest.server {
+          port = 8080
+      }
+      tcp.server {
+          port = 10010
+      }
+      catalog {
+      	implementation = "mysql"
+      	url = "jdbc:mysql://host:port/moonbox?createDatabaseIfNotExist=true"
+      	user = "root"
+      	password = "123456"
+      	driver = "com.mysql.jdbc.Driver"
+    	}
+    	cache {
+      	implementation = "redis"
+      	servers = "host"
+      	port = 6379
+      	fetchSize = 200
+    	}
+    	mixcal {
+          implementation = "spark"
+      	spark.master = "local[*]"
+      	spark.loglevel = "INFO"
+      	spark.app.name = "test1"
+      	pushdown.enable = true
+      	column.permission.enable = false
+    	}
+  }
   ```
 
   ​

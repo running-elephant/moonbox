@@ -2,20 +2,18 @@ package moonbox.grid.timer
 
 import java.util.{Locale, Properties}
 
-import akka.actor.ActorRef
 import com.cronutils.descriptor.CronDescriptor
 import com.cronutils.model.CronType
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.parser.CronParser
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.deploy.MbService
 import moonbox.grid.timer.EventState.EventState
 import org.quartz.Trigger.TriggerState
 import org.quartz._
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.matchers.GroupMatcher
-
 import scala.collection.JavaConversions._
+import moonbox.grid.config._
 
 object TimedEventServiceImpl {
 
@@ -25,7 +23,8 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 
 	private val timedScheduler = {
 		val props = new Properties()
-		conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")).foreach {
+		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")))
+		.foreach {
 			case (key, value) => props.put(key.stripPrefix("moonbox.timer."), value)
 		}
 		new StdSchedulerFactory(props).getScheduler

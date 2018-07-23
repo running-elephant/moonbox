@@ -28,10 +28,10 @@ package object config {
 	val CACHE_IMPLEMENTATION = ConfigBuilder("moonbox.cache.implementation")
 		.stringConf
 		.createWithDefaultString("redis")
-	val CACHE_FETCH_SIZE = ConfigBuilder("moonbox.cache.fetchSize")
+	/*val CACHE_FETCH_SIZE = ConfigBuilder("moonbox.cache.fetchSize")
 		.intConf
-		.createWithDefault(500)
-	val CACHE_SERVERS = ConfigBuilder("moonbox.cache.servers")
+		.createWithDefault(500)*/
+	val CACHE_SERVERS = ConfigBuilder("moonbox.cache.redis.servers")
 		.stringConf
 		.createWithDefaultString("localhost:6379")
 
@@ -52,7 +52,7 @@ package object config {
 		.createWithDefaultString("INFO")
 	val MIXCAL_SPARK_SQL_CROSSJOIN_ENABLE = ConfigBuilder("moonbox.mixcal.spark.sql.crossJoin.enable")
 		.booleanConf
-		.createWithDefault(true)
+		.createWithDefault(false)
 	val MIXCAL_SPARK_SQL_CBO_ENABLE = ConfigBuilder("moonbox.mixcal.spark.sql.cbo.enable")
 		.booleanConf
 		.createWithDefault(true)
