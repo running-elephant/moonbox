@@ -11,10 +11,6 @@ description: Moonbox MOONBOX_VERSION_SHORT documentation homepage
 
 Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力于提供数据虚拟化解决方案。既可作为数据应用底层数据查询计算统一入口，也可作为逻辑数据仓库与现有数据仓库互补。用户只需通过统一SQL服务调用和Moonbox交互，即可透明屏蔽异构数据系统异构交互方式，轻松实现跨异构数据系统Adhoc混算。
 
-## Document
-
-Please refer to [Moonbox用户手册](https://edp963.github.io/moonbox).
-
 ## Philosophy
 
 随着大数据技术在企业应用日益广泛，以及越来越多数据系统的出现解决各种不同的场景问题，基于全景数据的快速查询计算成为了迫切的需求和挑战。目前的主流方式是建立以Hadoop为核心的数据仓库/数据湖，某种程度上解决了异构数据系统及数据分散的问题，但依然有数据归集带来的维护成本和时效损失问题。另外数据开发人员也面临着业务频繁变更和结果快速交付的问题。在这样的挑战下，计算服务化、数据虚拟化提供了很好的解决思路。Moonbox正是基于大数据场景的数据虚拟化，计算服务化的一种实践，设计思想主要体现在以下几个方面：
@@ -43,9 +39,10 @@ Please refer to [Moonbox用户手册](https://edp963.github.io/moonbox).
 
 ## Architecture
 
-<img src="">
-
-​       Moonbox总体上由四部分组成，分别是客户端、接入层、Grid以及存储计算层。
+<p style="text-align: center;">
+  <img src="img/architecture.png" title="Moonbox Architecture" alt="Architecture" />
+</p>
+​   Moonbox总体上由四部分组成，分别是客户端、接入层、Grid以及存储计算层。
 
 - **客户端**
 
@@ -103,7 +100,9 @@ Please refer to [Moonbox用户手册](https://edp963.github.io/moonbox).
 
   Moonbox提供了定时作业的功能，用户使用DDL语句定义定时任务，以crontab表达式的形式定义调度策略，后台内嵌quartz进行任务定时调度。
 
-  ​
+## Document
+
+Please refer to [Moonbox用户手册](https://edp963.github.io/moonbox).  ​
 
 ## Latest Release
 
