@@ -179,15 +179,19 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
-                e.printStackTrace()
-				logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
-				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
-				plan match {
-					case WholePushdown(child, queryable) =>
-						mbSession.toDF(child).write.format(format).options(options).save()
-					case _ =>
-						mbSession.toDF(plan).write.format(format).options(options).save()
-				}
+                if (e.getMessage.contains("cancelled job")) {
+                    throw e
+                } else {
+                    e.printStackTrace()
+                    logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
+                    val plan = mbSession.pushdownPlan(optimized, pushdown = false)
+                    plan match {
+                        case WholePushdown(child, queryable) =>
+                            mbSession.toDF(child).write.format(format).options(options).save()
+                        case _ =>
+                            mbSession.toDF(plan).write.format(format).options(options).save()
+                    }
+                }
 		}
 		CachedData
 	}

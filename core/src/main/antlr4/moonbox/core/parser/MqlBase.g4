@@ -100,7 +100,7 @@ mql
 
     | SHOW SYSINFO                                                                              # showSysInfo
     | SHOW JOBS                                                                                 # showJobs
-    | SHOW RUNNING EVENT                                                                        # showRunningEvent
+    | SHOW RUNNING EVENTS                                                                       # showRunningEvents
     | SHOW EVENTS (LIKE pattern=STRING)?                                                        # showEvents
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables

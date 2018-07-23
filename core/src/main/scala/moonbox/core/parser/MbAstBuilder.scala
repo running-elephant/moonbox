@@ -677,7 +677,7 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowJobInfo
 	}
 
-	override def visitShowRunningEvent(ctx: ShowRunningEventContext) : MbCommand = {
+	override def visitShowRunningEvents(ctx: ShowRunningEventsContext) : MbCommand = {
 		ShowRunningEventInfo
 	}
 
