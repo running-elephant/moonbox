@@ -30,25 +30,26 @@ class JdbcConnector(timeout: Int) extends Connector {
     stmt.setQueryTimeout(timeout)
     stmt.setFetchSize(200)
     sqls.foreach { sql =>
-      if (!stmt.execute(sql)) return
-      val rs = stmt.getResultSet
-      val metaData: ResultSetMetaData = rs.getMetaData
-      var dataBuf = Seq[Seq[Any]]()
-      val columnCount = metaData.getColumnCount
-      val schema = (1 to columnCount).map { index =>
-        val name = metaData.getColumnName(index)
-        val typ = metaData.getColumnTypeName(index)
-        s"$name($typ)"
-      }
-      var rowCount = 0
-      while (rs.next() && rowCount < numShow) {
-        val colData: Seq[Any] = (1 to columnCount).map { index =>
-          rs.getObject(index)
+      if (stmt.execute(sql)) {  //if can get result
+        val rs = stmt.getResultSet
+        val metaData: ResultSetMetaData = rs.getMetaData
+        var dataBuf = Seq[Seq[Any]]()
+        val columnCount = metaData.getColumnCount
+        val schema = (1 to columnCount).map { index =>
+          val name = metaData.getColumnName(index)
+          val typ = metaData.getColumnTypeName(index)
+          s"$name($typ)"
         }
-        dataBuf :+= colData
-        rowCount += 1
+        var rowCount = 0
+        while (rs.next() && rowCount < numShow) {
+          val colData: Seq[Any] = (1 to columnCount).map { index =>
+            rs.getObject(index)
+          }
+          dataBuf :+= colData
+          rowCount += 1
+        }
+        print(Utils.showString(dataBuf, schema, numShow, truncate))
       }
-      print(Utils.showString(dataBuf, schema, numShow, truncate))
     }
   }
 
