@@ -71,6 +71,8 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
           // TODO:
           if (resp.schema.isEmpty) {
             isResultSet = false
+          }else{
+            isResultSet = true
           }
           resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
           resultSet.updateResultSet(resp)
