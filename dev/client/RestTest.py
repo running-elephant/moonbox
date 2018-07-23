@@ -60,8 +60,7 @@ def main():
     ts = options.timeout
     setLevel(debug)
     setTimeout(ts)
-    #server = "master" #port = "18090"   #user = "sally"  #password = "123456"  #sql = "select * from mysql_test_booklist"  #mode = "async"  #method= "adhoc"
-    
+
     
     if method == "batch":
         client = BatchClient(server, port, user, password, debug, mode)
