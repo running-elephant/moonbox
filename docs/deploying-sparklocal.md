@@ -1,6 +1,6 @@
 ---
 layout: global
-title: Deployment
+title: Deploying
 ---
 
 * This will become a table of contents (this text will be scraped).
@@ -8,10 +8,7 @@ title: Deployment
 #### 环境准备
 
 - JDK 1.8
-- Spark 2.2.0
 - Redis 3.x.x
-- MySQL
-- Zookeeper (非必须，若无则无法进行运行时数据持久化，备master恢复待运行作业丢失)
 - 配置执行启动脚本的机器到其他所有机器SSH免密码登录
 
 #### 部署配置
@@ -65,27 +62,44 @@ moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，�
           port = 10010
       }
       catalog {
-      	implementation = "mysql"
-      	url = "jdbc:mysql://host:port/moonbox?createDatabaseIfNotExist=true"
-      	user = "root"
-      	password = "123456"
-      	driver = "com.mysql.jdbc.Driver"
-    	}
-    	cache {
-      	implementation = "redis"
-      	servers = "host"
-      	port = 6379
-      	fetchSize = 200
-    	}
-    	mixcal {
+      	  implementation = "h2"
+      	  url = "jdbc:h2:mem:testdb0;DB_CLOSE_DELAY=-1"
+      	  user = "testUser"
+      	  password = "testPass"
+      	  driver = "org.h2.Driver"
+      }
+      cache {
+      	  implementation = "redis"
+      	  servers = "host:port"
+      }
+      mixcal {
           implementation = "spark"
-      	spark.master = "local[*]"
-      	spark.loglevel = "INFO"
-      	spark.app.name = "test1"
-      	pushdown.enable = true
-      	column.permission.enable = false
-    	}
+      	  spark.master = "local[*]"
+      	  spark.loglevel = "INFO"
+      	  spark.app.name = "test1"
+      	  pushdown.enable = true
+      	  column.permission.enable = false
+      }
   }
   ```
+
+将moonbox文件夹分发到conf/nodes中所配置的所有机器上,其所处目录应当与当前机器$MOONBOX_HOME一致。
+
+#### 启动与停止
+
+我们为用户提供了一键启动与停止集群的脚本,位于$MOONBOX_HOME/sbin目录下。
+  - 启动集群
+  在任意节点执行
+  ```
+  cd $MOONBOX_HOME
+  sbin/start-all.sh
+  ```
+  - 停止集群
+  在任意节点执行
+  ```
+  cd $MOONBOX_HOME
+  sbin/stop-all.sh
+  ```
+备注: 执行启动和停止脚本的机器需要配置到其他机器的ssh免密码登录。
 
   ​
