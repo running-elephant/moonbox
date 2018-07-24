@@ -12,12 +12,16 @@
     <name>Moonbox Project Data Adapter MSSQL</name>
     <artifactId>moonbox-sqlserver-adapter</artifactId>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
     <dependencies>
-        <dependency>
+        <!--<dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>sqljdbc4</artifactId>
             <version>4.0</version>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>edp.moonbox</groupId>

@@ -12,4 +12,9 @@
     <artifactId>moonbox-testkit_2.11</artifactId>
     <packaging>jar</packaging>
     <name>Moonbox Project Testkit</name>
+
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
 </project>

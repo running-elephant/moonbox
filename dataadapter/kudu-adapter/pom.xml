@@ -12,6 +12,11 @@
 
     <artifactId>moonbox-kudu-adapter</artifactId>
     <name>Moonbox Project Data Adapter Kudu</name>
+
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>

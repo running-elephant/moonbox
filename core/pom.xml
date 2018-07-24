@@ -13,6 +13,10 @@
     <packaging>jar</packaging>
     <name>Moonbox Project Core</name>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
@@ -61,10 +65,10 @@
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
         </dependency>
-        <dependency>
+        <!--<dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-        </dependency>
+        </dependency>-->
     </dependencies>
 
     <build>

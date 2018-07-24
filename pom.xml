@@ -9,6 +9,15 @@
     <packaging>pom</packaging>
     <name>Moonbox Project Parent POM</name>
     <version>0.2.0-SNAPSHOT</version>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <modules>
         <module>common</module>
         <module>localservice</module>
@@ -34,6 +43,7 @@
     </modules>
 
     <properties>
+        <main.basedir>${project.basedir}</main.basedir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -186,11 +196,6 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${jedis.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
-                <version>5.1.37</version>
             </dependency>
             <dependency>
                 <groupId>com.pauldijou</groupId>
@@ -377,6 +382,106 @@
                         </execution>
                     </executions>
                 </plugin>
+                <!-- ================================================== -->
+                <!-- License -->
+                <!-- ================================================== -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>license-maven-plugin</artifactId>
+                    <version>1.13</version>
+                    <configuration>
+                        <aggregateDownloadLicenses.executeOnlyOnRootModule>true</aggregateDownloadLicenses.executeOnlyOnRootModule>
+                        <executeOnlyOnRootModule>true</executeOnlyOnRootModule>
+                        <outputDirectory>${main.basedir}</outputDirectory>
+                        <thirdPartyFilename>LICENSE-3RD-PARTY</thirdPartyFilename>
+                        <fileTemplate>/org/codehaus/mojo/license/third-party-file-groupByLicense.ftl</fileTemplate>
+                        <useMissingFile>true</useMissingFile>
+                        <missingFile>${main.basedir}/LICENSE-3RD-PARTY.properties</missingFile>
+                        <aggregateMissingLicensesFile>${main.basedir}/LICENSE-3RD-PARTY.properties</aggregateMissingLicensesFile>
+                        <licenseMerges>
+                            <licenseMerge>Apache 2.0|ASL, version 2|http://www.apache.org/licenses/LICENSE-2.0.txt|http://asm.ow2.org/license.html|The Apache License, Version 2.0|Apache License|Apache License Version 2|Apache License Version 2.0|Apache Software License - Version 2.0|Apache 2.0 License|Apache License 2.0|ASL|Apache 2|Apache-2.0|the Apache License, ASL Version 2.0|The Apache Software License, Version 2.0|Apache License, Version 2.0|Apache Public License 2.0</licenseMerge>
+                            <licenseMerge>BSD|The BSD 3-Clause License|The BSD License|Modified BSD License|New BSD License|New BSD license|Two-clause BSD-style license|BSD licence|BSD New|The New BSD License|BSD 3-Clause|BSD 3-clause</licenseMerge>
+                            <licenseMerge>MIT|MIT License|The MIT License</licenseMerge>
+                            <licenseMerge>LGPL|LGPL, version 2.1|GNU Library or Lesser General Public License (LGPL) V2.1|GNU Lesser General Public License (LGPL), Version 2.1|GNU Lesser General Public License, Version 2.1|LGPL 2.1</licenseMerge>
+                            <licenseMerge>CDDL|CDDL+GPL|CDDL+GPL License|CDDL + GPLv2 with classpath exception|CDDL License|CDDL 1.0|CDDL 1.1|COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0|Common Development and Distribution License (CDDL) v1.0</licenseMerge>
+                            <licenseMerge>EPL|Eclipse Public License - Version 1.0</licenseMerge>
+                            <licenseMerge>GPL|GPL2 w/ CPE|GPLv2+CE|GNU General Public Library</licenseMerge>
+                            <licenseMerge>MPL|MPL 1.1</licenseMerge>
+                            <licenseMerge>Public Domain</licenseMerge>
+                            <licenseMerge>Common Public License|Common Public License Version 1.0</licenseMerge>
+                            <licenseMerge>CC0|CC0 1.0 Universal|Public Domain, per Creative Commons CC0</licenseMerge>
+                            <licenseMerge>Unknown License|Unknown license</licenseMerge>
+                        </licenseMerges>
+
+                        <!-- config for license:aggregate-download-licenses -->
+                        <aggregateDownloadLicenses.executeOnlyOnRootModule>true</aggregateDownloadLicenses.executeOnlyOnRootModule>
+                        <!--<licensesConfigFile>${main.basedir}/lic/config/licenses.xml</licensesConfigFile>-->
+                        <licensesOutputFile>${main.basedir}/lic/licenses.xml</licensesOutputFile>
+                        <licensesOutputDirectory>${main.basedir}/lic/licenses/</licensesOutputDirectory>
+
+                        <!-- config for license:update-file-header -->
+                        <licenseName>apache_v2</licenseName>
+                        <inceptionYear>2016</inceptionYear>
+                        <organizationName>EDP</organizationName>
+                        <projectName>Moonbox</projectName>
+                        <roots>
+                            <root>src/main/java</root>
+                            <root>src/main/scala</root>
+                            <root>src/main/assembly</root>
+                            <root>src/test/java</root>
+                            <root>src/test/scala</root>
+                            <!--<root>webapp</root>-->
+                        </roots>
+                        <includes>
+                            <include>**/*.java</include>
+                            <include>**/*.scala</include>
+                            <include>**/*.xml</include>
+                            <include>**/*.sh</include>
+                            <include>**/*.py</include>
+                            <include>**/*.properties</include>
+                            <include>**/*.sql</include>
+                            <include>**/*.html</include>
+                            <include>**/*.less</include>
+                            <include>**/*.css</include>
+                            <include>**/*.js</include>
+                            <include>**/*.json</include>
+                        </includes>
+                        <excludes>
+                            <exclude>org/apache/hadoop/hbase/spark/**/*.*</exclude>
+                            <exclude>org/apache/spark/sql/execution/datasources/hbase/*.*</exclude>
+                        </excludes>
+
+                        <extraExtensions>
+                            <scala>java</scala>
+                        </extraExtensions>
+                        <canUpdateCopyright>true</canUpdateCopyright>
+                        <canUpdateDescription>true</canUpdateDescription>
+                        <addJavaLicenseAfterPackage>false</addJavaLicenseAfterPackage>
+                        <emptyLineAfterHeader>true</emptyLineAfterHeader>
+                        <processStartTag>&lt;&lt;</processStartTag>
+                        <processEndTag>&gt;&gt;</processEndTag>
+                        <sectionDelimiter>==</sectionDelimiter>
+
+                        <!-- config for mvn license:update-project-license -->
+                        <licenseFile>${main.basedir}/LICENSE</licenseFile>
+                    </configuration>
+                </plugin>
+                <!-- ================================================== -->
+                <!-- Notice -->
+                <!-- ================================================== -->
+                <plugin>
+                    <groupId>org.jasig.maven</groupId>
+                    <artifactId>maven-notice-plugin</artifactId>
+                    <version>1.0.6.1</version>
+                    <configuration>
+                        <generateChildNotices>false</generateChildNotices>
+                        <noticeTemplate>https://source.jasig.org/licenses/NOTICE.template</noticeTemplate>
+                        <licenseMapping>
+                            <param>https://source.jasig.org/licenses/license-mappings.xml</param>
+                            <param>file://${main.basedir}/dev/license-mappings.xml</param>
+                        </licenseMapping>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -396,6 +501,14 @@
             <plugin>
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jasig.maven</groupId>
+                <artifactId>maven-notice-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
