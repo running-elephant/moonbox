@@ -263,6 +263,7 @@ title: Configuration
 
 ## Catalog Properties
 
+Catalog目前仅支持关系型数据库,支持h2、mysql、oracle、sqlserver、db2、postgres。默认配置为h2内存数据库,配置项如下面所示。
 <table class="table">
 <tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
@@ -301,7 +302,45 @@ title: Configuration
   </td>
 </tr>
 </table>
-
+如需修改为其他数据库请根据实际情况进行修改,以下给出mysql示例。
+<table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
+<tr>
+  <td><code>moonbox.catalog.implementation</code></td>
+  <td>mysql</td>
+  <td>
+    catalog元数据存储方式,目前支持Mysql、Oracle、生产环境不建议使用h2
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.catalog.url</code></td>
+  <td>jdbc:mysql://host:port/moonbox?createDatabaseIfNotExist=true"</td>
+  <td>
+    数据库连接地址
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.catalog.user</code></td>
+  <td>user</td>
+  <td>
+    建立数据库连接使用的用户名
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.catalog.password</code></td>
+  <td>password</td>
+  <td>
+    建立数据库连接使用的密码
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.catalog.driver</code></td>
+  <td>com.mysql.jdbc.Driver</td>
+  <td>
+    建立数据库连接使用的启动
+  </td>
+</tr>
+</table>
 ## Cache Properties
 
 <table class="table">
@@ -324,6 +363,7 @@ title: Configuration
 
 ## Timer Properties
 
+Moonbox内部集成了quartz提供定时任务服务,如需使用定时任务功能,请将moonbox.timer.enable设置为true。默认配置quartz Job没有进行持久化,以下为Timer配置项。
 <table class="table">
 <tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
@@ -370,6 +410,100 @@ title: Configuration
 </tr>
 </table>
 
+如需要配置quartz job进行持久化,请参考以下配置将quart job持久化到mysql,更多用法请参考quartz官方文档。
+需要注意的是,我们需要先手动在mysql中创建一些用于保存quartz元数据的库和表。例如我们先创建一个名为moonbox_quartz的数据库,然后使用mysql客户端运行位于$MOONBOX_HOME/bin目录下的quartz_tables_mysql.sql文件中的sql,在刚才创建的库中创建出所有表。
+
+<table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
+<tr>
+  <td><code>moonbox.timer.enable</code></td>
+  <td>true</td>
+  <td>
+    是否开启定时任务功能
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.timer.org.quartz.scheduler.instanceName</code></td>
+  <td>TimedEventScheduler</td>
+  <td>
+    quartz实例名字,参阅quartz官方文档
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.timer.org.quartz.threadPool.threadCount</code></td>
+  <td>3</td>
+  <td>
+    quartz线程池线程个数,参阅quartz官方文档
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.timer.org.quartz.scheduler.skipUpdateCheck</code></td>
+  <td>true</td>
+  <td>
+    参阅quartz官方文档
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.timer.org.quartz.jobStore.misfireThreshold</code></td>
+  <td>3000</td>
+  <td>
+    参阅quartz官方文档
+  </td>
+</tr>
+<tr>
+  <td><code>moonbox.timer.org.quartz.jobStore.class</code></td>
+  <td>org.quartz.impl.jdbcjobstore.JobStoreTX</td>
+  <td>
+    quartz job存储方式,参阅quartz官方文档
+  </td>
+</tr>
+<tr>
+	<td><code>org.quartz.jobStore.driverDelegateClass</code></td>
+	<td>org.quartz.impl.jdbcjobstore.StdJDBCDelegate</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.jobStore.useProperties</code></td>
+	<td>false</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.jobStore.tablePrefix</code></td>
+	<td>QRTZ_</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.jobStore.dataSource</code></td>
+	<td>quartzDataSource</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.dataSource.quartzDataSource.driver</code></td>
+	<td>com.mysql.jdbc.Driver</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.dataSource.quartzDataSource.URL </code></td>
+	<td>jdbc:mysql://host:port/moonbox_quartz</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.dataSource.quartzDataSource.user</code></td>
+	<td>user</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.dataSource.quartzDataSource.password</code></td>
+	<td>password</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+<tr>
+	<td><code>org.quartz.dataSource.quartzDataSource.maxConnections</code></td>
+	<td>10</td>
+	<td>参阅quartz官方文档</td>
+</tr>
+</table>
+
 ## Mixcal Properties
 
 <table class="table">
@@ -410,3 +544,5 @@ title: Configuration
   </td>
 </tr>
 </table>
+
+更多关于spark的配置请参阅spark官方文档。
