@@ -48,10 +48,7 @@ package object config {
 	val CACHE_IMPLEMENTATION = ConfigBuilder("moonbox.cache.implementation")
 		.stringConf
 		.createWithDefaultString("redis")
-	/*val CACHE_FETCH_SIZE = ConfigBuilder("moonbox.cache.fetchSize")
-		.intConf
-		.createWithDefault(500)*/
-	val CACHE_SERVERS = ConfigBuilder("moonbox.cache.servers")
+	val CACHE_SERVERS = ConfigBuilder("moonbox.cache.redis.servers")
 		.stringConf
 		.createWithDefaultString("localhost:6379")
 
