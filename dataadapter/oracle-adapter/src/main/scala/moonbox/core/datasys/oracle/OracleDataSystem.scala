@@ -24,9 +24,11 @@ class OracleDataSystem(props: Map[String, String])
 	require(contains("type", "url", "user", "password"))
 
 	override def tableNames(): Seq[String] = {
+		val showTablesSql =	if (props.contains("sql.showtables")) { props("sql.showtables") }
+			else { "SELECT table_name FROM user_tables" }
 		val tables = new ArrayBuffer[String]()
 		val connection = getConnection()
-		val resultSet = connection.createStatement().executeQuery("SELECT table_name FROM user_tables")
+		val resultSet = connection.createStatement().executeQuery(showTablesSql)
 		while (resultSet.next()) {
 			tables.+=:(resultSet.getString(1))
 		}
