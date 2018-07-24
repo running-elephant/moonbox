@@ -9,7 +9,7 @@ class CatalystContext {
   var version = Seq.empty[Int] //es version
   def isES50: Boolean = version.headOption.getOrElse(5) == 5
 
-  var limitSize: Int = 0  //es has default limit 0
+  var limitSize: Int = -1  //es has default limit -1
   var filterFunctionSeq: Seq[Expression] = Seq.empty[Expression]
   var projectFunctionSeq: Seq[(Expression, Int)] = Seq.empty[(Expression, Int)]
 
