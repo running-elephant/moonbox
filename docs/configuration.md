@@ -64,6 +64,7 @@ title: Deployment
 ## Service Properties
 
 <table class="talbe">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.rest.server.enable</code></td>
   <td>true</td>
@@ -136,9 +137,10 @@ title: Deployment
 </tr>
 </table>
 
-## RPC Properties
+## Rpc Properties
 
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.rpc.implementation</code></td>
   <td>akka</td>
@@ -212,7 +214,9 @@ title: Deployment
 </table>
 
 ## Persistence Properties
+
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.persist.enable</code></td>
   <td>false</td>
@@ -260,6 +264,7 @@ title: Deployment
 ## Catalog Properties
 
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.catalog.implementation</code></td>
   <td>h2</td>
@@ -300,6 +305,7 @@ title: Deployment
 ## Cache Properties
 
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.cache.implementation</code></td>
   <td>redis</td>
@@ -319,6 +325,7 @@ title: Deployment
 ## Timer Properties
 
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.timer.enable</code></td>
   <td>false</td>
@@ -366,6 +373,7 @@ title: Deployment
 ## Mixcal Properties
 
 <table class="table">
+<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.mixcal.implementation</code></td>
   <td>spark</td>
