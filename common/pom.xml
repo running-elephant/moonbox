@@ -13,6 +13,9 @@
     <packaging>jar</packaging>
     <name>Moonbox Project Common</name>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>com.typesafe</groupId>

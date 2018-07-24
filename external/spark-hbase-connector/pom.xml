@@ -126,6 +126,12 @@
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
             <version>1.1.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>jdk.tools</groupId>
+                    <artifactId>jdk.tools</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -138,6 +144,12 @@
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-common</artifactId>
             <version>1.1.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>jdk.tools</groupId>
+                    <artifactId>jdk.tools</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -152,6 +164,10 @@
                 <exclusion>
                     <artifactId>servlet-api-2.5</artifactId>
                     <groupId>org.mortbay.jetty</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>jdk.tools</groupId>
+                    <artifactId>jdk.tools</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

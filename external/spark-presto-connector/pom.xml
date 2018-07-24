@@ -13,6 +13,10 @@
     <artifactId>spark-presto-connector</artifactId>
     <name>Moonbox Project Presto Connector</name>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.facebook.presto</groupId>
