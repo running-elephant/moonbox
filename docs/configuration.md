@@ -303,7 +303,7 @@ Catalog目前仅支持关系型数据库,支持h2、mysql、oracle、sqlserver�
 </tr>
 </table>
 
-如需修改为其他数据库请根据实际情况进行修改,以下给出mysql示例。
+如需修改为其他数据库请根据实际情况进行修改,并将对应的jdbc驱动jar包拷贝到每台机器$MOONBOX_HOME/libs目录,以下给出mysql示例。
 
 <table class="table">
 <tr><th>Property Name</th><th>Example</th><th>Meaning</th></tr>
@@ -460,47 +460,47 @@ Moonbox内部集成了quartz提供定时任务服务,如需使用定时任务功
   </td>
 </tr>
 <tr>
-	<td><code>org.quartz.jobStore.driverDelegateClass</code></td>
+	<td><code>moonbox.timer.org.quartz.jobStore.driverDelegateClass</code></td>
 	<td>org.quartz.impl.jdbcjobstore.StdJDBCDelegate</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.jobStore.useProperties</code></td>
+	<td><code>moonbox.timer.org.quartz.jobStore.useProperties</code></td>
 	<td>false</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.jobStore.tablePrefix</code></td>
+	<td><code>moonbox.timer.org.quartz.jobStore.tablePrefix</code></td>
 	<td>QRTZ_</td>
 	<td>表名前缀,需要与创建表的sql语句保持一致,参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.jobStore.dataSource</code></td>
+	<td><code>moonbox.timer.org.quartz.jobStore.dataSource</code></td>
 	<td>quartzDataSource</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.dataSource.quartzDataSource.driver</code></td>
+	<td><code>moonbox.timer.org.quartz.dataSource.quartzDataSource.driver</code></td>
 	<td>com.mysql.jdbc.Driver</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.dataSource.quartzDataSource.URL </code></td>
+	<td><code>moonbox.timer.org.quartz.dataSource.quartzDataSource.URL</code></td>
 	<td>jdbc:mysql://host:port/moonbox_quartz</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.dataSource.quartzDataSource.user</code></td>
+	<td><code>moonbox.timer.org.quartz.dataSource.quartzDataSource.user</code></td>
 	<td>user</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.dataSource.quartzDataSource.password</code></td>
+	<td><code>moonbox.timer.org.quartz.dataSource.quartzDataSource.password</code></td>
 	<td>password</td>
 	<td>参阅quartz官方文档</td>
 </tr>
 <tr>
-	<td><code>org.quartz.dataSource.quartzDataSource.maxConnections</code></td>
+	<td><code>moonbox.timer.org.quartz.dataSource.quartzDataSource.maxConnections</code></td>
 	<td>10</td>
 	<td>参阅quartz官方文档</td>
 </tr>
