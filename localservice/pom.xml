@@ -14,6 +14,10 @@
     <packaging>jar</packaging>
     <name>Moonbox Project Local Service</name>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>

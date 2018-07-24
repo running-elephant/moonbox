@@ -1,6 +1,6 @@
 ---
 layout: global
-title: Deploying
+title: Deploying Spark Standalone
 ---
 
 * This will become a table of contents (this text will be scraped).
@@ -26,6 +26,17 @@ sh dev/build.sh
 
 ```
 tar -zxvf moonbox-0.2.0-dist.tar.gz
+```
+
+解压完成之后目录结构应当如下:
+```
+moonbox
+  - bin # 应用脚本目录
+  - conf # 配置文件目录
+  - libs # moonbox依赖jar存放目录
+  - log  # 日志目录
+  - runtime # Spark运行时依赖jar存放目录
+  - sbin # 启动停止集群管理脚本目录
 ```
 
 moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，下面分别解释每个部分各表示什么含义以及如何配置。
@@ -101,6 +112,8 @@ moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，�
   cd $MOONBOX_HOME
   sbin/stop-all.sh
   ```
-备注: 执行启动和停止脚本的机器需要配置到其他机器的ssh免密码登录。
+备注:
+- 执行启动和停止脚本的机器需要配置到其他机器的ssh免密码登录。
+- 如catalog配置修改为其他数据库,请将对应的驱动jar包拷贝到每台机器的$MOONBOX_HOME/libs目录下。
 
   ​

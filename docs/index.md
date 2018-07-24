@@ -7,7 +7,7 @@ description: Moonbox MOONBOX_VERSION_SHORT documentation homepage
 
 > 来自[宜信技术研发中心](http://www.creditease.com)的计算服务平台
 
-**Moonbox 是一个DCaaS (Data Computation as a Service) 平台解决方案。**
+**Moonbox 是一个DaaS (Data Virtualization as a Service) 平台解决方案。**
 
 Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力于提供数据虚拟化解决方案。既可作为数据应用底层数据查询计算统一入口，也可作为逻辑数据仓库与现有数据仓库互补。用户只需通过统一SQL服务调用和Moonbox交互，即可透明屏蔽异构数据系统异构交互方式，轻松实现跨异构数据系统Adhoc混算。
 
@@ -60,7 +60,7 @@ Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力�
 
 - **接入层**
 
-  接入层包括http server和tcp server，实现客户端接入，并进行用户登录认证，支持内置用户名密码认证方式和ldap集成认证方式。
+  接入层包括http server、tcp server和thrift server，实现客户端接入，并进行用户登录认证，支持内置用户名密码认证方式和ldap集成认证方式。
 
 - **核心功能层**
 
@@ -78,7 +78,7 @@ Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力�
 
 - **用户体系**
 
-  Moonbox建立了一套完整的用户体系，引入了Organization的概念，用于划分用户空间。系统管理员ROOT账号可以创建多个Organization，并在Organization中指定该Organization的管理者（SA），可以是一个或者多个。SA负责创建管理普通用户。Moonbox将普通用户的能力抽象出五大属性，分别是是否可以创建新用户，是否可以执行DDL语句，是否拥有可以授权其他用户创建用户的能力，是否拥有可以授权其他用户执行DDL语句的能力，是否拥有对数据表或者数据列进行授权给其他用户的能力。通过属性的自由组合，可以构建出满足多种角色，多种需求的用户体系模型，并可借此实现多租户。
+  Moonbox建立了一套完整的用户体系，引入了Organization的概念，用于划分用户空间。系统管理员ROOT账号可以创建多个Organization，并在Organization中指定该Organization的管理者（SA），可以是一个或者多个。SA负责创建管理普通用户。Moonbox将普通用户的能力抽象出六大属性，分别是是否可以执行Account管理语句，是否可以执行DDL语句，是否可以执行DCL语句, 是否拥有可以授权其他用户执行Account类语句的能力，是否拥有可以授权其他用户执行DDL语句的能力，是否拥有可以授权其他用户执行DCL语句的能力。通过属性的自由组合，可以构建出满足多种角色，多种需求的用户体系模型，并可借此实现多租户。
 
 - **扩展SQL**
 
