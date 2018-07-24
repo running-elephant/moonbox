@@ -63,7 +63,7 @@ title: Deployment
 
 ## Service Properties
 
-<table class="talbe">
+<table class="table">
 <tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.rest.server.enable</code></td>
