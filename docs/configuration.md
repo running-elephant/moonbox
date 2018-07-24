@@ -1,6 +1,6 @@
 ---
 layout: global
-title: Deployment
+title: Configuration
 ---
 
 * This will become a table of contents (this text will be scraped).
@@ -246,14 +246,14 @@ title: Deployment
   </td>
 </tr>
 <tr>
-  <td><code>moonbox.persist.retry.times</code></td>
+  <td><code>moonbox.persist.zookeeper.retry.times</code></td>
   <td>3</td>
   <td>
     连接zookeeper重试次数
   </td>
 </tr>
 <tr>
-  <td><code>moonbox.persist.retry.wait</code></td>
+  <td><code>moonbox.persist.zookeeper.retry.wait</code></td>
   <td>1s</td>
   <td>
     连接zookeeper重试等待时间

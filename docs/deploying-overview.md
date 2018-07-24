@@ -1,13 +1,13 @@
 ---
 layout: global
-title: Cluster Mode Overview
+title: Deploying Overview
 ---
 
 本节主要介绍Moonbox的工作模式,以及涉及到的模块的配置,让大家对Moonbox有个整体的认识。
 
 ### 工作模式
 
-Moonbox以master-slave集群模式工作,master支持主备多活。master负责客户端接入,接收查询指令,然后将任务调度到合适的Worker。Worker进程会分局分配的任务类型启动一个新的或者使用已有的Runner。每个Runner持有一个MbSession,MbSession是对SparkSession的封装,额外添加了一些其他的功能,例如用户体系,权限体系,下推优化等。每个Worker进程持有一个常驻的SparkContext,负责正真的计算。
+Moonbox以master-slave集群模式工作,master支持主备多活。master负责客户端接入,接收查询指令,然后将任务调度到合适的Worker。Worker进程会根据分配的任务类型启动一个新的或者使用已有的Runner。每个Runner持有一个MbSession,MbSession是对SparkSession的封装,额外添加了一些其他的功能,例如用户体系,权限体系,下推优化等。每个Worker进程持有一个常驻的SparkContext,负责正真的计算。
 <p style="text-align: center;">
   <img src="img/deploying-overview.jpg" title="Cluster Mode Overview" alt="Cluster Mode Overview" />
 </p>
@@ -54,3 +54,5 @@ Moonbox以master-slave集群模式工作,master支持主备多活。master负责
 
 - mixcal
     Moonbox使用的混算引擎相关配置。目前仅支持使用Spark作为混算引擎。
+
+Moonbox默认配置为最简配置,只需要用户额外配置cache部分,即可启动集群开始体验,但不推荐作为生产使用。如作为生产使用请参考Deploying其他章节和Configuration章节进行相应的修改。
