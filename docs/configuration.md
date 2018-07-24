@@ -302,9 +302,11 @@ Catalog目前仅支持关系型数据库,支持h2、mysql、oracle、sqlserver�
   </td>
 </tr>
 </table>
+
 如需修改为其他数据库请根据实际情况进行修改,以下给出mysql示例。
+
 <table class="table">
-<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
+<tr><th>Property Name</th><th>Example</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.catalog.implementation</code></td>
   <td>mysql</td>
@@ -414,7 +416,7 @@ Moonbox内部集成了quartz提供定时任务服务,如需使用定时任务功
 需要注意的是,我们需要先手动在mysql中创建一些用于保存quartz元数据的库和表。例如我们先创建一个名为moonbox_quartz的数据库,然后使用mysql客户端运行位于$MOONBOX_HOME/bin目录下的quartz_tables_mysql.sql文件中的sql,在刚才创建的库中创建出所有表。
 
 <table class="table">
-<tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
+<tr><th>Property Name</th><th>Example</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.timer.enable</code></td>
   <td>true</td>
@@ -470,7 +472,7 @@ Moonbox内部集成了quartz提供定时任务服务,如需使用定时任务功
 <tr>
 	<td><code>org.quartz.jobStore.tablePrefix</code></td>
 	<td>QRTZ_</td>
-	<td>参阅quartz官方文档</td>
+	<td>表名前缀,需要与创建表的sql语句保持一致,参阅quartz官方文档</td>
 </tr>
 <tr>
 	<td><code>org.quartz.jobStore.dataSource</code></td>
