@@ -106,7 +106,7 @@ object Main extends JsonSerializer {
                     other match {
                       case '(' => braceCount += 1
                       case ')' => braceCount -= 1
-                      case _ =>
+                      case _ => /* no-op */
                     }
                 }
                 if (stringBuilder.isEmpty) {
@@ -120,6 +120,8 @@ object Main extends JsonSerializer {
                       stringBuilder.append(" ")
                       line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
                     }
+                  } else {
+                    line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
                   }
                 }
               }

@@ -25,6 +25,10 @@ import moonbox.catalyst.core.plan.{CatalystPlan, LimitExec}
 
 class MongoLimitExec(limit: Int, child: CatalystPlan) extends LimitExec(limit: Int, child: CatalystPlan) with MongoTranslateSupport {
   override def translate(context: CatalystContext) = {
-    child.translate(context) :+ s"{${symbolToBson("limit")}: ${limit}}"
+    if (limit == 0) {
+      child.translate(context) :+ "{$match: {$and: [{\"_id\": {$eq: null}}, {\"_id\": {$ne: null}}]}}"
+    } else {
+      child.translate(context) :+ s"{${symbolToBson("limit")}: ${limit}}"
+    }
   }
 }

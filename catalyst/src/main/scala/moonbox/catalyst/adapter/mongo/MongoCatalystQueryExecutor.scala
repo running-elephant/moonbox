@@ -118,6 +118,7 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
   private def getBsonIterator(plan: LogicalPlan, context: CatalystContext = new CatalystContext): (Iterator[Document], StructType, CatalystContext) = {
 //    val tableSchema = getTableSchema(client.client, client.database, client.collectionName)
     val (jsonPipeline, outputSchema) = translate(plan, context)
+    logInfo(s"Generated mongo pipeline: $jsonPipeline")
     val coll = client.client.getDatabase(client.database).getCollection(client.collectionName)
     (coll.aggregate(jsonPipeline.map(Document.parse).toList.asJava).iterator().asScala, outputSchema, context)
   }
