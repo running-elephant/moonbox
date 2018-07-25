@@ -71,7 +71,12 @@ package object config {
 	val SCHEDULER_INTERVAL = ConfigBuilder("moonbox.scheduler.interval")
 		.timeConf
 		.createWithDefaultString("1s")
-
+	val JOBS_SUCCESS_RETAINED = ConfigBuilder("moonbox.jobs.retained.success")
+        	.intConf
+        	.createWithDefault(2000)
+	val JOBS_FAILED_RETAINED = ConfigBuilder("moonbox.jobs.retained.failed")
+        	.intConf
+        	.createWithDefault(2000)
 	val PORT_MAX_RETRIES = ConfigBuilder("moonbox.port.maxRetries")
 	    .intConf
 	    .createWithDefault(16)

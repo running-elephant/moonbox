@@ -65,6 +65,8 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 	private val conf: MbConf = param.conf
 	private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT.key, WORKER_TIMEOUT.defaultValue.get)
 	private val PERSISTENCE_MODE = conf.get(PERSIST_IMPLEMENTATION.key, PERSIST_IMPLEMENTATION.defaultValue.get)
+	private val retainedSuccessJobNum = conf.get(JOBS_SUCCESS_RETAINED.key, JOBS_SUCCESS_RETAINED.defaultValue.get)
+	private val retainedFailedJobNum = conf.get(JOBS_FAILED_RETAINED.key, JOBS_FAILED_RETAINED.defaultValue.get)
 	private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
 	private var nextJobNumber = 0
 	private val workers = new mutable.HashMap[ActorRef, WorkerInfo]
@@ -239,8 +241,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							jobInfo.client ! response
 							jobInfo.status = state //update status
                             jobInfo.updateTime = Utils.now
+							retainedCompleteJobs += jobId
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
+							trimJobsIfNecessary(retainedCompleteJobs, completeJobs, retainedSuccessJobNum)
 						case None =>
 							// do nothing
 					}
@@ -251,8 +255,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 							jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
 							jobInfo.status = state //update status
                             jobInfo.updateTime = Utils.now
+							retainedFailedJobs += jobId
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
+							trimJobsIfNecessary(retainedFailedJobs, failedJobs, retainedFailedJobNum)
 						case None =>
 						// do nothing
 					}
@@ -722,7 +728,17 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			throw new Exception("Timer Service is out of service.")
 		}
 	}
-}
+
+	private def trimJobsIfNecessary(retainedJobs: ArrayBuffer[String], statusJobs: mutable.HashMap[String, JobInfo], retainedJobNum: Int) = {
+		if (retainedJobs.size > retainedJobNum) {
+			val removeSize = math.max(retainedJobs.size / 10, retainedJobNum - retainedJobs.size)  //delete at least 1/10 of jobs if it is full
+			retainedJobs.take(removeSize).foreach { jobId =>
+				statusJobs.remove(jobId)
+			}
+			retainedJobs.trimStart(removeSize)
+		}
+	}
+ }
 
 object MbMaster extends MbLogging {
 	val ROLE = "master"
