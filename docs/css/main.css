@@ -114,9 +114,10 @@ a:hover code {
   z-index: 1;
   position: relative;
   background-color: #FFF;
-  max-width: 914px;
+  /*max-width: 914px;*/
   line-height: 1.6; /* Inspired by Github's wiki style */
-  padding-left: 15px;
+  padding-left: 40px;
+  padding-right: 40px;
 }
 
 .content-with-sidebar {
