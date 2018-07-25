@@ -86,9 +86,9 @@ moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，�
       }
       mixcal {
           implementation = "spark"
-      	  spark.loglevel = "INFO"
-      	  spark.app.name = "test1"
-      	  spark.master = "yarn"
+          spark.loglevel = "INFO"
+          spark.app.name = "test1"
+          spark.master = "yarn"
           spark.submit.deployMode = "client"
           spark.hadoop.yarn.resourcemanager.hostname = "host"
           spark.hadoop.yarn.resourcemanager.address = "host:8032"
@@ -101,8 +101,8 @@ moonbox的配置分为环境变量、集群拓扑、运行参数三个部分，�
           spark.executor.instances = 4
           spark.executor.cores = 4
           spark.executor.memory = "4g"
-      	  pushdown.enable = true
-      	  column.permission.enable = false
+          pushdown.enable = true
+          column.permission.enable = false
       }
   }
   ```
