@@ -49,16 +49,22 @@ Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力�
   客户端有如下几种：
 
   - rest api
+
     以restful api的方式提供计算服务，支持batch、adhoc模式，支持同步和异步方式。
   - jdbc
+
     对jdbc接口的实现，使用户拥有数据库般的使用体验。
   - odbc
+
     提供odbc支持，用户可以使用sas连接moonbox进行数据分析。
   - cli
+
     命令行工具，基于jline实现。通过cli可以完成DDL（Data Definition Language）、DML（Data Manipulation Language）、DCL（Data Control Language）以及Query操作。
   - zeppelin
+
     提供zeppelin moonbox interpreter，可以使用zeppelin快速进行原型验证和SQL开发。
   - davinci
+
     通过jdbc支持ABD Stack（敏捷大数据技术栈）中数据可视化平台davinci的接入，进行数据查询并展示。
 
 - **接入层**
