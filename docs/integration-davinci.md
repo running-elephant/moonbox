@@ -14,7 +14,7 @@ title: Integration Davinci
 3. 登录Davinci, 并在Source页面配置Moonbox的JDBC连接信息, 如图所示:
 
 <p style="text-align: center;">
-  <img src="img/integration-davinci.jpg" style="width:80%;" title="Integration Davinci" alt="Integration Davinci" />
+  <img src="img/integration-davinci.png" style="width:80%;" title="Integration Davinci" alt="Integration Davinci" />
 </p>
 请根据实际情况修改上图中的配置项,然后保存。
 
