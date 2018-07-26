@@ -76,23 +76,23 @@ Moonbox将用户的能力抽象出六个属性,管理员(Sa)拥有全部属性�
   <img src="img/guide-concept-users.png" style="width:80%;height:80%;" title="User System" alt="User System" />
 </p>
 
-- Account
+  - Account
 
     是否可以执行用户管理类指令,比如创建、删除用户,给用户授权撤销某种属性等。
-- DDL
+  - DDL
 
     是否可以执行数据定义类指令,比如创建、删除数据库,挂载、卸载虚拟表等。
-- DCL
+  - DCL
 
     是否可以执行数据控制类指令,比如将某个库、某张表或者某张表的某些字段授权给用些用户等。
 
-- GrantAccount
+  - GrantAccount
 
     是否可以执行提升其他普通用户能力的指令,使其拥有Account能力。
-- GrantDDL
+  - GrantDDL
 
     是否可以执行提升其他普通用户能力的指令,使其拥有DDL能力。
-- GrantDCL
+  - GrantDCL
 
     是否可以执行提升其他普通用户能力的指令,使其拥有DCL能力。
 
@@ -109,6 +109,7 @@ Moonbox将用户的能力抽象出六个属性,管理员(Sa)拥有全部属性�
     列级别的读权限控制,对库授权代表对该库中所有表的所有列进行授权,对表授权代表对该表的所有列授权。
 
 - Update(待完成)
+
     列级别的更新权限控制,对库授权代表对该库中所有表的所有列进行授权,对表授权代表对该表的所有列授权。
 
 - truncate(待完成)
