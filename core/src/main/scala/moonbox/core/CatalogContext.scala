@@ -488,6 +488,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getDatabasePrivilege(userId, databaseId)
 	}
 
+	def getDatabasePrivilege(userId: Long): Seq[CatalogDatabasePrivilege] = {
+		catalog.getDatabasePrivilege(userId)
+	}
+
 	def createTablePrivilege(tablePrivileges: Seq[CatalogTablePrivilege], user: String, organization: String, db: String, table: String): Unit = {
 		catalog.createTablePrivilege(tablePrivileges:_*)(user, organization, db, table)
 	}
@@ -504,6 +508,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getTablePrivilege(userId, databaseId, table)
 	}
 
+	def getTablePrivilege(userId: Long): Seq[CatalogTablePrivilege] = {
+		catalog.getTablePrivilege(userId)
+	}
+
 	def createColumnPrivilege(columnPrivileges: Seq[CatalogColumnPrivilege], user: String, organization: String, db: String, table: String): Unit = {
 		catalog.createColumnPrivilege(columnPrivileges:_*)(user, organization, db, table)
 	}
@@ -514,5 +522,9 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 
 	def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege] = {
 		catalog.getColumnPrivilege(userId, databaseId, table, privilege)
+	}
+
+	def getColumnPrivilege(userId: Long): Seq[CatalogColumnPrivilege] = {
+		catalog.getColumnPrivilege(userId)
 	}
 }
