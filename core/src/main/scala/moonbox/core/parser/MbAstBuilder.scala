@@ -28,6 +28,7 @@ import moonbox.core.command.PrivilegeType.{PrivilegeType, _}
 import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MqlBaseParser._
+import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.{ParseTree, TerminalNode}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.types.{DecimalType, _}
@@ -793,7 +794,15 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	override def visitSetVariable(ctx: SetVariableContext): MbCommand = {
 		val key = ctx.key.getText
-		val value = Option(ctx.value.getText).orNull
+		// val value = Option(ctx.value.getText).orNull
+		val stream = ctx.key.stop.getInputStream
+
+		val start = Option(ctx.EQ()).map(_.getSymbol.getStopIndex + 1).getOrElse {
+			ctx.key.stop.getStopIndex + 1
+		}
+		val interval = Interval.of(start, stream.size())
+		val value = stream.getText(interval).trim
+
 		SetVariable(key, value, ctx.GLOBAL() != null)
 	}
 

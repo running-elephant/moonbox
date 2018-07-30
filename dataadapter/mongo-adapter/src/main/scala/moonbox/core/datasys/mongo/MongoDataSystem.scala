@@ -91,7 +91,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
     if (uriDbName != null && uriDbName != "" && !inMap.contains(DATABASE_KEY)) {
       map += (DATABASE_KEY -> uriDbName)
     }
-    if (uriDbName != null && uriDbName != "" && !inMap.contains(COLLECTION_KEY)) {
+    if (uriCollectionName != null && uriCollectionName != "" && !inMap.contains(COLLECTION_KEY)) {
       map += Tuple2(COLLECTION_KEY, uriCollectionName)
     }
     map
@@ -266,7 +266,10 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
   private def map2Property(map: Map[String, String]): Properties = {
     val prop = new Properties()
-    map.foreach { case (k, v) => prop.setProperty(k, v) }
+    map.foreach {
+      case (k, v) if v != null => prop.setProperty(k, v)
+      case _ => /* no-op */
+    }
     prop
   }
 
