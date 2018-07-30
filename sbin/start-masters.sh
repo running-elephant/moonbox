@@ -22,7 +22,7 @@ if [ -z "${MOONBOX_HOME}" ]; then
     fi
 fi
 
-cat "${MOONBOX_HOME}/conf/nodes" | grep master | grep -v '#' | awk '{print $2}' | cut -d '/' -f 3 | while read line
+cat "${MOONBOX_HOME}/conf/nodes" | grep "moonbox.grid.master" | grep -v '#' | awk '{print $2}' | cut -d '/' -f 3 | while read line
 do
     hostname=`echo $line | awk '{print $1}' |cut -d ':' -f 1`
     akka_port=`echo $line | awk '{print $1}' |cut -d ':' -f 2`
@@ -31,7 +31,7 @@ do
         ssh_options="-p 22"
     fi
 
-    akka_ip=`cat /etc/hosts | grep $hostname | awk '{print $1}'`
+    akka_ip=`cat /etc/hosts | grep -w $hostname | awk '{print $1}'`
 
     echo "ssh $hostname $ssh_options ..."
 

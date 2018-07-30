@@ -20,7 +20,7 @@ echo "start worker in $MOONBOX_HOME ... $#"
 if [ $# -ne 3 ]; then
 
     tmp_file="/tmp/master.txt"
-    cat "${MOONBOX_HOME}/conf/nodes" | grep -v '^#' | grep -w master | awk '{print $2}'  | sed 's/grid:\/\///g'  > ${tmp_file}
+    cat "${MOONBOX_HOME}/conf/nodes" | grep -v '^#' | grep -w "moonbox.grid.master" | awk '{print $2}'  | sed 's/grid:\/\///g'  > ${tmp_file}
 
     master_url=""
     while read line
