@@ -95,6 +95,13 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
             properties.put("database", resourceArray(0))
         }
 
+        if (props.contains(ES_HTTP_USER)){
+            properties.put("user", props(ES_HTTP_USER))
+        }
+        if (props.contains(ES_HTTP_PWD)) {
+            properties.put("password", props(ES_HTTP_PWD))
+        }
+
         props.foreach{ prop =>  properties.put(prop._1, prop._2) }
 
 		//"es.read.field.as.array.include"    //Fields/properties that should be considered as arrays/lists
@@ -204,5 +211,6 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 object ElasticSearchDataSystem{
     val ES_NODES: String = "es.nodes"
     val ES_RESOURCE: String = "es.resource"
-
+    val ES_HTTP_USER: String = "es.net.http.auth.user"
+    val ES_HTTP_PWD: String = "es.net.http.auth.pass"
 }
