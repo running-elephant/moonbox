@@ -23,6 +23,7 @@ package moonbox.core.datasys.presto
 import java.net.InetAddress
 import java.sql.{Connection, DriverManager}
 import java.util.Properties
+import scala.collection.mutable.ArrayBuffer
 
 import moonbox.common.MbLogging
 import moonbox.core.datasys.{DataSystem, DataSystemRegister, Pushdownable}
@@ -54,8 +55,8 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 	override val supportedUDF: Seq[String] = Seq()
 
 	override val supportedExpressions: Seq[Class[_]] = Seq(
-		classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression],
-		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[IsNaN], classOf[NullIf],
+		classOf[AttributeReference], classOf[Alias], classOf[AggregateExpression], classOf[Literal],
+		classOf[Abs], classOf[Coalesce], classOf[Greatest], classOf[IsNaN], classOf[NullIf], classOf[IsNotNull],
 		classOf[Least], classOf[Rand], classOf[Acos], classOf[Asin], classOf[Atan],
 		classOf[Atan2], classOf[Cbrt], classOf[Ceil], classOf[Cos], classOf[Cosh],
 		classOf[ToDegrees], classOf[EulerNumber], classOf[Exp], classOf[Floor], classOf[Hex],
@@ -181,12 +182,25 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 		})(props("url"), p)
 	}
 
-	// TODO
-	override def tableNames(): Seq[String] = Seq()
 
-	override def tableProperties(tableName: String): Map[String, String] = Map()
+	override def tableNames(): Seq[String] = {
+		val tables = new ArrayBuffer[String]()
+		val connection = getConnection()
+		val resultSet = connection.createStatement().executeQuery("show tables")
+		while (resultSet.next()) {
+			tables.+=:(resultSet.getString(1))
+		}
+		connection.close()
+		tables
+	}
 
-	override def tableName(): String = { "" }
+	override def tableProperties(tableName: String): Map[String, String] = {
+		props.+("dbtable" -> tableName)
+	}
+
+	override def tableName(): String = {
+		props("dbtable")
+	}
 
 	override def test(): Boolean = {
 		var connection: Connection = null

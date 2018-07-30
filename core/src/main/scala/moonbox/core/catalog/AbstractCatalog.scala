@@ -506,6 +506,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	protected def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege]
 
+	protected def getDatabasePrivilege(userId: Long): Seq[CatalogDatabasePrivilege]
+
 	// ----------------------------------------------------------------------------
 	// table privilege --   the privilege relation of user - table
 	// ----------------------------------------------------------------------------
@@ -529,6 +531,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege]
 
 	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege]
+
+	protected def getTablePrivilege(userId: Long): Seq[CatalogTablePrivilege]
 
 	// ----------------------------------------------------------------------------
 	// column privilege --   the privilege relation of user - table - column
@@ -554,6 +558,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	protected def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege]
 
+	protected def getColumnPrivilege(userId: Long): Seq[CatalogColumnPrivilege]
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)

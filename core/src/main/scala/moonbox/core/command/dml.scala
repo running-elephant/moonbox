@@ -169,6 +169,24 @@ case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DM
 	}
 }
 
+case class ShowGrants(user: String) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: CatalogSession) = {
+		val catalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
+		if (mbSession.catalog.isSa(ctx.userId) || user == ctx.userName) {
+			val buffer = new ArrayBuffer[Row]()
+			val databasePrivilege = mbSession.catalog.getDatabasePrivilege(catalogUser.id.get)
+			val tablePrivilege = mbSession.catalog.getTablePrivilege(catalogUser.id.get)
+			val columnPrivilege = mbSession.catalog.getColumnPrivilege(catalogUser.id.get)
+			buffer.append( databasePrivilege.map { p => Row("Database Privilege" , s"${ctx.databaseName} : ${p.privilegeType}")}:_*)
+			buffer.append( tablePrivilege.map { p => Row("Table Privilege" , s"${ctx.databaseName}.${p.table} : ${p.privilegeType}")}:_* )
+			buffer.append( columnPrivilege.map { p=> Row("Column Privilege" , s"${ctx.databaseName}.${p.table}.${p.column} : ${p.privilegeType}")}:_*)
+			buffer
+		} else {
+			throw new Exception(s"Access denied for user '$user'")
+		}
+	}
+}
+
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {

@@ -3,31 +3,26 @@ layout: global
 title: Integration Zeppelin
 ---
 
-# Moonbox与Zeppelin集成
+#### 相关jar包获取
 
-## Zeppelin
+- 下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar，下载地址：[releases]()
+- 下载moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION}}.jar，下载地址：[releases]()
 
-Zeppelin官网地址：[Zeppelin](http://zeppelin.apache.org)
-
-## moonbox-jdbc jar和moonbox-zeppelin-interpreter jar获取
-
-- 下载moonbox-jdbc jar，下载地址：[releases]()
-- 下载moonbox-zeppelin-interpreter jar，下载地址：[releases]()
-
-## 配置 
+#### 配置
    
-1. 在Zeppelin安装目录的interpreter路径下创建moonbox目录
+1. 在Zeppelin安装目录的interpreter路径下创建moonbox目录。假设Zeppelin安装目录为/opt/zeppelin。
 ```
-cd $ZEEPELIN_HOME/interpreter
+cd /opt/zeppelin/interpreter
 mkdir moonbox
 ```
-2. 将moonbox-jdbc jar和moonbox-zeppelin-interpreter jar一起放置于1创建的moonbox目录下
-![moonbox-zeppelin](./img/integration-zeppelin-interpreter2.jpg)
-3. 重启Zeppelin，创建interpreter, 命名为moonbox（或其他名字）
-![moonbox-zeppelin](./img/integration-zeppelin-interpreter.jpg)
-   1. URL为：jdbc:moonbox://localhost:10010/default
-   2. 10010为JDBC server端口，即moonbox-defaults.conf配置文件中tcp.server.port的值
-   3. default为Moonbox中的database名字
-4. 创建notebook
-![moonbox-zeppelin](./img/integration-zeppelin-notebook.jpg)
-5. 查询
+2. 将moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar和moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION}}.jar拷贝到刚才创建的moonbox目录下
+
+3. 重启Zeppelin，创建interpreter。
+<p style="text-align: center;">
+  <img src="img/integration-zeppelin.jpg" style="width:80%;height=80%" title="Zeppelin Interpreter" alt="Zeppelin Interpreter" />
+</p>
+请根据实际情况修改上图中的配置项,然后保存。
+
+#### 关于Zeppelin
+
+更多关于Zeppelin的内容,请参考[Zeppelin](http://zeppelin.apache.org)

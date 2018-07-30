@@ -841,6 +841,13 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
+	def getDatabasePrivilege(userId: Long) = {
+		query[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
+			catalogDatabasePrivileges,
+			t =>  t.userId === userId
+		)
+	}
+
 	// -----------------------------------------------------------------
 	// table privileges
 	// -----------------------------------------------------------------
@@ -900,6 +907,13 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		)
 	}
 
+	def getTablePrivilege(userId: Long) = {
+		query[CatalogTablePrivilege, CatalogTablePrivilegeTable](
+			catalogTablePrivileges,
+			t =>  t.userId === userId
+		)
+	}
+
 	// -----------------------------------------------------------------
 	// column privileges
 	// -----------------------------------------------------------------
@@ -949,6 +963,13 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		query[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
 			catalogColumnPrivileges,
 			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table && t.privilegeType === privilegeType
+		)
+	}
+
+	def getColumnPrivilege(userId: Long) = {
+		query[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
+			catalogColumnPrivileges,
+			t =>  t.userId === userId
 		)
 	}
 

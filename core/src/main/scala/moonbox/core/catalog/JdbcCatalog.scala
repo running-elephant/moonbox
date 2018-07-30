@@ -978,6 +978,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		jdbcDao.action(jdbcDao.getDatabasePrivilege(userId, databaseId))
 	}
 
+	override def getDatabasePrivilege(userId: Long): Seq[CatalogDatabasePrivilege] = await {
+		jdbcDao.action(jdbcDao.getDatabasePrivilege(userId))
+	}
+
 	// ----------------------------------------------------------------------------
 	// table privilege --   the privilege relation of user - table
 	// ----------------------------------------------------------------------------
@@ -998,6 +1002,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	override def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege] = await {
 		jdbcDao.action(jdbcDao.getTablePrivilege(userId, databaseId, table))
+	}
+
+	override def getTablePrivilege(userId: Long): Seq[CatalogTablePrivilege] = await {
+		jdbcDao.action(jdbcDao.getTablePrivilege(userId))
 	}
 
 	// ----------------------------------------------------------------------------
@@ -1025,4 +1033,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		jdbcDao.action(jdbcDao.getColumnPrivilege(userId, databaseId, table, privilege))
 	}
 
+	override def getColumnPrivilege(userId: Long): Seq[CatalogColumnPrivilege] = await {
+		jdbcDao.action(jdbcDao.getColumnPrivilege(userId))
+	}
 }

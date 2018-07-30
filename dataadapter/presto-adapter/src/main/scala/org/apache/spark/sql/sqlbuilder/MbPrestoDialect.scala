@@ -33,11 +33,15 @@ class MbPrestoDialect extends MbDialect {
 
 	override def canHandle(url: String): Boolean = url.toLowerCase().startsWith("jdbc:presto")
 
-	override def quote(name: String): String = name
+	override def quote(name: String): String = {
+		"\"" + name.replace("`", "") + "\""
+	}
 
 	override def explainSQL(sql: String): String = s"EXPLAIN $sql"
 
-	override def maybeQuote(name: String): String = name
+	override def maybeQuote(name: String): String = {
+		name
+	}
 
 	override def getIndexes(conn: Connection, url: String, tableName: String): Set[String] = {
 		Set[String]()

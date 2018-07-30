@@ -12,7 +12,7 @@ if [ -z "${MOONBOX_HOME}" ]; then
 fi
 
 
-cat "${MOONBOX_HOME}/conf/nodes" | grep worker | awk '{print $2}' | while read line
+cat "${MOONBOX_HOME}/conf/nodes" | grep "moonbox.grid.worker" | awk '{print $2}' | while read line
 do
     hostname=`echo $line | awk '{print $1}' |cut -d ':' -f 1`
     akka_port=`echo $line | awk '{print $1}' |cut -d ':' -f 2`

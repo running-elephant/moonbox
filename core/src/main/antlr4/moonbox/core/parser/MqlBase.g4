@@ -110,6 +110,7 @@ mql
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
+    | SHOW GRANTS FOR user=identifier                                                           # showGrants
 
     | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
@@ -305,11 +306,13 @@ EVENTS: 'EVENTS';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
 EXTENDED: 'EXTENDED';
+FOR: 'FOR';
 FROM: 'FROM';
 FUNCTION: 'FUNCTION';
 FUNCTIONS: 'FUNCTIONS';
 GLOBAL: 'GLOBAL';
 GRANT: 'GRANT';
+GRANTS: 'GRANTS';
 GROUP: 'GROUP';
 GROUPS: 'GROUPS';
 IDENTIFIED : 'IDENTIFIED ';
