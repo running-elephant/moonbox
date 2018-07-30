@@ -135,14 +135,37 @@ case class AlterUserSetPassword(
 	newPassword: String) extends MbRunnableCommand with Account {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, name)
-		mbSession.catalog.alterUser(
-			existUser.copy(
-				password = newPassword,
-				updateBy = ctx.userId,
-				updateTime = Utils.now
-			)
-		)
+		if (ctx.userName.equalsIgnoreCase("ROOT")) {
+			if (name.equalsIgnoreCase("ROOT")) {
+				val root = mbSession.catalog.getUser(-1, "ROOT")
+				mbSession.catalog.alterUser(root.copy(
+					password = newPassword,
+					updateBy = ctx.userId,
+					updateTime = Utils.now))
+			} else {
+				throw new Exception("ROOT can only alter Sa's password. Please use 'ALTER SA ... ' command alter sa's password.")
+			}
+		} else {
+			val canAccount = mbSession.catalog.canAccount(ctx.userId)
+			val existUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, name)
+			if ((canAccount && (!name.equalsIgnoreCase("ROOT") && !mbSession.catalog.isSa(existUser.id.get))) || (ctx.userName == name)) {
+				mbSession.catalog.alterUser(
+					existUser.copy(
+						password = newPassword,
+						updateBy = ctx.userId,
+						updateTime = Utils.now
+					)
+				)
+			} else if (!canAccount) {
+				throw new Exception("Access Denied.Please check your ACCOUNT privilege.")
+			} else if (mbSession.catalog.isSa(existUser.id.get)) {
+				throw new Exception("Access Denied.Sa's Password can only alter by ROOT or itself.")
+			} else if (name.equalsIgnoreCase("ROOT")) {
+				throw new Exception("Access Denied.ROOT's password can only alter by itself.")
+			} else {
+				throw new Exception("Access Denied.")
+			}
+		}
 		Seq.empty[Row]
 	}
 }

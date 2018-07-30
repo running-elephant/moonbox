@@ -120,7 +120,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def alterUser(userDefinition: CatalogUser): Unit = {
-		catalog.alterUser(userDefinition)
+		val encryptedUser = userDefinition.copy(password = PasswordEncryptor.encryptSHA(userDefinition.password))
+		catalog.alterUser(encryptedUser)
 	}
 
 	def dropUser(organizationId: Long, organization: String, name: String, ignoreIfNotExists: Boolean): Unit = {
