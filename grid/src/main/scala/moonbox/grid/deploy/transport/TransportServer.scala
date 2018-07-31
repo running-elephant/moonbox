@@ -25,9 +25,12 @@ import moonbox.grid.deploy.MbService
 import moonbox.grid.deploy.transport.server.JdbcServer
 
 class TransportServer(host: String, port: Int, conf: MbConf, service: MbService) {
+  val jdbcServer: JdbcServer = new JdbcServer(host, port, conf, service)
   def start(): Int = {
-    new JdbcServer(host, port, conf, service).start()
+    jdbcServer.start()
   }
 
-  def stop(): Unit = {}
+  def stop(): Unit = {
+    jdbcServer.stop()
+  }
 }
