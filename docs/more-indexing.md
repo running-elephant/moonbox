@@ -38,6 +38,8 @@ title: Command Indexing
     SELECT 查询语句
 - cmd
     所有语句
+
+#### 指令索引
 ```
 CREATE [ORG | ORGANIZATION] (IF NOT EXISTS)? identifier (COMMENT STRING)
 RENAME [ORG | ORGANIZATION] identifier TO identifier
