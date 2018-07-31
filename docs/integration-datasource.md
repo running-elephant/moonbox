@@ -157,7 +157,7 @@ Note: <br/>
 ```
 mount database mycat_test_testdb options(
     type 'mysql',                                       # 类型，必填，为mysql
-    url 'jdbc:mysql://master:8066/database',            # url，必填
+    url 'jdbc:mysql://localhost:8066/database',            # url，必填
     user 'root',                                        # 用户名，必填
     password 'pwd'                                      # 密码，必填
 );
