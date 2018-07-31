@@ -98,12 +98,8 @@ object MongoJDBCUtils {
       /** Actually this condition is inaccessible */
       bsonValue.asNumber()
     } else if (bsonValue.isObjectId) {
-      // TODO: handle ObjectId
-      // return the ObjectId object
       bsonValue.asObjectId().getValue.toString
     } else if (bsonValue.isRegularExpression) {
-      // TODO: handle regx
-      // return the RegularExpression object
       bsonValue.asRegularExpression().toString
     } else if (bsonValue.isString) {
       bsonValue.asString().getValue

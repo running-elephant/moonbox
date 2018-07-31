@@ -77,7 +77,6 @@ class MongoProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan)
         throw new IllegalArgumentException("array_map argument error")
     }
     val rep = mapExprString.replaceAll(ParserUtil.VARIABLE_NAME, asVal)
-    // TODO: get parser from session
     val mapExpression = new SqlParser().parser.parseExpression(rep)
     with2Dollar = true
     s"{input: ${input}, as: ${withQuotes(asVal)}, in: ${expressionToBson(mapExpression)}}"
@@ -97,7 +96,6 @@ class MongoProjectExec(projectList: Seq[NamedExpression], child: CatalystPlan)
         throw new IllegalArgumentException("array_map argument error")
     }
     val rep = filterExprString.replaceAll(ParserUtil.VARIABLE_NAME, asVal)
-    // TODO: get parser from session
     val filterExpression = new SqlParser().parser.parseExpression(rep)
     with2Dollar = true
     s"{input: $input, as: ${withQuotes(asVal)}, cond: ${predicateToBson(filterExpression)}}"

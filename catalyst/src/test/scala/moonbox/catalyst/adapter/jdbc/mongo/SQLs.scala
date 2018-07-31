@@ -49,7 +49,7 @@ object SQLs {
 
   // with problem
   val sql40 = "select distinct price from books where price > 10 and pages > 100 group by name order by price" // two aggregates in the logical plan
-  val sql66 = "select name, author from books group by name, author, price having price > 0 order by price " // todo
+  val sql66 = "select name, author from books group by name, author, price having price > 0 order by price "
   //    {$project: {_id: 1}}
   //    {$group: {_id: null, "count(1)": {$sum: 1}}}
   //    {$project: {_id: 0}}

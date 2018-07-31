@@ -38,7 +38,6 @@ class MongoJoinExec(leftKeys: Seq[Expression],
     left: CatalystPlan,
     right: CatalystPlan) with MongoTranslateSupport {
   override def translate(context: CatalystContext) = {
-    // TODO:
     Nil
   }
 }
