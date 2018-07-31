@@ -393,63 +393,63 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	// -----------------------------------------------------------------
-	// Application
+	// Procedure
 	// -----------------------------------------------------------------
 
-	def createApplication(application: CatalogApplication) = {
-		insert(application, catalogApplications)
+	def createProcedure(procedure: CatalogProcedure) = {
+		insert(procedure, catalogProcedures)
 	}
 
-	def deleteApplication(applicationId: Long) = {
-		delete[CatalogApplication, CatalogApplicationTable](catalogApplications, _.id === applicationId)
+	def deleteProcedure(procedureId: Long) = {
+		delete[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.id === procedureId)
 	}
 
-	def deleteApplication(organizationId: Long, application: String) = {
-		delete[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, t => t.organizationId === organizationId && t.name === application)
+	def deleteProcedure(organizationId: Long, procedure: String) = {
+		delete[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
-	def deleteApplications(organizationId: Long) = {
-		delete[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, _.organizationId === organizationId
+	def deleteProcedures(organizationId: Long) = {
+		delete[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, _.organizationId === organizationId
 		)
 	}
 
-	def renameApplication(organizationId: Long, application: String, newApplication: String)(updateBy: Long) = {
-		update[CatalogApplication, CatalogApplicationTable,
+	def renameProcedure(organizationId: Long, procedure: String, newProcedure: String)(updateBy: Long) = {
+		update[CatalogProcedure, CatalogProcedureTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogApplications, t => t.organizationId === organizationId && t.name === application,
-			t => (t.name, t.updateBy, t.updateTime), (newApplication, updateBy, Utils.now))
+			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure,
+			t => (t.name, t.updateBy, t.updateTime), (newProcedure, updateBy, Utils.now))
 	}
 
-	def updateApplication(appDefinition: CatalogApplication) = {
-		updateEntity[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, t => t.id === appDefinition.id.get, appDefinition
+	def updateProcedure(procDefinition: CatalogProcedure) = {
+		updateEntity[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, t => t.id === procDefinition.id.get, procDefinition
 		)
 	}
 
-	def getApplication(applicationId: Long) = {
-		queryOneOption[CatalogApplication, CatalogApplicationTable](catalogApplications, _.id === applicationId)
+	def getProcedure(procedureId: Long) = {
+		queryOneOption[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.id === procedureId)
 	}
 
-	def getApplication(organizationId: Long, application: String) = {
-		queryOneOption[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, t => t.organizationId === organizationId && t.name === application)
+	def getProcedure(organizationId: Long, procedure: String) = {
+		queryOneOption[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
-	def applicationExists(organizationId: Long, application: String) = {
-		exists[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, t => t.organizationId === organizationId && t.name === application)
+	def procedureExists(organizationId: Long, procedure: String) = {
+		exists[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
-	def listApplications(organizationId: Long) = {
-		query[CatalogApplication, CatalogApplicationTable](catalogApplications, _.organizationId === organizationId)
+	def listProcedures(organizationId: Long) = {
+		query[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.organizationId === organizationId)
 	}
 
-	def listApplications(organizationId: Long, pattern: String) = {
-		query[CatalogApplication, CatalogApplicationTable](
-			catalogApplications, t => t.organizationId === organizationId && t.name.like(pattern))
+	def listProcedures(organizationId: Long, pattern: String) = {
+		query[CatalogProcedure, CatalogProcedureTable](
+			catalogProcedures, t => t.organizationId === organizationId && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------

@@ -82,15 +82,15 @@ mql
     | ALTER VIEW name=tableIdentifier AS query                                                  # setViewQuery
     | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
 
-    | CREATE APPLICATION (IF NOT EXISTS)? name=identifier AS appCmds                            # createApplication
-    | RENAME APPLICATION name=identifier TO newName=identifier                                  # renameApplication
-    | ALTER APPLICATION name=identifier RENAME TO newName=identifier                            # setApplicationName
-    | ALTER APPLICATION name=identifier AS appCmds                                              # setApplicationQuerys
-    | DROP APPLICATION (IF EXISTS)? name=identifier                                             # dropApplication
+    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier AS procCmds                    # createProcedure
+    | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
+    | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
+    | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys
+    | DROP   (PROC | PROCEDURE) (IF EXISTS)? name=identifier                                    # dropProcedure
 
     | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT
         cronExpression=STRING
-        (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL app=identifier                    # createEvent
+        (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL proc=identifier                   # createEvent
     | RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
     | ALTER DEFINER definer EVENT name=identifier                                               # setDefiner
     | ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
@@ -108,7 +108,7 @@ mql
     | SHOW FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                        # showFunctions
     | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
-    | SHOW APPLICATIONS (LIKE pattern=STRING)?                                                  # showApplications
+    | SHOW PROCEDURES (LIKE pattern=STRING)?                                                    # showProcedures
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
     | SHOW GRANTS FOR user=identifier                                                           # showGrants
 
@@ -128,7 +128,7 @@ mql
     | query                                                                                     # mqlQuery
     ;
 
-appCmds
+procCmds
     : '(' mql (';' mql)* ')'
     ;
 definer
@@ -259,7 +259,7 @@ nonReserved
     | ADD | REMOVE | GRANT | REVOKE
     | ALTER | RENAME | TO | SET
     | USER | TYPE | DATABASE | DATASOURCE| AS | SA | ORG | GROUP | GROUPS | VIEW | VIEWS | ACCOUNT
-    | APPLICATION | APPLICATIONS
+    | PROC | PROCEDURE | PROCEDURES
     | CASCADE | CACHE
     | WITH
     ;
@@ -268,8 +268,6 @@ ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
 ALL: 'ALL';
 ALTER: 'ALTER';
-APPLICATION: 'APPLICATION';
-APPLICATIONS: 'APPLICATIONS';
 ARRAY: 'ARRAY';
 AT: 'AT';
 MAP: 'MAP';
@@ -332,6 +330,9 @@ ORG: 'ORG';
 ORGANIZATION: 'ORGANIZATION';
 OVERWRITE: 'OVERWRITE';
 PLAN: 'PLAN';
+PROC: 'PROC';
+PROCEDURE: 'PROCEDURE';
+PROCEDURES: 'PROCEDURES';
 REMOVE: 'REMOVE';
 RENAME: 'RENAME';
 REPLACE: 'REPLACE';

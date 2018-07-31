@@ -175,49 +175,49 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 
 	// ----------------------------------------------------------------------------
-	// Application -- belong to organization
+	// Procedure -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	final def createApplication(appDefinition: CatalogApplication, organization: String, ignoreIfExists: Boolean): Unit = {
-		val app = appDefinition.name
-		postToAll(CreateApplicationPreEvent(organization, app))
-		doCreateApplication(appDefinition, ignoreIfExists)
-		postToAll(CreateApplicationEvent(organization, app))
+	final def createProcedure(procDefinition: CatalogProcedure, organization: String, ignoreIfExists: Boolean): Unit = {
+		val proc = procDefinition.name
+		postToAll(CreateProcedurePreEvent(organization, proc))
+		doCreateProcedure(procDefinition, ignoreIfExists)
+		postToAll(CreateProcedureEvent(organization, proc))
 	}
 
-	protected def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean): Unit
+	protected def doCreateProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean): Unit
 
-	final def dropApplication(organizationId: Long, organization: String, app: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropApplicationPreEvent(organization, app))
-		doDropApplication(organizationId, app, ignoreIfNotExists)
-		postToAll(DropApplicationEvent(organization, app))
+	final def dropProcedure(organizationId: Long, organization: String, proc: String, ignoreIfNotExists: Boolean): Unit = {
+		postToAll(DropProcedurePreEvent(organization, proc))
+		doDropProcedure(organizationId, proc, ignoreIfNotExists)
+		postToAll(DropProcedureEvent(organization, proc))
 	}
 
-	protected def doDropApplication(organizationId: Long, app: String, ignoreIfNotExists: Boolean): Unit
+	protected def doDropProcedure(organizationId: Long, proc: String, ignoreIfNotExists: Boolean): Unit
 
-	final def renameApplication(organizationId: Long, organization: String, app: String, newApp: String, updateBy: Long): Unit = {
-		postToAll(RenameApplicationPreEvent(organization, app, newApp))
-		doRenameApplication(organizationId, app, newApp, updateBy)
-		postToAll(RenameApplicationEvent(organization, app, newApp))
+	final def renameProcedure(organizationId: Long, organization: String, proc: String, newProc: String, updateBy: Long): Unit = {
+		postToAll(RenameProcedurePreEvent(organization, proc, newProc))
+		doRenameProcedure(organizationId, proc, newProc, updateBy)
+		postToAll(RenameProcedureEvent(organization, proc, newProc))
 	}
 
-	protected def doRenameApplication(organizationId: Long, app: String, newApp: String, updateBy: Long): Unit
+	protected def doRenameProcedure(organizationId: Long, proc: String, newProc: String, updateBy: Long): Unit
 
-	def alterApplication(appDefinition: CatalogApplication): Unit
+	def alterProcedure(procDefinition: CatalogProcedure): Unit
 
-	def getApplication(organizationId: Long, app: String): CatalogApplication
+	def getProcedure(organizationId: Long, proc: String): CatalogProcedure
 
-	def getApplication(app: Long): CatalogApplication
+	def getProcedure(proc: Long): CatalogProcedure
 
-	def getApplicationOption(organizationId: Long, app: String): Option[CatalogApplication]
+	def getProcedureOption(organizationId: Long, proc: String): Option[CatalogProcedure]
 
-	def getApplicationOption(app: Long): Option[CatalogApplication]
+	def getProcedureOption(proc: Long): Option[CatalogProcedure]
 
-	def applicationExists(organizationId: Long, app: String): Boolean
+	def procedureExists(organizationId: Long, proc: String): Boolean
 
-	def listApplications(organizationId: Long): Seq[CatalogApplication]
+	def listProcedures(organizationId: Long): Seq[CatalogProcedure]
 
-	def listApplications(organizationId: Long, pattern: String): Seq[CatalogApplication]
+	def listProcedures(organizationId: Long, pattern: String): Seq[CatalogProcedure]
 
 	// ----------------------------------------------------------------------------
 	// timedevent -- belong to organization

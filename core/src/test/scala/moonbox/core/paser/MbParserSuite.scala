@@ -333,32 +333,32 @@ class MbParserSuite extends FunSuite {
 
 	test("application") {
 		assertEquals(
-			CreateApplication("app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view)"
+			CreateProcedure("app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view"), ignoreIfExists = true),
+			"CREATE PROCEDURE IF NOT EXISTS app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view)"
 		)
 
 		assertEquals(
-			CreateApplication("app", Seq("SELECT * FROM table"), ignoreIfExists = true),
-			"CREATE APPLICATION IF NOT EXISTS app AS (SELECT * FROM table)"
+			CreateProcedure("app", Seq("SELECT * FROM table"), ignoreIfExists = true),
+			"CREATE PROCEDURE IF NOT EXISTS app AS (SELECT * FROM table)"
 		)
 		assertEquals(
-			AlterApplicationSetName(
+			AlterProcedureSetName(
 				"app", "app1"
 			),
-			"ALTER APPLICATION app RENAME TO app1",
-			"RENAME APPLICATION app TO app1"
+			"ALTER PROCEDURE app RENAME TO app1",
+			"RENAME PROCEDURE app TO app1"
 		)
 		assertEquals(
-			AlterApplicationSetQuery(
+			AlterProcedureSetQuery(
 				"app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view")
 			),
-			"ALTER APPLICATION app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view) "
+			"ALTER PROCEDURE app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view) "
 		)
 		assertEquals(
-			DropApplication(
+			DropProcedure(
 				"app", ignoreIfNotExists = true
 			),
-			"DROP APPLICATION IF EXISTS app"
+			"DROP PROCEDURE IF EXISTS app"
 		)
 	}
 
@@ -502,12 +502,12 @@ class MbParserSuite extends FunSuite {
 
 	test("show applications") {
 		assertEquals(
-			ShowApplications(None),
-			"SHOW APPLICATIONS"
+			ShowProcedures(None),
+			"SHOW PROCEDURES"
 		)
 		assertEquals(
-			ShowApplications(Some("abc%")),
-			"SHOW APPLICATIONS LIKE 'abc%'"
+			ShowProcedures(Some("abc%")),
+			"SHOW PROCEDURES LIKE 'abc%'"
 		)
 	}
 

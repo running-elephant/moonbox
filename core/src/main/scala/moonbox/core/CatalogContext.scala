@@ -393,40 +393,40 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listViews(databaseId, pattern)
 	}
 
-	def createApplication(appDefinition: CatalogApplication, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createApplication(appDefinition, organization, ignoreIfExists)
+	def createProcedure(procDefinition: CatalogProcedure, organization: String, ignoreIfExists: Boolean): Unit = {
+		catalog.createProcedure(procDefinition, organization, ignoreIfExists)
 	}
 
-	def renameApplication(organizationId: Long, organization: String, app: String, newApp: String, updateBy: Long): Unit = {
-		catalog.renameApplication(organizationId, organization, app, newApp, updateBy)
+	def renameProcedure(organizationId: Long, organization: String, proc: String, newproc: String, updateBy: Long): Unit = {
+		catalog.renameProcedure(organizationId, organization, proc, newproc, updateBy)
 	}
 
-	def alterApplication(appDefinition: CatalogApplication): Unit = {
-		catalog.alterApplication(appDefinition)
+	def alterProcedure(procDefinition: CatalogProcedure): Unit = {
+		catalog.alterProcedure(procDefinition)
 	}
 
-	def applicationExists(organizationId: Long, application: String): Boolean = {
-		catalog.applicationExists(organizationId, application)
+	def procedureExists(organizationId: Long, proc: String): Boolean = {
+		catalog.procedureExists(organizationId, proc)
 	}
 
-	def dropApplication(organizationId: Long, organization: String, application: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropApplication(organizationId, organization, application, ignoreIfNotExists)
+	def dropProcedure(organizationId: Long, organization: String, proc: String, ignoreIfNotExists: Boolean): Unit = {
+		catalog.dropProcedure(organizationId, organization, proc, ignoreIfNotExists)
 	}
 
-	def getApplication(organizationId: Long, application: String): CatalogApplication = {
-		catalog.getApplication(organizationId, application)
+	def getProcedure(organizationId: Long, proc: String): CatalogProcedure = {
+		catalog.getProcedure(organizationId, proc)
 	}
 
-	def getApplication(applicationId: Long): CatalogApplication = {
-		catalog.getApplication(applicationId)
+	def getProcedure(procId: Long): CatalogProcedure = {
+		catalog.getProcedure(procId)
 	}
 
-	def listApplications(organizationId: Long): Seq[CatalogApplication] = {
-		catalog.listApplications(organizationId)
+	def listProcedures(organizationId: Long): Seq[CatalogProcedure] = {
+		catalog.listProcedures(organizationId)
 	}
 
-	def listApplications(organizationId: Long, pattern: String): Seq[CatalogApplication] = {
-		catalog.listApplications(organizationId, pattern)
+	def listProcedures(organizationId: Long, pattern: String): Seq[CatalogProcedure] = {
+		catalog.listProcedures(organizationId, pattern)
 	}
 
 	def createTimedEvent(eventDefinition: CatalogTimedEvent, organization: String, ignoreIfExists: Boolean): Unit = {

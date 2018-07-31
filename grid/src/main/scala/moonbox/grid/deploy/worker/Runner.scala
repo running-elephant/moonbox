@@ -105,9 +105,9 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def createTimedEvent(event: CreateTimedEvent, target: ActorRef): JobResult = {
 		val result = if (event.enable) {
-			val catalogApplication = mbSession.catalog.getApplication(catalogSession.organizationId, event.app)
+			val catalogProcedure = mbSession.catalog.getProcedure(catalogSession.organizationId, event.proc)
 			val definer = event.definer.getOrElse(catalogSession.userName)
-			val sqls = catalogApplication.cmds
+			val sqls = catalogProcedure.cmds
 			val eventEntity = EventEntity(
 				group = catalogSession.organizationName,
 				name = event.name,
@@ -136,17 +136,17 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		val result = if (event.enable) {
 			val existsEvent = mbSession.catalog.getTimedEvent(catalogSession.organizationId, event.name)
 			val catalogUser = mbSession.catalog.getUser(existsEvent.definer)
-			val catalogApplication = mbSession.catalog.getApplication(existsEvent.application)
+			val catalogProcedure = mbSession.catalog.getProcedure(existsEvent.procedure)
 			val eventEntity = EventEntity(
 				group = catalogSession.organizationName,
 				name = event.name,
-				sqls = catalogApplication.cmds,
+				sqls = catalogProcedure.cmds,
 				cronExpr = existsEvent.schedule,
 				definer = catalogUser.name,
 				start = None,
 				end = None,
 				desc = existsEvent.description,
-				function = new EventCall(catalogUser.name, catalogApplication.cmds)
+				function = new EventCall(catalogUser.name, catalogProcedure.cmds)
 			)
 			target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
 				case RegisteredTimedEvent =>

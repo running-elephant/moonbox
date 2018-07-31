@@ -75,7 +75,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 							_ <- jdbcDao.deleteGroups(catalogOrganization.id.get);
 							_ <- jdbcDao.deleteDatabases(catalogOrganization.id.get);
 							_ <- jdbcDao.deleteUsers(catalogOrganization.id.get);
-							_ <- jdbcDao.deleteApplications(catalogOrganization.id.get);
+							_ <- jdbcDao.deleteProcedures(catalogOrganization.id.get);
 							_ <- jdbcDao.deleteOrganization(org)
 						) yield ()
 					)
@@ -85,10 +85,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 							groups <- jdbcDao.listGroups(catalogOrganization.id.get);
 							databases <- jdbcDao.listDatabases(catalogOrganization.id.get);
 							users <- jdbcDao.listUsers(catalogOrganization.id.get);
-							applications <- jdbcDao.listApplications(catalogOrganization.id.get)
-						) yield (groups, databases, users, applications)
-					).map { case (groups, databases, users, applications) =>
-						if (groups.isEmpty && databases.isEmpty && users.isEmpty && applications.isEmpty) {
+							procedures <- jdbcDao.listProcedures(catalogOrganization.id.get)
+						) yield (groups, databases, users, procedures)
+					).map { case (groups, databases, users, procedures) =>
+						if (groups.isEmpty && databases.isEmpty && users.isEmpty && procedures.isEmpty) {
 							jdbcDao.action(jdbcDao.deleteOrganization(org))
 						} else {
 							throw new NonEmptyException(s"organization $org")
@@ -363,83 +363,83 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Application -- belong to organization
+	// Procedure -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	override protected def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.applicationExists(appDefinition.organizationId, appDefinition.name)).flatMap {
+	override protected def doCreateProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.procedureExists(procDefinition.organizationId, procDefinition.name)).flatMap {
 			case true =>
 				ignoreIfExists match {
 					case true => Future(Unit)
-					case false => throw new ApplicationExistsException(appDefinition.name)
+					case false => throw new ProcedureExistsException(procDefinition.name)
 				}
 			case false =>
-				jdbcDao.action(jdbcDao.createApplication(appDefinition))
+				jdbcDao.action(jdbcDao.createProcedure(procDefinition))
 		}
 	}
 
-	override protected def doDropApplication(organizationId: Long, app: String, ignoreIfNotExists: Boolean): Unit = await {
-		jdbcDao.action(jdbcDao.applicationExists(organizationId, app)).flatMap {
+	override protected def doDropProcedure(organizationId: Long, proc: String, ignoreIfNotExists: Boolean): Unit = await {
+		jdbcDao.action(jdbcDao.procedureExists(organizationId, proc)).flatMap {
 			case true =>
-				jdbcDao.action(jdbcDao.deleteApplication(organizationId, app))
+				jdbcDao.action(jdbcDao.deleteProcedure(organizationId, proc))
 			case false =>
 				ignoreIfNotExists match {
 					case true => Future(Unit)
-					case false => throw new NoSuchApplicationException(app)
+					case false => throw new NoSuchProcedureException(proc)
 				}
 		}
 	}
 
-	override protected def doRenameApplication(organizationId: Long, app: String, newApp: String, updateBy: Long): Unit = await {
-		jdbcDao.action(jdbcDao.applicationExists(organizationId, app)).flatMap {
+	override protected def doRenameProcedure(organizationId: Long, proc: String, newProc: String, updateBy: Long): Unit = await {
+		jdbcDao.action(jdbcDao.procedureExists(organizationId, proc)).flatMap {
 			case true =>
-				jdbcDao.action(jdbcDao.applicationExists(organizationId, newApp)).flatMap {
+				jdbcDao.action(jdbcDao.procedureExists(organizationId, newProc)).flatMap {
 					case false =>
-						jdbcDao.action(jdbcDao.renameApplication(organizationId, app, newApp)(updateBy))
+						jdbcDao.action(jdbcDao.renameProcedure(organizationId, proc, newProc)(updateBy))
 					case true =>
-						throw new ApplicationExistsException(newApp)
+						throw new ProcedureExistsException(newProc)
 				}
 			case false =>
-				throw new NoSuchApplicationException(app)
+				throw new NoSuchProcedureException(proc)
 		}
 	}
 
-	override def alterApplication(appDefinition: CatalogApplication): Unit = await {
-		jdbcDao.action(jdbcDao.updateApplication(appDefinition))
+	override def alterProcedure(procDefinition: CatalogProcedure): Unit = await {
+		jdbcDao.action(jdbcDao.updateProcedure(procDefinition))
 	}
 
-	override def getApplication(organizationId: Long, app: String): CatalogApplication = await {
-		jdbcDao.action(jdbcDao.getApplication(organizationId, app)).map {
+	override def getProcedure(organizationId: Long, proc: String): CatalogProcedure = await {
+		jdbcDao.action(jdbcDao.getProcedure(organizationId, proc)).map {
 			case Some(a) => a
-			case None => throw new NoSuchApplicationException(app)
+			case None => throw new NoSuchProcedureException(proc)
 		}
 	}
 
-	override def getApplication(app: Long): CatalogApplication = await {
-		jdbcDao.action(jdbcDao.getApplication(app)).map {
+	override def getProcedure(proc: Long): CatalogProcedure = await {
+		jdbcDao.action(jdbcDao.getProcedure(proc)).map {
 			case Some(a) => a
-			case None => throw new NoSuchApplicationException(s"Id $app")
+			case None => throw new NoSuchProcedureException(s"Id $proc")
 		}
 	}
 
-	override def getApplicationOption(organizationId: Long, app: String): Option[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.getApplication(organizationId, app))
+	override def getProcedureOption(organizationId: Long, proc: String): Option[CatalogProcedure] = await {
+		jdbcDao.action(jdbcDao.getProcedure(organizationId, proc))
 	}
 
-	override def getApplicationOption(app: Long): Option[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.getApplication(app))
+	override def getProcedureOption(proc: Long): Option[CatalogProcedure] = await {
+		jdbcDao.action(jdbcDao.getProcedure(proc))
 	}
 
-	override def applicationExists(organizationId: Long, app: String): Boolean = await {
-		jdbcDao.action(jdbcDao.applicationExists(organizationId, app))
+	override def procedureExists(organizationId: Long, proc: String): Boolean = await {
+		jdbcDao.action(jdbcDao.procedureExists(organizationId, proc))
 	}
 
-	override def listApplications(organizationId: Long): Seq[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.listApplications(organizationId))
+	override def listProcedures(organizationId: Long): Seq[CatalogProcedure] = await {
+		jdbcDao.action(jdbcDao.listProcedures(organizationId))
 	}
 
-	override def listApplications(organizationId: Long, pattern: String): Seq[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.listApplications(organizationId, pattern))
+	override def listProcedures(organizationId: Long, pattern: String): Seq[CatalogProcedure] = await {
+		jdbcDao.action(jdbcDao.listProcedures(organizationId, pattern))
 	}
 
 	// ----------------------------------------------------------------------------

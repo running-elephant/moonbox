@@ -60,7 +60,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val catalogFunctions = TableQuery[CatalogFunctionTable]
 	protected final val catalogFunctionResources = TableQuery[CatalogFunctionResourceTable]
 	protected final val catalogViews = TableQuery[CatalogViewTable]
-	protected final val catalogApplications = TableQuery[CatalogApplicationTable]
+	protected final val catalogProcedures = TableQuery[CatalogProcedureTable]
 	protected final val catalogTimedEvents = TableQuery[CatalogTimedEventTable]
 	protected final val catalogDatabasePrivileges = TableQuery[CatalogDatabasePrivilegeTable]
 	protected final val catalogTablePrivileges = TableQuery[CatalogTablePrivilegeTable]
@@ -77,7 +77,7 @@ trait EntityComponent extends DatabaseComponent {
 		catalogFunctions,
 		catalogFunctionResources,
 		catalogViews,
-		catalogApplications,
+		catalogProcedures,
 		catalogTimedEvents,
 		catalogDatabasePrivileges,
 		catalogTablePrivileges,
@@ -201,13 +201,13 @@ trait EntityComponent extends DatabaseComponent {
 			createBy, createTime, updateBy, updateTime) <> (CatalogView.tupled, CatalogView.unapply)
 	}
 
-	class CatalogApplicationTable(tag: Tag) extends BaseTable[CatalogApplication](tag, "applications") {
+	class CatalogProcedureTable(tag: Tag) extends BaseTable[CatalogProcedure](tag, "procedures") {
 		def name = column[String]("name")
 		def cmds = column[Seq[String]]("cmds")
 		def organizationId = column[Long]("organizationId")
 		def description = column[Option[String]]("description")
 		override def * = (id.?, name, cmds, organizationId, description, createBy,
-			createTime, updateBy, updateTime) <> (CatalogApplication.tupled, CatalogApplication.unapply)
+			createTime, updateBy, updateTime) <> (CatalogProcedure.tupled, CatalogProcedure.unapply)
 	}
 
 	class CatalogTimedEventTable(tag: Tag) extends BaseTable[CatalogTimedEvent](tag, "event") {
@@ -217,8 +217,8 @@ trait EntityComponent extends DatabaseComponent {
 		def schedule = column[String]("schedule")
 		def enable = column[Boolean]("enable")
 		def description = column[Option[String]]("description")
-		def application = column[Long]("application")
-		override def * = (id.?, name, organizationId, definer, schedule, enable, description, application, createBy,
+		def procedure = column[Long]("procedure")
+		override def * = (id.?, name, organizationId, definer, schedule, enable, description, procedure, createBy,
 			createTime, updateBy, updateTime) <> (CatalogTimedEvent.tupled, CatalogTimedEvent.unapply)
 	}
 

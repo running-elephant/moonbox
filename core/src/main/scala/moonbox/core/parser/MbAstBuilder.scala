@@ -469,38 +469,38 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		MbFunctionIdentifier(function, database)
 	}
 
-	override def visitCreateApplication(ctx: CreateApplicationContext): MbCommand = {
+	override def visitCreateProcedure(ctx: CreateProcedureContext): MbCommand = {
 		val name = ctx.name.getText
-		val mqlList = visitAppCmds(ctx.appCmds())
+		val mqlList = visitProcCmds(ctx.procCmds())
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateApplication(name, mqlList, ignoreIfExists)
+		CreateProcedure(name, mqlList, ignoreIfExists)
 	}
 
-	override def visitRenameApplication(ctx: RenameApplicationContext): MbCommand = {
+	override def visitRenameProcedure(ctx: RenameProcedureContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
-		AlterApplicationSetName(name, newName)
+		AlterProcedureSetName(name, newName)
 	}
 
-	override def visitSetApplicationName(ctx: SetApplicationNameContext): MbCommand = {
+	override def visitSetProcedureName(ctx: SetProcedureNameContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
-		AlterApplicationSetName(name, newName)
+		AlterProcedureSetName(name, newName)
 	}
 
-	override def visitSetApplicationQuerys(ctx: SetApplicationQuerysContext): MbCommand = {
+	override def visitSetProcedureQuerys(ctx: SetProcedureQuerysContext): MbCommand = {
 		val name = ctx.name.getText
-		val querys = visitAppCmds(ctx.appCmds())
-		AlterApplicationSetQuery(name, querys)
+		val querys = visitProcCmds(ctx.procCmds())
+		AlterProcedureSetQuery(name, querys)
 	}
 
-	override def visitDropApplication(ctx: DropApplicationContext): MbCommand = {
+	override def visitDropProcedure(ctx: DropProcedureContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		DropApplication(name, ignoreIfNotExists)
+		DropProcedure(name, ignoreIfNotExists)
 	}
 
-	override def visitAppCmds(ctx: AppCmdsContext): Seq[String] = {
+	override def visitProcCmds(ctx: ProcCmdsContext): Seq[String] = {
 		ctx.mql().map { mqlCtx =>
 			mqlCtx.start.getInputStream.toString.substring(mqlCtx.start.getStartIndex, mqlCtx.stop.getStopIndex + 1)
 		}
@@ -511,10 +511,10 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val definer = if (ctx.DEFINER() != null) visitDefiner(ctx.definer()) else None
 		val scheduler = ParserUtils.tripQuotes(ctx.cronExpression.getText)
 		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
-		val application = ctx.app.getText
+		val proc = ctx.proc.getText
 		val enable = if (ctx.ENABLE() != null) true else false
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateTimedEvent(name, definer, scheduler, desc, application, enable, ignoreIfExists)
+		CreateTimedEvent(name, definer, scheduler, desc, proc, enable, ignoreIfExists)
 	}
 
 	override def visitRenameEvent(ctx: RenameEventContext): MbCommand = {
@@ -740,9 +740,9 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowGroups(pattern)
 	}
 
-	override def visitShowApplications(ctx: ShowApplicationsContext): MbCommand = {
+	override def visitShowProcedures(ctx: ShowProceduresContext): MbCommand = {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowApplications(pattern)
+		ShowProcedures(pattern)
 	}
 
 	override def visitShowVariable(ctx: ShowVariableContext): MbCommand = {

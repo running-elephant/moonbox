@@ -26,8 +26,8 @@ class NoSuchDatabaseException(db: String)
 class NoSuchDatasourceException(user: String)
 	extends Exception(s"Datasource '$user' not found")
 
-class NoSuchApplicationException(app: String)
-	extends Exception(s"Application '$app' not found")
+class NoSuchProcedureException(proc: String)
+	extends Exception(s"Procedure '$proc' not found")
 
 class NoSuchTimedEventException(event: String)
 	extends Exception(s"Scheduler '$event' not found")

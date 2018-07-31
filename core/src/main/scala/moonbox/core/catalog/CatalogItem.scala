@@ -131,7 +131,7 @@ case class CatalogView(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
-case class CatalogApplication(
+case class CatalogProcedure(
 	id: Option[Long] = None,
 	name: String,
 	cmds: Seq[String],
@@ -150,7 +150,7 @@ case class CatalogTimedEvent(
 	schedule: String,
 	enable: Boolean,
 	description: Option[String] = None,
-	application: Long,
+	procedure: Long,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,

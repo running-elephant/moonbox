@@ -149,14 +149,14 @@ case class ShowGroups(
 	}
 }
 
-case class ShowApplications(
+case class ShowProcedures(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val applications = pattern.map { p =>
-			mbSession.catalog.listApplications(ctx.organizationId, p)
-		}.getOrElse(mbSession.catalog.listApplications(ctx.organizationId))
-		applications.map { a => Row(a.name) }
+		val procedures = pattern.map { p =>
+			mbSession.catalog.listProcedures(ctx.organizationId, p)
+		}.getOrElse(mbSession.catalog.listProcedures(ctx.organizationId))
+		procedures.map { a => Row(a.name) }
 	}
 }
 
@@ -313,12 +313,12 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val catalogTimedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, event)
 		val catalogUser = mbSession.catalog.getUser(catalogTimedEvent.definer)
-		val application = mbSession.catalog.getApplication(catalogTimedEvent.application)
+		val proc = mbSession.catalog.getProcedure(catalogTimedEvent.procedure)
 		val result = Row("Event Name", catalogTimedEvent.name) ::
 			Row("Definer", catalogUser.name) ::
 			Row("Schedule", catalogTimedEvent.schedule) ::
 			Row("Enable", catalogTimedEvent.enable) ::
-			Row("Application", application.cmds) ::
+			Row("Procedure", proc.cmds) ::
 			Row("Description", catalogTimedEvent.description.getOrElse("No Description.")) :: Nil
 		result
 	}

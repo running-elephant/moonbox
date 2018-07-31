@@ -146,15 +146,15 @@ case class RenameUserPreEvent(organization: String, user: String, newUser: Strin
 case class RenameUserEvent(organization: String, user: String, newUser: String) extends UserEvent
 
 
-trait ApplicationEvent extends CatalogEvent {
-	val app: String
+trait ProcedureEvent extends CatalogEvent {
+	val procedure: String
 }
-case class CreateApplicationPreEvent(organization: String, app: String) extends ApplicationEvent
-case class CreateApplicationEvent(organization: String, app: String) extends ApplicationEvent
-case class DropApplicationPreEvent(organization: String, app: String) extends ApplicationEvent
-case class DropApplicationEvent(organization: String, app: String) extends ApplicationEvent
-case class RenameApplicationPreEvent(organization: String, app: String, newApp: String) extends ApplicationEvent
-case class RenameApplicationEvent(organization: String, app: String, newApp: String) extends ApplicationEvent
+case class CreateProcedurePreEvent(organization: String, procedure: String) extends ProcedureEvent
+case class CreateProcedureEvent(organization: String, procedure: String) extends ProcedureEvent
+case class DropProcedurePreEvent(organization: String, procedure: String) extends ProcedureEvent
+case class DropProcedureEvent(organization: String, procedure: String) extends ProcedureEvent
+case class RenameProcedurePreEvent(organization: String, procedure: String, newProcedure: String) extends ProcedureEvent
+case class RenameProcedureEvent(organization: String, procedure: String, newProcedure: String) extends ProcedureEvent
 
 trait TimedEventEvent extends CatalogEvent {
 	val event: String

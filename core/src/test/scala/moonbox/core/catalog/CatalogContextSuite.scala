@@ -473,7 +473,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 	}
 
 	test("application") {
-		catalog.createApplication(CatalogApplication(
+		catalog.createProcedure(CatalogProcedure(
 			name = "application",
 			cmds = Seq("INSERT INTO TABLE table SELECT * FROM view"),
 			organizationId = 1,
@@ -481,15 +481,15 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			createBy = 1,
 			updateBy = 1
 		), "org1", ignoreIfExists = true)
-		val app = catalog.getApplication(1, "application")
+		val app = catalog.getProcedure(1, "application")
 		assert(app.cmds == Seq("INSERT INTO TABLE table SELECT * FROM view"))
 		assert(app.description.contains("for testing"))
 		assert(app.organizationId == 1)
 		assert(app.createBy == 1)
 		assert(app.updateBy == 1)
 
-		intercept[ApplicationExistsException] {
-			catalog.createApplication(CatalogApplication(
+		intercept[ProcedureExistsException] {
+			catalog.createProcedure(CatalogProcedure(
 				name = "application",
 				cmds = Seq("INSERT INTO TABLE table SELECT * FROM view"),
 				organizationId = 1,
@@ -499,30 +499,30 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			), "org1", ignoreIfExists = false)
 		}
 
-		catalog.renameApplication(1, "org1", "application", "application1", 2)
+		catalog.renameProcedure(1, "org1", "application", "application1", 2)
 
-		intercept[NoSuchApplicationException] {
-			catalog.getApplication(1, "application")
+		intercept[NoSuchProcedureException] {
+			catalog.getProcedure(1, "application")
 		}
 
-		val app1 = catalog.getApplication(1, "application1")
-		catalog.alterApplication(app1.copy(
+		val app1 = catalog.getProcedure(1, "application1")
+		catalog.alterProcedure(app1.copy(
 			name = "application",
 			description = Some("for fun"),
 			cmds = Seq(""),
 			updateBy = 1
 		))
 
-		assert(catalog.getApplication(1, "application").description.contains("for fun"))
-		assert(catalog.getApplication(1, "application").cmds == Seq(""))
-		assert(catalog.getApplication(1, "application").updateBy == 1)
+		assert(catalog.getProcedure(1, "application").description.contains("for fun"))
+		assert(catalog.getProcedure(1, "application").cmds == Seq(""))
+		assert(catalog.getProcedure(1, "application").updateBy == 1)
 
-		catalog.dropApplication(1, "org1", "application", ignoreIfNotExists = true)
+		catalog.dropProcedure(1, "org1", "application", ignoreIfNotExists = true)
 
-		assert(!catalog.applicationExists(1, "application"))
+		assert(!catalog.procedureExists(1, "application"))
 
-		intercept[NoSuchApplicationException] {
-			catalog.dropApplication(1, "org1", "application", ignoreIfNotExists = false)
+		intercept[NoSuchProcedureException] {
+			catalog.dropProcedure(1, "org1", "application", ignoreIfNotExists = false)
 		}
 	}
 

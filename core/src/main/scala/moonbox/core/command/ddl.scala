@@ -482,13 +482,13 @@ case class DropView(
 	}
 }
 
-case class CreateApplication(
+case class CreateProcedure(
 	name: String,
 	queryList: Seq[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val catalogApplication = CatalogApplication(
+		val catalogProcedure = CatalogProcedure(
 			name = name,
 			cmds = queryList,
 			organizationId = ctx.organizationId,
@@ -496,28 +496,28 @@ case class CreateApplication(
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createApplication(catalogApplication, ctx.organizationName, ignoreIfExists)
+		mbSession.catalog.createProcedure(catalogProcedure, ctx.organizationName, ignoreIfExists)
 		Seq.empty[Row]
 	}
 }
 
-case class AlterApplicationSetName(
+case class AlterProcedureSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		mbSession.catalog.renameApplication(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
+		mbSession.catalog.renameProcedure(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
 }
 
-case class AlterApplicationSetQuery(
+case class AlterProcedureSetQuery(
 	name: String,
 	queryList: Seq[String]) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		val existApplication: CatalogApplication = mbSession.catalog.getApplication(ctx.userId, name)
-		mbSession.catalog.alterApplication(
-			existApplication.copy(
+		val existProcedure: CatalogProcedure = mbSession.catalog.getProcedure(ctx.organizationId, name)
+		mbSession.catalog.alterProcedure(
+			existProcedure.copy(
 				cmds = queryList,
 				updateBy = ctx.userId,
 				updateTime = Utils.now
@@ -527,11 +527,11 @@ case class AlterApplicationSetQuery(
 	}
 }
 
-case class DropApplication(
+case class DropProcedure(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		mbSession.catalog.dropApplication(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
+		mbSession.catalog.dropProcedure(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
 		Seq.empty[Row]
 	}
 }
@@ -542,14 +542,14 @@ case class CreateTimedEvent(
 	definer: Option[String],
 	schedule: String,
 	description: Option[String],
-	app: String,
+	proc: String,
 	enable: Boolean,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	// TODO schedule validation
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val definerId = definer.map(user => mbSession.catalog.getUser(ctx.organizationId, user).id.get).getOrElse(ctx.userId)
-		val appId = mbSession.catalog.getApplication(ctx.organizationId, app).id.get
+		val appId = mbSession.catalog.getProcedure(ctx.organizationId, proc).id.get
 		mbSession.catalog.createTimedEvent(
 			CatalogTimedEvent(
 				name = name,
@@ -558,7 +558,7 @@ case class CreateTimedEvent(
 				schedule = schedule,
 				enable = enable,
 				description = description,
-				application = appId,
+				procedure = appId,
 				createBy = ctx.userId,
 				updateBy = ctx.userId
 			), ctx.organizationName, ignoreIfExists

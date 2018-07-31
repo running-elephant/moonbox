@@ -50,8 +50,8 @@ class DatasourceExistsException(ds: String)
 class OrganizationExistsException(org: String)
 	extends ExistsException(s"Organization $org already exists")
 
-class ApplicationExistsException(app: String)
-	extends ExistsException(s"Application $app already exists")
+class ProcedureExistsException(proc: String)
+	extends ExistsException(s"Procedure $proc already exists")
 
 class TimedEventExistsException(event: String)
 	extends ExistsException(s"Event $event already exists")

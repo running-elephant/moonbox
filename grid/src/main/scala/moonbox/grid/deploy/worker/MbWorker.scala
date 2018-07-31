@@ -195,10 +195,10 @@ class MbWorker(param: MbWorkerParam, master: ActorRef) extends Actor with MbLogg
 			FiniteDuration(STATEREPORT_INTERVAL, MILLISECONDS),
 			new Runnable {
 				override def run(): Unit = {
-					println(s"workerLatestState $master")
 					val workerInfo = WorkerInfo(workerId, resourceMonitor.clusterTotalCores, resourceMonitor.clusterTotalMemory, self)
 					workerInfo.coresFree = resourceMonitor.clusterFreeCores
 					workerInfo.memoryFree = resourceMonitor.clusterFreeMemory
+					logInfo(s"workerLatestState $workerInfo $master")
 					master ! WorkerLatestState(workerInfo)
 				}
             }
