@@ -14,6 +14,7 @@ title: Command Indexing
 
     一个或者多个,以逗号分隔
 - identifier
+
     标识符,以字母或者下划线开头,仅包含字母、数字、下划线
 - STRING
 
@@ -37,6 +38,7 @@ title: Command Indexing
 
     SELECT 查询语句
 - cmd
+
     所有语句
 
 #### 指令索引
