@@ -270,13 +270,12 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     SHOW TABLES
     SHOW USERS
     SHOW FUNTIONS
-    SHOW APPLICATIONS
+    SHOW PROCEDURES
     SHOW EVENTS
     DESC DATABASE dbname
     DESC TABLE tbname
     DESC USER username
     DESC FUNTION funcname
-    DESC APPLICATION appname
     DESC EVENT eventname
     USER dbname
     SELECT ...
@@ -317,9 +316,39 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     ALTER DATABASE dbname SET OPTIONS(key 'newvalue')
     UNMOUNT DATABASE dbname
     ```
-    创建Application
-    创建定时器
-    创建function
+    创建、修改、删除procedure,procedure为一系列SQL的封装,主要用于定时任务。
+    ```
+    CREATE PROC procname AS (USE default; INSERT INTO oracle_external AS SELECT * FROM mysql_test)
+    RENAME PROC procname TO newname
+    ALTER PROC procname RENAME TO newname
+    ALTER PROC procname AS (USE default; INSERT INTO oracle_external AS SELECT * FROM mysql_test LIMIT 100)
+    DROP PROC procname
+    ```
+    创建、修改、开启、停止、删除定时任务,event需要和一个procedure进行关联,执行的即为procedure。调度表达式为crontab格式。
+    ```
+    CREATE EVENT eventname ON SCHEDULE AT '0/50 * * * * ?' DO CALL procname
+    RENAME EVENT eventname TO newname
+    ALTER EVENT eventname RENAME TO newname
+    ALTER EVENT eventname ON SCHEDULE AT '0/40 * * * * ?'
+    ALTER EVENT eventname ENABLE
+    ALTER EVENT eventname DISABLE
+    DROP EVENT eventname
+    ```
+    创建、删除function。Moonbox除了支持jar形式的UDF,还支持在线源代码的形式,包括Java和Scala。也可以将多个函数写在一个类中,但是在注册的时候需要制定函数名。
+    ```
+    # 使用Scala源代码创建function
+    CREATE FUNCTION funcname AS 'PersonData' 'mutiply1' USING scala '(
+        class PersonData {
+            val field = 16
+            def mutiply1(i: Int): Int = i * field
+        }
+    )'
+    # 使用jar包创建function,多个函数写在一个类中
+    CREATE FUNCTION funcname AS 'zoo.Panda' 'multiply' USING jar 'hdfs://host:8020/tmp/tortoise-1.0-SNAPSHOT.jar'
+    # 使用jar包创建function,集成Scala FunctionN接口或者Java UDFN接口
+    CREATE FUNCTION funcname AS 'zoo.Single' USING jar 'hdfs://host:8020/tmp/single-1.0-SNAPSHOT.jar'
+    DROP FUNCITON funcname
+    ```
 - DCL
 
     拥有DCL权限的用户,可以执行将某些资源授权给用户访问的指令。
@@ -338,5 +367,28 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     REVOKE UPDATE(col1) ON dbname.tbname FROM USER username
     ```
 
+- GrantAccount
 
+    拥有GrantAccount权限的用户,可以执行将Account权限授予其他用户的指令。
+    ```
+    GRANT ACCOUNT TO USER username
+    REVOKE ACCOUNT FROM USER username
+    ```
 
+- GrantDDL
+
+    拥有GrantDDL权限的用户,可以执行将DDL权限授予其他用户的指令。
+    ```
+    GRANT DDL TO USER username
+    REVOKE DDL FROM USER username
+    ```
+
+- GrantDCL
+
+    拥有GrantDCL权限的用户,可以执行将DCL权限授予其他用户的指令。
+    ```
+    GRANT DCL TO USER username
+    REVOKE DCL FROM USER username
+    ```
+
+以上属性看起来很复杂,可以把理解ACCOUNT、DDL、DCL为一阶权力,GrantAccount、GrantDDL、GrantDCL为二阶权力,二阶权力掌管一阶权力的授予和撤销。SA掌管二阶权力的授予和撤销。理论上通过属性的自由组合可以根据需求构建出"集权"和"三权分立"的用户体系。
