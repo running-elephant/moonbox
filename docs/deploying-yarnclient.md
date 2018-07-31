@@ -21,6 +21,12 @@ git clone -b 0.2.0 https://github.com/edp963/moonbox.git
 cd moonbox
 sh dev/build.sh
 ```
+使用dev/build.sh脚本编译,默认会添加所有数据源支持,具体有哪些数据源请参考Integration DataSource章节。如果想按需添加数据源支持,请使用如下指令编译,其中[]内为可选项。
+```
+git clone -b 0.2.0 https://github.com/edp963/moonbox.git
+cd moonbox
+mvn package -DskipTests -Pdist [-Pmysql -Poracle -Pes -Phive]
+```
 
 解压moonbox-0.2.0-dist.tar.gz
 

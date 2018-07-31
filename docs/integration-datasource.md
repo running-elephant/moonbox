@@ -3,21 +3,25 @@ layout: global
 title: Integration DataSource
 ---
 
-### Mount table format
+Moonbox支持多种数据源,以下为挂载各种类型的数据源的示例。
 
-- MYSQL:
+#### 在TYPE 1类型数据库中挂载虚拟表
+
+- MySQL
 ```
 mount table mysql_test_table options(
-    type 'mysql',                           # 类型，必填，为mysql
+    type 'mysql',                           # 数据源类型，必填，为mysql
     url 'jdbc:mysql://host:3306/database',  # url，必填
     dbtable 'table_name' ,                  # 表名，必填
     user 'root',                            # 用户名 ，必填
     password 'pwd'                          # 密码 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mysql-adapter和mysql JDBC driver的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- MYCAT:
+- MyCat
 ```
 mount table mycat_test_table options(
     type 'mysql',                           # 类型，必填，为mysql
@@ -26,10 +30,12 @@ mount table mycat_test_table options(
     user 'root',                            # 用户名 ，必填
     password 'pwd'                          # 密码 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mysql-adapter和mysql JDBC driver的jar包   
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
    
-- SQL SERVER:
+- SqlServer
 ```
 mount table sqlserver_test_booklist options(
     type 'sqlserver',                                           # 类型，必填，为kudu
@@ -38,10 +44,12 @@ mount table sqlserver_test_booklist options(
     user 'root',                                                # 用户名 ，必填
     password 'pwd'                                              # 密码 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-sqlserver-adapter和sqlserver JDBC driver的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Psqlserver选项增加SqlServer支持<br/>
+2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- ORACLE:
+- Oracle
 ```
 mount table oracle_test_booklist options(
     type 'oracle',                                  # 类型，必填，为oracle
@@ -50,34 +58,38 @@ mount table oracle_test_booklist options(
     user 'root',                                    # 用户名 ，必填
     password 'pwd'                                  # 密码 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-oracle-adapter和oracle JDBC driver的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Poracle选项增加Oracle支持<br/>
+2 需要将Oracle驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- MONGO:
+- Mongo
 ```
 mount table mongo_test_booklist options(
     type 'mongo',                                                                                 # 类型，必填，为mongo
     spark.mongodb.input.uri 'mongodb://[username:password@]host[:27017]/database.collection', # mongo读uri，如果目的为读，必填
     spark.mongodb.output.uri 'mongodb://[username:password@]host[:27017]/database.collection' # mongo写uri，如果目的为写，必填 
 );
-# 参考MongoDB Spark Connector配置
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mongo-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmongo选项增加Mongo支持<br/>
+2 参考MongoDB Spark Connector配置
 
-- ES:
+- Elasticsearch
 ```
 mount table test_es5_100 options(
     type 'es',                                      # 类型，必填，为es
     es.nodes 'host',                                # es nodes 列表，必填
     es.port '9200',                                 # es端口，必填
-    es.resource 'index_name/type_name',             # index和type，必填
-    es.net.http.auth.user "root",                   # 用户名 ，可选
-    es.net.http.auth.pass "pwd"                     # 密码 ，必填
+    es.resource 'indexName/typeName',               # index和type，必填
+    es.net.http.auth.user "username",               # 用户名 ，可选
+    es.net.http.auth.pass "password"                # 密码 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-elasticsearch-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pes选项增加Elasticsearch支持
 
-- PRESTO:
+- Presto
 ```
 mount table presto_test_booklist options(
     type 'presto',                                  # 类型，必填，为presto
@@ -85,31 +97,35 @@ mount table presto_test_booklist options(
     dbtable 'table_name' ,                          # 表，必填
     user 'root'                                     # 用户名 ，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-presto-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Ppresto选项增加Presto支持<br/>
+2 需要将Presto驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- KUDU:
+- Kudu
 ```
 mount table kudu_test_booklist options(
     type 'kudu',                                    # 类型，必填，为kudu
     kudu.master 'host:7051',                        # kudu master 地址和端口，必填
     kudu.table 'table_name'                         # 表，必填
-); 
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-kudu-adapter的jar包
+);
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pkudu选项增加Kudu支持
 
-- HBASE:
+- HBase
 ```
 mount table hbase_test_booklist options(
     type 'hbase',                                       # 类型，必填，为hbase
     'hbase.spark.use.hbasecontext' 'false',             # 必填，为false
     hbase.zookeeper.quorum 'host',                      # zk地址列表，必填
     catalog '{"table":{"namespace":"default", "name":"table_name"},"rowkey":"key","columns":{"row":{"cf":"rowkey", "col":"key", "type":"string"},"column0":{"cf":"cf1", "col":"column0", "type":"string"},"column1":{"cf":"cf1", "col":"column1", "type":"string"},"column2":{"cf":"cf1", "col":"column2", "type":"string"}}}'   # hbase中namespace ， rowkey，columns等，必填
-); 
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-hbase-adapter的jar包
+);
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Phbase选项增加HBase支持
 
-- CASSANDRA:
+- Cassandra
 ```
 mount table cass_test_booklist options(
     type 'cassandra',                                       # 类型，必填，为cassandra
@@ -117,23 +133,53 @@ mount table cass_test_booklist options(
     keyspace 'default',                                     # keyspace信息，必填
     table 'table_name'                                      # 表，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-cassandra-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pcassandra选项增加Cassandra支持
 
-### Mount database format
 
-- MYSQL: 
+#### 挂载TYPE 2类型数据库
+
+- MySQL
 ```
 mount database mysql_test_test options(
     type 'mysql',                               # 类型，必填，为mysql
     url 'jdbc:mysql://host:3306/database',      # url，必填
-    user 'root',                                #  用户名，必填
+    user 'root',                                # 用户名，必填
     password 'pwd'                              # 密码，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mysql-adapter和mysql JDBC driver的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- ORACLE:
+- MyCat
+```
+mount database mycat_test_testdb options(
+    type 'mysql',                                       # 类型，必填，为mysql
+    url 'jdbc:mysql://master:8066/database',            # url，必填
+    user 'root',                                        # 用户名，必填
+    password 'pwd'                                      # 密码，必填
+);
+```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+
+- SqlServer
+```
+mount table sqlserver_test_booklist options(
+    type 'sqlserver',                                           # 类型，必填，为kudu
+    url 'jdbc:sqlserver://host:1433;DatabaseName=database',     # url，必填，
+    user 'root',                                                # 用户名 ，必填
+    password 'pwd'                                              # 密码 ，必填
+);
+```
+Note: <br/>
+1 如果自己编译源码需要添加-Psqlserver选项增加SqlServer支持<br/>
+2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+
+- Oracle
 ```
 mount database oracle_test_orcl options(
     type 'oracle',                              # 类型，必填，为oracle
@@ -141,20 +187,23 @@ mount database oracle_test_orcl options(
     user 'root',                                #  用户名，必填
     password 'pwd'                              # 密码，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-oracle-adapter和oracle JDBC driver的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Poracle选项增加Oracle支持<br/>
+2 需要将Oracle驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- CASSANDRA:
+- Cassandra
 ```
 mount database cass_test_default options(
     type 'cassandra',                                        # 类型，必填，为cassandra
     spark.cassandra.connection.host 'master,slave1,slave2',  # cassandra host列表，必填
     keyspace 'default'                                       # keyspace名，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-cassandra-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pcassandra选项增加Cassandra支持
 
-- ES:
+- Elasticsearch
 ```
 mount database es5_test_default options(
     type 'es',                                          # 类型，必填，为es
@@ -162,19 +211,21 @@ mount database es5_test_default options(
     es.port '9200',                                     # port，必填
     es.resource 'index_name'                            # index名字，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-elasticsearch-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pes选项增加Elasticsearch支持
 
-- KUDU:
+- Kudu
 ```
 mount database kudu_test_default options(
     type 'kudu',                                        # 类型，必填，为kudu
     kudu.master 'master:7051'                           # kudu master列表，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-kudu-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pkudu选项增加Kudu支持
 
-- HIVE:
+- Hive
 ```
 mount database hive_test_default options(
     type 'hive',                                        # 类型，必填，为hive
@@ -184,21 +235,11 @@ mount database hive_test_default options(
     metastore.user 'root',                              # metastore 用户名，必填
     metastore.password 'pwd'                            # metastore 密码，必填
 );
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mysql-adapter和mysql JDBC driver的jar包
 ```
+Note: <br/>
+1 如果Hive元数据使用MySQL存储,需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- MyCAT:
-```
-mount database mycat_test_testdb options(
-    type 'mysql',                                       # 类型，必填，为mysql
-    url 'jdbc:mysql://master:8066/database',            # url，必填
-    user 'root',                                        # 用户名，必填
-    password 'pwd'                                      # 密码，必填
-);
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mysql-adapter和mysql JDBC driver的jar包
-```
-
-- PRESTO:
+- Presto
 ```
 mount database presto_test_test options(
     type 'presto',                                          # 类型，必填，为presto
@@ -207,21 +248,25 @@ mount database presto_test_test options(
 );
 # Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-presto-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Ppresto选项增加Presto支持<br/>
+2 需要将Presto驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
-- MONGO:
+- Mongo
 ```
 mount database mongo_test_test options(
     type 'mongo',                                               # 类型，必填，为mongo
     spark.mongodb.input.uri 'mongodb://host:27017/database',    # 读url，如果目的为读，必填
     spark.mongodb.output.uri 'mongodb://host:27017/database'    # 写url，如果目的为写，必填
 );
-# 参考MongoDB Spark Connector配置
-# Note: 需确保$MOONBOX_HOME/libs/下存在moonbox-mongo-adapter的jar包
 ```
+Note: <br/>
+1 如果自己编译源码需要添加-Pmongo选项增加Mongo支持<br/>
+2 参考MongoDB Spark Connector配置
 
-### Notices
+#### Notices
 - For HBase:
     + Not support 'mount database'
     + Not support 'describe table'
-- For ES:
+- For Elasticsearch:
     + ES6 support is inconclusive
