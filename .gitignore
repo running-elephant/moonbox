@@ -30,5 +30,5 @@ conf/log4j.properties
 check_illegal.py
 **/dependency-reduced-pom.xml
 **/generate
-
+dev/deploy.sh
 
