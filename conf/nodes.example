@@ -1,0 +1,2 @@
+moonbox.grid.master.1   grid://localhost:2551
+moonbox.grid.worker.1   localhost
