@@ -43,6 +43,7 @@ MOUNT TABLE mysql_test OPTIONS(
 );
 ```
 当执行挂载表指令的时候,系统会检查连接参数的正确性,所以要确保参数正确。需要注意,在发行包中并没有包含MySQL的jdbc驱动,所以需要自行将对应的驱动包拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中。
+
 列出所有表
 ```
 SHOW TABLES;
@@ -279,6 +280,7 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     DESC EVENT eventname
     USER dbname
     SELECT ...
+    CREATE TEMP VIEW viewname AS SELECT ...
     INSERT INTO/OVERWRITE tbname AS SELECT ...
     ```
 - Account
