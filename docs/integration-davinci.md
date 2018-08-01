@@ -5,7 +5,7 @@ title: Integration Davinci
 
 #### 获取jdbc驱动
 
-下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases/tag/0.2.0)
+下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
 
 #### 配置
    

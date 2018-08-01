@@ -5,8 +5,8 @@ title: Integration Zeppelin
 
 #### 相关jar包获取
 
-- 下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases/tag/0.2.0)
-- 下载moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases/tag/0.2.0)
+- 下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
+- 下载moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
 
 #### 配置
    
