@@ -282,7 +282,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
   private def insertDirect(collection: MongoCollection[BsonDocument], table: DataTable, batchSize: Int): Unit = {
     if (table.iter.nonEmpty) {
       table.iter.grouped(batchSize).foreach { batch =>
-        collection.insertMany(batch.map(row => MapFunctions.rowToDocument(row)).asJava)
+        collection.insertMany(batch.map(row => MapFunctions.rowToDocument(new GenericRowWithSchema(row.toSeq.toArray, table.schema))).asJava)
       }
     }
   }
@@ -292,7 +292,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
       table.iter.grouped(batchSize).foreach { batch =>
         val updateOptions = new UpdateOptions().upsert(true)
         val requests = batch.map { row =>
-          val doc = MapFunctions.rowToDocument(row)
+          val doc = MapFunctions.rowToDocument(new GenericRowWithSchema(row.toSeq.toArray, table.schema))
           Option(doc.get("_id")) match {
             case Some(id) =>
               if (replaceDocument) {
