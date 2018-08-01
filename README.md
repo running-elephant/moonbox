@@ -11,11 +11,11 @@ For more details, see the [WEBSITE](https://edp963.github.io/moonbox).
 
 Documentation
 =============
-Will come out soon.
+Please refer [WEBSITE](https://edp963.github.io/moonbox).
 
 Latest Release
 =============
-Will come out soon.
+[LATEST RELEASE](https://github.com/edp963/moonbox/releases/tag/0.2.0)
 
 Get Help
 ============
