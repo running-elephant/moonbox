@@ -380,7 +380,7 @@ case class CreateView(
 	view: MbTableIdentifier,
 	query: String,
 	comment: Option[String],
-	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
+	replaceIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val (databaseId, database)= view.database match {
@@ -398,7 +398,7 @@ case class CreateView(
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createView(catalogView, ctx.organizationName, database, ignoreIfExists)
+		mbSession.catalog.createView(catalogView, ctx.organizationName, database, replaceIfExists)
 		Seq.empty[Row]
 	}
 }

@@ -361,8 +361,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listFunctions(databaseId, pattern)
 	}
 
-	def createView(viewDefinition: CatalogView, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createView(viewDefinition, organization, db, ignoreIfExists)
+	def createView(viewDefinition: CatalogView, organization: String, db: String, replaceIfExists: Boolean): Unit = {
+		catalog.createView(viewDefinition, organization, db, replaceIfExists)
 	}
 
 	def renameView(databaseId: Long, organization: String, db: String, view: String, newView: String, updateBy: Long): Unit = {

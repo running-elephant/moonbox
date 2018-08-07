@@ -400,14 +400,14 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// View -- belong to database
 	// ----------------------------------------------------------------------------
 
-	final def createView(viewDefinition: CatalogView, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+	final def createView(viewDefinition: CatalogView, organization: String, db: String, replaceIfExists: Boolean): Unit = {
 		val view = viewDefinition.name
 		postToAll(CreateViewPreEvent(organization, db, view))
-		doCreateView(viewDefinition, ignoreIfExists)
+		doCreateView(viewDefinition, replaceIfExists)
 		postToAll(CreateViewEvent(organization, db, view))
 	}
 
-	protected def doCreateView(viewDefinition: CatalogView, ignoreIfExists: Boolean): Unit
+	protected def doCreateView(viewDefinition: CatalogView, replaceIfExists: Boolean): Unit
 
 	final def dropView(databaseId: Long, organization: String, db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
 		postToAll(DropViewPreEvent(organization, db, view))
