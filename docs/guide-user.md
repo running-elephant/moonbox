@@ -54,7 +54,9 @@ DESCRIBE TABLE mysql_test;
 ```
 对表内容做查询
 ```
-SELECT * FROM mysql_test;
+CREATE TEMP VIEW mysql_test_view AS SELECT * FROM mysql_test WHERE id < 100;
+SELECT * FROM mysql_test_view;
+SELECT count(*) FROM mysql_test_view;
 ```
 Sa还可以创建新用户
 ```
