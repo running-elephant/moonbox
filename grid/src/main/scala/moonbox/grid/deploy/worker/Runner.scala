@@ -217,7 +217,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 	def insertInto(insert: InsertInto): JobResult = {
-		// TODO write privilege
+		// TODO sink is table or view
 		val sinkCatalogTable = mbSession.getCatalogTable(insert.table.table, insert.table.database)
 		val options = sinkCatalogTable.properties
 		val sinkDataSystem = DataSystem.lookupDataSystem(options)
