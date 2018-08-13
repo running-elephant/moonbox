@@ -72,7 +72,7 @@
                 <exclude>io.netty:netty-codec-http</exclude>
                 <exclude>io.netty:netty-buffer</exclude>
                 <exclude>org.apache.lucene:*</exclude>
-                <exclude>edp.moonbox:moonbox-jdbc_2.11</exclude>
+                <exclude>com.sun.jersey:*</exclude>
             </excludes>
             <outputDirectory>libs</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
