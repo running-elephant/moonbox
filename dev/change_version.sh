@@ -20,6 +20,8 @@ if [ "$MVN_VERSION" == "$1" ]; then
     exit 0
 fi
 
+echo "$MVN_VERSION ===> $1"
+
 current_dir=`pwd`
 script_dir=$(cd `dirname $0`; pwd)
 
@@ -44,13 +46,3 @@ echo "maven new version is changed to $1 succeed"
 )
 
 echo "Bye..."
-
-#(
-#cd ${script_dir}
-#cd ..
-#root_dir=`pwd`
-#echo `grep ${MVN_VERSION} -rl ${root_dir}/sbin/` | xargs sed  -i "s/${MVN_VERSION}/$1/g"
-#echo `grep ${MVN_VERSION} -rl ${root_dir}/bin/`  | xargs sed  -i "s/${MVN_VERSION}/$1/g"
-#echo "script new version in bin/sbin is changed to $1 succeed"
-#)
-
