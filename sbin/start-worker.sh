@@ -18,11 +18,11 @@ if [ $# -ne 3 ]; then
     master_url="grid://"`echo $master_lines | sed 's/[[:space:]]/,/g'`
 
     echo "start MbWorker --host ${local_host} --masters ${master_url} --port [random port]"
-    java ${WORKER_JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${local_host}  --masters ${master_url}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
+    java ${WORKER_JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy.worker.MbWorker --host ${local_host}  --masters ${master_url}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
 
 else
     echo "start MbWorker(with input) --host ${1} --port ${2} --masters ${3} "
-    java ${WORKER_JAVA_OPTS} -cp ${MOONBOX_HOME}/libs/*:${MOONBOX_HOME}/libs/moonbox-common_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-core_2.11-0.2.0-SNAPSHOT.jar:${MOONBOX_HOME}/libs/moonbox-grid_2.11-0.2.0-SNAPSHOT.jar moonbox.grid.deploy.worker.MbWorker --host ${1} --port ${2} --masters ${3}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
+    java ${WORKER_JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy.worker.MbWorker --host ${1} --port ${2} --masters ${3}  1>${MOONBOX_HOME}/log/"worker-$USER-$date.log" 2>&1 &
 fi
 
 if [ $? -eq 0 ]; then
