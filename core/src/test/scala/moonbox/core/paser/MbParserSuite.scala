@@ -305,7 +305,7 @@ class MbParserSuite extends FunSuite {
 
 	test("view") {
 		assertEquals(
-			CreateView(MbTableIdentifier("view", Some("db")), "SELECT * FROM table", Some("for testing"), ignoreIfExists = true),
+			CreateView(MbTableIdentifier("view", Some("db")), "SELECT * FROM table", Some("for testing"), replaceIfExists = true),
 			"CREATE VIEW IF NOT EXISTS db.view COMMENT 'for testing' AS SELECT * FROM table"
 		)
 

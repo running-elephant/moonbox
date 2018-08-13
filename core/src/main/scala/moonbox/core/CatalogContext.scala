@@ -245,6 +245,11 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.dropTable(databaseId, organization, db, table, ignoreIfNotExists)
 	}
 
+	def getTable(organizationId: Long, database: String, table: String): CatalogTable = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		getTable(catalogDatabase.id.get, table)
+	}
+
 	def getTable(databaseId: Long, table: String): CatalogTable = {
 		val database  = catalog.getDatabase(databaseId)
 		if (database.isLogical) {
@@ -262,6 +267,15 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 				updateTime = database.updateTime
 			)
 		}
+	}
+
+	def tableExists(databaseId: Long, table: String): Boolean = {
+		catalog.tableExists(databaseId, table)
+	}
+
+	def tableExists(organizationId: Long, database: String, table: String): Boolean = {
+		val catalogDatabase  = catalog.getDatabase(organizationId, database)
+		catalog.tableExists(catalogDatabase.id.get, table)
 	}
 
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
@@ -309,6 +323,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		}
 	}
 
+
+	// TODO remove
 	def getColumns(databaseId: Long, table: String)(mbSession: MbSession): Seq[CatalogColumn] = {
 		val database = catalog.getDatabase(databaseId)
 		val tableIdentifier = TableIdentifier(table, Some(database.name))
@@ -377,12 +393,22 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.viewExists(databaseId, view)
 	}
 
+	def viewExists(organizationId: Long, database: String, view: String): Boolean = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		catalog.viewExists(catalogDatabase.id.get, view)
+	}
+
 	def dropView(databaseId: Long, organization: String, db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
 		catalog.dropView(databaseId, organization, db, view, ignoreIfNotExists)
 	}
 
 	def getView(databaseId: Long, view: String): CatalogView = {
 		catalog.getView(databaseId, view)
+	}
+
+	def getView(organizationId: Long, database: String, view: String): CatalogView = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		catalog.getView(catalogDatabase.id.get, view)
 	}
 
 	def listViews(databaseId: Long): Seq[CatalogView] = {

@@ -93,10 +93,15 @@ case class ShowTables(
 	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 		    .getOrElse(ctx.databaseId)
+
 		val tables = pattern.map { p =>
 			mbSession.catalog.listTables(databaseId, p)
-		}.getOrElse(mbSession.catalog.listTables(databaseId))
-		tables.map { t => Row(t.name) }
+		}.getOrElse(mbSession.catalog.listTables(databaseId)).map(_.name)
+
+		val views = pattern.map { p =>
+			mbSession.catalog.listViews(databaseId, p)
+		}.getOrElse(mbSession.catalog.listViews(databaseId)).map(_.name)
+		(tables ++ views).map { t =>  Row(t)}
 	}
 }
 
@@ -212,6 +217,7 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 
 		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
+
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
 
 		result.append(Row("Table Name", catalogTable.name))

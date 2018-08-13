@@ -115,6 +115,10 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 	}
 
+	def registerView(name: String, plan: LogicalPlan): Unit = {
+		treeToDF(plan).createOrReplaceTempView(name)
+	}
+
 	def registerFunction(db: String, func: CatalogFunction): Unit = {
 		val funcName = s"$db.${func.name}"
 		val (nonSourceResources, sourceResources) = func.resources.partition { resource =>

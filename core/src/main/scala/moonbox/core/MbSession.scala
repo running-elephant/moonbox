@@ -23,7 +23,7 @@ package moonbox.core
 
 import moonbox.common.util.ParseUtils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog.{CatalogSession, CatalogTable}
+import moonbox.core.catalog.{CatalogColumn, CatalogSession, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import moonbox.core.execution.standalone.DataTable
@@ -31,7 +31,7 @@ import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{NoSuchPermanentFunctionException, UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import moonbox.core.datasys.Pushdownable
+import moonbox.core.datasys.{DataSystem, Pushdownable}
 import org.apache.spark.sql.{AnalysisException, DataFrame, MixcalContext}
 
 import scala.collection.mutable
@@ -96,19 +96,52 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
-	def optimizedPlan(sqlText: String): LogicalPlan = {
+	def analyzedPlan(sqlText: String): LogicalPlan = {
 		val preparedSql = prepareSql(sqlText)
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
 		val qualifiedLogicalPlan = qualifierFunctionName(parsedLogicalPlan)
-		val (tableIdentifiers, functionIdentifiers) = collectDataSourceTable(qualifiedLogicalPlan)
-		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
-			(table, getCatalogTable(table.table, table.database))
-		}
+		prepareAnalyze(qualifiedLogicalPlan)
+		mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
+	}
 
-		tableIdentifierToCatalogTable.foreach {
-			case (table, catalogTable) => mixcal.registerTable(table, catalogTable.properties)
+	def optimizedPlan(sqlText: String): LogicalPlan = {
+		val analyzedLogicalPlan = analyzedPlan(sqlText)
+		checkColumnPrivilege(analyzedLogicalPlan)
+		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+	}
+
+	def prepareAnalyze(plan: LogicalPlan): Unit = {
+		val (tableIdentifiers, functionIdentifiers) = collectUnknownTablesAndFunctions(plan)
+		registerTables(tableIdentifiers)
+		registerFunctions(functionIdentifiers)
+	}
+
+	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
+		if (columnPermission) {
+			ColumnSelectPrivilegeChecker.intercept(plan, this)
 		}
-		functionIdentifiers.foreach { function =>
+	}
+
+	def registerTables(tables: Seq[TableIdentifier]): Unit = {
+		tables.foreach { table =>
+			val isView = table.database.map(db => catalog.viewExists(catalogSession.organizationId, db, table.table))
+				.getOrElse(catalog.viewExists(catalogSession.databaseId, table.table))
+			if (isView) {
+				val catalogView = table.database.map(db => catalog.getView(catalogSession.organizationId, db, table.table))
+					.getOrElse(catalog.getView(catalogSession.databaseId, table.table))
+				val parsedPlan = mixcal.parsedLogicalPlan(prepareSql(catalogView.cmd))
+				prepareAnalyze(qualifierFunctionName(parsedPlan))
+				mixcal.registerView(catalogView.name, parsedPlan)
+			} else {// if table not exists, throws NoSuchTableException exception
+				val catalogTable = table.database.map(db => catalog.getTable(catalogSession.organizationId, db, table.table))
+					.getOrElse(catalog.getTable(catalogSession.databaseId, table.table))
+				mixcal.registerTable(table, catalogTable.properties)
+			}
+		}
+	}
+
+	def registerFunctions(functions: Seq[FunctionIdentifier]): Unit = {
+		functions.foreach { function =>
 			val (databaseId, databaseName) = if (function.database.isEmpty) {
 				(catalogSession.databaseId, catalogSession.databaseName)
 			} else {
@@ -118,11 +151,6 @@ class MbSession(conf: MbConf) extends MbLogging {
 			val catalogFunction = catalog.getFunction(databaseId, function.funcName)
 			mixcal.registerFunction(databaseName, catalogFunction)
 		}
-		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
-		if (columnPermission) {
-			ColumnSelectPrivilegeChecker.intercept(analyzedLogicalPlan, this)
-		}
-		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 	}
 
 	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): LogicalPlan = {
@@ -158,6 +186,42 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
+	def schema(view: String, database: Option[String], sqlText: String): Seq[CatalogColumn] = {
+		val db = database.getOrElse(catalogSession.databaseName)
+		val catalogDatabase = catalog.getDatabase(catalogSession.organizationId, db)
+		analyzedPlan(sqlText).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.simpleString,
+				databaseId = catalogDatabase.id.get,
+				table = view,
+				createBy = catalogDatabase.createBy,
+				createTime = catalogDatabase.createTime,
+				updateBy = catalogDatabase.updateBy,
+				updateTime = catalogDatabase.updateTime
+			)
+		}
+	}
+
+	def schema(table: String, database: Option[String]): Seq[CatalogColumn] = {
+		val db = database.getOrElse(catalogSession.databaseName)
+		val catalogDatabase = catalog.getDatabase(catalogSession.organizationId, db)
+		val tableIdentifier = TableIdentifier(table, Some(db))
+		prepareAnalyze(UnresolvedRelation(tableIdentifier))
+		mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.simpleString,
+				databaseId = catalogDatabase.id.get,
+				table = table,
+				createBy = catalogDatabase.createBy,
+				createTime = catalogDatabase.createTime,
+				updateBy = catalogDatabase.updateBy,
+				updateTime = catalogDatabase.updateTime
+			)
+		}
+	}
+
 	private def prepareSql(sqlText: String): String = {
 		ParseUtils.parseVariable(sqlText).foldLeft[String](sqlText) { case (res, elem) =>
 			res.replaceAll(s"""\\$elem""", getVariable(elem.substring(1)))
@@ -178,7 +242,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	private def collectDataSourceTable(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
+	private def collectUnknownTablesAndFunctions(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
 		val functions = new mutable.HashSet[UnresolvedFunction]()

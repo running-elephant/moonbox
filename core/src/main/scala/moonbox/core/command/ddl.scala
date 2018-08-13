@@ -390,6 +390,7 @@ case class CreateView(
 			case None =>
 				(ctx.databaseId, ctx.databaseName)
 		}
+		// TODO check query syntax
 		val catalogView = CatalogView(
 			name = view.table,
 			databaseId = databaseId,
@@ -455,6 +456,7 @@ case class AlterViewSetQuery(
 				ctx.databaseId
 		}
 		val existView: CatalogView = mbSession.catalog.getView(databaseId, view.table)
+		// TODO check query
 		mbSession.catalog.alterView(
 			existView.copy(
 				cmd = query,
