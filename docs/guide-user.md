@@ -338,7 +338,7 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     ALTER EVENT eventname DISABLE
     DROP EVENT eventname
     ```
-    创建、删除function。Moonbox除了支持jar形式的UDF,还支持在线源代码的形式,包括Java和Scala。也可以将多个函数写在一个类中,但是在注册的时候需要制定函数名。
+    创建、删除function。Moonbox除了支持jar形式的UDF,还支持在线源代码的形式,包括Java和Scala。也可以将多个函数写在一个类中,但是在注册的时候需要指定函数名。
     ```
     # 使用Scala源代码创建function
     CREATE FUNCTION funcname AS 'PersonData' 'mutiply1' USING scala '(
@@ -395,4 +395,4 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     REVOKE DCL FROM USER username
     ```
 
-以上属性看起来很复杂,可以把理解ACCOUNT、DDL、DCL为一阶权力,GrantAccount、GrantDDL、GrantDCL为二阶权力,二阶权力掌管一阶权力的授予和撤销。SA掌管二阶权力的授予和撤销。理论上通过属性的自由组合可以根据需求构建出"集权"和"三权分立"的用户体系。
+以上属性看起来很复杂,可以把ACCOUNT、DDL、DCL理解为一阶权力,GrantAccount、GrantDDL、GrantDCL为二阶权力,二阶权力掌管一阶权力的授予和撤销。SA掌管二阶权力的授予和撤销。理论上通过属性的自由组合可以根据需求构建出"集权"和"三权分立"的用户体系。
