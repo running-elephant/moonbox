@@ -115,7 +115,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 	}
 
 	private def initialize(): Future[Boolean] = {
-		action(MTable.getTables.map(_.map(_.name.name))).flatMap { exists =>
+		action(MTable.getTables("%").map(_.map(_.name.name))).flatMap { exists =>
 			val create = tableQuerys.filterNot(tableQuery => exists.contains(tableQuery.shaped.value.tableName)).map(_.schema.create)
 			action(DBIO.seq(create:_*)).flatMap { res =>
 				action(getUser("ROOT")).flatMap {
