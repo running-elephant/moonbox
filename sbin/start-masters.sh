@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 #在A上运行命令:
 # ssh-keygen -t rsa (连续三次回车,即在本地生成了公钥和私钥,不设置密码)

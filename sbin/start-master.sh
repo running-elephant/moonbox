@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 #import env firstly
 moonbox_home_dir="$(cd "`dirname "$0"`/.."; pwd)"
