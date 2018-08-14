@@ -120,7 +120,10 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 		logInfo("PreStart master ...")
         cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 
-		catalogContext = new CatalogContext(conf)
+
+		exitOnStartError {
+			catalogContext = new CatalogContext(conf)
+		}
 
 		/*checkForWorkerTimeOutTask = akkaSystem.scheduler.schedule(
 			FiniteDuration(0, MILLISECONDS),
@@ -137,7 +140,9 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 
 		if (timerServiceEnabled) {
 			timedEventService = new TimedEventServiceImpl(conf)
-			timedEventService.start()
+			exitOnStartError {
+				timedEventService.start()
+			}
 		}
 
 		if (restServerEnabled) {
@@ -151,11 +156,15 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			case "ZOOKEEPER" =>
 				logInfo("Persisting state to Zookeeper")
 				val zkFactory = new ZookeeperPersistModeFactory(conf, akkaSystem)
-				zkFactory.createPersistEngine()
+				exitOnStartError {
+					zkFactory.createPersistEngine()
+				}
 			case "HDFS" =>
 				logInfo("Persisting state to Hdfs")
 				val hdfsFactory = new HdfsPersistModeFactory(conf)
-				hdfsFactory.createPersistEngine()
+				exitOnStartError {
+					hdfsFactory.createPersistEngine()
+				}
 			case _ =>
 				new BlackHolePersistenceEngine
 		}
@@ -172,9 +181,11 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			ScheduleJob
 		)
 
-		odbcServerBoundPort = startODBCServer(serviceImpl)
-		restServerBoundPort = restServer.map(_.start())
-		tcpServerBoundPort = tcpServer.map(_.start())
+		exitOnStartError {
+			odbcServerBoundPort = startODBCServer(serviceImpl)
+			restServerBoundPort = restServer.map(_.start())
+			tcpServerBoundPort = tcpServer.map(_.start())
+		}
 
     	self ! MasterChanged
 		logInfo(s"MbMaster start successfully.")
@@ -720,7 +731,7 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 			None
 		case e: Exception =>
 			logError(e.getMessage)
-			None
+			throw e
 	}
 
 	private def checkTimedServcieValid(): Unit = {
@@ -736,6 +747,18 @@ class MbMaster(param: MbMasterParam, implicit val akkaSystem: ActorSystem) exten
 				statusJobs.remove(jobId)
 			}
 			retainedJobs.trimStart(removeSize)
+		}
+	}
+
+	private def exitOnStartError[T](f: => T): T = {
+		try {
+			f
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				logError(e.getStackTrace.mkString("\n"))
+				System.exit(1)
+				null.asInstanceOf[T]
 		}
 	}
  }

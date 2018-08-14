@@ -20,10 +20,9 @@
 
 package moonbox.core.catalog.jdbc
 
+import java.util.concurrent.atomic.AtomicBoolean
 import moonbox.common.util.ParseUtils
 import moonbox.core.catalog._
-import moonbox.core.command.PrivilegeType
-import moonbox.core.command.PrivilegeType._
 import slick.lifted.ProvenShape
 
 trait EntityComponent extends DatabaseComponent {
@@ -262,4 +261,8 @@ trait EntityComponent extends DatabaseComponent {
 		def userId = column[Long]("userId")
 		override def *  = (id.?, name, value, userId, createBy, createTime, updateBy, updateTime) <> (CatalogVariable.tupled, CatalogVariable.unapply)
 	}
+}
+
+object EntityComponent {
+	val isInitialized: AtomicBoolean = new AtomicBoolean(false)
 }
