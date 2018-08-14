@@ -115,7 +115,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging{
 	}
 
 	private def initialize(): Future[Boolean] = {
-		action(MTable.getTables.map(_.map(_.name.name))).flatMap { exists =>
+		action(MTable.getTables("%").map(_.map(_.name.name))).flatMap { exists =>
 			val create = tableQuerys.filterNot(tableQuery => exists.contains(tableQuery.shaped.value.tableName)).map { tableQuery =>
 				logInfo(s"Initializing metadata table ${tableQuery.shaped.value.tableName} in catalog database $url ")
 				tableQuery.schema.create
