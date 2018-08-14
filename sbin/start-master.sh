@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 #import env firstly
 if [ -z "${MOONBOX_HOME}" ]; then

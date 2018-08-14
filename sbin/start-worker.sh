@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 local_host=`hostname`
 date=`date +%Y%m%d_%H%M%S`
