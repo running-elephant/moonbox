@@ -115,8 +115,13 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	def registerView(name: String, plan: LogicalPlan): Unit = {
-		treeToDF(plan).createOrReplaceTempView(name)
+	def registerView(tableIdentifier: TableIdentifier, sqlText: String): Unit = {
+		val createViewSql =
+			s"""
+			   |create view ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)} as
+			   |$sqlText
+			 """.stripMargin
+		sqlToDF(createViewSql)
 	}
 
 	def registerFunction(db: String, func: CatalogFunction): Unit = {

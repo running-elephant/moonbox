@@ -129,9 +129,11 @@ class MbSession(conf: MbConf) extends MbLogging {
 			if (isView) {
 				val catalogView = table.database.map(db => catalog.getView(catalogSession.organizationId, db, table.table))
 					.getOrElse(catalog.getView(catalogSession.databaseId, table.table))
-				val parsedPlan = mixcal.parsedLogicalPlan(prepareSql(catalogView.cmd))
+				val preparedSql = prepareSql(catalogView.cmd)
+				val parsedPlan = mixcal.parsedLogicalPlan(preparedSql)
+				// TODO view column privilege
 				prepareAnalyze(qualifierFunctionName(parsedPlan))
-				mixcal.registerView(catalogView.name, parsedPlan)
+				mixcal.registerView(table, preparedSql)
 			} else {// if table not exists, throws NoSuchTableException exception
 				val catalogTable = table.database.map(db => catalog.getTable(catalogSession.organizationId, db, table.table))
 					.getOrElse(catalog.getTable(catalogSession.databaseId, table.table))
