@@ -10,13 +10,14 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>moonbox-zeppelin-interpreter</artifactId>
+    <artifactId>moonbox-zeppelin-interpreter-0.7</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.zeppelin</groupId>
             <artifactId>zeppelin-interpreter</artifactId>
             <version>0.7.3</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>
