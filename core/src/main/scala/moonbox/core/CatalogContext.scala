@@ -220,6 +220,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getDatabase(organizationId, database)
 	}
 
+	def getDatabase(databaseId: Long): CatalogDatabase = {
+		catalog.getDatabase(databaseId)
+	}
+
 	def listDatabase(organizationId: Long): Seq[CatalogDatabase] = {
 		catalog.listDatabases(organizationId)
 	}
@@ -235,7 +239,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	def alterTable(tableDefinition: CatalogTable): Unit = {
 		catalog.alterTable(tableDefinition)
 	}
-
 
 	def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long) = {
 		catalog.renameTable(databaseId, organization, db, table, newTable, updateBy)
@@ -270,12 +273,18 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def tableExists(databaseId: Long, table: String): Boolean = {
-		catalog.tableExists(databaseId, table)
+		val database  = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.tableExists(databaseId, table)
+		} else {
+			DataSystem.lookupDataSystem(database.properties).tableNames().exists(_.equalsIgnoreCase(table))
+		}
+
 	}
 
 	def tableExists(organizationId: Long, database: String, table: String): Boolean = {
 		val catalogDatabase  = catalog.getDatabase(organizationId, database)
-		catalog.tableExists(catalogDatabase.id.get, table)
+		tableExists(catalogDatabase.id.get, table)
 	}
 
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
@@ -320,32 +329,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 					updateTime = database.updateTime
 				)
 			}
-		}
-	}
-
-
-	// TODO remove
-	def getColumns(databaseId: Long, table: String)(mbSession: MbSession): Seq[CatalogColumn] = {
-		val database = catalog.getDatabase(databaseId)
-		val tableIdentifier = TableIdentifier(table, Some(database.name))
-		if (database.isLogical) {
-			val props = catalog.getTable(databaseId, table).properties
-			mbSession.mixcal.registerTable(TableIdentifier(table, Some(database.name)), props)
-		} else {
-			val props = DataSystem.lookupDataSystem(database.properties).tableProperties(table)
-			mbSession.mixcal.registerTable(tableIdentifier, props)
-		}
-		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
-			CatalogColumn(
-				name = field.name,
-				dataType = field.dataType.simpleString,
-				databaseId = database.id.get,
-				table = table,
-				createBy = database.createBy,
-				createTime = database.createTime,
-				updateBy = database.updateBy,
-				updateTime = database.updateTime
-			)
 		}
 	}
 

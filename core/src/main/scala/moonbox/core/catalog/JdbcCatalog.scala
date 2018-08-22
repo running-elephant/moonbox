@@ -611,7 +611,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// ----------------------------------------------------------------------------
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
-
+	// TODO check view exists
 	override protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(tableDefinition.databaseId)).flatMap {
 			case Some(database) =>
@@ -657,7 +657,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				}
 		}
 	}
-
+	// TODO check view exists
 	override protected def doRenameTable(databaseId: Long, table: String, newTable: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.tableExists(databaseId, table)).flatMap {
 			case true =>
