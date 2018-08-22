@@ -33,7 +33,7 @@ case class GrantGrantToUser(
 	grants: Seq[PrivilegeType],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -63,7 +63,7 @@ case class GrantGrantToGroup(
 	grants: Seq[PrivilegeType],
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -98,7 +98,7 @@ case class RevokeGrantFromUser(
 	grants: Seq[PrivilegeType],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -128,7 +128,7 @@ case class RevokeGrantFromGroup(
 	grants: Seq[PrivilegeType],
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -162,7 +162,7 @@ case class RevokeGrantFromGroup(
 
 case class GrantPrivilegeToUser(privileges: Seq[PrivilegeType], users: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -192,7 +192,7 @@ case class GrantPrivilegeToUser(privileges: Seq[PrivilegeType], users: Seq[Strin
 
 case class GrantPrivilegeToGroup(privileges: Seq[PrivilegeType], groups: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -226,7 +226,7 @@ case class GrantPrivilegeToGroup(privileges: Seq[PrivilegeType], groups: Seq[Str
 
 case class RevokePrivilegeFromUser(privileges: Seq[PrivilegeType], users: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -256,7 +256,7 @@ case class RevokePrivilegeFromUser(privileges: Seq[PrivilegeType], users: Seq[St
 
 case class RevokePrivilegeFromGroup(privileges: Seq[PrivilegeType], groups: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -292,56 +292,64 @@ case class GrantResourceToUser(
 	tableIdentifier: MbTableIdentifier,
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
-		// TODO table exists and mapping
+	private def dbLevelPrivileges(mbSession: MbSession, catalogUsers: Seq[CatalogUser],
+		catalogDatabase: CatalogDatabase)(implicit ctx: UserContext) = {
+		val privilegeType = privileges.flatMap {
+			case SelectPrivilege(columns) if columns.nonEmpty =>
+				throw new Exception("Illegal grant command.")
+			case UpdatePrivilege(columns) if columns.nonEmpty =>
+				throw new Exception("Illegal grant command.")
+			case SelectPrivilege(_) =>
+				Seq(SelectPrivilege.NAME)
+			case UpdatePrivilege(_) =>
+				Seq(UpdatePrivilege.NAME)
+			case InsertPrivilege =>
+				Seq(InsertPrivilege.NAME)
+			case DeletePrivilege =>
+				Seq(DeletePrivilege.NAME)
+			case TruncatePrivilege =>
+				Seq(TruncatePrivilege.NAME)
+			case AllPrivilege =>
+				AllPrivilege.NAMES
+		}
+		catalogUsers.foreach { catalogUser =>
+			val catalogDatabasePrivileges = privilegeType.map { priv =>
+				CatalogDatabasePrivilege(
+					userId = catalogUser.id.get,
+					databaseId = catalogDatabase.id.get,
+					privilegeType = priv,
+					createBy = ctx.userId,
+					updateBy = ctx.userId
+				)
+			}
+			mbSession.catalog.createDatabasePrivilege(
+				catalogDatabasePrivileges,
+				catalogUser.name,
+				ctx.organizationName,
+				catalogDatabase.name)
+		}
+	}
+
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
 
-
-		if (tableIdentifier.table == "*") { // database privilege
-			val privilegeType = privileges.flatMap {
-				case SelectPrivilege(columns) if columns.nonEmpty =>
-					throw new Exception("Illegal grant command.")
-				case UpdatePrivilege(columns) if columns.nonEmpty =>
-					throw new Exception("Illegal grant command.")
-				case SelectPrivilege(_) =>
-					Seq(SelectPrivilege.NAME)
-				case UpdatePrivilege(_) =>
-					Seq(UpdatePrivilege.NAME)
-				case InsertPrivilege =>
-					Seq(InsertPrivilege.NAME)
-				case DeletePrivilege =>
-					Seq(DeletePrivilege.NAME)
-				case TruncatePrivilege =>
-					Seq(TruncatePrivilege.NAME)
-				case AllPrivilege =>
-					AllPrivilege.NAMES
-			}
-			catalogUsers.foreach { catalogUser =>
-				val catalogDatabasePrivileges = privilegeType.map { priv =>
-					CatalogDatabasePrivilege(
-						userId = catalogUser.id.get,
-						databaseId = catalogDatabase.id.get,
-						privilegeType = priv,
-						createBy = ctx.userId,
-						updateBy = ctx.userId
-					)
-				}
-				mbSession.catalog.createDatabasePrivilege(
-					catalogDatabasePrivileges,
-					catalogUser.name,
-					ctx.organizationName,
-					catalogDatabase.name)
-			}
+		if (tableIdentifier.table == "*") { // database level privilege
+			dbLevelPrivileges(mbSession, catalogUsers, catalogDatabase)
 		} else {
-			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
-			val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
-			val catalogColumns = mbSession.catalog.getColumns(catalogDatabase.id.get, tableIdentifier.table)(mbSession)
+			lazy val tableExists = mbSession.catalog.tableExists(catalogDatabase.id.get, tableIdentifier.table)
+			lazy val viewExists = mbSession.catalog.viewExists(catalogDatabase.id.get, tableIdentifier.table)
+			require(tableExists || viewExists,
+				s"Table or view ${tableIdentifier.database.map(_ + ".").getOrElse("")}${tableIdentifier.table}"
+			)
+
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false
 				case UpdatePrivilege(columns) if columns.nonEmpty => false
 				case _ => true
 			}
+
 			val privilegeType = tablePrivileges.flatMap {
 				case SelectPrivilege(_) =>
 					Seq(SelectPrivilege.NAME)
@@ -361,7 +369,7 @@ case class GrantResourceToUser(
 					CatalogTablePrivilege(
 						userId = catalogUser.id.get,
 						databaseId = catalogDatabase.id.get,
-						table = physicalTableName,
+						table = tableIdentifier.table,
 						privilegeType = priv,
 						createBy = ctx.userId,
 						updateBy = ctx.userId
@@ -374,6 +382,14 @@ case class GrantResourceToUser(
 					catalogDatabase.name,
 					tableIdentifier.table)
 			}
+
+			val catalogColumns = if (tableExists) {
+				mbSession.schema(tableIdentifier.table, tableIdentifier.database)
+			} else {
+				val catalogView = mbSession.catalog.getView(catalogDatabase.id.get, tableIdentifier.table)
+				mbSession.schema(catalogDatabase.id.get, tableIdentifier.table, catalogView.cmd)
+			}
+
 			catalogUsers.foreach { catalogUser =>
 				val catalogColumnPrivileges = columnPrivileges.flatMap {
 					case SelectPrivilege(columns) =>
@@ -382,7 +398,7 @@ case class GrantResourceToUser(
 							CatalogColumnPrivilege(
 								userId = catalogUser.id.get,
 								databaseId = catalogDatabase.id.get,
-								table = physicalTableName,
+								table = tableIdentifier.table,
 								column = column,
 								privilegeType = SelectPrivilege.NAME,
 								createBy = ctx.userId,
@@ -395,7 +411,7 @@ case class GrantResourceToUser(
 							CatalogColumnPrivilege(
 								userId = catalogUser.id.get,
 								databaseId = catalogDatabase.id.get,
-								table = physicalTableName,
+								table = tableIdentifier.table,
 								column = column,
 								privilegeType = UpdatePrivilege.NAME,
 								createBy = ctx.userId,
@@ -427,7 +443,7 @@ case class GrantResourceToGroup(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}
@@ -441,7 +457,7 @@ case class RevokeResourceFromUser(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	users: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
 
@@ -474,8 +490,6 @@ case class RevokeResourceFromUser(
 					catalogDatabase.name)
 			}
 		} else {
-			val catalogTable = mbSession.catalog.getTable(catalogDatabase.id.get, tableIdentifier.table)
-			val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
 
 			val (tablePrivileges, columnPrivileges) = privileges.span {
 				case SelectPrivilege(columns) if columns.nonEmpty => false
@@ -500,7 +514,7 @@ case class RevokeResourceFromUser(
 				mbSession.catalog.dropTablePrivilege(
 					catalogUser.id.get,
 					catalogDatabase.id.get,
-					physicalTableName,
+					tableIdentifier.table,
 					privilegeTypes,
 					catalogUser.name,
 					ctx.organizationName,
@@ -516,7 +530,7 @@ case class RevokeResourceFromUser(
 				mbSession.catalog.dropColumnPrivilege(
 					catalogUser.id.get,
 					catalogDatabase.id.get,
-					physicalTableName,
+					tableIdentifier.table,
 					catalogColumnPrivileges,
 					catalogUser.name,
 					ctx.organizationName,
@@ -531,7 +545,7 @@ case class RevokeResourceFromGroup(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}

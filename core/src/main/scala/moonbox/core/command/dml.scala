@@ -32,7 +32,7 @@ import scala.collection.mutable.ArrayBuffer
 sealed trait DML
 
 case class UseDatabase(db: String) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
@@ -47,7 +47,7 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 
 case class SetVariable(name: String, value: String, isGlobal: Boolean)
 	extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		// TODO
 		if (isGlobal) {
 			throw new UnsupportedOperationException("Set global configuration doesn't support now.")
@@ -59,7 +59,7 @@ case class SetVariable(name: String, value: String, isGlobal: Boolean)
 }
 
 case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val variables = pattern.map { p =>
 			mbSession.getVariables.filterKeys(key =>
 				Utils.escapeLikeRegex(p).r.pattern.matcher(key).matches()).toSeq
@@ -78,7 +78,7 @@ case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with
 case class ShowDatabases(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databases = pattern.map { p =>
 			mbSession.catalog.listDatabase(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatabase(ctx.organizationId))
@@ -90,7 +90,7 @@ case class ShowTables(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 		    .getOrElse(ctx.databaseId)
 
@@ -109,7 +109,7 @@ case class ShowViews(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val views = pattern.map { p =>
@@ -123,7 +123,7 @@ case class ShowFunctions(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val functions = pattern.map { p =>
@@ -136,7 +136,7 @@ case class ShowFunctions(
 case class ShowUsers(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val users = pattern.map { p =>
 			mbSession.catalog.listUsers(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listUsers(ctx.organizationId))
@@ -146,7 +146,7 @@ case class ShowUsers(
 
 case class ShowGroups(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val groups = pattern.map { p =>
 			mbSession.catalog.listGroups(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listGroups(ctx.organizationId))
@@ -157,7 +157,7 @@ case class ShowGroups(
 case class ShowProcedures(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val procedures = pattern.map { p =>
 			mbSession.catalog.listProcedures(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listProcedures(ctx.organizationId))
@@ -166,7 +166,7 @@ case class ShowProcedures(
 }
 
 case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvents = pattern.map { p =>
 			mbSession.catalog.listTimedEvents(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listTimedEvents(ctx.organizationId))
@@ -175,16 +175,22 @@ case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DM
 }
 
 case class ShowGrants(user: String) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession) = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext) = {
 		val catalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		if (mbSession.catalog.isSa(ctx.userId) || user == ctx.userName) {
 			val buffer = new ArrayBuffer[Row]()
 			val databasePrivilege = mbSession.catalog.getDatabasePrivilege(catalogUser.id.get)
 			val tablePrivilege = mbSession.catalog.getTablePrivilege(catalogUser.id.get)
 			val columnPrivilege = mbSession.catalog.getColumnPrivilege(catalogUser.id.get)
-			buffer.append( databasePrivilege.map { p => Row("Database Privilege" , s"${ctx.databaseName} : ${p.privilegeType}")}:_*)
-			buffer.append( tablePrivilege.map { p => Row("Table Privilege" , s"${ctx.databaseName}.${p.table} : ${p.privilegeType}")}:_* )
-			buffer.append( columnPrivilege.map { p=> Row("Column Privilege" , s"${ctx.databaseName}.${p.table}.${p.column} : ${p.privilegeType}")}:_*)
+			buffer.append( databasePrivilege.map { p =>
+				val database = mbSession.catalog.getDatabase(p.databaseId)
+				Row("Database Privilege" , s"${database.name} : ${p.privilegeType}")}:_*)
+			buffer.append( tablePrivilege.map { p =>
+				val database = mbSession.catalog.getDatabase(p.databaseId)
+				Row("Table Privilege" , s"${database.name}.${p.table} : ${p.privilegeType}")}:_* )
+			buffer.append( columnPrivilege.map { p =>
+				val database = mbSession.catalog.getDatabase(p.databaseId)
+				Row("Column Privilege" , s"${database.name}.${p.table}.${p.column} : ${p.privilegeType}")}:_*)
 			buffer
 		} else {
 			throw new Exception(s"Access denied for user '$user'")
@@ -194,7 +200,7 @@ case class ShowGrants(user: String) extends MbRunnableCommand with DML {
 
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val database = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		val isLogical = database.isLogical
 		val properties = database.properties.filterNot { case (key, _) =>
@@ -211,8 +217,8 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 }
 
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
-
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	// TODO view
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
 
 		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
@@ -256,7 +262,7 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 
 case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = view.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogView = mbSession.catalog.getView(databaseId, view.table)
@@ -271,7 +277,7 @@ case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML 
 case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
 	extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
 
 		val databaseId = function.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
@@ -291,7 +297,7 @@ case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
 
 case class DescUser(user: String) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		val result = Row("User Name", catalogUser.name) ::
 			Row("Account", catalogUser.account) ::
@@ -307,7 +313,7 @@ case class DescUser(user: String) extends MbRunnableCommand with DML {
 
 case class DescGroup(group: String) extends MbRunnableCommand with DML {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroup: CatalogGroup = mbSession.catalog.getGroup(ctx.organizationId, group)
 		val result = Row("Group Name", catalogGroup.name) ::
 			Row("Description", catalogGroup.description.getOrElse("")) :: Nil
@@ -316,7 +322,7 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 }
 
 case class DescEvent(event: String) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogTimedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, event)
 		val catalogUser = mbSession.catalog.getUser(catalogTimedEvent.definer)
 		val proc = mbSession.catalog.getProcedure(catalogTimedEvent.procedure)
@@ -346,7 +352,7 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
 	// TODO
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = try {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = try {
 		val logicalPlan = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
 		val outputString = logicalPlan match {
 			case w@WholePushdown(child, _) =>

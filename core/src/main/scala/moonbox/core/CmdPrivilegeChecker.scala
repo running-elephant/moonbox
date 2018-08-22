@@ -21,36 +21,36 @@
 package moonbox.core
 
 import moonbox.common.MbLogging
-import moonbox.core.catalog.CatalogSession
+import moonbox.core.catalog.UserContext
 import moonbox.core.command.PrivilegeType.{PrivilegeType, DDL => _, _}
 import moonbox.core.command._
 
 object CmdPrivilegeChecker extends MbLogging {
-	def intercept(cmd: MbCommand, catalog: CatalogContext, session: CatalogSession): Boolean = {
+	def intercept(cmd: MbCommand, catalog: CatalogContext, userContext: UserContext): Boolean = {
 		cmd match {
-			case dml: DML => catalog.canDml(session.userId)
-			case ddl: DDL => catalog.canDdl(session.userId)
+			case dml: DML => catalog.canDml(userContext.userId)
+			case ddl: DDL => catalog.canDdl(userContext.userId)
 			case GrantResourceToUser(_, _, _)
 				 | GrantResourceToGroup(_, _, _)
 				 | RevokeResourceFromUser(_, _, _)
-				 | RevokeResourceFromGroup(_, _, _) => catalog.canDcl(session.userId)
+				 | RevokeResourceFromGroup(_, _, _) => catalog.canDcl(userContext.userId)
 			case CreateOrganization(_, _, _)
 				 | AlterOrganizationSetName(_, _)
 				 | AlterOrganizationSetComment(_, _)
-				 | DropOrganization(_, _, _) => session.userName == "ROOT"
+				 | DropOrganization(_, _, _) => userContext.userName == "ROOT"
 			case CreateSa(_, _, _, _)
 				 | AlterSaSetName(_, _, _)
 				 | AlterSaSetPassword(_, _, _)
-				 | DropSa(_, _, _) => session.userName == "ROOT"
-			case account: Account => catalog.canAccount(session.userId)
+				 | DropSa(_, _, _) => userContext.userName == "ROOT"
+			case account: Account => catalog.canAccount(userContext.userId)
 			case GrantGrantToUser(_, _)
 				 | GrantGrantToGroup(_, _)
 				 | RevokeGrantFromUser(_, _)
-				 | RevokeGrantFromGroup(_, _)  => catalog.isSa(session.userId)
-			case GrantPrivilegeToUser(privileges, _) => checkPrivileges(privileges, catalog, session.userId)
-			case GrantPrivilegeToGroup(privileges, _) => checkPrivileges(privileges, catalog, session.userId)
-			case RevokePrivilegeFromUser(privileges, _) => checkPrivileges(privileges, catalog, session.userId)
-			case RevokePrivilegeFromGroup(privileges, _) => checkPrivileges(privileges, catalog, session.userId)
+				 | RevokeGrantFromGroup(_, _)  => catalog.isSa(userContext.userId)
+			case GrantPrivilegeToUser(privileges, _) => checkPrivileges(privileges, catalog, userContext.userId)
+			case GrantPrivilegeToGroup(privileges, _) => checkPrivileges(privileges, catalog, userContext.userId)
+			case RevokePrivilegeFromUser(privileges, _) => checkPrivileges(privileges, catalog, userContext.userId)
+			case RevokePrivilegeFromGroup(privileges, _) => checkPrivileges(privileges, catalog, userContext.userId)
 		}
 	}
 	private def checkPrivileges(privileges: Seq[PrivilegeType], catalog: CatalogContext, userId: Long): Boolean = {
