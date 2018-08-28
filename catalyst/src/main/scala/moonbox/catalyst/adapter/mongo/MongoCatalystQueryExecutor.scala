@@ -34,7 +34,7 @@ import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, GetStructField}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DataType, StructType}
 import org.apache.spark.sql.{Row, UDFRegistration}
 import org.bson.{BsonDocument, Document}
 
@@ -82,10 +82,14 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
 
   def toIterator[T](plan: LogicalPlan, converter: Seq[Any] => T): Iterator[T] = {
     val (iter, _, context) = getBsonIterator(plan)
-    bsonIteratorConverter(iter, context.index2FieldName, converter)
+    bsonIteratorConverter(iter, plan.schema, context.index2FieldName, converter)
   }
 
-  private def bsonIteratorConverter[T](iter: Iterator[Document], index2FieldName: mutable.Map[Int, String], converter: => Seq[Any] => T): Iterator[T] = {
+  private def bsonIteratorConverter[T](iter: Iterator[Document], schema: StructType, index2FieldName: mutable.Map[Int, String], converter: => Seq[Any] => T): Iterator[T] = {
+    val types: Array[DataType] = schema.fields.map(_.dataType)
+    if (types.length != index2FieldName.size){
+      throw new Exception("Data and schema not match.")
+    }
     new Iterator[T] {
       override def hasNext = iter.hasNext
       override def next() = {
@@ -100,7 +104,7 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
           }
           if (ithFieldName.isEmpty)
             throw new Exception("Field name cannot be null")
-          res :+= MongoJDBCUtils.bsonValue2Value(doc.get(ithFieldName.head), ithFieldName.tail)
+          res :+= MongoJDBCUtils.bsonValue2Value(doc.get(ithFieldName.head), ithFieldName.tail, types(i - 1))
         }
         converter(res)
       }
@@ -109,7 +113,7 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
 
   override def execute4Jdbc(plan: LogicalPlan): (Iterator[JdbcRow], Map[Int, Int], Map[String, Int]) = {
     val (iter, outputSchema, context) = getBsonIterator(plan, new CatalystContext)
-    val newIterator = bsonIteratorConverter(iter, context.index2FieldName, in => new JdbcRow(in: _*))
+    val newIterator = bsonIteratorConverter(iter, plan.schema, context.index2FieldName, in => new JdbcRow(in: _*))
     val columnLabel2Index = context.index2FieldName.map(e => e._2 -> e._1).toMap
     val index2SqlType = MongoJDBCUtils.index2SqlType(outputSchema)
     (newIterator, index2SqlType, columnLabel2Index)

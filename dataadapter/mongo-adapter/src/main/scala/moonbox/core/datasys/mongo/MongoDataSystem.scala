@@ -351,6 +351,12 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
     try {
       val client = executor.client.client
       batchInsert(client.getDatabase(writeDatabase), writeCollection, maxBatchSize, table, saveMode)
+    } catch {
+      case e: Exception =>
+        val sw = new StringWriter()
+        e.printStackTrace(new PrintWriter(sw))
+        logWarning(sw.toString)
+        throw e
     } finally {
       executor.close()
       table.close()

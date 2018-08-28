@@ -25,8 +25,10 @@ import java.util.Locale
 
 import moonbox.repl.adapter.{Connector, JdbcConnector, Utils}
 import moonbox.repl.http.MbHttpConnector
+import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.reader.impl.completer.StringsCompleter
+import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.{Terminal, TerminalBuilder}
 import org.jline.terminal.Terminal.Signal
 import org.jline.terminal.Terminal.SignalHandler
@@ -47,7 +49,9 @@ object Main extends JsonSerializer {
   var password: String = _
   val DELIMITER: String = ";"
   val PARAMETER_PREFIX: String = "%SET "
-  val historySqls: mutable.Queue[String] = new mutable.Queue[String]()
+  val historyMqls: mutable.Queue[String] = new mutable.Queue[String]()
+  val lineHistory: mutable.Queue[String] = new mutable.Queue[String]()
+  val HISTORY_SIZE: Int = 100 /* max number of history to maintain */
   var connector: Connector = _
   val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
     override def handle(signal: Signal): Unit = {
@@ -81,6 +85,13 @@ object Main extends JsonSerializer {
     } while (retryTimes > 0)
 
     System.exit(-1)
+  }
+
+  private def setHistory(lineReader: LineReaderImpl) = {
+    lineReader.getHistory.purge()
+    val h = new DefaultHistory()
+    lineHistory.foreach(h.add)
+    lineReader.setHistory(h)
   }
 
   def repl(): Unit = {
@@ -130,11 +141,9 @@ object Main extends JsonSerializer {
           val cleanedSqls = sqlList.map(_.trim).filterNot(_ == "")
           if (cleanedSqls.nonEmpty) {
             /* add line reader history */
-            lineReader.getHistory.add(cleanedSqls.mkString("; "))
-            /* 100 history SQLs limited */
-            while (historySqls.length > 100) {
-              historySqls.dequeue()
-            }
+            enqueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
+            setHistory(lineReader.asInstanceOf[LineReaderImpl])
+
             process(cleanedSqls)
           }
         } catch {
@@ -175,21 +184,27 @@ object Main extends JsonSerializer {
     }
   }
 
+  private def enqueWithLimit(queue: mutable.Queue[String], sqls: String*): Unit = {
+    queue.enqueue(sqls: _*)
+    /* The size of history SQLs limited */
+    while (queue.length > HISTORY_SIZE) {
+      queue.dequeue()
+    }
+  }
+
   private def process(sqlList: Seq[String]): Unit = {
     sqlList.head.toUpperCase(Locale.ROOT) match {
       case "" =>
       case stmt if stmt.startsWith(PARAMETER_PREFIX) =>
-        sqlList.foreach { sql =>
-          historySqls.enqueue(sql)
-        }
+        enqueWithLimit(historyMqls, sqlList: _*)
         processParams(stmt.stripPrefix(PARAMETER_PREFIX).trim, sqlList)
         val s = sqlList.tail
         if (s.nonEmpty) {
           connector.process(s)
         }
       case "HISTORY" | "H" =>
-        val data = historySqls.zipWithIndex.map(u => Seq(historySqls.length - u._2, u._1 + ";"))
-        print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), 100))
+        val data = historyMqls.zipWithIndex.map(u => Seq(historyMqls.length - u._2, u._1 + ";"))
+        print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
       case "RECONNECT" | "R" =>
         connector.close()
         repl()
@@ -197,10 +212,7 @@ object Main extends JsonSerializer {
         connector.shutdown()
         System.exit(0)
       case _ =>
-        /* add moonbox history SQLs */
-        sqlList.foreach { sql =>
-          historySqls.enqueue(sql)
-        }
+        enqueWithLimit(historyMqls, sqlList: _*)
         connector.process(sqlList)
     }
   }

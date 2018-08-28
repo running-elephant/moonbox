@@ -51,15 +51,38 @@ object MongoJDBCUtils {
     else Seq(("127.0.0.1", "27017"))
   }
 
-  def bsonValue2Value(bsonValue: BsonValue, fieldName: Seq[String]): Any = {
+  def numericValueConverter(value: Any, dataType: DataType): Any = {
+    import java.math.BigDecimal
+    value match {
+      case v: BigDecimal => v
+      case v: Double => v
+      case v: Float => v
+      case v: Byte => v
+      case v: Int =>
+        dataType match {
+          case LongType => v.toLong
+          case _ => v
+        }
+      case v: Long =>
+        dataType match {
+          case IntegerType => v.toInt
+          case _ => v
+        }
+      case v: Short => v
+      case _ => value
+    }
+
+  }
+
+  def bsonValue2Value(bsonValue: BsonValue, fieldName: Seq[String], dataType: DataType): Any = {
     if (bsonValue.isArray) {
       if (fieldName.isEmpty) {
-        bsonValue.asArray().getValues.asScala.map(v => bsonValue2Value(v, fieldName)).toArray
+        bsonValue.asArray().getValues.asScala.map(v => bsonValue2Value(v, fieldName, dataType)).toArray
       } else {
         bsonValue.asArray().getValues.asScala.filter(doc =>
           doc.isDocument && doc.asDocument().containsKey(fieldName.head)
         ).map(doc =>
-          bsonValue2Value(doc.asDocument().get(fieldName.head), fieldName.tail)
+          bsonValue2Value(doc.asDocument().get(fieldName.head), fieldName.tail, dataType)
         ).toArray
       }
     } else if (bsonValue.isBinary) {
@@ -79,13 +102,16 @@ object MongoJDBCUtils {
       if (fieldName.isEmpty)
         bsonValue.asDocument().toString
       else
-        bsonValue2Value(bsonValue.asDocument().get(fieldName.head), fieldName.tail)
+        bsonValue2Value(bsonValue.asDocument().get(fieldName.head), fieldName.tail, dataType)
     } else if (bsonValue.isDouble) {
-      bsonValue.asDouble.getValue
+      val value = bsonValue.asDouble.getValue
+      numericValueConverter(value, dataType)
     } else if (bsonValue.isInt32) {
-      bsonValue.asInt32.getValue
+      val value = bsonValue.asInt32.getValue
+      numericValueConverter(value, dataType)
     } else if (bsonValue.isInt64) {
-      bsonValue.asInt64().getValue
+      val value = bsonValue.asInt64().getValue
+      numericValueConverter(value, dataType)
     } else if (bsonValue.isJavaScript) {
       /**javaScript*/
       bsonValue.asJavaScript().getCode
