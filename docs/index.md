@@ -115,7 +115,7 @@ Please refer to [Moonbox用户手册](https://edp963.github.io/moonbox).  ​
 
 ## Latest Release
 
-Please download the latest [RELEASE]()
+Please download the latest [RELEASE](https://github.com/edp963/moonbox/releases)
 
 ## Help
 

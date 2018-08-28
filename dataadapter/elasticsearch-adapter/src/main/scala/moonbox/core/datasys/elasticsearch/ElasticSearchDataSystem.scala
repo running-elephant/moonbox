@@ -199,9 +199,11 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
         try { //throw exception and close connection
             executor = new EsCatalystQueryExecutor(prop)
             true
-        } catch{
-            case e: Exception => logWarning(s"ElasticSearchDataSystem test() failed ${e.getMessage}")
-                false
+        } catch {
+            case e: Throwable =>
+				logWarning(s"test failed ${e.getMessage}")
+				logWarning(e.getStackTrace.mkString("\n"))
+               false
         } finally {
             if(executor != null) { executor.close() }
         }

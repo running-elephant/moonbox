@@ -21,7 +21,7 @@
 package moonbox.grid.deploy.authenticate
 
 import moonbox.common.MbConf
-import moonbox.core.catalog.CatalogSession
+import moonbox.core.catalog.UserContext
 import moonbox.grid.config._
 
 class LdapLogin(conf: MbConf) extends Login {

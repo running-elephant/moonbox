@@ -33,7 +33,7 @@ class FunctionExistsException(db: String, func: String)
 	extends ExistsException(s"Function $func already exists in database $db")
 
 class ViewExistsException(db: String, view: String)
-	extends ExistsException(s"Function $view already exists in database $db")
+	extends ExistsException(s"View $view already exists in database $db")
 
 class ColumnExistsException(table: String, column: String)
 	extends ExistsException(s"Column $column already exists in table $table")

@@ -1,0 +1,7 @@
+
+##### only for SPARK ON YARN deploy mode
+# export SPARK_HOME=path/to/installed/dir
+
+#### for ALL deploy mode
+export MOONBOX_SSH_OPTIONS="-p 22"
+export MOONBOX_HOME=path/to/installed/dir

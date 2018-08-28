@@ -45,7 +45,7 @@ import scala.util.{Failure, Success}
 class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	implicit val askTimeout = Timeout(new FiniteDuration(20, SECONDS))
 	private val awaitTimeout = new FiniteDuration(20, SECONDS)
-	private implicit val catalogSession = mbSession.catalogSession
+	private implicit val catalogSession = mbSession.userContext
 	private var currentJob: JobInfo = _
     private implicit val contextExecutor = {
         val executor = Executors.newFixedThreadPool(10)  //poolsize is temporarily set 10
@@ -63,7 +63,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				case Failure(e) =>
                     if(e.getMessage.contains("cancelled job")){
                         cancelCallback(jobInfo.jobId, e, target, false) //TaskKilledException can not catch
-                    }else{
+                    } else{
                         failureCallback(jobInfo.jobId, e, target, jobInfo.sessionId.isEmpty)
                     }
 			}
@@ -202,7 +202,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
                 if (e.getMessage.contains("cancelled job")) {
                     throw e
                 } else {
-                    e.printStackTrace()
                     logWarning(s"Execute push failed with ${e.getMessage}. Retry without pushdown.")
                     val plan = mbSession.pushdownPlan(optimized, pushdown = false)
                     plan match {
@@ -217,7 +216,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 	def insertInto(insert: InsertInto): JobResult = {
-		// TODO write privilege
+		// TODO sink is table or view
 		val sinkCatalogTable = mbSession.getCatalogTable(insert.table.table, insert.table.database)
 		val options = sinkCatalogTable.properties
 		val sinkDataSystem = DataSystem.lookupDataSystem(options)
@@ -272,8 +271,10 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 	private def failureCallback(jobId: String, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
+		val errorMessage = Option(e.getCause).map(_.getMessage).getOrElse(e.getMessage)
 		logError(e.getStackTrace.map(_.toString).mkString("\n"))
-		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(e.getMessage))
+		logError(errorMessage)
+		requester ! JobStateChanged(jobId, JobState.FAILED, Failed(errorMessage))
 		if (shutdown) {
 			clean(JobState.FAILED)
 			self ! PoisonPill

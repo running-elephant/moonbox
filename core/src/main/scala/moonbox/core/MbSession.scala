@@ -23,7 +23,7 @@ package moonbox.core
 
 import moonbox.common.util.ParseUtils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog.{CatalogSession, CatalogTable}
+import moonbox.core.catalog.{CatalogColumn, UserContext, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import moonbox.core.execution.standalone.DataTable
@@ -31,13 +31,13 @@ import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{NoSuchPermanentFunctionException, UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import moonbox.core.datasys.Pushdownable
+import moonbox.core.datasys.{DataSystem, Pushdownable}
 import org.apache.spark.sql.{AnalysisException, DataFrame, MixcalContext}
 
 import scala.collection.mutable
 
 class MbSession(conf: MbConf) extends MbLogging {
-	implicit var catalogSession: CatalogSession = _
+	implicit var userContext: UserContext = _
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
 
@@ -46,18 +46,18 @@ class MbSession(conf: MbConf) extends MbLogging {
 	val mixcal = new MixcalContext(conf)
 
 	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
-		this.catalogSession = {
+		this.userContext = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
 					if (catalogUser.name == "ROOT") {
-						new CatalogSession(
+						new UserContext(
 							catalogUser.id.get,
 							catalogUser.name,
 							-1, "SYSTEM", true, -1, "SYSTEM")
 					} else {
 						val organization = catalog.getOrganization(catalogUser.organizationId)
 						val database = catalog.getDatabase(catalogUser.organizationId, initializedDatabase.getOrElse("default"))
-						new CatalogSession(
+						new UserContext(
 							catalogUser.id.get,
 							catalogUser.name,
 							database.id.get,
@@ -71,7 +71,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 					throw new Exception(s"$username does not exist.")
 			}
 		}
-		catalog.listDatabase(catalogSession.organizationId).map { catalogDatabase =>
+		catalog.listDatabase(userContext.organizationId).map { catalogDatabase =>
 			if (!mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
 				mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
 			}
@@ -96,33 +96,62 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
-	def optimizedPlan(sqlText: String): LogicalPlan = {
+	def analyzedPlan(sqlText: String): LogicalPlan = {
 		val preparedSql = prepareSql(sqlText)
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
 		val qualifiedLogicalPlan = qualifierFunctionName(parsedLogicalPlan)
-		val (tableIdentifiers, functionIdentifiers) = collectDataSourceTable(qualifiedLogicalPlan)
-		val tableIdentifierToCatalogTable = tableIdentifiers.map { table =>
-			(table, getCatalogTable(table.table, table.database))
-		}
+		prepareAnalyze(qualifiedLogicalPlan)
+		mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
+	}
 
-		tableIdentifierToCatalogTable.foreach {
-			case (table, catalogTable) => mixcal.registerTable(table, catalogTable.properties)
+	def optimizedPlan(sqlText: String): LogicalPlan = {
+		val analyzedLogicalPlan = analyzedPlan(sqlText)
+		checkColumnPrivilege(analyzedLogicalPlan)
+		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+	}
+
+	def prepareAnalyze(plan: LogicalPlan): Unit = {
+		val (tableIdentifiers, functionIdentifiers) = collectUnknownTablesAndFunctions(plan)
+		registerTables(tableIdentifiers)
+		registerFunctions(functionIdentifiers)
+	}
+
+	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
+		if (columnPermission) {
+			ColumnSelectPrivilegeChecker.intercept(plan, this)
 		}
-		functionIdentifiers.foreach { function =>
+	}
+
+	def registerTables(tables: Seq[TableIdentifier]): Unit = {
+		tables.foreach { table =>
+			val isView = table.database.map(db => catalog.viewExists(userContext.organizationId, db, table.table))
+				.getOrElse(catalog.viewExists(userContext.databaseId, table.table))
+			if (isView) {
+				val catalogView = table.database.map(db => catalog.getView(userContext.organizationId, db, table.table))
+					.getOrElse(catalog.getView(userContext.databaseId, table.table))
+				val preparedSql = prepareSql(catalogView.cmd)
+				val parsedPlan = mixcal.parsedLogicalPlan(preparedSql)
+				prepareAnalyze(qualifierFunctionName(parsedPlan))
+				mixcal.registerView(table, preparedSql)
+			} else {// if table not exists, throws NoSuchTableException exception
+				val catalogTable = table.database.map(db => catalog.getTable(userContext.organizationId, db, table.table))
+					.getOrElse(catalog.getTable(userContext.databaseId, table.table))
+				mixcal.registerTable(table, catalogTable.properties)
+			}
+		}
+	}
+
+	def registerFunctions(functions: Seq[FunctionIdentifier]): Unit = {
+		functions.foreach { function =>
 			val (databaseId, databaseName) = if (function.database.isEmpty) {
-				(catalogSession.databaseId, catalogSession.databaseName)
+				(userContext.databaseId, userContext.databaseName)
 			} else {
-				val catalogDatabase = catalog.getDatabase(catalogSession.organizationId, function.database.get)
+				val catalogDatabase = catalog.getDatabase(userContext.organizationId, function.database.get)
 				(catalogDatabase.id.get, catalogDatabase.name)
 			}
 			val catalogFunction = catalog.getFunction(databaseId, function.funcName)
 			mixcal.registerFunction(databaseName, catalogFunction)
 		}
-		val analyzedLogicalPlan = mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
-		if (columnPermission) {
-			ColumnSelectPrivilegeChecker.intercept(analyzedLogicalPlan, this)
-		}
-		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 	}
 
 	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): LogicalPlan = {
@@ -142,7 +171,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	}
 
 	def withPrivilege[T](cmd: MbCommand)(f: => T): T = {
-		CmdPrivilegeChecker.intercept(cmd, catalog, catalogSession) match {
+		CmdPrivilegeChecker.intercept(cmd, catalog, userContext) match {
 			case false => throw new Exception("Permission denied.")
 			case true => f
 		}
@@ -151,10 +180,63 @@ class MbSession(conf: MbConf) extends MbLogging {
 	def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
 		database match {
 			case None =>
-				catalog.getTable(catalogSession.databaseId, table)
+				catalog.getTable(userContext.databaseId, table)
 			case Some(databaseName) =>
-				val database = catalog.getDatabase(catalogSession.organizationId, databaseName)
+				val database = catalog.getDatabase(userContext.organizationId, databaseName)
 				catalog.getTable(database.id.get, table)
+		}
+	}
+
+	def schema(databaseId: Long, view: String, sqlText: String): Seq[CatalogColumn] = {
+		val catalogDatabase = catalog.getDatabase(databaseId)
+		analyzedPlan(sqlText).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.simpleString,
+				databaseId = catalogDatabase.id.get,
+				table = view,
+				createBy = catalogDatabase.createBy,
+				createTime = catalogDatabase.createTime,
+				updateBy = catalogDatabase.updateBy,
+				updateTime = catalogDatabase.updateTime
+			)
+		}
+	}
+
+	def schema(databaseId: Long, table: String): Seq[CatalogColumn] = {
+		val catalogDatabase = catalog.getDatabase(databaseId)
+		val tableIdentifier = TableIdentifier(table, Some(catalogDatabase.name))
+		prepareAnalyze(UnresolvedRelation(tableIdentifier))
+		mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.simpleString,
+				databaseId = catalogDatabase.id.get,
+				table = table,
+				createBy = catalogDatabase.createBy,
+				createTime = catalogDatabase.createTime,
+				updateBy = catalogDatabase.updateBy,
+				updateTime = catalogDatabase.updateTime
+			)
+		}
+	}
+
+	def schema(table: String, database: Option[String]): Seq[CatalogColumn] = {
+		val db = database.getOrElse(userContext.databaseName)
+		val catalogDatabase = catalog.getDatabase(userContext.organizationId, db)
+		val tableIdentifier = TableIdentifier(table, Some(db))
+		prepareAnalyze(UnresolvedRelation(tableIdentifier))
+		mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
+			CatalogColumn(
+				name = field.name,
+				dataType = field.dataType.simpleString,
+				databaseId = catalogDatabase.id.get,
+				table = table,
+				createBy = catalogDatabase.createBy,
+				createTime = catalogDatabase.createTime,
+				updateBy = catalogDatabase.updateBy,
+				updateTime = catalogDatabase.updateTime
+			)
 		}
 	}
 
@@ -170,7 +252,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				if (mixcal.sparkSession.sessionState.catalog.functionExists(identifier)) {
 					func
 				} else {
-					val database = identifier.database.orElse(Some(catalogSession.databaseName))
+					val database = identifier.database.orElse(Some(userContext.databaseName))
 					func.copy(name = identifier.copy(database = database))
 				}
 
@@ -178,7 +260,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	private def collectDataSourceTable(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
+	private def collectUnknownTablesAndFunctions(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
 		val functions = new mutable.HashSet[UnresolvedFunction]()
@@ -222,7 +304,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 				mixcal.sparkSession.sessionState.catalog.tableExists(identifier)
 		}.map { identifier =>
 			if (identifier.database.isDefined) identifier
-			else identifier.copy(database = Some(catalogSession.databaseName))
+			else identifier.copy(database = Some(userContext.databaseName))
 		}.toSeq
 		val needRegisterFunctions = {
 			functions.filterNot { case UnresolvedFunction(identifier, children, _) =>

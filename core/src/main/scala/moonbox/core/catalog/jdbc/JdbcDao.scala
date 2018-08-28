@@ -20,30 +20,22 @@
 
 package moonbox.core.catalog.jdbc
 
-import java.util.concurrent.{CountDownLatch, TimeUnit}
-
-import moonbox.common.MbConf
+import moonbox.common.{MbConf, MbLogging}
 import moonbox.common.util.Utils
 import moonbox.core.catalog._
-import moonbox.core.command.PrivilegeType.PrivilegeType
 import moonbox.core.config._
 import slick.dbio.Effect.{Read, Write}
 import slick.jdbc.meta.MTable
 import slick.sql.{FixedSqlAction, FixedSqlStreamingAction, SqlAction}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-class JdbcDao(override val conf: MbConf) extends EntityComponent {
+class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging{
 	import profile.api._
 
-	private val lock = new CountDownLatch(1)
-	initialize().onComplete {
-		case Success(_) => lock.countDown()
-		case Failure(e) => throw e
-	}
-	lock.await(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), TimeUnit.MILLISECONDS)
+	initializeIfNeeded()
 
 	def close(): Unit = {
 		//do not need close this dao connection, because all users use one same database connection
@@ -114,9 +106,20 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent {
 		table.filter(condition).exists.result
 	}
 
+	private def initializeIfNeeded(): Unit = {
+		if (!EntityComponent.isInitialized.getAndSet(true)) {
+			// if initialize failed, throw fatal exception, then jvm exit.
+			Await.result(initialize(),
+				new FiniteDuration(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), MILLISECONDS))
+		}
+	}
+
 	private def initialize(): Future[Boolean] = {
-		action(MTable.getTables.map(_.map(_.name.name))).flatMap { exists =>
-			val create = tableQuerys.filterNot(tableQuery => exists.contains(tableQuery.shaped.value.tableName)).map(_.schema.create)
+		action(MTable.getTables("%").map(_.map(_.name.name))).flatMap { exists =>
+			val create = tableQuerys.filterNot(tableQuery => exists.contains(tableQuery.shaped.value.tableName)).map { tableQuery =>
+				logInfo(s"Initializing metadata table ${tableQuery.shaped.value.tableName} in catalog database $url ")
+				tableQuery.schema.create
+			}
 			action(DBIO.seq(create:_*)).flatMap { res =>
 				action(getUser("ROOT")).flatMap {
 					case Some(user) => Future(true)

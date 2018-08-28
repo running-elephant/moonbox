@@ -391,8 +391,8 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
 		val query = visitQuery(ctx.query()).query
 		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
-		val ignoreIfExists = ctx.EXISTS() != null
-		CreateView(tableIdentifier, query, desc, ignoreIfExists)
+		val replaceIfExists = ctx.REPLACE() != null
+		CreateView(tableIdentifier, query, desc, replaceIfExists)
 	}
 
 	override def visitRenameView(ctx: RenameViewContext): MbCommand = {

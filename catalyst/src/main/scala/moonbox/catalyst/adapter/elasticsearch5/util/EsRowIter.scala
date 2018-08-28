@@ -64,7 +64,7 @@ class EsRowIter[T](index: String,
         val content = client.getContent(response)
         val jsonRspObject: JSONObject = new JSONObject(content)
         val responseLines = client.getFieldAsLong(jsonRspObject, "hits/total")
-        if(limitSize !=0 ){ //has limit size
+        if(limitSize != -1 ){ //has limit size
             shouldProcessLines = math.min(limitSize, responseLines) //min
         }
         else {

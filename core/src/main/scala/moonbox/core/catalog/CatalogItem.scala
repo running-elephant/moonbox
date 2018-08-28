@@ -60,6 +60,17 @@ case class CatalogTable(
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogItem
 
+case class CatalogView(
+	id: Option[Long] = None,
+	name: String,
+	databaseId: Long,
+	description: Option[String],
+	cmd: String,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogItem
+
 case class CatalogOrganization(
 	id: Option[Long] = None,
 	name: String,
@@ -115,17 +126,6 @@ case class CatalogFunctionResource(
 	funcId: Long,
 	resourceType: String,
 	resource: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogView(
-	id: Option[Long] = None,
-	name: String,
-	databaseId: Long,
-	description: Option[String],
-	cmd: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,

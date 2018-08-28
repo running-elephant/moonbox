@@ -5,11 +5,11 @@ title: Integration Davinci
 
 #### 获取jdbc驱动
 
-下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar，下载地址：[releases]()
+下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
 
 #### 配置
    
-1. 将moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar拷贝到Davinci安装目录的lib目录下;
+1. 将moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar拷贝到Davinci安装目录的lib目录下;
 2. 重启Davinci服务;
 3. 登录Davinci, 并在Source页面配置Moonbox的JDBC连接信息, 如图所示:
 

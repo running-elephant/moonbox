@@ -34,7 +34,7 @@ case class CreateSa(
 	organization: String,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogOrganization = mbSession.catalog.getOrganization(organization)
 		val catalogUser = CatalogUser(
 			name = name,
@@ -60,7 +60,7 @@ case class AlterSaSetName(
 	newName: String,
 	organization: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogOrganization: CatalogOrganization = mbSession.catalog.getOrganization(organization)
 		val existUser: CatalogUser = mbSession.catalog.getUser(catalogOrganization.id.get, name)
 		require(existUser.isSA, s"ROOT can not alter non-sa.")
@@ -75,7 +75,7 @@ case class AlterSaSetPassword(
 	newPassword: String,
 	organization: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogOrganization: CatalogOrganization = mbSession.catalog.getOrganization(organization)
 		val existUser: CatalogUser = mbSession.catalog.getUser(catalogOrganization.id.get, name)
 		require(existUser.isSA, s"ROOT can not alter non-sa.")
@@ -92,7 +92,7 @@ case class DropSa(
 	ignoreIfNotExists: Boolean
 ) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogOrganization: CatalogOrganization = mbSession.catalog.getOrganization(organization)
 		val existUser: CatalogUser = mbSession.catalog.getUser(catalogOrganization.id.get, name)
 		require(existUser.isSA, s"ROOT can drop non-sa.")
@@ -106,7 +106,7 @@ case class CreateUser(
 	password: String,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUser = CatalogUser(
 			name = name,
 			password = password,
@@ -123,7 +123,7 @@ case class AlterUserSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.renameUser(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		ctx.userName = newName
 		Seq.empty[Row]
@@ -134,7 +134,7 @@ case class AlterUserSetPassword(
 	name: String,
 	newPassword: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		if (ctx.userName.equalsIgnoreCase("ROOT")) {
 			if (name.equalsIgnoreCase("ROOT")) {
 				val root = mbSession.catalog.getUser(-1, "ROOT")
@@ -174,7 +174,7 @@ case class DropUser(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.dropUser(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
 		Seq.empty[Row]
 	}
@@ -185,7 +185,7 @@ case class CreateGroup(
 	comment: Option[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroup = CatalogGroup(
 			name = name,
 			description = comment,
@@ -202,7 +202,7 @@ case class AlterGroupSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.renameGroup(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
@@ -212,7 +212,7 @@ case class AlterGroupSetComment(
 	name: String,
 	comment: String) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existGroup: CatalogGroup = mbSession.catalog.getGroup(ctx.organizationId, name)
 		mbSession.catalog.alterGroup(
 			existGroup.copy(
@@ -231,7 +231,7 @@ case class AlterGroupSetUser(
 	removeUsers: Seq[String] = Seq(),
 	addFirst: Boolean = true) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val groupId: Long = mbSession.catalog.getGroup(ctx.organizationId, name).id.get
 
 		def addUsersToGroup() = {
@@ -279,7 +279,7 @@ case class DropGroup(
 	ignoreIfNotExists: Boolean,
 	cascade: Boolean) extends MbRunnableCommand with Account {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.dropGroup(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade)
 		Seq.empty[Row]
 	}

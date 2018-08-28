@@ -611,7 +611,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// ----------------------------------------------------------------------------
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
-
+	// TODO check view exists
 	override protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(tableDefinition.databaseId)).flatMap {
 			case Some(database) =>
@@ -625,7 +625,12 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 									tableDefinition.name)
 						}
 					case false =>
-						jdbcDao.action(jdbcDao.createTable(tableDefinition))
+						jdbcDao.action(jdbcDao.viewExists(tableDefinition.databaseId, tableDefinition.name)).flatMap {
+							case true =>
+								throw new TableExistsException(database.name, tableDefinition.name)
+							case false =>
+								jdbcDao.action(jdbcDao.createTable(tableDefinition))
+						}
 				}
 			case None =>
 				throw new NoSuchDatabaseException(s"Id ${tableDefinition.databaseId}")
@@ -652,7 +657,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				}
 		}
 	}
-
+	// TODO check view exists
 	override protected def doRenameTable(databaseId: Long, table: String, newTable: String, updateBy: Long): Unit = await {
 		jdbcDao.action(jdbcDao.tableExists(databaseId, table)).flatMap {
 			case true =>
@@ -772,10 +777,6 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	/*override def alterFunction(funcDefinition: CatalogFunction): Unit = await {
-		jdbcDao.action(jdbcDao.updateFunction(funcDefinition))
-	}*/
-
 	override def getFunction(databaseId: Long, func: String): CatalogFunction = await {
 		jdbcDao.action(jdbcDao.getFunction(databaseId, func)).flatMap {
 			case Some(function) =>
@@ -788,21 +789,6 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 			case None => throw new NoSuchFunctionException(getDatabase(databaseId).name, func)
 		}
 	}
-
-	/*override def getFunction(func: Long): CatalogFunction = await {
-		jdbcDao.action(jdbcDao.getFunction(func)).map {
-			case Some(f) => f
-			case None => throw new NoSuchFunctionException("", s"Id $func")
-		}
-	}
-
-	override def getFunctionOption(databaseId: Long, func: String): Option[CatalogFunction] = await {
-		jdbcDao.action(jdbcDao.getFunction(databaseId, func))
-	}
-
-	override def getFunctionOption(func: Long): Option[CatalogFunction] = await {
-		jdbcDao.action(jdbcDao.getFunction(func))
-	}*/
 
 	override def functionExists(databaseId: Long, func: String): Boolean = await {
 		jdbcDao.action(jdbcDao.functionExists(databaseId, func))
@@ -838,18 +824,25 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// View -- belong to database
 	// ----------------------------------------------------------------------------
 
-	override protected def doCreateView(viewDefinition: CatalogView, ignoreIfExists: Boolean): Unit = await {
+	override protected def doCreateView(viewDefinition: CatalogView, replaceIfExists: Boolean): Unit = await {
 		jdbcDao.action(jdbcDao.getDatabase(viewDefinition.databaseId)).flatMap {
 			case Some(database) =>
-				jdbcDao.action(jdbcDao.viewExists(viewDefinition.databaseId, viewDefinition.name)).flatMap {
-					case true =>
-						ignoreIfExists match {
-							case true => Future(Unit)
-							case false => throw new ViewExistsException(
-								database.name, viewDefinition.name)
+				jdbcDao.action(jdbcDao.getView(viewDefinition.databaseId, viewDefinition.name)).flatMap {
+					case Some(existView) =>
+						replaceIfExists match {
+							case true =>
+								jdbcDao.action(jdbcDao.updateView(viewDefinition.copy(id = existView.id)))
+							case false =>
+								throw new ViewExistsException(
+									database.name, viewDefinition.name)
 						}
-					case false =>
-						jdbcDao.action(jdbcDao.createView(viewDefinition))
+					case None =>
+						jdbcDao.action(jdbcDao.tableExists(viewDefinition.databaseId, viewDefinition.name)).flatMap {
+							case true =>
+								throw new TableExistsException(database.name, viewDefinition.name)
+							case false =>
+								jdbcDao.action(jdbcDao.createView(viewDefinition))
+						}
 				}
 			case None =>
 				throw new NoSuchDatabaseException(s"Id ${viewDefinition.databaseId}")

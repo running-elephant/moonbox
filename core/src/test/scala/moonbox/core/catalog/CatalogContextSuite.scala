@@ -410,7 +410,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			cmd = "SELECT * FROM table",
 			createBy = 1,
 			updateBy = 1
-		), "org1", "db", ignoreIfExists = true)
+		), "org1", "db", replaceIfExists = true)
 		val view = catalog.getView(db.id.get, "view")
 		assert(view.name == "view")
 		assert(view.description.contains("for testing"))
@@ -427,7 +427,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 				cmd = "SELECT * FROM table",
 				createBy = 1,
 				updateBy = 1
-			), "org1", "db", ignoreIfExists = false)
+			), "org1", "db", replaceIfExists = false)
 		}
 
 		catalog.renameView(db.id.get, "org1", "db", "view", "view1", 2)
@@ -466,7 +466,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			cmd = "SELECT * FROM table",
 			createBy = 1,
 			updateBy = 1
-		), "org1", "db", ignoreIfExists = false)
+		), "org1", "db", replaceIfExists = false)
 
 		catalog.dropDatabase(1, "org1", "db", ignoreIfNotExists = true, cascade = true)
 		assert(!catalog.databaseExists(1, "db"))

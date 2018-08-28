@@ -35,7 +35,7 @@ case class MountDatabase(
 	props: Map[String, String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val validate = DataSystem.lookupDataSystem(props).test()
 		if (!validate) {
 			throw new Exception("Can't connect to the database. Please check your connecting parameters.")
@@ -59,7 +59,7 @@ case class AlterDatabaseSetOptions(
 	name: String,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Logical database $name can not be set properties")
@@ -80,7 +80,7 @@ case class UnmountDatabase(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Database $name is logical. Please use DROP DATABASE command.")
@@ -96,7 +96,7 @@ case class CreateDatabase(
 	comment: Option[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogDatabase = CatalogDatabase(
 			name = name,
 			description = comment,
@@ -115,7 +115,7 @@ case class AlterDatabaseSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.renameDatabase(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		ctx.databaseName = newName
 		Seq.empty[Row]
@@ -126,7 +126,7 @@ case class AlterDatabaseSetComment(
 	name: String,
 	comment: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		mbSession.catalog.alterDatabase(
 			existDatabase.copy(
@@ -144,7 +144,7 @@ case class DropDatabase(
 	ignoreIfNotExists: Boolean,
 	cascade: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (!existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Database $name is physical. Please use UNMOUNT DATABASE command.")
@@ -162,8 +162,7 @@ case class MountTable(
 	isStream: Boolean,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	// TODO column privilege refactor
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database, isLogical)= table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -179,7 +178,7 @@ case class MountTable(
 			if (!validate) {
 				throw new Exception("Can't connect to the database. Please check your connecting parameters.")
 			} else {
-				mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
+				// mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
 
 				val catalogTable = CatalogTable(
 					name = table.table,
@@ -201,7 +200,7 @@ case class AlterTableSetName(
 	table: MbTableIdentifier,
 	newTable: MbTableIdentifier) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		require(table.database == newTable.database, s"Rename table cant not rename database")
 		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
@@ -221,7 +220,7 @@ case class AlterTableSetName(
 case class AlterTableSetOptions(
 	table: MbTableIdentifier,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -272,7 +271,7 @@ case class UnmountTable(
 	table: MbTableIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -295,7 +294,7 @@ case class CreateFunction(
 	resources: Seq[FunctionResource],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database) = function.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -363,7 +362,7 @@ case class AlterFunctionSetOptions(
 case class DropFunction(
 	function: MbFunctionIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database) = function.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -380,9 +379,9 @@ case class CreateView(
 	view: MbTableIdentifier,
 	query: String,
 	comment: Option[String],
-	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
+	replaceIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database)= view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -390,6 +389,8 @@ case class CreateView(
 			case None =>
 				(ctx.databaseId, ctx.databaseName)
 		}
+		// TODO check query syntax
+		// TODO check table exists
 		val catalogView = CatalogView(
 			name = view.table,
 			databaseId = databaseId,
@@ -398,7 +399,7 @@ case class CreateView(
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createView(catalogView, ctx.organizationName, database, ignoreIfExists)
+		mbSession.catalog.createView(catalogView, ctx.organizationName, database, replaceIfExists)
 		Seq.empty[Row]
 	}
 }
@@ -406,8 +407,9 @@ case class CreateView(
 case class AlterViewSetName(
 	view: MbTableIdentifier,
 	newView: MbTableIdentifier) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		require(view.database == newView.database, s"Rename view cant not rename database")
+		// TODO check table exists
 		val (databaseId, database)= view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -423,7 +425,7 @@ case class AlterViewSetName(
 case class AlterViewSetComment(
 	view: MbTableIdentifier,
 	comment: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -446,7 +448,7 @@ case class AlterViewSetComment(
 case class AlterViewSetQuery(
 	view: MbTableIdentifier,
 	query: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -455,6 +457,7 @@ case class AlterViewSetQuery(
 				ctx.databaseId
 		}
 		val existView: CatalogView = mbSession.catalog.getView(databaseId, view.table)
+		// TODO check query
 		mbSession.catalog.alterView(
 			existView.copy(
 				cmd = query,
@@ -469,7 +472,7 @@ case class AlterViewSetQuery(
 case class DropView(
 	view: MbTableIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val (databaseId, database)= view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -487,7 +490,7 @@ case class CreateProcedure(
 	queryList: Seq[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogProcedure = CatalogProcedure(
 			name = name,
 			cmds = queryList,
@@ -505,7 +508,7 @@ case class AlterProcedureSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.renameProcedure(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
@@ -514,7 +517,7 @@ case class AlterProcedureSetName(
 case class AlterProcedureSetQuery(
 	name: String,
 	queryList: Seq[String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val existProcedure: CatalogProcedure = mbSession.catalog.getProcedure(ctx.organizationId, name)
 		mbSession.catalog.alterProcedure(
 			existProcedure.copy(
@@ -530,7 +533,7 @@ case class AlterProcedureSetQuery(
 case class DropProcedure(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.dropProcedure(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
 		Seq.empty[Row]
 	}
@@ -547,7 +550,7 @@ case class CreateTimedEvent(
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	// TODO schedule validation
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val definerId = definer.map(user => mbSession.catalog.getUser(ctx.organizationId, user).id.get).getOrElse(ctx.userId)
 		val appId = mbSession.catalog.getProcedure(ctx.organizationId, proc).id.get
 		mbSession.catalog.createTimedEvent(
@@ -569,7 +572,7 @@ case class CreateTimedEvent(
 
 case class AlterTimedEventSetName(
 	name: String, newName: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't rename Event $name, while it is running.")
@@ -582,7 +585,7 @@ case class AlterTimedEventSetName(
 case class AlterTimedEventSetDefiner(
 	name: String,
 	definer: Option[String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't alter definer of Event $name, while it is running.")
@@ -597,7 +600,7 @@ case class AlterTimedEventSetDefiner(
 
 case class AlterTimedEventSetSchedule(
 	name: String, schedule: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't alter schedule of Event $name, while it is running.")
@@ -611,7 +614,7 @@ case class AlterTimedEventSetSchedule(
 
 case class AlterTimedEventSetEnable(
 	name: String, enable: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		mbSession.catalog.alterTimedEvent(
 			timedEvent.copy(enable = enable)
@@ -623,7 +626,7 @@ case class AlterTimedEventSetEnable(
 case class DropTimedEvent(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: CatalogSession): Seq[Row] = {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't delete schedule of Event $name, while it is running.")

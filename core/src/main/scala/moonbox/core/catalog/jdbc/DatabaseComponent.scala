@@ -30,7 +30,7 @@ import slick.jdbc._
 trait DatabaseComponent {
 	protected val conf: MbConf
 	private lazy val implementation = conf.get(CATALOG_IMPLEMENTATION)
-	private lazy val url = conf.get(CATALOG_URL)
+	protected lazy val url: String = conf.get(CATALOG_URL)
 	private lazy val user = conf.get(CATALOG_USER)
 	private lazy val password = conf.get(CATALOG_PASSWORD)
 	private lazy val driver = conf.get(CATALOG_DRIVER)

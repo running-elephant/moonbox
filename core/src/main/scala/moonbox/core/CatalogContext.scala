@@ -220,6 +220,10 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.getDatabase(organizationId, database)
 	}
 
+	def getDatabase(databaseId: Long): CatalogDatabase = {
+		catalog.getDatabase(databaseId)
+	}
+
 	def listDatabase(organizationId: Long): Seq[CatalogDatabase] = {
 		catalog.listDatabases(organizationId)
 	}
@@ -236,13 +240,17 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.alterTable(tableDefinition)
 	}
 
-
 	def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long) = {
 		catalog.renameTable(databaseId, organization, db, table, newTable, updateBy)
 	}
 
 	def dropTable(databaseId: Long, organization: String, db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
 		catalog.dropTable(databaseId, organization, db, table, ignoreIfNotExists)
+	}
+
+	def getTable(organizationId: Long, database: String, table: String): CatalogTable = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		getTable(catalogDatabase.id.get, table)
 	}
 
 	def getTable(databaseId: Long, table: String): CatalogTable = {
@@ -262,6 +270,21 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 				updateTime = database.updateTime
 			)
 		}
+	}
+
+	def tableExists(databaseId: Long, table: String): Boolean = {
+		val database  = catalog.getDatabase(databaseId)
+		if (database.isLogical) {
+			catalog.tableExists(databaseId, table)
+		} else {
+			DataSystem.lookupDataSystem(database.properties).tableNames().exists(_.equalsIgnoreCase(table))
+		}
+
+	}
+
+	def tableExists(organizationId: Long, database: String, table: String): Boolean = {
+		val catalogDatabase  = catalog.getDatabase(organizationId, database)
+		tableExists(catalogDatabase.id.get, table)
 	}
 
 	def listTables(databaseId: Long): Seq[CatalogTable] = {
@@ -309,30 +332,6 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		}
 	}
 
-	def getColumns(databaseId: Long, table: String)(mbSession: MbSession): Seq[CatalogColumn] = {
-		val database = catalog.getDatabase(databaseId)
-		val tableIdentifier = TableIdentifier(table, Some(database.name))
-		if (database.isLogical) {
-			val props = catalog.getTable(databaseId, table).properties
-			mbSession.mixcal.registerTable(TableIdentifier(table, Some(database.name)), props)
-		} else {
-			val props = DataSystem.lookupDataSystem(database.properties).tableProperties(table)
-			mbSession.mixcal.registerTable(tableIdentifier, props)
-		}
-		mbSession.mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
-			CatalogColumn(
-				name = field.name,
-				dataType = field.dataType.simpleString,
-				databaseId = database.id.get,
-				table = table,
-				createBy = database.createBy,
-				createTime = database.createTime,
-				updateBy = database.updateBy,
-				updateTime = database.updateTime
-			)
-		}
-	}
-
 	def createFunction(funcDefinition: CatalogFunction, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
 		catalog.createFunction(funcDefinition, organization, db, ignoreIfExists)
 	}
@@ -361,8 +360,8 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.listFunctions(databaseId, pattern)
 	}
 
-	def createView(viewDefinition: CatalogView, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createView(viewDefinition, organization, db, ignoreIfExists)
+	def createView(viewDefinition: CatalogView, organization: String, db: String, replaceIfExists: Boolean): Unit = {
+		catalog.createView(viewDefinition, organization, db, replaceIfExists)
 	}
 
 	def renameView(databaseId: Long, organization: String, db: String, view: String, newView: String, updateBy: Long): Unit = {
@@ -377,12 +376,22 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		catalog.viewExists(databaseId, view)
 	}
 
+	def viewExists(organizationId: Long, database: String, view: String): Boolean = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		catalog.viewExists(catalogDatabase.id.get, view)
+	}
+
 	def dropView(databaseId: Long, organization: String, db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
 		catalog.dropView(databaseId, organization, db, view, ignoreIfNotExists)
 	}
 
 	def getView(databaseId: Long, view: String): CatalogView = {
 		catalog.getView(databaseId, view)
+	}
+
+	def getView(organizationId: Long, database: String, view: String): CatalogView = {
+		val catalogDatabase = catalog.getDatabase(organizationId, database)
+		catalog.getView(catalogDatabase.id.get, view)
 	}
 
 	def listViews(databaseId: Long): Seq[CatalogView] = {

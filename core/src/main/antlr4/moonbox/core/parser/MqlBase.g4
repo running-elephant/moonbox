@@ -75,7 +75,7 @@ mql
         AS className=STRING (methodName=STRING)? (USING resource (',' resource)*)?              # createFunction
     | DROP (TEMP | TEMPORARY)? FUNCTION (IF EXISTS)? name=funcIdentifier                        # dropFunction
 
-    | CREATE VIEW (IF NOT EXISTS)? name=tableIdentifier (COMMENT comment=STRING)? AS query      # createView
+    | CREATE (OR REPLACE)? VIEW name=tableIdentifier (COMMENT comment=STRING)? AS query         # createView
     | RENAME VIEW name=tableIdentifier TO newName=tableIdentifier                               # renameView
     | ALTER VIEW name=tableIdentifier RENAME TO newName=tableIdentifier                         # setViewName
     | ALTER VIEW name=tableIdentifier SET COMMENT comment=STRING                                # setViewComment

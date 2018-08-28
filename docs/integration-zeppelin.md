@@ -5,8 +5,8 @@ title: Integration Zeppelin
 
 #### 相关jar包获取
 
-- 下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar，下载地址：[releases]()
-- 下载moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION}}.jar，下载地址：[releases]()
+- 下载moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
+- 下载moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION_SHORT}}.jar [下载地址](https://github.com/edp963/moonbox/releases)
 
 #### 配置
    
@@ -15,7 +15,7 @@ title: Integration Zeppelin
 cd /opt/zeppelin/interpreter
 mkdir moonbox
 ```
-2. 将moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION}}.jar和moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION}}.jar拷贝到刚才创建的moonbox目录下
+2. 将moonbox-jdbc_{{site.SCALA_BINARY_VERSION}}-{{site.MOONBOX_VERSION_SHORT}}.jar和moonbox-zeppelin-interpreter-{{site.MOONBOX_VERSION_SHORT}}.jar拷贝到刚才创建的moonbox目录下
 
 3. 重启Zeppelin，创建interpreter。
 <p style="text-align: center;">
