@@ -81,16 +81,12 @@ object StrategyPlanner {
 
   def findViewAndTable(logicalPlan: LogicalPlan, hashSet: mutable.HashSet[LogicalPlan]): Unit = {
     logicalPlan match {
-      case view: View =>
-        val addRes = hashSet.add(view)
-        println(addRes)
-      case relation: LogicalRelation =>
-        val addRes = hashSet.add(relation)
-        println(addRes)
-      case union: Union =>
-        union.children.foreach(child => findViewAndTable(child, hashSet))
-      case binary: BinaryNode => binary.children.foreach(child => findViewAndTable(child, hashSet))
-      case unary: UnaryNode => findViewAndTable(unary.child, hashSet)
+      case view: View => hashSet.add(view)
+      case relation: LogicalRelation => hashSet.add(relation)
+//      case union: Union => union.children.foreach(child => findViewAndTable(child, hashSet))
+//      case binary: BinaryNode => binary.children.foreach(child => findViewAndTable(child, hashSet))
+//      case unary: UnaryNode => findViewAndTable(unary.child, hashSet)
+      case other => other.children.foreach(child => findViewAndTable(child, hashSet))
     }
   }
 
