@@ -1,2 +1,3 @@
-moonbox.grid.master.1   grid://localhost:2551
-moonbox.grid.worker.1   localhost
+hostname1:port1
+hostname2:port2
+hostname3:port3

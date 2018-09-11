@@ -10,13 +10,6 @@ if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
   . "${moonbox_home_dir}/conf/moonbox-env.sh"
 fi
 
-# Start all master
-"${MOONBOX_HOME}/sbin/start-masters.sh"
-
-
-# Start all worker
-"${MOONBOX_HOME}/sbin/start-workers.sh"
-
-
-
+# Start all nodes
+"${MOONBOX_HOME}/sbin/start-nodes.sh"
 

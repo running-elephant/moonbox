@@ -10,14 +10,5 @@ if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
 fi
 
 # Start all worker
-"${MOONBOX_HOME}/sbin/stop-workers.sh"
-
-
-# Start all master
-"${MOONBOX_HOME}/sbin/stop-masters.sh"
-
-
-
-
-
+"${MOONBOX_HOME}/sbin/stop-nodes.sh"
 
