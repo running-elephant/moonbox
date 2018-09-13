@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.jdbc;
+package moonbox.catalyst.jdbc;
 
 import java.sql.*;
 import java.util.Properties;

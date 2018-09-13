@@ -439,8 +439,54 @@ class EsDriverTest extends FunSuite{
 
     }
 
+    test("select 10w") {
+        doQuery("test_mb_10w", "my_table", "select event_id from test_mb_10w order by event_id", server = "slave1")
+    }
+
+    test("select 10w limit 1100 ") {
+        doQuery("test_mb_10w", "my_table", "select event_id from test_mb_10w order by event_id limit 1100", server = "slave1")
+    }
+
+    test("select 10w limit 2w ") {
+        doQuery("test_mb_10w", "my_table", "select event_id from test_mb_10w order by event_id limit 22000", server = "slave1")
+    }
+
+    test("select 1=0 ") {
+        doQuery("test_mb_1000", "my_table", "select * from test_mb_1000 where 1=0", server = "slave1")
+    }
+
+    test("select 1=0 limit 1") {
+        doQuery("test_mb_1000", "my_table", "select * from test_mb_1000 where 1=0 limit 1", server = "slave1")
+    }
+
+    test("select 1!=0 limit 1") {
+        doQuery("test_mb_1000", "my_table", "select * from test_mb_1000 where 1!=0 limit 1", server = "slave1")
+    }
+
+    test("select group by limit 1") {
+        doQuery("test_mb_1000", "my_table", "select max(event_id) from test_mb_1000 group by col_int_a limit 1", server = "slave1")
+    }
+
+    test("select group by no limit") {
+        doQuery("test_mb_1000", "my_table", "select max(event_id) from test_mb_1000 group by col_int_a", server = "slave1")
+    }
+
+    test("select 1=0 group by no limit") {
+        doQuery("test_mb_1000", "my_table", "select max(event_id) from test_mb_1000 where 1=0 group by col_int_a", server = "slave1")
+    }
+
+    test("select 1=0 group by limit 1") {
+        doQuery("test_mb_1000", "my_table", "select max(event_id) from test_mb_1000 where 1=0 group by col_int_a limit 1", server = "slave1")
+    }
+
+    test("select 1!=0 group by limit 1") {
+        doQuery("test_mb_1000", "my_table", "select max(event_id) from test_mb_1000 where 1!=0 group by col_int_a limit 1", server = "slave1")
+    }
+
+
+
     //Class.forName("moonbox.catalyst.adapter.elasticsearch5.jdbc.Driver")
-    Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
+    Class.forName("moonbox.catalyst.jdbc.Driver")
 
     def doQuery(tbl: String, mtype: String, sql: String, map: Map[String, String]=Map(), server: String="testserver1"): Unit = {
         import scala.collection.JavaConversions._

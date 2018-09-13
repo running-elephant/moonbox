@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,17 +18,17 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.jdbc
+package moonbox.catalyst.jdbc
 
 import java.sql._
 import java.util.Properties
 
 import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
 import moonbox.catalyst.adapter.elasticsearch5.util.EsUtil
-import moonbox.catalyst.adapter.jdbc.JDBCUtils._
 import moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor
 import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.parser.SqlParser
+import moonbox.catalyst.jdbc.JDBCUtils._
 import org.apache.spark.sql.UDFRegistration
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.StructType

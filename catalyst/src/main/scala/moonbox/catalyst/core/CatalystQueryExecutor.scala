@@ -20,9 +20,7 @@
 
 package moonbox.catalyst.core
 
-import java.util.Properties
-
-import moonbox.catalyst.adapter.jdbc.JdbcRow
+import moonbox.catalyst.jdbc.JdbcRow
 import org.apache.spark.sql.UDFRegistration
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.StructType

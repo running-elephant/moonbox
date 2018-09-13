@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,15 +18,13 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.jdbc
+package moonbox.catalyst.jdbc
 
 import java.io.{InputStream, Reader}
 import java.math.BigDecimal
 import java.sql.{Blob, Clob, Date, NClob, Ref, ResultSet, RowId, SQLException, SQLXML, Time, Timestamp}
 import java.util
 import java.util.Calendar
-
-import org.apache.spark.sql.types.StructType
 
 class CatalystResultSet(iterator: Iterator[JdbcRow], index2SqlType: Map[Int, Int], columnLabel2Index: Map[String, Int]) extends ResultSet {
   var currentRow: JdbcRow = _

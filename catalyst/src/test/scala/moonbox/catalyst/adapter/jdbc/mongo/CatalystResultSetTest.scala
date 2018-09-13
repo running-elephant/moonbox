@@ -23,7 +23,7 @@ package moonbox.catalyst.adapter.jdbc.mongo
 import java.sql.{Connection, DriverManager, ResultSet, Statement}
 import java.util.Properties
 
-import moonbox.catalyst.adapter.jdbc.CatalystResultSet
+import moonbox.catalyst.jdbc.CatalystResultSet
 import org.bson.BsonTimestamp
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
@@ -43,7 +43,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
 
 
   override protected def beforeAll() = {
-    Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
+    Class.forName("moonbox.catalyst.jdbc.Driver")
   }
 
   override protected def afterAll() = super.afterAll()

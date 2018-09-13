@@ -27,7 +27,7 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 class EsResultSetTest extends FunSuite with BeforeAndAfterAll{
 
     override protected def beforeAll() :Unit = {
-        Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
+        Class.forName("moonbox.catalyst.jdbc.Driver")
     }
 
     def printArray(a: Array[Any]): Unit = {

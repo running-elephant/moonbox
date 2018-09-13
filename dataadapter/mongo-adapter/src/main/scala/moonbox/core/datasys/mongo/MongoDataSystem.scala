@@ -29,9 +29,9 @@ import com.mongodb.client.model.{InsertOneModel, ReplaceOneModel, UpdateOneModel
 import com.mongodb.client.{MongoCollection, MongoDatabase}
 import com.mongodb.spark.MongoSpark
 import com.mongodb.spark.config.{ReadConfig, WriteConfig}
-import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.catalyst.adapter.mongo.{MapFunctions, MongoCatalystQueryExecutor}
 import moonbox.catalyst.core.parser.udf.{ArrayFilter, ArrayMap}
+import moonbox.catalyst.jdbc.JdbcRow
 import moonbox.common.MbLogging
 import moonbox.core.datasys._
 import moonbox.core.execution.standalone.DataTable

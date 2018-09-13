@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,21 +18,11 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.jdbc;
+package moonbox.catalyst.jdbc
 
-import java.sql.DriverManager;
-
-public class Driver {
-    static volatile boolean registered;
-    static {
-        try{
-            if (!registered) {
-                registered = true;
-                DriverManager.registerDriver(new EsCatalystDriver());
-            }
-        }catch (Exception e) {
-            e.printStackTrace();
-        }
-
+class JdbcResultSetMetaData(map: Map[String, Int]) extends CatalystResultSetMetaData {
+    override def getColumnCount = {
+        map.size
     }
+
 }

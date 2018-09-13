@@ -25,22 +25,15 @@ import java.util.Properties
 import moonbox.catalyst.adapter.elasticsearch5.client.EsRestClient
 import moonbox.catalyst.adapter.elasticsearch5.rule.EsBaseOperator
 import moonbox.catalyst.adapter.elasticsearch5.util.{EsRowIter, EsUtil}
-import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystQueryExecutor, Strategy}
+import moonbox.catalyst.jdbc.JdbcRow
 import moonbox.common.MbLogging
-import org.apache.spark.sql.{Row, UDFRegistration}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.SaveMode
-
+import org.apache.spark.sql.{Row, SaveMode, UDFRegistration}
 import scala.collection.JavaConverters._
-import moonbox.catalyst.core.parser.udf.FunctionUtil
-import moonbox.catalyst.adapter.util.SparkUtil._
-
-import scala.collection.mutable
-
 
 
 class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor with MbLogging{

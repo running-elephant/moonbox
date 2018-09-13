@@ -39,7 +39,7 @@ SELECT array_map(user.age, "x+100") as aaa , user.age as bbb from  nest_test_tab
 
 -----------------case example------------------
 --------url----or----properties---------
-Class.forName("moonbox.catalyst.adapter.jdbc.Driver")
+Class.forName("moonbox.catalyst.jdbc.Driver")
 val url = s"jdbc:mongo://localhost:27017,localhost1:27017/database?collection=name&user=username&password=pwd"
 val prop = new Properties
 prop.put("KEY_NAME", value)

@@ -23,12 +23,12 @@ package moonbox.catalyst.adapter.mongo
 import java.util.Properties
 
 import com.mongodb.MongoClient
-import moonbox.catalyst.adapter.jdbc.JdbcRow
 import moonbox.catalyst.adapter.mongo.client.MbMongoClient
 import moonbox.catalyst.adapter.mongo.schema.MongoSchemaInfer
 import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystPlanner, CatalystQueryExecutor, Strategy}
+import moonbox.catalyst.jdbc.JdbcRow
 import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, GetStructField}
