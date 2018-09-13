@@ -31,7 +31,12 @@ class EsTableScanExec(output: Seq[Attribute],
 								  rows: Seq[InternalRow]) extends TableScanExec(output, rows) {
 
     override def translate(context: CatalystContext): Seq[String] = {
-        Seq.empty[String]
+        if(rows != null && rows.isEmpty) {
+            context.limitSize = 0
+            Seq(s""" "from": 0, "size": 0 """)  // where 1=0 after sql parser, there is only LocalRelation, we use limit 0 simulate this case
+        }else {
+            Seq.empty[String]
+        }
     }
 
     override def toString(): String = {

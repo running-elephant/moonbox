@@ -22,7 +22,7 @@ package moonbox.catalyst.adapter.util
 
 import java.sql.{Date, Timestamp}
 
-import moonbox.catalyst.adapter.jdbc.JdbcRow
+import moonbox.catalyst.jdbc.JdbcRow
 import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, Attribute, AttributeReference, BinaryArithmetic, CaseWhenCodegen, Cast, Divide, EqualTo, Expression, GetArrayStructFields, GetStructField, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Literal, Multiply, Or, Round, Substring, Subtract}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils

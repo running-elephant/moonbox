@@ -47,6 +47,7 @@ class EsRowIter[T](index: String,
     private var scrollId: String = _
     private var continue: Boolean = false
     private var resultIter: Iterator[T] = _
+    private var hasPassedLines: Long = 0  //use for limit
 
     private var runtime: Int = 0
 
@@ -120,11 +121,12 @@ class EsRowIter[T](index: String,
         }
     }
 
-    override def hasNext = {
-        getNextBulk()
+    override def hasNext = { //if can get next message, and no exceed the limit size, shouldProcessLines update in getNextBulk
+        getNextBulk() && (hasPassedLines < shouldProcessLines)
     }
 
     override def next() = {
+        hasPassedLines = hasPassedLines + 1
         resultIter.next()
     }
 }
