@@ -25,7 +25,6 @@ import moonbox.core.catalog._
 import moonbox.core.datasys.DataSystem
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.types.StructType
 
 sealed trait DDL
@@ -178,8 +177,6 @@ case class MountTable(
 			if (!validate) {
 				throw new Exception("Can't connect to the database. Please check your connecting parameters.")
 			} else {
-				// mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
-
 				val catalogTable = CatalogTable(
 					name = table.table,
 					description = None,
