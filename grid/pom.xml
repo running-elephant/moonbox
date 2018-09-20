@@ -46,6 +46,21 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-yarnapp_2.11</artifactId>
+            <version>0.2.1-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.typesafe.akka</groupId>
+                    <artifactId>akka-remote_2.11</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
             <version>4.4.5</version>
@@ -118,6 +133,18 @@
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
+        </dependency>
+
+        <!-- tor testing-->
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-hbase-adapter</artifactId>
+            <version>0.2.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-elasticsearch-adapter</artifactId>
+            <version>0.2.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

@@ -257,7 +257,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			logInfo(s"Runner::clean ${currentJob.copy(status = jobState)} start")
 			mbSession.cancelJob(currentJob.jobId)
 			// session.mixcal.sparkSession.sessionState.catalog.reset()
-			mbSession.catalog.stop()
 			logInfo(s"Runner::clean ${currentJob.copy(status = jobState)} end")
 		}
 	}

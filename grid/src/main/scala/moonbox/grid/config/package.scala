@@ -168,7 +168,7 @@ package object config {
 	val RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE = ConfigBuilder("moonbox.rpc.akka.actor.debug.autoreceive")
 	    .stringConf
 	    .createWithDefaultString("off")
-	val RPC_REMOTE_TRANSPORT = ConfigBuilder("moonbox.rpc.akka.remote.transport")
+	val RPC_AKKA_REMOTE_TRANSPORT = ConfigBuilder("moonbox.rpc.akka.remote.transport")
 	    .stringConf
 	    .createWithDefaultString("akka.remote.netty.NettyRemoteTransport")
 	val RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS = ConfigBuilder("moonbox.rpc.akka.remote.log-remote-lifecycle-events")
@@ -179,10 +179,10 @@ package object config {
 	    .createWithDefaultString("off")
 	val RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down-unreachable-after")
 	    .stringConf
-	    .createWithDefaultString("60s")
+	    .createWithDefaultString("off")
     val RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE = ConfigBuilder("moonbox.rpc.akka.cluster.failure-detector.acceptable-heartbeat-pause")
         .timeConf
-        .createWithDefaultString("10s")
+        .createWithDefaultString("3s")
 	val RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.retry-unsuccessful-join-after")
             .timeConf
             .createWithDefaultString("3s")
@@ -195,7 +195,7 @@ package object config {
 		RPC_AKKA_LOGLEVEL.key -> RPC_AKKA_LOGLEVEL.defaultValueString,
 		RPC_AKKA_ACTOR_PROVIDER.key -> RPC_AKKA_ACTOR_PROVIDER.defaultValueString,
 		RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE.key -> RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE.defaultValueString,
-		RPC_REMOTE_TRANSPORT.key -> RPC_REMOTE_TRANSPORT.defaultValueString,
+		RPC_AKKA_REMOTE_TRANSPORT.key -> RPC_AKKA_REMOTE_TRANSPORT.defaultValueString,
 		RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.key -> RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.defaultValueString,
 		RPC_AKKA_CLUSTER_AUTODOWN.key -> RPC_AKKA_CLUSTER_AUTODOWN.defaultValueString,
 		RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.key -> RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.defaultValueString,

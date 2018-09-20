@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.grid.deploy.master
+package moonbox.grid.deploy2.node
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
@@ -58,9 +58,9 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	}
 
 	override def read[T: ClassTag](prefix: String): Seq[T] = {
-		if (exist(WORKING_DIR)) {
-			zk.getChildren.forPath(WORKING_DIR).filter(_.startsWith(prefix)).flatMap { name =>
-				deserializeFromFile[T](name, zk.getData.forPath(WORKING_DIR + "/" + name))
+		if (exist(WORKING_DIR + "/" + prefix)) {
+			zk.getChildren.forPath(WORKING_DIR + "/" + prefix).flatMap { name =>
+				deserializeFromFile[T](prefix + "/" + name, zk.getData.forPath(WORKING_DIR + "/" + prefix + "/" + name))
 			}
 		} else {
 			Seq[T]()
@@ -69,7 +69,8 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 
 	private def serializeInfoFile(path: String, value: AnyRef): Unit = {
 		try {
-			val serialized: Array[Byte] = value match {
+			val serialized: Array[Byte] = SerializationExtension(akkaSystem).serialize(value).get
+			/*value match {
 				case actorRef: ActorRef =>
 					SerializationExtension(akkaSystem).serialize(value).get
 				case _ =>
@@ -79,11 +80,14 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 					oos.flush()
 					oos.close()
 					bos.toByteArray
+			}*/
+			if (exist(path)) {
+				zk.delete().deletingChildrenIfNeeded().forPath(path)
 			}
 			zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, serialized)
 		} catch {
 			case e: Exception =>
-				logWarning(s"Exception while serializing persist data. $path")
+				logWarning(s"Exception while serializing persist data. ${e.getMessage}")
 		}
 	}
 
@@ -91,19 +95,19 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 		import scala.reflect._
 		try {
 			val clazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
-			clazz.getSimpleName match {
+			Some(SerializationExtension(akkaSystem).deserialize(bytes, clazz).get)
+			/*clazz.getSimpleName match {
 				case "ActorRef" =>
 					Some(SerializationExtension(akkaSystem).deserialize(bytes, clazz).get)
 				case _ =>
 					val bis: ByteArrayInputStream = new ByteArrayInputStream(bytes)
 					val ois: ObjectInputStream = new ObjectInputStream(bis)
 					Some(ois.readObject().asInstanceOf[T])
-			}
-
+			}*/
 		} catch {
 			case e: Exception =>
 				logWarning("Exception while reading persisted data. Delete it.")
-				zk.delete().forPath(filename)
+				zk.delete().deletingChildrenIfNeeded().forPath(WORKING_DIR + "/" +filename)
 				None
 		}
 	}
