@@ -1,10 +1,13 @@
 package moonbox.grid.runtime.cluster
 
+import akka.actor.{Actor, ActorRef}
 import moonbox.common.MbLogging
+import moonbox.yarnapp.Protocol
+import moonbox.yarnapp.Protocol.RegisterApp
 import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 
 import scala.concurrent.Future
-
+import scala.concurrent.ExecutionContext.Implicits.global
 class LaunchActor extends Actor with MbLogging {
 
 	private var appDriver: ActorRef = _
