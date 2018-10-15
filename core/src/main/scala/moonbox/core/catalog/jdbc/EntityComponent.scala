@@ -202,6 +202,14 @@ trait EntityComponent extends DatabaseComponent {
 	}
 
 	class CatalogProcedureTable(tag: Tag) extends BaseTable[CatalogProcedure](tag, "procedures") {
+
+		implicit val seqColumnType = MappedColumnType.base[Seq[String], String](
+			// Seq to String
+			seq => seq.mkString("; "),
+			// String to Seq
+			string => string.split("; ").map(_.trim)
+		)
+
 		def name = column[String]("name")
 		def cmds = column[Seq[String]]("cmds")
 		def organizationId = column[Long]("organizationId")
