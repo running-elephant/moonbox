@@ -246,7 +246,10 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     if (jdbcSession == null || isClosed()) false else true
   }
 
-  override def getAutoCommit: Boolean = throw new SQLException("Unsupported")
+  override def getAutoCommit: Boolean = {
+//    throw new SQLException("Unsupported")
+    false
+  }
 
   override def clearWarnings(): Unit = {
     //throw new SQLException("Unsupported")

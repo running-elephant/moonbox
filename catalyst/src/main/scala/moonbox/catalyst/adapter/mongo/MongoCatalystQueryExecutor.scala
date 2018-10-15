@@ -30,7 +30,7 @@ import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystPlanner, CatalystQueryExecutor, Strategy}
 import moonbox.common.MbLogging
-import org.apache.spark.sql.catalyst.catalog.CatalogRelation
+import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, GetStructField}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, LogicalPlan, Project}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
@@ -181,7 +181,7 @@ class MongoCatalystQueryExecutor(cli: MongoClient, props: Properties) extends Ca
               fieldNames :+= expressionToBson(other)
           }
         }
-      case c: CatalogRelation =>
+      case c: HiveTableRelation =>
         fieldNames = c.output.map(_.name)
       case l: LogicalRelation =>
         fieldNames = l.output.map(_.name)

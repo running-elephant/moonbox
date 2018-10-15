@@ -22,13 +22,12 @@ package moonbox.core
 
 import moonbox.core.catalog.{CatalogColumn, CatalogTable}
 import moonbox.core.command._
-import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
-import org.apache.spark.sql.catalyst.plans.logical._
 import moonbox.core.datasys.DataSystem
 import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.catalyst.catalog.CatalogRelation
+import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
+import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.mutable.ArrayBuffer
@@ -120,7 +119,7 @@ object ColumnSelectPrivilegeChecker {
 			val tableMate = if (relation.isInstanceOf[LogicalRelation]) {
 				relation.asInstanceOf[LogicalRelation].catalogTable
 			} else {
-				Some(relation.asInstanceOf[CatalogRelation].tableMeta)
+				Some(relation.asInstanceOf[HiveTableRelation].tableMeta)
 			}
 			tableMate match {
 				case Some(table) =>
@@ -171,7 +170,7 @@ object ColumnSelectPrivilegeChecker {
 		}
 		plan.collect {
 			case l: LogicalRelation => Seq(l)
-			case c: CatalogRelation => Seq(c)
+			case c: HiveTableRelation => Seq(c)
 			case project: Project =>
 				project.projectList.flatMap(traverseExpression)
 			case aggregate: Aggregate =>

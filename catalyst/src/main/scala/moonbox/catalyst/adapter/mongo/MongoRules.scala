@@ -20,10 +20,9 @@
 
 package moonbox.catalyst.adapter.mongo
 
-import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.Strategy
 import moonbox.catalyst.core.plan.CatalystPlan
-import org.apache.spark.sql.catalyst.catalog.CatalogRelation
+import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
@@ -45,7 +44,7 @@ object MongoRules {
         case SubqueryAlias(_, _) => throw new Exception("Subquery is temporarily unsupported")
         case LogicalRelation(_, output, _) => new MongoTableScanExec(output, null) :: Nil
         case r: LocalRelation => new MongoTableScanExec(r.output, r.data) :: Nil
-        case t: CatalogRelation => new MongoTableScanExec(t.output, null) :: Nil
+        case t: HiveTableRelation => new MongoTableScanExec(t.output, null) :: Nil
         case _ => Nil
         //      case OneRowRelation =>
         //      case w: Window =>

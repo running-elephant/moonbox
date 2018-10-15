@@ -28,6 +28,12 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 class MongoTableScanExec(output: Seq[Attribute],
                          rows: Seq[InternalRow]) extends TableScanExec(output, rows) with MongoTranslateSupport {
   override def translate(context: CatalystContext) = {
-    Nil
+    if (rows == null) {
+      Nil
+    } else {
+      /* This code is used for 'limit 0' and 'where 1=0' (OptimizedPlan is LocalRelation(_, Nil)) */
+      "{$match: {$and: [{\"_id\": {$eq: null}}, {\"_id\": {$ne: null}}]}}" :: Nil
+      // TODO: to handle LocalRelation with non-Nil data
+    }
   }
 }

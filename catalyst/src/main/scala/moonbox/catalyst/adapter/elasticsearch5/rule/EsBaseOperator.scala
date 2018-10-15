@@ -23,7 +23,7 @@ package moonbox.catalyst.adapter.elasticsearch5.rule
 import moonbox.catalyst.adapter.elasticsearch5.plan._
 import moonbox.catalyst.core.Strategy
 import moonbox.catalyst.core.plan._
-import org.apache.spark.sql.catalyst.catalog.CatalogRelation
+import org.apache.spark.sql.catalyst.catalog.HiveTableRelation
 import org.apache.spark.sql.catalyst.expressions.IntegerLiteral
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -47,7 +47,7 @@ object EsBaseOperator extends Strategy{
                 EsRowDataSourceScanExec(output, null, relation, null, null, null) :: Nil
             case logical.LocalRelation(output, data) =>
                 EsTableScanExec(output, data) :: Nil
-            case CatalogRelation(tableMeta, dataCols, partitionCols) =>
+            case HiveTableRelation(tableMeta, dataCols, partitionCols) =>
                 EsTableScanExec(dataCols, null) :: Nil
             case e: Any =>
                 throw new Exception(s"unknow type BaseOperator $e")
