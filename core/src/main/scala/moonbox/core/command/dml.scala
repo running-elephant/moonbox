@@ -25,7 +25,9 @@ import moonbox.core.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, TablePrivilegeManager}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.optimizer.WholePushdown
+import org.apache.spark.sql.types.StringType
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -59,6 +61,12 @@ case class SetVariable(name: String, value: String, isGlobal: Boolean)
 }
 
 case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with DML {
+
+	override def output: Seq[Attribute] = {
+		AttributeReference("key", StringType, nullable = false)() ::
+		AttributeReference("value", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val variables = pattern.map { p =>
 			mbSession.getVariables.filterKeys(key =>
@@ -68,7 +76,7 @@ case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with
 		}
 		val sortedVariables = variables.sortWith { case ((k1, _), (k2, _)) => k1 < k2}
 		sortedVariables.map { case (k, v) =>
-			Row(s"$k : $v")
+			Row(k, v)
 		}.foldRight[List[Row]](Nil) { case (elem, res) =>
 			elem :: res
 		}
@@ -77,6 +85,10 @@ case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with
 
 case class ShowDatabases(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
+
+	override def output: Seq[Attribute] = {
+		AttributeReference("databaseName", StringType, nullable = false)() :: Nil
+	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databases = pattern.map { p =>
