@@ -30,10 +30,9 @@ import io.netty.channel._
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
-import moonbox.common.MbLogging
 import moonbox.common.message._
 
-class JdbcClient(host: String, port: Int) extends MbLogging {
+class JdbcClient(host: String, port: Int) {
 
   private var channel: Channel = _
   private val messageId = new AtomicLong()
@@ -64,11 +63,11 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
       else if (cf.cause != null)
         throw new IOException(s"Failed to connect to $host", cf.cause)
       this.channel = cf.channel
-      logInfo(s"Connected to ${channel.remoteAddress()}")
+      //logInfo(s"Connected to ${channel.remoteAddress()}")
       connected = true
     } catch {
       case e: Exception =>
-        logError(e.getMessage)
+        //logError(e.getMessage)
         e.printStackTrace()
         this.close()
     }
@@ -175,7 +174,7 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
             login.copy(password = "***")
           case other => other
         }
-        logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
+        //logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
       case _ => throw new Exception("Unsupported message")
     }
   }
@@ -210,11 +209,11 @@ class JdbcClient(host: String, port: Int) extends MbLogging {
               login.copy(password = "***")
             case other => other
           }
-          logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
+          //logDebug(s"Sending request $logMsg to ${getRemoteAddress(channel)} took $timeSpent ms")
         case _ => throw new Exception("Unsupported message")
       }
     } catch {
-      case e: Exception => logError(e.getMessage)
+      case e: Exception => //logError(e.getMessage)
     }
   }
 

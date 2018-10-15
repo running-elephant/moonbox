@@ -32,15 +32,15 @@ import moonbox.util.SchemaUtil._
 class MoonboxResultSet(conn: MoonboxConnection,
                        stat: MoonboxStatement,
                        var rows: Seq[Seq[Any]],
-                       schema: String
+	                   schema: String
                       ) extends ResultSet {
 
   var closed: Boolean = false
   var currentRowStart: Long = 0 // this fetched data's start index (inclusive)
-  var currentRowEnd: Long = _ // this fetched data's end index (inclusive)
+  var currentRowEnd: Long = rows.length - 1// this fetched data's end index (inclusive)
   /** currentRow's Index in the whole ResultSet (start with -1) */
   var currentRowId: Long = -1
-  var totalRows: Long = _
+  var totalRows: Long = rows.length
   var forwardOnly: Boolean = true
 
   var FETCH_SIZE: Int = stat.getFetchSize
@@ -48,7 +48,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
   var currentRow: Array[Any] = _
   lazy val index2SqlType: Map[Int, Int] = schema2SqlType(parsedSchema).map(_._2).zipWithIndex.map(p => (p._2 + 1) -> p._1).toMap
   lazy val columnLabel2Index: Map[String, Int] = parsedSchema.map(_._1).zipWithIndex.map(p => p._1 -> (p._2 + 1)).toMap
-  var resultSetMetaData: ResultSetMetaData = _
+  var resultSetMetaData: ResultSetMetaData = new MoonboxResultSetMetaData(this, schema)
 
   lazy val parsedSchema = if (schema != null) parse(schema) else throw new SQLException("ResultSet schema is null")
 

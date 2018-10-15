@@ -97,7 +97,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def commit(): Unit = throw new SQLException("Unsupported")
 
-  override def getHoldability: Int = throw new SQLException("Unsupported")
+  override def getHoldability: Int = 1
 
   override def setCatalog(catalog: String): Unit = {
     // TODO: re-init the jdbcSession
@@ -162,7 +162,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     //throw new SQLException("Unsupported")
   } // TODO: setAutoCommit
 
-  override def getMetaData: DatabaseMetaData = throw new SQLException("Unsupported") // TODO: getMetaData: DatabaseMetaData
+  override def getMetaData: DatabaseMetaData = {
+	  new MoonboxDatabaseMetaData(this)
+  } // TODO: getMetaData: DatabaseMetaData
 
   override def setReadOnly(readOnly: Boolean): Unit = {
     //throw new SQLException("Unsupported")
@@ -202,7 +204,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def nativeSQL(sql: String): String = throw new SQLException("Unsupported")
 
-  override def isReadOnly: Boolean = throw new SQLException("Unsupported")
+  override def isReadOnly: Boolean = false
 
   override def createArrayOf(typeName: String, elements: Array[AnyRef]): sql.Array = throw new SQLException("Unsupported")
 
@@ -229,9 +231,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def createNClob(): NClob = throw new SQLException("Unsupported")
 
-  override def rollback(): Unit = throw new SQLException("Unsupported")
+  override def rollback(): Unit = {}
 
-  override def rollback(savepoint: Savepoint): Unit = throw new SQLException("Unsupported")
+  override def rollback(savepoint: Savepoint): Unit = {}
 
   override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = {
     networkTimeout = milliseconds
@@ -246,7 +248,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     if (jdbcSession == null || isClosed()) false else true
   }
 
-  override def getAutoCommit: Boolean = throw new SQLException("Unsupported")
+  override def getAutoCommit: Boolean = false
 
   override def clearWarnings(): Unit = {
     //throw new SQLException("Unsupported")
