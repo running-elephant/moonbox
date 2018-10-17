@@ -234,14 +234,22 @@
                 <artifactId>kudu-spark2_2.11</artifactId>
                 <version>${kudu.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.kudu</groupId>
                 <artifactId>kudu-client</artifactId>
                 <version>${kudu.version}</version>
             </dependency>
+
             <dependency>
-                <artifactId>scala-reflect</artifactId>
                 <groupId>org.scala-lang</groupId>
+                <artifactId>scala-reflect</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
                 <version>${scala.version}</version>
             </dependency>
 
