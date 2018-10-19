@@ -27,7 +27,7 @@
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>spark-presto-connector</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
