@@ -24,6 +24,11 @@ import moonbox.grid.JobInfo
 
 sealed trait MbApi
 
+case object RequestAccess extends MbApi
+sealed trait RequestAccessResponse
+case class RequestedAccess(address: String) extends MbApi with RequestAccessResponse
+case class RequestAccessFailed(error: String) extends MbApi with RequestAccessResponse
+
 case class OpenSession(username: String, database: Option[String], isLocal: Boolean) extends MbApi
 
 sealed trait OpenSessionResponse

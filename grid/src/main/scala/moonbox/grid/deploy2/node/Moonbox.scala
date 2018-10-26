@@ -6,11 +6,12 @@ import java.util.{Date, Locale}
 import akka.actor.{Actor, ActorRef, ActorSystem, Address, Cancellable, ExtendedActorSystem, Props, Terminated}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import akka.pattern._
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.grid.JobInfo
-import moonbox.grid.api.{MbApi, OpenSession}
+import moonbox.grid.api.{MbApi, OpenSession, RequestAccess}
 import moonbox.grid.config._
 import moonbox.grid.deploy2.node.DeployMessages._
 import moonbox.grid.deploy2.rest.RestServer
@@ -23,7 +24,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.util.control.NonFatal
 
 
 class Moonbox(akkaSystem: ActorSystem,
@@ -240,13 +240,23 @@ class Moonbox(akkaSystem: ActorSystem,
 	}
 
 	private def process: Receive = {
-		case OpenSession(username, database) =>
+		case RequestAccess =>
+			if (state == RoleState.MASTER) {
+				selectNode()
+			} else {
+				master.ask(RequestAccess)
+			}
+		case OpenSession(username, database, isLocal) =>
 			// cluster
 			// local
 	}
 
 	private def schedule(): Unit = {
 
+	}
+
+	private def selectNode(): String = {
+		null
 	}
 
 	private def tryRegisteringToMaster(): Unit = {

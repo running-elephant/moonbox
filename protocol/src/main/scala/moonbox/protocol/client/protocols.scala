@@ -30,7 +30,7 @@ case class LogoutOutbound(error: Option[String]) extends Outbound
 // support local and cluster runtime engine
 // support synchronize mode only
 case class RequestAccessInbound() extends Inbound
-case class RequestAccessOutbound(address: Option[String], error: Option[String]) extends Outbound
+case class RequestAccessOutbound(address: Option[String] = None, error: Option[String] = None) extends Outbound
 
 case class OpenSessionInbound(token: String, database: Option[String], isLocal: Boolean) extends Inbound
 case class OpenSessionOutbound(sessionId: Option[String] = None, error: Option[String] = None) extends Outbound

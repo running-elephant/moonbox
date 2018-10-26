@@ -41,6 +41,17 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 
 	def getLoginManager(): LoginManager = loginManager
 
+	def requestAccess(): RequestAccessOutbound = {
+		askForCompute[RequestAccessResponse](RequestAccess)(SHORT_TIMEOUT) match {
+			case (Some(RequestedAccess(address)), None) =>
+				RequestAccessOutbound(address = Some(address))
+			case (Some(RequestAccessFailed(error)), None) =>
+				RequestAccessOutbound(error = Some(error))
+			case (None, error) =>
+				RequestAccessOutbound(error = error)
+		}
+	}
+
 	def login(username: String, password: String): LoginOutbound = {
 		loginManager.login(username, password) match {
 			case Some(token) =>
@@ -58,7 +69,6 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		loginManager.logout(token)
 		LogoutOutbound(None)
 	}
-
 
 	def openSession(token: String, database: Option[String], isLocal: Boolean): OpenSessionOutbound = {
 		isLogin(token) match {
