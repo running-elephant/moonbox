@@ -30,6 +30,16 @@ import org.apache.zookeeper.server.{NIOServerCnxnFactory, ZooKeeperServer}
 
 object LocalZookeeper {
 	val DEFAULT_ZK_PORT = 2181
+
+	def main(args: Array[String]) {
+		val zk = new LocalZookeeper()
+		zk.start()
+		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+			override def run(): Unit = {
+				zk.stop()
+			}
+		}))
+	}
 }
 
 class LocalZookeeper(properties: Properties) extends MbLogging {
@@ -38,7 +48,7 @@ class LocalZookeeper(properties: Properties) extends MbLogging {
 	import LocalZookeeper._
 	private var zkServer: ZooKeeperServer = _
 	private lazy val file = new File(System.getProperty("java.io.tmpdir"), "zookeeper").getAbsoluteFile
-	private val tickTime = properties.getProperty("tickTime", "2000").toInt
+	private val tickTime = properties.getProperty("tickTime", "5000").toInt
 	val clientPort = properties.getProperty("clientPort", s"$DEFAULT_ZK_PORT").toInt
 	val numConnections = properties.getProperty("numConnections", "5000").toInt
 	def start(): Unit = {
