@@ -22,12 +22,14 @@ package moonbox.client
 
 import java.util.concurrent.ConcurrentHashMap
 
-import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelPromise}
+import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter, ChannelPromise}
 import io.netty.util.ReferenceCountUtil
-import moonbox.common.MbLogging
-import moonbox.common.message._
+import moonbox.protocol.client._
 
-class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], responses: ConcurrentHashMap[Long, JdbcOutboundMessage], callbacks: ConcurrentHashMap[Long, JdbcOutboundMessage => Any]) extends ChannelInboundHandlerAdapter with MbLogging {
+class ClientInboundHandler(
+	promises: ConcurrentHashMap[Long, ChannelPromise],
+	responses: ConcurrentHashMap[Long, Outbound],
+	callbacks: ConcurrentHashMap[Long, Outbound => Any]) extends ChannelInboundHandlerAdapter {
 
   private var ctx: ChannelHandlerContext = _
 
@@ -56,13 +58,9 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
 
   private def handleMessageWithCallback(response: Any): Any = {
     response match {
-      case echo: EchoOutbound => callback(echo.messageId, echo)
-      case login: JdbcLoginOutbound => callback(login.messageId, login)
-      case logout: JdbcLogoutOutbound => callback(logout.messageId, logout)
-      case query: JdbcQueryOutbound => callback(query.messageId, query)
-      case dataFetch: DataFetchOutbound => callback(dataFetch.dataFetchState.messageId, dataFetch)
-      case cancel: JdbcCancelOutbound => callback(cancel.messageId, cancel)
-      case _ => throw new Exception("Unsupported message")
+		case outbound: Outbound =>
+			callback(outbound.getId, outbound)
+        case _ => throw new Exception("Unsupported message")
     }
   }
 
@@ -72,7 +70,7 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
     * @param key      callback function key
     * @param response message response from the server
     */
-  private def callback(key: Long, response: JdbcOutboundMessage): Any = {
+  private def callback(key: Long, response: Outbound): Any = {
     val callback = callbacks.get(key)
     if (callback != null) {
       callbacks.remove(key)
@@ -80,19 +78,12 @@ class ClientInboundHandler(promises: ConcurrentHashMap[Long, ChannelPromise], re
     } else null
   }
 
-  private def handleMessageWithPromise(msg: Any) = {
-    msg match {
-      case resp: JdbcOutboundMessage =>
-        val id = msg match {
-          case echo: EchoOutbound => echo.messageId
-          case login: JdbcLoginOutbound => login.messageId
-          case logout: JdbcLogoutOutbound => logout.messageId
-          case query: JdbcQueryOutbound => query.messageId
-          case cancel: JdbcCancelOutbound => cancel.messageId
-          case dataFetch: DataFetchOutbound => dataFetch.dataFetchState.messageId
-        }
+  private def handleMessageWithPromise(message: Any) = {
+    message match {
+      case response: Outbound =>
+        val id = response.getId
         if (promises.containsKey(id)) {
-            responses.put(id, resp)
+            responses.put(id, response)
             promises.get(id).setSuccess()
         }
       case _ => throw new Exception("Unsupported message")

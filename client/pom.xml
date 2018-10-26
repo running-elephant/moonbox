@@ -19,7 +19,7 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_2.11</artifactId>
+            <artifactId>moonbox-protocol_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

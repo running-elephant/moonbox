@@ -53,7 +53,7 @@ class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
     var seq = Seq.empty[(String, Int)]
     while (count < 10) {
       val sin = UUID.randomUUID().toString
-      val msgId = client.getMessageId()
+      val msgId = client.genMessageId()
       val message = EchoInbound(msgId, sin)
       val resp = client.sendAndReceive(message, RESULT_RESPONSE_TIMEOUT)
       if (resp == null) {
@@ -75,13 +75,13 @@ class JdbcClientTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testSendWithCallback") {
-    client.sendWithCallback(EchoInbound(client.getMessageId(), "testSendWithCallback"), resp => println("Callback run: " + resp))
+    client.sendWithCallback(EchoInbound(client.genMessageId(), "testSendWithCallback"), resp => println("Callback run: " + resp))
   }
 
   test("test login") {
     var count = 0
     while (count < 1000) {
-      val recv = client.sendAndReceive(JdbcLoginInbound(client.getMessageId(), "ROOT", "123456", "default"), 5000)
+      val recv = client.sendAndReceive(JdbcLoginInbound(client.genMessageId(), "ROOT", "123456", "default"), 5000)
       assert(recv.isInstanceOf[JdbcLoginOutbound])
       count += 1
     }
