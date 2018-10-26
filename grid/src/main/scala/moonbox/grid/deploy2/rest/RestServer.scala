@@ -27,7 +27,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
-import moonbox.common.message._
+import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy2.MbService
@@ -62,12 +62,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[LoginInbound]) { in =>
 					complete {
-						service.login(in.username, in.password).map {
-							case Some(token) =>
-								LoginOutbound(Some(token), None)
-							case None =>
-								LoginOutbound(None, Some(s"User '${in.username}' does not exist or password is incorrect."))
-						}
+						service.login(in.username, in.password)
 					}
 				}
 			}
@@ -116,13 +111,13 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 		} ~
 		path("query") {
 			post {
-				entity(as[QueryInbound]) { in =>
+				entity(as[InteractiveQueryInbound]) { in =>
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
-								service.jobQuery(in.token, in.sessionId, in.sqls)
+								service.interactiveQuery(in.token, in.sessionId, in.sqls)
 						}
 					}
 				}
@@ -130,12 +125,12 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 		} ~
 		path("submit") {
 			post {
-				entity(as[SubmitInbound]) { in =>
+				entity(as[BatchQueryInbound]) { in =>
 					complete {
 						loginManager.isvalid(in.token) match {
-							case false => SubmitOutbound(error = Some("Token is incorrect or expired."))
+							case false => BatchQueryOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
-								service.jobSubmitAsync(in.token, in.sqls)
+								service.batchQuery(in.token, in.sqls, in.config)
 						}
 					}
 				}
@@ -143,13 +138,13 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 		} ~
 		path("progress") {
 			post {
-				entity(as[ProgressInbound]) { in =>
+				entity(as[BatchQueryProgressInbound]) { in =>
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
-								ProgressOutbound(jobId = in.jobId, error = Some("Token is incorrect or expired."))
+								BatchQueryProgressOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
-								service.jobProgress(in.token, in.jobId)
+								service.batchQueryProgress(in.token, in.jobId)
 						}
 					}
 				}
@@ -157,19 +152,18 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 		}  ~
 		path("cancel") {
 			post {
-				entity(as[CancelInbound]) { in =>
+				entity(as[CancelQueryInbound]) { in =>
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
-								CancelOutbound(jobId = in.jobId, error = Some("Token is incorrect or expired."))
+								CancelQueryOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
-								service.jobCancel(in.token, in.jobId)
+								service.cancelQuery(in.token, in.jobId)
 						}
 					}
 				}
 			}
 		}
-
 
 	}
 

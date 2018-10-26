@@ -21,7 +21,8 @@
 package moonbox.grid.deploy2.transport.server
 
 import java.net.InetSocketAddress
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.lang.{Boolean => JBoolean, Integer => JInt}
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel._
@@ -34,57 +35,60 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy2.MbService
 
 class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) extends MbLogging {
-  var channel: Channel = _
-  var channel2SessionIdAndToken = new ConcurrentHashMap[Channel, (String, String)]
-  var bossGroup: NioEventLoopGroup = _
-  var workerGroup: NioEventLoopGroup = _
-  var readTimeout: Int = 60 * 60 // time unit: s
+	private val channelToSessionIdAndToken = new ConcurrentHashMap[Channel, (String, String)]()
+	private val READ_TIMEOUT: Int = 60 * 60 // time unit: s
+	private var channelFuture: ChannelFuture = _
+	private var bootstrap: ServerBootstrap = _
 
-  def start(): Int = {
-    val bossGroup = new NioEventLoopGroup
-    val workerGroup = new NioEventLoopGroup
-    val b = new ServerBootstrap
-    b.group(bossGroup, workerGroup)
-      .channel(classOf[NioServerSocketChannel])
-      .childHandler(
-        new ChannelInitializer[SocketChannel]() {
-          override def initChannel(ch: SocketChannel) = {
-            ch.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
-              .addLast("encode", new ObjectEncoder)
-              .addLast("timeout handler", new ReadTimeoutHandler(readTimeout))
-              .addLast("handler", new JdbcServerHandler(channel2SessionIdAndToken, mbService))
-          }
-        })
-      .option[java.lang.Integer](ChannelOption.SO_BACKLOG, 1024)
-      .childOption[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
-      .childOption[java.lang.Integer](ChannelOption.SO_SNDBUF, 10240)
-      .childOption[java.lang.Integer](ChannelOption.SO_RCVBUF, 1024)
+	def start(): Int = {
+		val bossGroup = new NioEventLoopGroup()
+		val workerGroup = new NioEventLoopGroup()
+		bootstrap = new ServerBootstrap()
+			.group(bossGroup, workerGroup)
+		  	.channel(classOf[NioServerSocketChannel])
+		  	.childHandler(
+				new ChannelInitializer[SocketChannel]() {
+			  		override def initChannel(channel: SocketChannel) = {
+						channel.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
+				  		.addLast("encode", new ObjectEncoder())
+				  		.addLast("timeout handler", new ReadTimeoutHandler(READ_TIMEOUT))
+				  		.addLast("handler", new JdbcServerHandler(channelToSessionIdAndToken, mbService))
+			  }
+			})
+		  .option[JInt](ChannelOption.SO_BACKLOG, 1024)
+		  .childOption[JBoolean](ChannelOption.SO_KEEPALIVE, true)
+		  .childOption[JInt](ChannelOption.SO_SNDBUF, 10240)
+		  .childOption[JInt](ChannelOption.SO_RCVBUF, 1024)
 
-    // Bind and start to accept incoming connections.
-    val channelFuture = b.bind(host, port)
-    channelFuture.syncUninterruptibly()
-    logInfo(s"Jdbc server listening on $host:$port ...")
-    // Wait until the server socket is closed.
-    // In this example, this does not happen, but you can do that to gracefully
-    // shut down your server.
-    channel = channelFuture.channel()
-    channelFuture.channel.closeFuture.addListener(new ChannelFutureListener {
-      override def operationComplete(future: ChannelFuture) = {
-        channel2SessionIdAndToken.clear()
-        stop()
-      }
-    })
-    channelFuture.channel().localAddress().asInstanceOf[InetSocketAddress].getPort
-  }
+		// Bind and start to accept incoming connections.
+		channelFuture = bootstrap.bind(host, port)
+		channelFuture.syncUninterruptibly()
+		logInfo(s"Jdbc server listening on $host:$port ...")
+		// Wait until the server socket is closed.
+		// In this example, this does not happen, but you can do that to gracefully
+		// shut down your server.
+		channelFuture.channel.closeFuture.addListener(new ChannelFutureListener {
+			  override def operationComplete(future: ChannelFuture) = {
+				  channelToSessionIdAndToken.clear()
+				  stop()
+			  }
+		})
+		channelFuture.channel().localAddress().asInstanceOf[InetSocketAddress].getPort
+	}
 
-  def stop(): Unit = {
-    if (channel != null)
-      channel.close()
-    if (bossGroup != null)
-      bossGroup.shutdownGracefully()
-    if (workerGroup != null)
-      workerGroup.shutdownGracefully()
-  }
+	def stop(): Unit = {
+		if (channelFuture != null) {
+			channelFuture.channel().close().awaitUninterruptibly(10, TimeUnit.SECONDS)
+			channelFuture = null
+		}
+		if (bootstrap != null && bootstrap.group() != null) {
+			bootstrap.group().shutdownGracefully()
+		}
+		if (bootstrap != null && bootstrap.childGroup() != null) {
+			bootstrap.childGroup().shutdownGracefully()
+		}
+		bootstrap = null
+	}
 }
 
 

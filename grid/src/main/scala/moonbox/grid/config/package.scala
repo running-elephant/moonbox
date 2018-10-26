@@ -24,9 +24,12 @@ import moonbox.common.config.ConfigBuilder
 
 package object config {
 
-	val CLUSTER_NAME = ConfigBuilder("moonbox.cluster.name")
+	val CLUSTER_NAME = ConfigBuilder("moonbox.clusterName")
 	    .stringConf
 	    .createWithDefaultString("moonbox")
+	val HOSTNAME = ConfigBuilder("moonbox.host")
+	    .stringConf
+	    .createWithDefaultString("localhost")
 
 	val JWT_ALGORITHM = ConfigBuilder("moonbox.jwt.algorithm")
 		.stringConf
@@ -171,6 +174,9 @@ package object config {
 	val RPC_AKKA_REMOTE_TRANSPORT = ConfigBuilder("moonbox.rpc.akka.remote.transport")
 	    .stringConf
 	    .createWithDefaultString("akka.remote.netty.NettyRemoteTransport")
+	val RPC_AKKA_REMOTE_PORT = ConfigBuilder("moonbox.rpc.akka.port")
+	    .intConf
+	    .createWithDefault(2551)
 	val RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS = ConfigBuilder("moonbox.rpc.akka.remote.log-remote-lifecycle-events")
 	    .stringConf
 	    .createWithDefaultString("off")

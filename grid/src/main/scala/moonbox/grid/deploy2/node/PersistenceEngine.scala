@@ -59,6 +59,17 @@ abstract class PersistenceEngine {
 		unpersist("nodes/" + node.id)
 	}
 
+	final def saveMasterAddress(address: String): Unit = {
+		if (exist("masters")) {
+			unpersist("masters/master")
+		}
+		persist("masters/master", address)
+	}
+
+	final def readMasterAddress(): Option[String] = {
+		read[String]("masters").headOption
+	}
+
 	def exist(path: String): Boolean
 
 	def close(): Unit = {}

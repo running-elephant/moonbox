@@ -22,127 +22,169 @@ package moonbox.grid.deploy2
 
 import akka.actor.ActorRef
 import akka.pattern.ask
-import akka.util.Timeout
-import moonbox.common.message._
+import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
 import moonbox.grid.api.{ClosedSession, _}
 import moonbox.grid.deploy2.authenticate.LoginManager
 import moonbox.grid.deploy2.rest.TokenManager
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.reflect.ClassTag
 
 class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) extends MbLogging {
 
-	implicit val timeout = Timeout(new FiniteDuration(3600 * 24, SECONDS))
+	private val SHORT_TIMEOUT = new FiniteDuration(10, SECONDS)
+	private val LONG_TIMEOUT = new FiniteDuration(3600 * 24, SECONDS)
 // TODO
 	private val loginManager = new LoginManager(catalogContext, new TokenManager(conf), this)
 
 	def getLoginManager(): LoginManager = loginManager
 
-	def login(username: String, password: String): Future[Option[String]] = {
-		Future(loginManager.login(username, password))
-	}
-
-	def isLogin(token: String): Future[Option[String]] = {
-		Future(loginManager.isLogin(token))
-	}
-
-	def logout(token: String): Future[LogoutOutbound] = {
-		Future(loginManager.logout(token)).map { res =>
-			LogoutOutbound(message = Some("Logout successfully."))
+	def login(username: String, password: String): LoginOutbound = {
+		loginManager.login(username, password) match {
+			case Some(token) =>
+				LoginOutbound(Some(token), None)
+			case None =>
+				LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
 		}
 	}
 
-	def openSession(token: String, database: Option[String]): Future[OpenSessionOutbound] = {
-		isLogin(token).flatMap {
+	def isLogin(token: String): Option[String] = {
+		loginManager.isLogin(token)
+	}
+
+	def logout(token: String): LogoutOutbound = {
+		loginManager.logout(token)
+		LogoutOutbound(None)
+	}
+
+
+	def openSession(token: String, database: Option[String], isLocal: Boolean): OpenSessionOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(OpenSession(username, database)).mapTo[OpenSessionResponse].flatMap {
-					case OpenedSession(sessionId) =>
+				askForCompute[OpenSessionResponse](OpenSession(username, database, isLocal))(SHORT_TIMEOUT) match {
+					case (Some(OpenedSession(sessionId)), None) =>
 						loginManager.putSession(token, sessionId)
-						Future(OpenSessionOutbound(Some(sessionId), None))
-					case OpenSessionFailed(error) =>
-						Future(OpenSessionOutbound(None, Some(error)))
+						OpenSessionOutbound(Some(sessionId), None)
+					case (Some(OpenSessionFailed(error)), None) =>
+						OpenSessionOutbound(None, Some(error))
+					case (None, error) =>
+						OpenSessionOutbound(error = error)
 				}
 			case None =>
-				Future(OpenSessionOutbound(None, Some("Please login first.")))
+				OpenSessionOutbound(error = Some("Please login first."))
 		}
 	}
 
-	def closeSession(token: String, sessionId: String): Future[CloseSessionOutbound] = {
-		isLogin(token).flatMap {
+	def closeSession(token: String, sessionId: String): CloseSessionOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(CloseSession(sessionId)).mapTo[CloseSessionResponse].flatMap {
-					case ClosedSession =>
+				askForCompute[CloseSessionResponse](CloseSession(sessionId))(SHORT_TIMEOUT) match {
+					case (Some(ClosedSession), None) =>
 						loginManager.removeSession(token)
-						Future(CloseSessionOutbound(None))
-					case CloseSessionFailed(error) => Future(CloseSessionOutbound(Some(error)))
+						CloseSessionOutbound(None)
+					case (Some(CloseSessionFailed(error)), None) =>
+						CloseSessionOutbound(Some(error))
+					case (None, error) =>
+						CloseSessionOutbound(error)
 				}
 			case None =>
-				Future(CloseSessionOutbound(Some("Please login first.")))
+				CloseSessionOutbound(Some("Please login first."))
 		}
 	}
 
-	def jobQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int = 200): Future[QueryOutbound] = {
-		isLogin(token).flatMap {
+	def interactiveQuery(token: String, sessionId: String,
+		sqls: Seq[String], fetchSize: Int = 200, maxRows: Long = 10000): InteractiveQueryOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(JobQuery(sessionId, username, sqls)).mapTo[JobResultResponse].flatMap {
-					case JobFailed(jobId, error) =>
-						Future(QueryOutbound(Some(jobId), error = Some(error)))
-					case JobCompleteWithExternalData(jobId, message) =>
-						Future(QueryOutbound(Some(jobId)))
-					case JobCompleteWithDirectData(jobId, data) =>
-						Future(QueryOutbound(Some(jobId), data = Some(data)))
+				askForCompute[JobResultResponse](JobQuery(sessionId, username, sqls))(LONG_TIMEOUT) match {
+					case (Some(JobFailed(jobId, error)), None) =>
+						InteractiveQueryOutbound(error = Some(error))
+					case (Some(JobCompleteWithExternalData(jobId, message)), None) =>
+						InteractiveQueryOutbound(hasResult = false)
+					case (Some(JobCompleteWithDirectData(jobId, schema, data, hasNext)), None) =>
+						InteractiveQueryOutbound(hasResult = true, data = Some(ResultData(jobId, schema, data, hasNext)))
+					case (None, error) =>
+						InteractiveQueryOutbound(error = error)
 				}
 			case None =>
-				Future(QueryOutbound(None, error = Some("Please login first.")))
+				InteractiveQueryOutbound(error = Some("Please login first."))
 		}
 	}
 
-
-	def jobSubmitAsync(token: String, sqls: Seq[String]): Future[SubmitOutbound] = {
-		isLogin(token).flatMap {
+	def interactiveNextResult(token: String, sessionId: String, cursor: String, fetchSize: Long): InteractiveNextResultOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(JobSubmit(username, sqls, async = true)).mapTo[JobHandleResponse].map {
-					case JobAccepted(jobId) =>
-						SubmitOutbound(jobId = Some(jobId))
-					case JobRejected(error) =>
-						SubmitOutbound(error = Some(error))
+				askForCompute[FetchDataResponse](FetchData(sessionId, cursor, fetchSize))(SHORT_TIMEOUT) match {
+					case (Some(FetchDataSuccess(schema, data, hasNext)), None) =>
+						InteractiveNextResultOutbound(data = Some(ResultData(cursor, schema, data, hasNext)))
+					case (Some(FetchDataFailed(error)), None) =>
+						InteractiveNextResultOutbound(error = Some(error))
+					case (None, error) =>
+						InteractiveNextResultOutbound(error = error)
 				}
 			case None =>
-				Future(SubmitOutbound(error = Some("Please login first.")))
+				InteractiveNextResultOutbound(error = Some("Please login first."))
 		}
 	}
 
-	def jobCancel(token: String, jobId: String): Future[CancelOutbound] = {
-		isLogin(token).flatMap {
+
+	def batchQuery(token: String, sqls: Seq[String], config: Seq[String]): BatchQueryOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(JobCancel(jobId)).mapTo[JobCancelResponse].map {
-					case JobCancelSuccess(id) =>
-						CancelOutbound(jobId = jobId)
-					case JobCancelFailed(id, error) =>
-						CancelOutbound(jobId = jobId, error = Some(error))
+				askForCompute[JobHandleResponse](JobSubmit(username, sqls, async = true))(SHORT_TIMEOUT) match {
+					case (Some(JobAccepted(jobId)), None) =>
+						BatchQueryOutbound(jobId = Some(jobId))
+					case (Some(JobRejected(error)), None) =>
+						BatchQueryOutbound(error = Some(error))
+					case (None, error) =>
+						BatchQueryOutbound(error = error)
 				}
 			case None =>
-				Future(CancelOutbound(jobId = jobId, error = Some("Please login first.")))
+				BatchQueryOutbound(error = Some("Please login first."))
 		}
 	}
 
-	def jobProgress(token: String, jobId: String): Future[ProgressOutbound] = {
-		isLogin(token).flatMap {
+	def cancelQuery(token: String, jobId: String): CancelQueryOutbound = {
+		isLogin(token) match {
 			case Some(username) =>
-				askForCompute(JobProgress(jobId)).mapTo[JobProgressResponse].map {
-					case JobProgressState(id, jobInfo) =>
-						ProgressOutbound(id, error = jobInfo.errorMessage, status = Some(s"${jobInfo.status}"))
+				askForCompute[JobCancelResponse](JobCancel(jobId))(SHORT_TIMEOUT) match {
+					case (Some(JobCancelSuccess(id)), None) =>
+						CancelQueryOutbound()
+					case (Some(JobCancelFailed(id, error)), None) =>
+						CancelQueryOutbound(error = Some(error))
+					case (None, error) =>
+						CancelQueryOutbound(error = error)
 				}
 			case None =>
-				Future(ProgressOutbound(jobId = jobId, error = Some("Please login first.")))
+				CancelQueryOutbound(error = Some("Please login first."))
 		}
 	}
 
-	private def askForCompute(message: MbApi): Future[MbApi] = askFor(proxy)(message)
+	def batchQueryProgress(token: String, jobId: String): BatchQueryProgressOutbound = {
+		isLogin(token) match {
+			case Some(username) =>
+				askForCompute[JobProgressResponse](JobProgress(jobId))(SHORT_TIMEOUT) match {
+					case (Some(JobProgressState(id, jobInfo)), None) =>
+						BatchQueryProgressOutbound(error = jobInfo.errorMessage, state = Some(s"${jobInfo.status}"))
+					case (None, error) =>
+						BatchQueryProgressOutbound(error = error)
+				}
+			case None =>
+				BatchQueryProgressOutbound(error = Some("Please login first."))
+		}
+	}
+
+	private def askForCompute[T: ClassTag](message: MbApi)(timeout: Duration): (Option[T], Option[String]) = {
+		try {
+			val result = Await.result(askFor(proxy)(message), timeout).asInstanceOf[T]
+			(Some(result), None)
+		} catch {
+			case e: Exception =>
+				(None, Some(e.getMessage))
+		}
+	}
 
 
 	private def askFor(actorRef: ActorRef)(message: MbApi): Future[MbApi] = {

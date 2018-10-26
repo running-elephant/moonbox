@@ -50,7 +50,7 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 		client
 	}
 	override def persist(name: String, obj: Object): Unit = {
-		serializeInfoFile(WORKING_DIR  + "/" + name, obj)
+		serializeInfoFile(name, obj)
 	}
 
 	override def unpersist(name: String): Unit = {
@@ -58,7 +58,7 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	}
 
 	override def read[T: ClassTag](prefix: String): Seq[T] = {
-		if (exist(WORKING_DIR + "/" + prefix)) {
+		if (exist(prefix)) {
 			zk.getChildren.forPath(WORKING_DIR + "/" + prefix).flatMap { name =>
 				deserializeFromFile[T](prefix + "/" + name, zk.getData.forPath(WORKING_DIR + "/" + prefix + "/" + name))
 			}
@@ -82,9 +82,9 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 					bos.toByteArray
 			}*/
 			if (exist(path)) {
-				zk.delete().deletingChildrenIfNeeded().forPath(path)
+				zk.delete().deletingChildrenIfNeeded().forPath(WORKING_DIR  + "/" + path)
 			}
-			zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(path, serialized)
+			zk.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(WORKING_DIR  + "/" + path, serialized)
 		} catch {
 			case e: Exception =>
 				logWarning(s"Exception while serializing persist data. ${e.getMessage}")
@@ -113,7 +113,7 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	}
 
 	override def exist(path: String) = {
-		null != zk.checkExists().forPath(path)
+		null != zk.checkExists().forPath(WORKING_DIR + "/" + path)
 	}
 }
 

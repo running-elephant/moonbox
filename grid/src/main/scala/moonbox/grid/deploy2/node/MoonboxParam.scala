@@ -29,10 +29,10 @@ import scala.annotation.tailrec
 class MoonboxParam(args: Array[String], val conf: MbConf) extends MbLogging {
 	val clusterName: String = conf.get(CLUSTER_NAME)
 	var nodes: Seq[String] = _
-	var host: String =_
-	var port: Int = _
-	var restPort: Int = _
-	var tcpPort: Int = _
+	var host: String = conf.get(HOSTNAME)
+	var port: Int = conf.get(RPC_AKKA_REMOTE_PORT)
+	var restPort: Int = conf.get(REST_SERVER_PORT)
+	var tcpPort: Int = conf.get(TCP_SERVER_PORT)
 
 	parse(args.toList)
 
@@ -43,27 +43,9 @@ class MoonboxParam(args: Array[String], val conf: MbConf) extends MbLogging {
 			case (node, index) => conf.set(s"moonbox.rpc.akka.cluster.seed-nodes.$index", node)
 		}
 	}
-	if (host == null || host == "") {
-		host = "localhost"
-	}
+
 	conf.set("moonbox.rpc.akka.remote.netty.tcp.hostname", host)
-	if (port == 0) {
-		port = 2551
-	}
 	conf.set("moonbox.rpc.akka.remote.netty.tcp.port", port.toString)
-
-	if (restPort == 0) {
-		if (conf.get(REST_SERVER_PORT.key).isDefined) {
-			restPort = conf.get(REST_SERVER_PORT.key).get.toInt
-		}
-	}
-
-	if (tcpPort == 0) {
-		if (conf.get(TCP_SERVER_PORT.key).isDefined) {
-			tcpPort = conf.get(TCP_SERVER_PORT.key).get.toInt
-		}
-	}
-
 	conf.set(REST_SERVER_PORT.key, restPort.toString)
 
 	private def parseNodes(arg: String): Seq[String] = {

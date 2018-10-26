@@ -8,6 +8,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 class ZooKeeperLeaderElectionAgent(val candidate: LeaderElectable,
     conf: MbConf) extends LeaderLatchListener with LeaderElectionAgent with MbLogging  {
 
+
   val WORKING_DIR = conf.get("moonbox.deploy.zookeeper.dir", "/moonbox") + "/leader_election"
 
   private var zk: CuratorFramework = _
@@ -21,7 +22,7 @@ class ZooKeeperLeaderElectionAgent(val candidate: LeaderElectable,
     logInfo("Starting ZooKeeper LeaderElection agent")
     zk = {
 		val servers = "localhost:2181"
-		val retryTimes = 5
+		val retryTimes = 3
 		val interval = 3000
 		val client = CuratorFrameworkFactory.newClient(servers,
 			1000, 1000,

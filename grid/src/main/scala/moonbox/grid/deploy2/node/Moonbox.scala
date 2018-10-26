@@ -31,14 +31,13 @@ class Moonbox(akkaSystem: ActorSystem,
 	port: Int,
 	restPort: Int,
 	jdbcPort: Int,
-	addresses: Seq[String],
 	val conf: MbConf) extends Actor with MbLogging with LeaderElectable {
 
 	import Moonbox._
 
 	private val NODE_ID = generateNodeId()
 
-	private val RECOVERY_MODE = conf.get("moonbox.deploy.recoveryMode", "NONE")
+	private val RECOVERY_MODE = conf.get("moonbox.deploy.recoveryMode", "ZOOKEEPER")
 
 	private val WORKER_TIMEOUT_MS = conf.get(RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE)
 
@@ -66,8 +65,6 @@ class Moonbox(akkaSystem: ActorSystem,
 	private val jobIdToJobRunner = new mutable.HashMap[String, ActorRef]()
 
 	private val cluster: Cluster = Cluster(akkaSystem)
-
-	private var recoveryModeFactory: RecoveryModeFactory = _
 
 	private var persistenceEngine: PersistenceEngine = _
 
@@ -109,14 +106,16 @@ class Moonbox(akkaSystem: ActorSystem,
 		restServerBoundPort = restServer.map(_.start())
 		tcpServerBoundPort = tcpServer.map(_.start())
 
-		leaderElectionAgent = RECOVERY_MODE.toUpperCase match {
+		val (persistenceEngine_, leaderElectionAgent_) = RECOVERY_MODE.toUpperCase match {
 			case "ZOOKEEPER" =>
 				logInfo("Persisting recovery state to Zookeeper")
-				recoveryModeFactory = new ZookeeperRecoveryModeFactory(conf, akkaSystem)
-				recoveryModeFactory.createLeaderElectionAgent(this)
+				val zkFactory = new ZookeeperRecoveryModeFactory(conf, akkaSystem)
+				(zkFactory.createPersistEngine(), zkFactory.createLeaderElectionAgent(this))
 			case _ =>
-				new MonarchyLeaderAgent(this)
+				(new BlackHolePersistenceEngine,  new MonarchyLeaderAgent(this))
 		}
+		persistenceEngine = persistenceEngine_
+		leaderElectionAgent = leaderElectionAgent_
 
 		registerToMasterScheduler = akkaSystem.scheduler.schedule(
 			new FiniteDuration(1, SECONDS),
@@ -124,16 +123,6 @@ class Moonbox(akkaSystem: ActorSystem,
 			tryRegisteringToMaster()
 		}
 
-		// for debug
-		akkaSystem.scheduler.schedule(
-			new FiniteDuration(10, SECONDS),
-			new FiniteDuration(10, SECONDS)) {
-			println
-			println(nodes.map(n => n.toString + ":" + n.state).mkString("\n"))
-			println(addressToNode.map(_.toString()).mkString("\n"))
-			println(persistenceEngine.readNodes().mkString("\n"))
-			println
-		}
 	}
 
 	@scala.throws[Exception](classOf[Exception])
@@ -159,14 +148,7 @@ class Moonbox(akkaSystem: ActorSystem,
 		case ElectedLeader =>
 			cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 			master = self
-			/*if (!registerToMasterScheduler.isCancelled) {
-				registerToMasterScheduler.cancel()
-			}*/
-			persistenceEngine = if (recoveryModeFactory != null) {
-				recoveryModeFactory.createPersistEngine()
-			} else {
-				new BlackHolePersistenceEngine()
-			}
+			persistenceEngine.saveMasterAddress(masterAddressString)
 			val (storedJobs, storedWorkers) = persistenceEngine.readPersistedData()
 			state = if (storedJobs.isEmpty && storedWorkers.isEmpty) {
 				RoleState.MASTER
@@ -182,6 +164,17 @@ class Moonbox(akkaSystem: ActorSystem,
 				timedEventService.start()
 			}
 			logInfo("I am running as Master. New state: " + state)
+
+			// for debug
+			akkaSystem.scheduler.schedule(
+				new FiniteDuration(10, SECONDS),
+				new FiniteDuration(10, SECONDS)) {
+				println
+				println(nodes.map(n => n.toString + ":" + n.state).mkString("\n"))
+				println(addressToNode.map(_.toString()).mkString("\n"))
+				println(persistenceEngine.readNodes().mkString("\n"))
+				println
+			}
 
 		case CompleteRecovery => completeRecovery()
 
@@ -219,6 +212,9 @@ class Moonbox(akkaSystem: ActorSystem,
 		case RegisteredNode(masterAddress) =>
 			master = masterAddress
 			registerToMasterScheduler.cancel()
+			if (state == RoleState.SLAVE) {
+				persistenceEngine.close()
+			}
 			logInfo(s"Registered to master ${master.path.address}")
 
 		case MasterChanged(address) =>
@@ -254,15 +250,19 @@ class Moonbox(akkaSystem: ActorSystem,
 	}
 
 	private def tryRegisteringToMaster(): Unit = {
-		addresses.foreach { address =>
-			logDebug(s"Try registering to $address")
+		persistenceEngine.readMasterAddress().foreach { address =>
+			logDebug(s"Try registering to master $address")
 			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, 100,100), self)
 		}
 	}
 
-	private def isSelf(address: String): Boolean = {
+	/*private def isSelf(address: String): Boolean = {
 		val selfAddress = akkaSystem.asInstanceOf[ExtendedActorSystem].provider.getDefaultAddress.toString
 		address == selfAddress
+	}*/
+
+	private def masterAddressString: String = {
+		akkaSystem.asInstanceOf[ExtendedActorSystem].provider.getDefaultAddress.toString
 	}
 
 	private def canCompleteRecovery = {
@@ -360,7 +360,7 @@ object Moonbox extends MbLogging {
 
 		try {
 			akkaSystem.actorOf(Props(
-				classOf[Moonbox], akkaSystem, param.host, param.port, param.restPort, param.tcpPort, param.nodes, conf
+				classOf[Moonbox], akkaSystem, param.host, param.port, param.restPort, param.tcpPort, conf
 			), NODE_NAME)
 		} catch {
 			case e: Throwable =>

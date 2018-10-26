@@ -24,7 +24,7 @@ import moonbox.grid.JobInfo
 
 sealed trait MbApi
 
-case class OpenSession(username: String, database: Option[String]) extends MbApi
+case class OpenSession(username: String, database: Option[String], isLocal: Boolean) extends MbApi
 
 sealed trait OpenSessionResponse
 case class OpenedSession(sessionId: String) extends MbApi with OpenSessionResponse
@@ -47,7 +47,7 @@ sealed trait JobResultResponse
 case class JobFailed(jobId: String, error: String) extends MbApi with JobResultResponse
 case class JobCompleteWithCachedData(jobId: String) extends MbApi with JobResultResponse
 case class JobCompleteWithExternalData(jobId: String, message: Option[String]) extends MbApi with JobResultResponse
-case class JobCompleteWithDirectData(jobId: String, data: Seq[Seq[String]]) extends MbApi with JobResultResponse
+case class JobCompleteWithDirectData(jobId: String, schema: String, data: Seq[Seq[String]], hasNext: Boolean) extends MbApi with JobResultResponse
 
 case class JobProgress(jobId: String) extends MbApi
 sealed trait JobProgressResponse
@@ -58,7 +58,7 @@ sealed trait JobCancelResponse
 case class JobCancelSuccess(jobId: String) extends MbApi with JobCancelResponse
 case class JobCancelFailed(jobId: String, error: String) extends MbApi with JobCancelResponse
 
-case class FetchData(jobId: String, offset: Long, size: Long) extends MbApi
+case class FetchData(sessionId: String, jobId: String, fetchSize: Long) extends MbApi
 sealed trait FetchDataResponse
-case class FetchDataSuccess(jobId: String, schema: String, date: Seq[Seq[Any]], size: Long) extends MbApi with FetchDataResponse
-case class FetchDataFailed(jobId: String, error: String) extends MbApi with FetchDataResponse
+case class FetchDataSuccess(schema: String, date: Seq[Seq[Any]], hasNext: Boolean) extends MbApi with FetchDataResponse
+case class FetchDataFailed(error: String) extends MbApi with FetchDataResponse
