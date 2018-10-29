@@ -35,7 +35,8 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy2.MbService
 
 class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) extends MbLogging {
-	private val channelToSessionIdAndToken = new ConcurrentHashMap[Channel, (String, String)]()
+	private val channelToToken = new ConcurrentHashMap[Channel, String]()
+	private val channelToSessionId = new ConcurrentHashMap[Channel, String]()
 	private val READ_TIMEOUT: Int = 60 * 60 // time unit: s
 	private var channelFuture: ChannelFuture = _
 	private var bootstrap: ServerBootstrap = _
@@ -52,7 +53,7 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
 						channel.pipeline.addLast("decode", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
 				  		.addLast("encode", new ObjectEncoder())
 				  		.addLast("timeout handler", new ReadTimeoutHandler(READ_TIMEOUT))
-				  		.addLast("handler", new JdbcServerHandler(channelToSessionIdAndToken, mbService))
+				  		.addLast("handler", new JdbcServerHandler(channelToToken, channelToSessionId, mbService))
 			  }
 			})
 		  .option[JInt](ChannelOption.SO_BACKLOG, 1024)
@@ -69,7 +70,8 @@ class JdbcServer(host: String, port: Int, conf: MbConf, mbService: MbService) ex
 		// shut down your server.
 		channelFuture.channel.closeFuture.addListener(new ChannelFutureListener {
 			  override def operationComplete(future: ChannelFuture) = {
-				  channelToSessionIdAndToken.clear()
+					channelToToken.clear()
+					channelToSessionId.clear()
 				  stop()
 			  }
 		})

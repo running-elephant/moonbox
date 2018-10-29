@@ -21,12 +21,12 @@
 package moonbox.jdbc
 
 import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, SQLException, SQLWarning, SQLXML, Savepoint, Statement, Struct}
-import java.util.Properties
+import java.util.{Locale, Properties}
 import java.util.concurrent.Executor
 import java.{sql, util}
 
 import moonbox.client.JdbcClient
-import moonbox.common.message.{JdbcLoginInbound, JdbcLoginOutbound}
+import moonbox.protocol.client._
 import org.apache.commons.codec.digest.DigestUtils
 
 class MoonboxConnection(url: String, props: Properties) extends java.sql.Connection {
@@ -39,74 +39,96 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   var database: String = _
   var networkTimeout: Int = 1000 * 60 * 3
   var DEFAULT_USER_CHECK_TIMEOUT = 1000 * 60 * 5
+  var runMode = "local"
+
+  private def openSession(client: JdbcClient, username: String, password: String, newProps: Properties): Boolean = {
+    val table = {
+      val tb = newProps.getProperty("table")
+      if (tb != null) tb
+      else newProps.getProperty("collection")
+    }
+    if (database == null) {
+      database = newProps.getProperty(DB_NAME)
+    }
+    val isLocal = runMode.toLowerCase(Locale.ROOT) match {
+      case "cluster" => false
+      case _ => true
+    }
+    val message = OpenSessionInbound(null, Some(database), isLocal).setId(client.genMessageId)
+    val resp = client.sendAndReceive(message)
+    resp match {
+      case OpenSessionOutbound(_, None) =>
+        initSession(client, database, table, username, password, isLocal, newProps)
+        true
+      case other =>
+        client.close()
+        throw new SQLException(s"Get moonbox connection failed: $other")
+    }
+  }
+
+  private def clientGen(host: String, port: Int, username: String, password: String): JdbcClient = {
+    val client = new JdbcClient(host, port)
+    client.connect()
+    val (newClient, errorMessage) = if (client.isConnected) {
+      val loginOutbound = client.sendAndReceive(LoginInbound(username, password).setId(client.genMessageId))
+      loginOutbound match {
+        case LoginOutbound(Some(_), None) =>
+          val resp = client.sendAndReceive(RequestAccessInbound().setId(client.genMessageId), DEFAULT_USER_CHECK_TIMEOUT)
+          client.close()
+          resp match {
+            case RequestAccessOutbound(Some(address), None) =>
+              val (host, port) = splitHostPort(address)
+              (Some(new JdbcClient(host, port)), None)
+            case other => (None, Some(s"Get moonbox connection failed: $other"))
+          }
+        case other: LoginOutbound => (None, Some(s"Get moonbox connection failed: error=${other.error}"))
+        case e => (None, Some(s"Get moonbox connection failed: $e"))
+      }
+    } else (None, Some("Cannot connect to moonbox."))
+    newClient.getOrElse(throw new SQLException(errorMessage.orNull))
+  }
 
   def userCheck(): Boolean = {
     var flag = false
     val newProps = parseURL(url, props)
     val username = newProps.getProperty(USER_KEY)
     val pwd = newProps.getProperty(PASSWORD_KEY)
-    database = newProps.getProperty(DB_NAME)
-    val table = {
-      val tb = newProps.getProperty("table")
-      if (tb != null) tb
-      else newProps.getProperty("collection")
-    }
-    // TODO: Support cluster?
-    // use the first host and port pair to get a JdbcClient
+    runMode = Option(newProps.getProperty(MODE_KEY)).getOrElse("local")
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
-    val client = new JdbcClient(host, port)
+    val client = clientGen(host, port, username, pwd)
     client.connect()
-    if (client.isConnected()) {
-      val messageId = client.getMessageId()
-      val resp = client.sendAndReceive(JdbcLoginInbound(messageId, username, pwd, database), DEFAULT_USER_CHECK_TIMEOUT)
+    if (client.isConnected) {
+      val resp = client.sendAndReceive(LoginInbound(username, pwd).setId(client.genMessageId), DEFAULT_USER_CHECK_TIMEOUT)
       resp match {
-        case msg: JdbcLoginOutbound =>
-          msg.err match {
-            case Some(err) =>
-              client.close()
-              throw new SQLException(s"Get connection error when checking username and password: $err)")
-            case None =>
-              flag = true
-              initSession(client, database, table, username, pwd, newProps)
-          }
-        case e: Exception =>
+        case LoginOutbound(_, None) =>
+          flag = openSession(client, username, pwd, newProps)
+        case other =>
           client.close()
-          throw new SQLException(s"Get MoonboxConnection error: $e")
-        case null =>
-          client.close()
-          throw new SQLException(s"Server's response message for ${username}'s login: null")
-        case _ =>
-          client.close()
-          throw new SQLException("Unknown response")
+          throw new SQLException(s"Get moonbox connection failed: $other")
       }
     }
     flag
   }
 
-  private def initSession(jdbcClient: JdbcClient, database: String, table: String, username: String, pwd: String, props: Properties): Unit = {
+  private def initSession(jdbcClient: JdbcClient, database: String, table: String, username: String, pwd: String, isLocal: Boolean, props: Properties): Unit = {
     if (pwd != null && pwd.length > 0)
-      jdbcSession = JdbcSession(jdbcClient, database, table, username, DigestUtils.md5Hex(pwd), props)
+      jdbcSession = JdbcSession(jdbcClient, database, table, username, DigestUtils.md5Hex(pwd), props, isLocal)
     else
-      jdbcSession = JdbcSession(jdbcClient, database, table, username, pwd, props)
+      jdbcSession = JdbcSession(jdbcClient, database, table, username, pwd, props, isLocal)
     closed = false
   }
 
   def getSession(): JdbcSession = jdbcSession
-
-  //  override def commit(): Unit = throw new SQLException("Unsupported")
 
   override def commit(): Unit = throw new SQLException("Unsupported")
 
   override def getHoldability: Int = 1
 
   override def setCatalog(catalog: String): Unit = {
-    // TODO: re-init the jdbcSession
     database = catalog
   }
 
-  override def setHoldability(holdability: Int): Unit = {
-    //throw new SQLException("Unsupported")
-  }
+  override def setHoldability(holdability: Int): Unit = {}
 
   override def prepareStatement(sql: String): PreparedStatement = throw new SQLException("Unsupported")
 
@@ -122,17 +144,11 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def createClob(): Clob = throw new SQLException("Unsupported")
 
-  override def setSchema(schema: String): Unit = {
-    //throw new SQLException("Unsupported")
-  }
+  override def setSchema(schema: String): Unit = {}
 
-  override def setClientInfo(name: String, value: String): Unit = {
-    //throw new SQLException("Unsupported")
-  }
+  override def setClientInfo(name: String, value: String): Unit = {}
 
-  override def setClientInfo(properties: Properties): Unit = {
-    //throw new SQLException("Unsupported")
-  }
+  override def setClientInfo(properties: Properties): Unit = {}
 
   override def createSQLXML(): SQLXML = throw new SQLException("Unsupported")
 
@@ -141,7 +157,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def createBlob(): Blob = throw new SQLException("Unsupported")
 
   def checkClosed(): Unit = {
-    if (isClosed()){
+    if (isClosed()) {
       throw new SQLException("Connection is already closed.")
     }
   }
@@ -152,23 +168,19 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     statement
   }
 
-  override def createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = createStatement() // TODO: createStatement(resultSetType: Int, resultSetConcurrency: Int)
+  override def createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = createStatement()
 
-  override def createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = createStatement() // TODO: createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int)
+  override def createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = createStatement()
 
-  override def abort(executor: Executor): Unit = this.close() // TODO: abort
+  override def abort(executor: Executor): Unit = this.close()
 
-  override def setAutoCommit(autoCommit: Boolean): Unit = {
-    //throw new SQLException("Unsupported")
-  } // TODO: setAutoCommit
+  override def setAutoCommit(autoCommit: Boolean): Unit = {}
 
   override def getMetaData: DatabaseMetaData = {
-	  new MoonboxDatabaseMetaData(this)
-  } // TODO: getMetaData: DatabaseMetaData
+    new MoonboxDatabaseMetaData(this)
+  }
 
-  override def setReadOnly(readOnly: Boolean): Unit = {
-    //throw new SQLException("Unsupported")
-  } // TODO: setReadOnly
+  override def setReadOnly(readOnly: Boolean): Unit = {}
 
   override def prepareCall(sql: String): CallableStatement = throw new SQLException("Unsupported")
 
@@ -176,25 +188,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def prepareCall(sql: String, resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): CallableStatement = throw new SQLException("Unsupported")
 
-  override def setTransactionIsolation(level: Int): Unit = {
-    // throw new SQLException("Unsupported")
-  }
-
-
-  //  private def closeSession(jdbcSession: JdbcSession): Unit = {
-  //    val messageId = jdbcSession.jdbcClient.getMessageId()
-  //    val resp = jdbcSession.jdbcClient.sendAndReceive(JdbcLogoutInbound(messageId))
-  //    resp match {
-  //      case r: JdbcLogoutOutbound =>
-  //        if (r.err.isDefined) {
-  //          throw new SQLException(s"Jdbc connection close error: ${r.err.get}")
-  //        } else {
-  //          jdbcSession.jdbcClient.close()
-  //          jdbcSession.closed = true
-  //        }
-  //      case other => throw new SQLException(s"Jdbc connection close error: $other")
-  //    }
-  //  }
+  override def setTransactionIsolation(level: Int): Unit = {}
 
   override def getWarnings: SQLWarning = {
     throw new SQLException("Unsupported")
@@ -221,7 +215,6 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       statement.close()
     }
     statement = null
-    //    closeSession(jdbcSession)
     if (jdbcSession != null || !jdbcSession.isClosed()) {
       jdbcSession.close()
     }
@@ -237,11 +230,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = {
     networkTimeout = milliseconds
-    //throw new SQLException("unsupported")
   }
 
   override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {
-    //throw new SQLException("Unsupported")
   }
 
   override def isValid(timeout: Int): Boolean = {
@@ -250,14 +241,11 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def getAutoCommit: Boolean = false
 
-  override def clearWarnings(): Unit = {
-    //throw new SQLException("Unsupported")
-  }
+  override def clearWarnings(): Unit = {}
 
   override def getSchema: String = throw new SQLException("Unsupported")
 
   override def getNetworkTimeout: Int = {
-    //    throw new SQLException("unsupported")
     networkTimeout
   }
 
@@ -272,7 +260,6 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def getTransactionIsolation: Int = {
     Connection.TRANSACTION_NONE
-    //throw new SQLException("Unsupported")
   }
 
   override def createStruct(typeName: String, attributes: Array[AnyRef]): Struct = throw new SQLException("Unsupported")

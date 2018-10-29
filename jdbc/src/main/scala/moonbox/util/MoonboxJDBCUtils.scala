@@ -22,6 +22,9 @@ package moonbox.util
 
 import java.util.Properties
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 object MoonboxJDBCUtils {
   val URL_PREFIX: String = "jdbc:moonbox://"
   val DB_NAME = "database"
@@ -30,6 +33,7 @@ object MoonboxJDBCUtils {
   val FETCH_SIZE = "fetchsize"
   val DEFAULT_PORT = 8080
   val HOSTS_AND_PORTS = "nodes" //host1:port1,host2:port2,host3:port3
+  val MODE_KEY = "mode"
 
   def parseURL(url: String, defaults: Properties): Properties = {
     val resProps = if (defaults != null) defaults else new Properties()
@@ -60,6 +64,36 @@ object MoonboxJDBCUtils {
         } else null
       }.filter(_ != null).toSeq
     else null
+  }
+
+  def splitHostPort(hp: String): (String, Int) = {
+    if (hp == null) {
+      throw new Exception("Host and port cannot be null.")
+    } else {
+      val res = hp.split(":")
+      (res(0).trim, res(1).trim.toInt)
+    }
+  }
+
+  def splitSql(sql: String, splitter: Char): Seq[String] = {
+    val stack = new mutable.Stack[Char]()
+    val splitIndex = new ArrayBuffer[Int]()
+    for ((char, idx) <- sql.toCharArray.zipWithIndex) {
+      if (char == splitter) {
+        if (stack.isEmpty) splitIndex += idx
+      }
+      if (char == '(') stack.push('(')
+      if (char == ')') stack.pop()
+    }
+    splits(sql, splitIndex.toArray, 0).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
+  }
+
+  private def splits(sql: String, idxs: Array[Int], offset: Int): Seq[String] = {
+    if (idxs.nonEmpty) {
+      val head = idxs.head
+      val (h, t) = sql.splitAt(head - offset)
+      h +: splits(t, idxs.tail, head)
+    } else sql :: Nil
   }
 
 }

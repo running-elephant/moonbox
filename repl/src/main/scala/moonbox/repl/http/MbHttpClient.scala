@@ -23,7 +23,7 @@ package moonbox.repl.http
 import java.net.URI
 import java.nio.charset.StandardCharsets
 
-import moonbox.common.message.RestEntity
+import moonbox.protocol.client._
 import org.apache.http.HttpStatus
 import org.apache.http.client.HttpClient
 import org.apache.http.client.config.RequestConfig
@@ -48,7 +48,7 @@ class MbHttpClient(host: String, port: Int, socketTimeout: Int) {
     * @param api
     * @return http response entity as a json string
     */
-  def post(msg: RestEntity, api: String): String = {
+  def post(msg: Message, api: String): String = {
     val json = toJson(msg)
     val httpPost = new HttpPost()
     httpPost.setEntity(EntityBuilder.create().setContentType(ContentType.APPLICATION_JSON).setContentEncoding("UTF-8").setText(json).build())

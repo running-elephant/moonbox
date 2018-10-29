@@ -119,7 +119,12 @@ object Utils {
     * @param truncate 0 denotes not truncating
     * @return
     */
-  def showString(_data: Seq[Seq[Any]], schema: Seq[String], _numRows: Int = 500, truncate: Int = 0): String = {
+  def showString(_data: Seq[Seq[Any]],
+                 schema: Seq[String],
+                 _numRows: Int = 500,
+                 truncate: Int = 0,
+                 showPromote: Boolean = true,
+                 showSchema: Boolean = true): String = {
     val numRows = _numRows.max(0)
     val data = _data.take(numRows)
     // For array values, replace Seq and Array with square brackets
@@ -135,7 +140,7 @@ object Utils {
         } else str
       }: Seq[String]
     }
-    if (schema.nonEmpty) {
+    if (schema.nonEmpty && showSchema) {
       rows = schema +: rows
     }
     if (rows.isEmpty) {
@@ -164,7 +169,7 @@ object Utils {
       padWs(cell, colWidths(i), truncate)
     }.addString(sb, "|", "|", "|\n")
     // escape empty schema
-    if (schema.nonEmpty) {
+    if (schema.nonEmpty && showSchema) {
       sb.append(sep)
     }
     // data
@@ -178,7 +183,9 @@ object Utils {
     }
     // For Data that has more than "numRows" records
     val rowsString = if (numRows == 1) "row" else "rows"
-    sb.append(s"Showing at most top $numRows $rowsString\n")
+    if (showPromote){
+      sb.append(s"Showing at most top $numRows $rowsString\n")
+    }
     sb.toString()
   }
 

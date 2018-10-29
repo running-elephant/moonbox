@@ -51,7 +51,8 @@ object Main extends JsonSerializer {
   val PARAMETER_PREFIX: String = "%SET "
   val historyMqls: mutable.Queue[String] = new mutable.Queue[String]()
   val lineHistory: mutable.Queue[String] = new mutable.Queue[String]()
-  val HISTORY_SIZE: Int = 100 /* max number of history to maintain */
+  val HISTORY_SIZE: Int = 100
+  /* max number of history to maintain */
   var connector: Connector = _
   val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
     override def handle(signal: Signal): Unit = {
@@ -141,7 +142,7 @@ object Main extends JsonSerializer {
           val cleanedSqls = sqlList.map(_.trim).filterNot(_ == "")
           if (cleanedSqls.nonEmpty) {
             /* add line reader history */
-            enqueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
+            enqueueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
             setHistory(lineReader.asInstanceOf[LineReaderImpl])
 
             process(cleanedSqls)
@@ -154,7 +155,7 @@ object Main extends JsonSerializer {
           case e: Exception =>
             val stringWriter = new StringWriter()
             e.printStackTrace(new PrintWriter(stringWriter))
-            System.out.println(stringWriter.toString)
+            System.err.println(stringWriter.toString)
         }
       }
     } else {
@@ -163,7 +164,17 @@ object Main extends JsonSerializer {
     }
   }
 
-  private def processParams(kv: String, sqlList: Seq[String]): Unit = {
+  private def printSetHelp(): Unit = {
+    val message =
+      """
+        |Use: %SET TRUNCATE=[Int]  /*Set the column length to truncate, 0 denotes unabridged*/
+        |     %SET MAX_COUNT=[Int]  /*Set max rows to show in console*/
+      """.stripMargin
+    Console.err.println(message)
+  }
+
+  private def processSetSqls(setStatement: String, sqlList: Seq[String]): Unit = {
+    val kv = setStatement.toUpperCase(Locale.ROOT).stripPrefix(PARAMETER_PREFIX).trim
     val idx = kv.indexOf("=")
     if (idx != -1) {
       try {
@@ -172,19 +183,29 @@ object Main extends JsonSerializer {
         k match {
           case "MAX_COUNT" => connector.max_count = v.toInt
           case "TRUNCATE" => connector.truncate = v.toInt
-          case other => Console.err.println(s"Unknown parameter key: $other")
+          case _ =>
+            Console.err.println(s"""Unknown parameter key in set statement "$setStatement".""")
+            printSetHelp()
         }
       } catch {
-        case _: NumberFormatException => Console.err.println("Value format invalid: should be Int.")
-        case _: IndexOutOfBoundsException => Console.err.println("Invalid parameter set statement.")
+        case _: NumberFormatException =>
+          Console.err.println("Value format invalid: should be Int.")
+          printSetHelp()
+        case _: IndexOutOfBoundsException =>
+          Console.err.println("Invalid parameter set statement.")
+          printSetHelp()
         case other: Exception => throw other
+      }
+      val s = sqlList.tail
+      if (s.nonEmpty) {
+        connector.process(s)
       }
     } else {
       connector.process(sqlList)
     }
   }
 
-  private def enqueWithLimit(queue: mutable.Queue[String], sqls: String*): Unit = {
+  private def enqueueWithLimit(queue: mutable.Queue[String], sqls: String*): Unit = {
     queue.enqueue(sqls: _*)
     /* The size of history SQLs limited */
     while (queue.length > HISTORY_SIZE) {
@@ -193,15 +214,12 @@ object Main extends JsonSerializer {
   }
 
   private def process(sqlList: Seq[String]): Unit = {
-    sqlList.head.toUpperCase(Locale.ROOT) match {
+    val headSql = sqlList.head
+    headSql.toUpperCase(Locale.ROOT) match {
       case "" =>
       case stmt if stmt.startsWith(PARAMETER_PREFIX) =>
-        enqueWithLimit(historyMqls, sqlList: _*)
-        processParams(stmt.stripPrefix(PARAMETER_PREFIX).trim, sqlList)
-        val s = sqlList.tail
-        if (s.nonEmpty) {
-          connector.process(s)
-        }
+        enqueueWithLimit(historyMqls, sqlList: _*)
+        processSetSqls(headSql, sqlList)
       case "HISTORY" | "H" =>
         val data = historyMqls.zipWithIndex.map(u => Seq(historyMqls.length - u._2, u._1 + ";"))
         print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
@@ -212,7 +230,7 @@ object Main extends JsonSerializer {
         connector.shutdown()
         System.exit(0)
       case _ =>
-        enqueWithLimit(historyMqls, sqlList: _*)
+        enqueueWithLimit(historyMqls, sqlList: _*)
         connector.process(sqlList)
     }
   }

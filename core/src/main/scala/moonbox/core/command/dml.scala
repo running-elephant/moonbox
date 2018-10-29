@@ -63,8 +63,8 @@ case class SetVariable(name: String, value: String, isGlobal: Boolean)
 case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output: Seq[Attribute] = {
-		AttributeReference("key", StringType, nullable = false)() ::
-		AttributeReference("value", StringType, nullable = false)() :: Nil
+		AttributeReference("KEY", StringType, nullable = false)() ::
+		AttributeReference("VALUE", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -87,7 +87,7 @@ case class ShowDatabases(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output: Seq[Attribute] = {
-		AttributeReference("databaseName", StringType, nullable = false)() :: Nil
+		AttributeReference("DATABASE_NAME", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -101,6 +101,10 @@ case class ShowDatabases(
 case class ShowTables(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
+
+	override def output = {
+		AttributeReference("NAME", StringType, nullable = false)() :: Nil
+	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
@@ -121,6 +125,10 @@ case class ShowViews(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
+	override def output = {
+		AttributeReference("VIEW_NAME", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
@@ -135,6 +143,10 @@ case class ShowFunctions(
 	database: Option[String],
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
+	override def output = {
+		AttributeReference("FUNCTION_NAME", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
@@ -148,6 +160,10 @@ case class ShowFunctions(
 case class ShowUsers(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
+	override def output = {
+		AttributeReference("USER_NAME", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val users = pattern.map { p =>
 			mbSession.catalog.listUsers(ctx.organizationId, p)
@@ -158,6 +174,10 @@ case class ShowUsers(
 
 case class ShowGroups(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
+
+	override def output = {
+		AttributeReference("GROUP_NAME", StringType, nullable = false)() :: Nil
+	}
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val groups = pattern.map { p =>
 			mbSession.catalog.listGroups(ctx.organizationId, p)
@@ -169,6 +189,10 @@ case class ShowGroups(
 case class ShowProcedures(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
+	override def output = {
+		AttributeReference("PROCEDURE_NAME", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val procedures = pattern.map { p =>
 			mbSession.catalog.listProcedures(ctx.organizationId, p)
@@ -178,6 +202,11 @@ case class ShowProcedures(
 }
 
 case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DML {
+
+	override def output = {
+		AttributeReference("EVENT_NAME", StringType, nullable = false)() :: Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val timedEvents = pattern.map { p =>
 			mbSession.catalog.listTimedEvents(ctx.organizationId, p)
@@ -187,6 +216,14 @@ case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DM
 }
 
 case class ShowGrants(user: String) extends MbRunnableCommand with DML {
+
+	override def output = {
+		AttributeReference("PRIVILEGE_LEVEL", StringType)() ::
+      AttributeReference("NAME", StringType)() ::
+      AttributeReference("PRIVILEGE_TYPE", StringType)() ::
+		  Nil
+	}
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext) = {
 		val catalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		if (mbSession.catalog.isSa(ctx.userId) || user == ctx.userName) {
@@ -196,13 +233,13 @@ case class ShowGrants(user: String) extends MbRunnableCommand with DML {
 			val columnPrivilege = mbSession.catalog.getColumnPrivilege(catalogUser.id.get)
 			buffer.append( databasePrivilege.map { p =>
 				val database = mbSession.catalog.getDatabase(p.databaseId)
-				Row("Database Privilege" , s"${database.name} : ${p.privilegeType}")}:_*)
+				Row("Database" , database.name, p.privilegeType)}:_*)
 			buffer.append( tablePrivilege.map { p =>
 				val database = mbSession.catalog.getDatabase(p.databaseId)
-				Row("Table Privilege" , s"${database.name}.${p.table} : ${p.privilegeType}")}:_* )
+				Row("Table" , s"${database.name}.${p.table}", p.privilegeType)}:_* )
 			buffer.append( columnPrivilege.map { p =>
 				val database = mbSession.catalog.getDatabase(p.databaseId)
-				Row("Column Privilege" , s"${database.name}.${p.table}.${p.column} : ${p.privilegeType}")}:_*)
+				Row("Column" , s"${database.name}.${p.table}.${p.column}", p.privilegeType)}:_*)
 			buffer
 		} else {
 			throw new Exception(s"Access denied for user '$user'")
@@ -212,6 +249,12 @@ case class ShowGrants(user: String) extends MbRunnableCommand with DML {
 
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val database = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		val isLogical = database.isLogical
@@ -220,15 +263,22 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 					key.toLowerCase.contains("username") ||
 					key.toLowerCase.contains("password")
 		}.toSeq.mkString("(", ", ", ")")
-		val result = Row("Database Name", database.name) ::
-				Row("IsLogical", isLogical) ::
-				Row("Properties", properties) ::
-				Row("Description", database.description.getOrElse("")) :: Nil
+		val result = Row("database_name", database.name) ::
+				Row("islogical", isLogical) ::
+				Row("properties", properties) ::
+				Row("description", database.description.getOrElse("")) :: Nil
 		result
 	}
 }
 
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
+
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	// TODO view
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
@@ -274,6 +324,12 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 
 case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML {
 
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databaseId = view.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
@@ -288,6 +344,12 @@ case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML 
 
 case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
 	extends MbRunnableCommand with DML {
+
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val result = new ArrayBuffer[Row]()
@@ -309,6 +371,12 @@ case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
 
 case class DescUser(user: String) extends MbRunnableCommand with DML {
 
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		val result = Row("User Name", catalogUser.name) ::
@@ -325,6 +393,12 @@ case class DescUser(user: String) extends MbRunnableCommand with DML {
 
 case class DescGroup(group: String) extends MbRunnableCommand with DML {
 
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogGroup: CatalogGroup = mbSession.catalog.getGroup(ctx.organizationId, group)
 		val result = Row("Group Name", catalogGroup.name) ::
@@ -334,6 +408,13 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 }
 
 case class DescEvent(event: String) extends MbRunnableCommand with DML {
+
+  override def output = {
+    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+      AttributeReference("VALUE", StringType, nullable = false)() ::
+      Nil
+  }
+
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogTimedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, event)
 		val catalogUser = mbSession.catalog.getUser(catalogTimedEvent.definer)
@@ -363,6 +444,11 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 }*/
 
 case class Explain(query: String, extended: Boolean = false) extends MbRunnableCommand with DML {
+
+  override def output = {
+    AttributeReference("EXPLAIN_RESULT", StringType, nullable = false)() :: Nil
+  }
+
 	// TODO
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = try {
 		val logicalPlan = mbSession.pushdownPlan(mbSession.optimizedPlan(query))

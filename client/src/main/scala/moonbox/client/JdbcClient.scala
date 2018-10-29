@@ -124,7 +124,7 @@ class JdbcClient(host: String, port: Int) {
 				  if (promises.containsKey(messageId)) {
 					  val promise = promises.get(messageId)
 					  if (!promise.await(timeout))
-						  throw new Exception(s"no response within $timeout ms")
+						  throw new Exception(s"No response within $timeout ms")
 					  else {
 						  if (promise.isSuccess) {
 							  responses.get(messageId)

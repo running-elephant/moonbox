@@ -87,7 +87,7 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     sql = "select mytimestamp from timestamp limit 20"
     res = stmt.executeQuery(sql)
     while (res.next()) {
-      println("Mongo Timestamp: " + res.getObject(1).asInstanceOf[BsonTimestamp])
+      println("Mongo Timestamp: " + res.getObject(1))
     }
   }
 
@@ -339,6 +339,17 @@ class CatalystResultSetTest extends FunSuite with BeforeAndAfterAll {
     while (res.next()) {
       println(res.getObject(1))
       println(res.getObject(2))
+    }
+  }
+
+  test("limit 0") {
+    connection = DriverManager.getConnection("jdbc:mongo://localhost:27017/test?collection=books&user=yan&password=123456", props)
+    stmt = connection.createStatement()
+    sql = "select * from books where 1=0 limit 0"
+    res = stmt.executeQuery(sql)
+    println("-------------------local_relation-------------------")
+    while (res.next()) {
+      println(res.getObject(1))
     }
   }
 

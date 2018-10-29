@@ -23,20 +23,16 @@ package moonbox.jdbc
 import java.sql._
 
 import moonbox.client.JdbcClient
-import moonbox.common.message._
+import moonbox.protocol.client._
+import moonbox.util.MoonboxJDBCUtils
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
-
   var fetchSize = 1000
   var queryTimeout = 1000 * 60 * 30
-
-  var dataFetchId: Long = _
-  var totalRows: Long = _
   var maxFieldSize: Int = _
   var jdbcSession: JdbcSession = connection.getSession()
   var resultSet: MoonboxResultSet = _
   var client: JdbcClient = _
-  var currentQueryId: Long = _
   var maxRows: Int = 0
   var updateCount: Int = 0
   var closed: Boolean = false
@@ -74,51 +70,33 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def executeQuery(sql: String): ResultSet = {
     checkClosed()
     beforeAction()
-    currentQueryId = client.getMessageId()
-    val message = JdbcQueryInbound(currentQueryId, getFetchSize, sql)
+    val message = InteractiveQueryInbound(null, null, MoonboxJDBCUtils.splitSql(sql, ';'), getFetchSize).setId(client.genMessageId)
     val resp = client.sendAndReceive(message, getQueryTimeout)
-    jdbcMessage2ResultSet(message, resp)
-  }
-
-  def jdbcMessage2ResultSet(send: JdbcInboundMessage, response: Any): ResultSet = {
-    response match {
-      case resp: JdbcQueryOutbound =>
-        if (resp.err.isDefined) {
-          // Received an error message, then throw an exception
-          throw new SQLException(s"${resp.err.get}")
-          // TODO: Or retry several times (retransmit the query message) ?
-        } else {
-          // TODO:
-          if (resp.schema.isEmpty) {
-            isResultSet = false
-          }else{
-            isResultSet = true
-          }
-          resultSet = new MoonboxResultSet(connection, this, resp.data.orNull, resp.schema.orNull)
-          resultSet.updateResultSet(resp)
-          resultSet
+    val outbound = resp match {
+      case interactiveQueryOutbound@InteractiveQueryOutbound(error, hasResult, resultData) =>
+        if (error.isDefined) {
+          throw new SQLException(s"Execute query error: ${error.get}")
         }
-      case dataFetch: DataFetchOutbound =>
-        if (dataFetch.err.isDefined) {
-          // Received an error message, then throw an exception
-          throw new SQLException(s"sql query error: ${dataFetch.err.get}")
-          // TODO: Or retry several times (retransmit the query message) ?
+        if (resultData.isEmpty) {
+          isResultSet = false
+          val emptyData = Seq.empty
+          val emptySchema =
+            """
+              |{
+              |  "type": "struct",
+              |  "fields": []
+              |}
+            """.stripMargin
+          InteractiveQueryOutbound(error, hasResult, Some(ResultData(null, emptySchema, emptyData, hasNext = false)))
         } else {
-          val fetchState = dataFetch.dataFetchState
-          dataFetchId = fetchState.messageId
-          totalRows = fetchState.totalRows
-          resultSet = new MoonboxResultSet(connection, this, dataFetch.data.orNull, dataFetch.schema.orNull)
-          resultSet.updateResultSet(dataFetch)
-          resultSet
+          isResultSet = true
+          interactiveQueryOutbound
         }
-      //      case cancel: JdbcCancelOutbound =>
-      //        cancel.error match {
-      //          case None => throw new SQLException(s"Query Canceled successfully")
-      //          case Some(err) => throw new SQLException(s"Query Cancel failed: $err")
-      //        }
-      case null => throw new SQLException("sql query error or timeout")
-      case _ => throw new SQLException("Response message type error for sql query") // TODO: retry or not ?
+      case other => throw new SQLException(s"Execute query error: $other")
     }
+    val data = outbound.data.get
+    resultSet = new MoonboxResultSet(getConnection, this, data.data, data.schema, data.hasNext, Some(data.cursor))
+    resultSet
   }
 
   override def executeUpdate(sql: String) = 0
@@ -144,8 +122,11 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def setMaxRows(max: Int) = {
     checkClosed()
-    if (max > 0)
+    if (max < 0) {
+      throw new SQLException(s"Invalid maxRows value: $max")
+    } else {
       maxRows = max
+    }
   }
 
   override def setEscapeProcessing(enable: Boolean) = {}
@@ -158,12 +139,11 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def cancel() = {
     beforeAction()
-    val msgId = client.getMessageId()
-    val cancelMessage = JdbcCancelInbound(msgId, currentQueryId)
+    val cancelMessage = CancelQueryInbound(null, null).setId(client.genMessageId)
     val cancelResp = client.sendAndReceive(cancelMessage, getQueryTimeout)
     cancelResp match {
-      case JdbcCancelOutbound(_, Some(error), _) => throw new SQLException(s"Cancel query failed: $error")
-      case JdbcCancelOutbound(_, None, Some(state)) => if (!state) throw new SQLException(s"Cancel query failed")
+      case CancelQueryOutbound(Some(error)) => throw new SQLException(s"Cancel query failed: $error")
+      case CancelQueryOutbound(None) =>
       case other => throw new SQLException(s"Cancel query error: $other")
     }
     canceled = true

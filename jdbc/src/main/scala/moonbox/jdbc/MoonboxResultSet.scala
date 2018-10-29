@@ -26,25 +26,25 @@ import java.sql.{Blob, Clob, Date, NClob, Ref, ResultSet, ResultSetMetaData, Row
 import java.util
 import java.util.Calendar
 
-import moonbox.common.message._
+import moonbox.protocol.client._
 import moonbox.util.SchemaUtil._
 
 class MoonboxResultSet(conn: MoonboxConnection,
                        stat: MoonboxStatement,
                        var rows: Seq[Seq[Any]],
-	                   schema: String
+                       schema: String,
+                       var hasMore: Boolean,
+                       cursor: Option[String]
                       ) extends ResultSet {
 
   var closed: Boolean = false
   var currentRowStart: Long = 0 // this fetched data's start index (inclusive)
-  var currentRowEnd: Long = rows.length - 1// this fetched data's end index (inclusive)
+  var currentRowEnd: Long = rows.length - 1 // this fetched data's end index (inclusive)
   /** currentRow's Index in the whole ResultSet (start with -1) */
   var currentRowId: Long = -1
-  var totalRows: Long = rows.length
   var forwardOnly: Boolean = true
 
   var FETCH_SIZE: Int = stat.getFetchSize
-  var fetchJobId: String = _
   var currentRow: Array[Any] = _
   lazy val index2SqlType: Map[Int, Int] = schema2SqlType(parsedSchema).map(_._2).zipWithIndex.map(p => (p._2 + 1) -> p._1).toMap
   lazy val columnLabel2Index: Map[String, Int] = parsedSchema.map(_._1).zipWithIndex.map(p => p._1 -> (p._2 + 1)).toMap
@@ -52,15 +52,13 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   lazy val parsedSchema = if (schema != null) parse(schema) else throw new SQLException("ResultSet schema is null")
 
-  def sendNextDataFetch(): DataFetchOutbound = {
+  private def fetchNextData(): InteractiveNextResultOutbound = {
     val client = stat.jdbcSession.jdbcClient
-    val messageId = client.getMessageId()
-    val dataFetchState = DataFetchState(messageId, fetchJobId, currentRowId + 1, FETCH_SIZE, stat.totalRows)
-    val nextDataFetch = DataFetchInbound(dataFetchState)
-    val resp = client.sendAndReceive(nextDataFetch, stat.queryTimeout)
+    val message = InteractiveNextResultInbound(null, null, cursor.orNull, FETCH_SIZE).setId(client.genMessageId)
+    val resp = client.sendAndReceive(message, stat.queryTimeout)
     resp match {
-      case dataFetch: DataFetchOutbound => dataFetch
-      case _ => throw new SQLException(s"data fetch error: $nextDataFetch")
+      case outbound: InteractiveNextResultOutbound => outbound
+      case other => throw new SQLException(s"Fetch next resultSet error: $other")
     }
   }
 
@@ -70,42 +68,28 @@ class MoonboxResultSet(conn: MoonboxConnection,
       currentRowId += 1
       currentRow = rows((currentRowId - currentRowStart).toInt).toArray
       flag = true
-    } else if (!closed && currentRowId < totalRows - 1) {
-      val resp = if (!getStatement.canceled) sendNextDataFetch() else throw new SQLException("Query is canceled")
+    } else if (!closed && hasMore) {
+      val resp = if (!getStatement.canceled) fetchNextData() else throw new SQLException("Query is canceled")
       updateResultSet(resp)
       flag = next
     }
     flag
   }
 
-  def updateResultSet(result: JdbcQueryOutbound): Unit = {
+  private def updateResultSet(outbound: InteractiveNextResultOutbound): Unit = {
     /** update rows, currentRowStart, currentRowEnd, currentRowId, totalRows, closed, resultSetMetaData */
-    rows = result.data.orNull
-    currentRowStart = 0
-    totalRows = result.data.map(_.size.toLong).getOrElse(0)
-    currentRowEnd = totalRows - 1
+    val dataHolder = outbound.data.get
+    rows = dataHolder.data
+    hasMore = dataHolder.hasNext
+    currentRowStart = currentRowEnd
+    currentRowEnd =  currentRowStart + rows.size - 1
     currentRowId = currentRowStart - 1
     closed = false
-    if (result.schema.isDefined && resultSetMetaData == null)
-      resultSetMetaData = new MoonboxResultSetMetaData(this, result.schema.orNull)
+    if (resultSetMetaData == null)
+      resultSetMetaData = new MoonboxResultSetMetaData(this, dataHolder.schema)
   }
 
-  def updateResultSet(dataFetch: DataFetchOutbound): Unit = {
-    /** update fetchJobId, rows, currentRowStart, currentRowEnd, currentRowId, totalRows, closed, resultSetMetaData */
-    rows = dataFetch.data.orNull
-    if (fetchJobId == null)
-      fetchJobId = dataFetch.dataFetchState.jobId
-    currentRowStart = dataFetch.dataFetchState.startRowIndex
-    currentRowEnd = dataFetch.dataFetchState.fetchSize + currentRowStart - 1
-    currentRowId = currentRowStart - 1
-    if (totalRows <= 0)
-      totalRows = dataFetch.dataFetchState.totalRows
-    closed = false
-    if (dataFetch.schema.isDefined && resultSetMetaData == null)
-      resultSetMetaData = new MoonboxResultSetMetaData(this, dataFetch.schema.orNull)
-  }
-
-  def checkClosed(): Unit = {
+  private def checkClosed(): Unit = {
     if (rows == null)
       throw new SQLException("ResultSet is already closed")
     if (stat != null)
@@ -113,8 +97,6 @@ class MoonboxResultSet(conn: MoonboxConnection,
   }
 
   override def close() = {
-    FETCH_SIZE = 0
-    fetchJobId = null
     currentRow = null
     resultSetMetaData = null
     closed = true
@@ -231,7 +213,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     */
   override def isAfterLast = {
     checkClosed
-    rows != null && rows.nonEmpty && currentRowId >= totalRows
+    rows != null && rows.nonEmpty && currentRowId > currentRowEnd && !hasMore
   }
 
   /**
@@ -240,7 +222,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     */
   override def isFirst = {
     checkClosed
-    rows != null && rows.nonEmpty && currentRowId == 0 && currentRowId < totalRows
+    rows != null && rows.nonEmpty && currentRowId == 0 && currentRowId <= currentRowEnd
   }
 
   /**
@@ -249,7 +231,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
     */
   override def isLast = {
     checkClosed
-    rows != null && rows.nonEmpty && currentRowId == totalRows - 1
+    rows != null && rows.nonEmpty && currentRowId == currentRowEnd
   }
 
   /**
@@ -297,7 +279,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   override def getRow = {
     checkClosed
-    if (currentRowId >= totalRows)
+    if (currentRowId > currentRowEnd)
       0
     else
       (currentRowId + 1).toInt
@@ -314,12 +296,13 @@ class MoonboxResultSet(conn: MoonboxConnection,
     * @return true if there is a row available, false if not
     */
   override def absolute(row: Int) = {
-    checkClosed
+    throw new SQLException("Unsupported")
+    /*checkClosed
     val rowNumber = {
       if (row < 0)
-        totalRows + row + 1
-      else if (row > totalRows + 1)
-        totalRows + 1
+        currentRowEnd + row + 1
+      else if (row > currentRowEnd)
+        currentRowEnd + 1
       else
         row
     }
@@ -327,7 +310,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
       beforeFirst()
     while (currentRowId + 1 < rowNumber)
       next
-    currentRowId >= 0 && currentRowId < totalRows
+    currentRowId >= 0 && currentRowId < totalRows*/
   }
 
   /**
@@ -339,7 +322,8 @@ class MoonboxResultSet(conn: MoonboxConnection,
     *             before the first row.
     */
   override def relative(rows: Int) = {
-    val temp = currentRowId + rows + 1
+    throw new SQLException("Unsupported")
+    /*val temp = currentRowId + rows + 1
     val row = {
       if (temp < 0)
         0
@@ -348,7 +332,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
       else
         temp
     }
-    absolute(row.toInt)
+    absolute(row.toInt)*/
   }
 
   /**
