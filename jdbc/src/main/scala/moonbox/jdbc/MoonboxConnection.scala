@@ -41,6 +41,10 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   var DEFAULT_USER_CHECK_TIMEOUT = 1000 * 60 * 5
   var runMode = "local"
 
+  private def isLocal: Boolean = {
+    runMode.equalsIgnoreCase("local")
+  }
+
   private def openSession(client: JdbcClient, username: String, password: String, newProps: Properties): Boolean = {
     val table = {
       val tb = newProps.getProperty("table")
@@ -49,10 +53,6 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     }
     if (database == null) {
       database = newProps.getProperty(DB_NAME)
-    }
-    val isLocal = runMode.toLowerCase(Locale.ROOT) match {
-      case "cluster" => false
-      case _ => true
     }
     val message = OpenSessionInbound(null, Some(database), isLocal).setId(client.genMessageId)
     val resp = client.sendAndReceive(message)
@@ -73,7 +73,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       val loginOutbound = client.sendAndReceive(LoginInbound(username, password).setId(client.genMessageId))
       loginOutbound match {
         case LoginOutbound(Some(_), None) =>
-          val resp = client.sendAndReceive(RequestAccessInbound().setId(client.genMessageId), DEFAULT_USER_CHECK_TIMEOUT)
+          val resp = client.sendAndReceive(RequestAccessInbound(None, isLocal).setId(client.genMessageId), DEFAULT_USER_CHECK_TIMEOUT)
           client.close()
           resp match {
             case RequestAccessOutbound(Some(address), None) =>

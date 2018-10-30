@@ -92,7 +92,7 @@ class JdbcServerHandler(
         val token = if (channelToToken.containsKey(channel)){
           channelToToken.get(channel)
         } else null
-        val outbound = mbService.requestAccess(token, ConnectionType.JDBC)
+        val outbound = mbService.requestAccess(token, r.isLocal, ConnectionType.JDBC)
         outbound.setId(r.getId)
       case openSession@OpenSessionInbound(_, database, isLocal) =>
         val token = channelToToken.get(channel)

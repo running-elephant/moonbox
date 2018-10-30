@@ -29,13 +29,12 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   var client: MbHttpClient = _
   var sessionId: String = _
   var token: String = _
-  var isLogin: Boolean = _
   var closed: Boolean = _
   var DEFAULT_FETCH_SIZE = 200
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
-      if (isLogin) close()
+      if (!closed) close()
     }
   }))
 
@@ -47,6 +46,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
       client = new MbHttpClient(hp(0), hp(1).toInt, timeout * 1000)
       token = login(user, pwd).token.get
       sessionId = openSession(token, db, isLocal).sessionId.get
+      closed = false
       true
     } catch {
       case e: Exception =>
@@ -66,7 +66,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def close() = {
-    if (isLogin && token != null) {
+    if (!closed && token != null) {
       if (sessionId != null) {
         // close session first
         val _closeSession = closeSession(token, sessionId)
@@ -81,7 +81,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
       val _logout = logout(token)
       _logout.error match {
         case None =>
-          isLogin = false
+          closed = true
           println("Logout successfully")
         case Some(err) => println(s"Logout Failed: error=$err")
       }
@@ -94,7 +94,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   private def requestAccess(token: String): RequestAccessOutbound = {
-    val res = client.post(RequestAccessInbound(Some(token)), "/requestAccess")
+    val res = client.post(RequestAccessInbound(Some(token), isLocal), "/requestAccess")
     read[RequestAccessOutbound](res) match {
       case r@RequestAccessOutbound(Some(_), None) => r
       case other => throw new Exception(s"RequestAccess failed: address=${other.address}, error=${other.error}")
