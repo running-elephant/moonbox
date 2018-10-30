@@ -173,7 +173,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 							case false =>
 								RequestAccessOutbound(None, error = Some("Token is incorrect or expired."))
 							case true =>
-								service.requestAccess(in.token.getOrElse(""), ConnectionType.REST)
+								service.requestAccess(in.token.getOrElse(""), in.isLocal, ConnectionType.REST)
 						}
 					}
 				}

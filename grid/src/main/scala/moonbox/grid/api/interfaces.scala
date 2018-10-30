@@ -27,7 +27,7 @@ import moonbox.protocol.client.{DatabaseInfo, TableInfo}
 
 sealed trait MbApi
 
-case class RequestAccess(connectionType: ConnectionType) extends MbApi
+case class RequestAccess(connectionType: ConnectionType, isLocal: Boolean) extends MbApi
 sealed trait RequestAccessResponse
 case class RequestedAccess(address: String) extends MbApi with RequestAccessResponse
 case class RequestAccessFailed(error: String) extends MbApi with RequestAccessResponse

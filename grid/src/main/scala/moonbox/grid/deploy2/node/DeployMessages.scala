@@ -23,7 +23,7 @@ object DeployMessages extends DeployMessage {
 		port: Int,
 		address: ActorRef,
 		cores: Int,
-		memory: Int) extends DeployMessage {
+		memory: Long) extends DeployMessage {
 	}
 
 	case class MasterChanged(address: ActorRef) extends DeployMessage

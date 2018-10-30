@@ -45,10 +45,10 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 
 	def getLoginManager(): LoginManager = loginManager
 
-	def requestAccess(token: String, connectionType: ConnectionType): RequestAccessOutbound = {
+	def requestAccess(token: String, isLocal: Boolean, connectionType: ConnectionType): RequestAccessOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
-				askForCompute[RequestAccessResponse](RequestAccess(connectionType))(SHORT_TIMEOUT) match {
+				askForCompute[RequestAccessResponse](RequestAccess(connectionType, isLocal))(SHORT_TIMEOUT) match {
 					case (Some(RequestedAccess(address)), None) =>
 						RequestAccessOutbound(Some(address), None)
 					case (Some(RequestAccessFailed(error)), None) =>

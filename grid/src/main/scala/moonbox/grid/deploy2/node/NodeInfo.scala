@@ -27,17 +27,17 @@ case class NodeInfo(
 	host: String,
 	port: Int,
 	cores: Int,
-	memory: Int,
+	memory: Long,
 	endpoint: ActorRef) {
 	var coresUsed: Int = _
-	var memoryUsed: Int = _
+	var memoryUsed: Long = _
 	var lastHeartbeat: Long = _
 
 	@transient var state: NodeState.Value = _
 
 	def coresFree: Int = cores - coresUsed
 
-	def memoryFree: Int = memory - memoryUsed
+	def memoryFree: Long = memory - memoryUsed
 
 	var yarnAdhocFreeCore: Int = 0
 

@@ -12,18 +12,19 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.core.command.{CreateTempView, CreateView, InsertInto, MQLQuery, MbRunnableCommand}
+import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbRunnableCommand}
 import moonbox.core.parser.MbParser
-import moonbox.grid.{ConnectionType, JobInfo}
 import moonbox.grid.api._
 import moonbox.grid.config._
 import moonbox.grid.deploy2.MbService
 import moonbox.grid.deploy2.node.DeployMessages.{ScheduleJob, _}
 import moonbox.grid.deploy2.rest.RestServer
 import moonbox.grid.deploy2.transport.TransportServer
+import moonbox.grid.runtime.cluster.ClusterMessage.ReportYarnAppResource
 import moonbox.grid.runtime.cluster.MbClusterActor
 import moonbox.grid.runtime.local.MbLocalActor
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
+import moonbox.grid.{ConnectionType, JobInfo}
 import moonbox.protocol.app._
 
 import scala.collection.JavaConverters._
@@ -198,6 +199,9 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case ScheduleJob =>  //TODO:
 			schedule()
+
+		case ReportYarnAppResource(adhocInfo, batchInfo) =>
+			master ! ReportNodesResource(NODE_ID, adhocInfo, batchInfo)
 
 		case ElectedLeader =>
 			cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
@@ -417,11 +421,22 @@ class Moonbox(akkaSystem: ActorSystem,
 	}
 
 	private def process: Receive = {
-		case RequestAccess =>
+		case m@RequestAccess(connectionType, isLocal) =>
 			if (state == RoleState.MASTER) {
-				selectNode()
+				val requester = sender()
+				val nodeOpt = selectAdhocNode(isLocal)
+				nodeOpt match {
+					case Some(node) =>
+						val port = connectionType match {
+							case ConnectionType.REST => node.restPort
+							case ConnectionType.JDBC => node.jdbcPort
+							case ConnectionType.ODBC => node.odbcPort
+						}
+						requester ! RequestedAccess(s"${node.hostName}:$port")
+					case None => requester ! RequestAccessFailed("no available node in moonbox cluster")
+				}
 			} else {
-				master.ask(RequestAccess)
+				master forward m
 			}
 
 		case m@OpenSession(username, database, isLocal) =>
@@ -602,19 +617,6 @@ class Moonbox(akkaSystem: ActorSystem,
 						}
 				}
 			}
-		case RequestAccess(connectionType) =>
-			val client = sender()
-			val nodeOpt = selectAdhocNode()
-			nodeOpt match {
-				case Some(node) =>
-					val port = connectionType match {
-						case ConnectionType.REST => node.restPort
-						case ConnectionType.JDBC => node.jdbcPort
-						case ConnectionType.ODBC => node.odbcPort
-					}
-					client ! RequestedAccess(s"${node.hostName}:$port")
-				case None => client ! RequestAccessFailed("no available node in moonbox cluster")
-			}
 
 		case m@JobCancelInternal =>
 			clusterProxyActorRef forward m
@@ -671,10 +673,15 @@ class Moonbox(akkaSystem: ActorSystem,
 		}
 	}
 
-	private def selectAdhocNode(): Option[NodeInfo] = {  //only for adhoc apply
-		val nodeOpt = nodes.toSeq.filter(_.yarnAdhocFreeCore > 0).sortWith(_.yarnAdhocFreeCore > _.yarnAdhocFreeCore).headOption
+	private def selectAdhocNode(isLocal: Boolean): Option[NodeInfo] = {  //only for adhoc apply
+		val nodeOpt = if (isLocal) {
+			nodes.toSeq.filter(_.coresFree > 0).sortWith(_.coresFree > _.coresFree).headOption
+		} else {
+			nodes.toSeq.filter(_.yarnAdhocFreeCore > 0).sortWith(_.yarnAdhocFreeCore > _.yarnAdhocFreeCore).headOption
+		}
 		nodeOpt
 	}
+
 	private def selectNode(): String = {
 		null
 	}
@@ -682,7 +689,9 @@ class Moonbox(akkaSystem: ActorSystem,
 	private def tryRegisteringToMaster(): Unit = {
 		persistenceEngine.readMasterAddress().foreach { address =>
 			logDebug(s"Try registering to master $address")
-			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, 100,100), self)
+			val core = Runtime.getRuntime.availableProcessors
+			val memory = Runtime.getRuntime.freeMemory
+			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, core, memory), self)
 		}
 	}
 
