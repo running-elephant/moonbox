@@ -135,6 +135,7 @@ case class CatalogProcedure(
 	id: Option[Long] = None,
 	name: String,
 	cmds: Seq[String],
+	config: String,  //cluster and job configuration
 	organizationId: Long,
 	description: Option[String] = None,
 	createBy: Long,

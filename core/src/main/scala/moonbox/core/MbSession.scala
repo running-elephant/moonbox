@@ -45,7 +45,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
-	def bindUser(username: String, initializedDatabase: Option[String] = None): this.type = {
+	def bindUser(username: String, initializedDatabase: Option[String] = None, autoLoadDatabases: Boolean = true): this.type = {
 		this.userContext = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
@@ -71,12 +71,15 @@ class MbSession(conf: MbConf) extends MbLogging {
 					throw new Exception(s"$username does not exist.")
 			}
 		}
-		catalog.listDatabase(userContext.organizationId).map { catalogDatabase =>
-			if (!mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
-				mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
+
+		if (autoLoadDatabases) {
+			catalog.listDatabase(userContext.organizationId).map { catalogDatabase =>
+				if (!mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
+					mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
+				}
 			}
+			mixcal.sparkSession.catalog.setCurrentDatabase(initializedDatabase.getOrElse("default"))
 		}
-		mixcal.sparkSession.catalog.setCurrentDatabase(initializedDatabase.getOrElse("default"))
 		this
 	}
 
@@ -319,8 +322,8 @@ object MbSession extends MbLogging {
 
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
 
-	def startMixcalEnv(conf: MbConf): Unit = {
-		MixcalContext.start(conf)
+	def startMixcalEnv(conf: MbConf, isOnYarn: Boolean = true): Unit = {
+		MixcalContext.start(conf, isOnYarn)
 	}
 
 }

@@ -18,10 +18,19 @@
  * >>
  */
 
-package moonbox.grid.deploy2.transport.model
+package moonbox.protocol.app
 
-import moonbox.common.message.JdbcOutboundMessage
+trait Task
 
-trait ResponseCallback {
-  def apply(response: JdbcOutboundMessage)
-}
+case class InsertIntoTask(table: String, database: Option[String], query: String, overwrite: Boolean) extends Task
+
+case class QueryTask(query: String) extends Task
+
+case class CreateTempViewTask(name: String, query: String, isCache: Boolean, replaceIfExists: Boolean) extends Task
+
+case class TaskInfo(jobId: String,
+					sessionId: Option[String] = None,
+					task: Task,
+					seq: Int,
+					username: Option[String] = None
+				  )

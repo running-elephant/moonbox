@@ -20,10 +20,7 @@
 
 package moonbox.grid.deploy2.node
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
-
 import akka.actor.ActorSystem
-import akka.remote.ContainerFormats.ActorRef
 import akka.serialization.SerializationExtension
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
@@ -40,9 +37,9 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	private val WORKING_DIR = conf.get(PERSIST_WORKING_DIR.key, PERSIST_WORKING_DIR.defaultValueString)
 
 	private val zk = {
-		val servers = conf.get(PERSIST_SERVERS.key, PERSIST_SERVERS.defaultValueString)
-		val retryTimes = conf.get(PERSIST_RETRY_TIMES.key, PERSIST_RETRY_TIMES.defaultValue.get)
-		val interval = conf.get(PERSIST_RETRY_WAIT.key, PERSIST_RETRY_WAIT.defaultValue.get).toInt
+		val servers = conf.get(PERSIST_SERVERS)
+		val retryTimes = conf.get(PERSIST_RETRY_TIMES)
+		val interval = conf.get(PERSIST_RETRY_WAIT).toInt
 		val client = CuratorFrameworkFactory.newClient(servers,
 			ZK_SESSION_TIMEOUT_MILLIS, ZK_CONNECTION_TIMEOUT_MILLIS,
 			new ExponentialBackoffRetry(interval, retryTimes))

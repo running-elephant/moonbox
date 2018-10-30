@@ -21,7 +21,6 @@
 package moonbox.grid.deploy2.node
 
 import moonbox.grid.JobInfo
-import moonbox.grid.deploy.worker.WorkerInfo
 
 import scala.reflect.ClassTag
 

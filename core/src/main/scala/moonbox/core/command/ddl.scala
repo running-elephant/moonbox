@@ -485,12 +485,14 @@ case class DropView(
 case class CreateProcedure(
 	name: String,
 	queryList: Seq[String],
+	config: String,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogProcedure = CatalogProcedure(
 			name = name,
 			cmds = queryList,
+			config = config,
 			organizationId = ctx.organizationId,
 			description = None,
 			createBy = ctx.userId,

@@ -38,4 +38,19 @@ case class NodeInfo(
 	def coresFree: Int = cores - coresUsed
 
 	def memoryFree: Int = memory - memoryUsed
+
+	var yarnAdhocFreeCore: Int = 0
+
+	var yarnAdhocFreeMemory: Long = 0L
+
+	var yarnRunningBatchJob: Long = 0L
+
+	var restPort: Int = 0
+
+	var jdbcPort: Int = 0
+
+	var odbcPort: Int = 0
+
+	var hostName: String = ""
+
 }

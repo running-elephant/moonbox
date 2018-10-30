@@ -22,14 +22,18 @@ package moonbox.common.util
 
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream, _}
 import java.lang.reflect.Field
+import java.net.InetAddress
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 import java.util.{Collections, Date, Properties, Map => JMap}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import moonbox.common.MbLogging
+import org.apache.commons.io.FileUtils
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
 
 object Utils extends MbLogging {
 
@@ -163,21 +167,117 @@ object Utils extends MbLogging {
 		}
 	}
 
+
 	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
-		val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map {t => s"$t${File.separator}runtime"})
-		if(pluginDir.isEmpty) {
-			//TODO
-			throw new Exception("$MOONBOX_HOME does not exist")
+		if ( env.contains("MOONBOX_DEBUG_LOCAL") ) {  //debug local
+			val projectPath = System.getProperty("user.dir")
+			val srcDirPath = s"$projectPath" + File.separator + "assembly" +  File.separator +"target"
+			val srcDirFile = new File(srcDirPath)
+			val jarFileOpt = srcDirFile.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-assembly")).map(_.getAbsolutePath).headOption
+			if(jarFileOpt.isDefined) {
+				val jarFile = s"${jarFileOpt.get}"
+				val destDirPath = s"$srcDirPath" + File.separator + "moonbox" + File.separator + "runtime"
+				val destDirFile = new File(destDirPath)
+				FileUtils.deleteDirectory(destDirFile)
+
+				val cmd = Array("tar", "-C", srcDirPath,  "-xvf", jarFile, "moonbox" + File.separator + "runtime")
+				val pro = Runtime.getRuntime.exec(cmd)
+				pro.waitFor()
+				val a = destDirFile.listFiles().map {
+					_.getAbsolutePath
+				}.filter(_.endsWith(".jar")).toList
+				a
+			}else{
+				throw new Exception("assembly jar does not exist")
+			}
 		} else {
-			val lib = new File(pluginDir.get)
-			if (lib.exists()) {
-				val confFile = lib.listFiles().filter {_.isFile}.map (_.getAbsolutePath)
-				confFile.toList
+			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}runtime" })
+			if (pluginDir.isEmpty) {
+				//TODO: local load dep jars
+				throw new Exception("$MOONBOX_HOME does not exist")
 			} else {
-				List()
+				val lib = new File(pluginDir.get)
+				if (lib.exists()) {
+					val confFile = lib.listFiles().filter {
+						_.isFile
+					}.map(_.getAbsolutePath)
+					confFile.toList
+				} else {
+					List()
+				}
 			}
 		}
 	}
+
+	def getYarnAppJar(env: Map[String, String] = sys.env): Option[String] = {
+		if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
+			val projectPath = System.getProperty("user.dir")
+			val depLocalDir = s"$projectPath" + File.separator + "yarnapp" +  File.separator +"target"
+			val file = new File(depLocalDir)
+			val jarFile = file.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-")).map(_.getAbsolutePath).headOption
+			jarFile
+		} else {
+			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}cluster" })
+			if (pluginDir.isEmpty) {
+				throw new Exception("$MOONBOX_HOME does not exist")
+			} else {
+				val lib = new File(pluginDir.get)
+				if (lib.exists()) {
+					lib.listFiles().filter{_.isFile}.filter(_.getName.toLowerCase.indexOf("yarnapp") != -1).map(_.getAbsolutePath).headOption
+				} else {
+					None
+				}
+			}
+		}
+	}
+
+
+	def updateYarnAppInfo2File(id: String, cfg: Option[String], addOrDel: Boolean, env: Map[String, String] = sys.env): Unit = {
+		val appIdFile = if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
+			val projectPath = System.getProperty("user.dir")
+			val depLocalDir = s"$projectPath" + File.separator + "yarnapp" +  File.separator +"target"
+			new File(depLocalDir + File.separator  + "appid" )
+		} else {
+			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}cluster" })
+			new File(pluginDir.get +  File.separator  + "appid")
+		}
+
+		val lines: Seq[String] = if(appIdFile.exists()) {
+			val bufferedSource = Source.fromFile(appIdFile)
+			val iter = bufferedSource.getLines()
+			val idAndConfig = ArrayBuffer.empty[String]
+			while(iter.hasNext) {
+				idAndConfig.append(iter.next())
+			}
+
+			bufferedSource.close()
+			idAndConfig
+		} else { Seq.empty[String] }
+
+		if (addOrDel) { //add
+			val prevLines = lines.filter(_.indexOf(id) != -1) //find id
+			if ( prevLines.isEmpty ) {
+				var fw: FileWriter = null
+				try {
+					fw = new FileWriter(appIdFile, true)
+					fw.write(id + " | " + cfg.getOrElse("") + "\n")
+				}finally {
+					if (fw != null) { fw.close() }
+				}
+			}
+		} else {  //delete
+			val newlines = lines.filter(_.indexOf(id) == -1)
+			var fw: FileWriter = null
+			try {
+				fw = new FileWriter(appIdFile, true)
+				newlines.foreach{ line => fw.write(line)}
+			} finally {
+				if (fw != null) { fw.close() }
+			}
+		}
+
+	}
+
 
 	def delete (file: File) {
 		if (file == null) {

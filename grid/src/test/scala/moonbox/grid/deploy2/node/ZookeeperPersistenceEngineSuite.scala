@@ -22,9 +22,9 @@ package moonbox.grid.deploy2.node
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import moonbox.common.MbConf
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import moonbox.grid.config._
 import moonbox.localservice.LocalZookeeper
+import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 
 class ZookeeperPersistenceEngineSuite extends FunSuite with BeforeAndAfterAll {
@@ -51,6 +51,31 @@ class ZookeeperPersistenceEngineSuite extends FunSuite with BeforeAndAfterAll {
 		val nodes = zookeeperPersistenceEngine.readNodes()
 		//assert(nodes.length == 1)
 		assert(nodes.contains(node))
+	}
+
+	test("serialize string") {
+		zookeeperPersistenceEngine.persist("string_1", "abc")
+		zookeeperPersistenceEngine.persist("string_2", "bcd")
+		val strings: Seq[String] = zookeeperPersistenceEngine.read[String]("string")
+		assert(strings.contains("abc"))
+		assert(strings.contains("bcd"))
+	}
+
+	test("serialize ActorRef") {
+		val actorRef: ActorRef = akkaSystem.actorOf(Props(classOf[MockActor]))
+		zookeeperPersistenceEngine.persist("actorRef_1", actorRef)
+		val refs: Seq[ActorRef] = zookeeperPersistenceEngine.read[ActorRef]("actorRef")
+		assert(refs.contains(actorRef))
+	}
+
+	test("serialize beans") {
+		val bean1 = MockBean(1, "bean1")
+		val bean2 = MockBean(2, "bean2")
+		zookeeperPersistenceEngine.persist("bean1", bean1)
+		zookeeperPersistenceEngine.persist("bean2", bean2)
+		val beans: Seq[MockBean] = zookeeperPersistenceEngine.read[MockBean]("bean")
+		assert(beans.contains(bean1))
+		assert(beans.contains(bean2))
 	}
 }
 

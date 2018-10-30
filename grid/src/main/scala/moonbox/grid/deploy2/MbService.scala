@@ -22,12 +22,16 @@ package moonbox.grid.deploy2
 
 import akka.actor.ActorRef
 import akka.pattern.ask
+import akka.util.Timeout
 import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.grid.api.{ClosedSession, _}
+import moonbox.grid.ConnectionType
+import moonbox.grid.ConnectionType.ConnectionType
+import moonbox.grid.api._
 import moonbox.grid.deploy2.authenticate.LoginManager
 import moonbox.grid.deploy2.rest.TokenManager
+
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -41,14 +45,19 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 
 	def getLoginManager(): LoginManager = loginManager
 
-	def requestAccess(): RequestAccessOutbound = {
-		askForCompute[RequestAccessResponse](RequestAccess)(SHORT_TIMEOUT) match {
-			case (Some(RequestedAccess(address)), None) =>
-				RequestAccessOutbound(address = Some(address))
-			case (Some(RequestAccessFailed(error)), None) =>
-				RequestAccessOutbound(error = Some(error))
-			case (None, error) =>
-				RequestAccessOutbound(error = error)
+	def requestAccess(token: String, connectionType: ConnectionType): RequestAccessOutbound = {
+		isLogin(token) match {
+			case Some(username) =>
+				askForCompute[RequestAccessResponse](RequestAccess(connectionType))(SHORT_TIMEOUT) match {
+					case (Some(RequestedAccess(address)), None) =>
+						RequestAccessOutbound(Some(address), None)
+					case (Some(RequestAccessFailed(error)), None) =>
+						RequestAccessOutbound(error = Some(error))
+					case (None, error) =>
+						RequestAccessOutbound(None, error = error)
+				}
+			case None =>
+				RequestAccessOutbound(None, error = Some("Please login first."))
 		}
 	}
 
@@ -140,10 +149,10 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	}
 
 
-	def batchQuery(token: String, sqls: Seq[String], config: Seq[String]): BatchQueryOutbound = {
+	def batchQuery(token: String, sqls: Seq[String], config: String): BatchQueryOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
-				askForCompute[JobHandleResponse](JobSubmit(username, sqls, async = true))(SHORT_TIMEOUT) match {
+				askForCompute[JobHandleResponse](JobSubmit(username, sqls, config, async = true))(SHORT_TIMEOUT) match {
 					case (Some(JobAccepted(jobId)), None) =>
 						BatchQueryOutbound(jobId = Some(jobId))
 					case (Some(JobRejected(error)), None) =>
@@ -186,9 +195,91 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	private def askForCompute[T: ClassTag](message: MbApi)(timeout: Duration): (Option[T], Option[String]) = {
+
+	def yarnAppAdd(username: String, config: String): AddAppOutbound = {
+		askForCompute[AppStartResultResponse](StartYarnApp(config))(SHORT_TIMEOUT) match {  //TODO: user name need log
+			case (Some(StartedYarnApp(id)), None) =>
+				AddAppOutbound(Some(id))
+			case (None, error) =>
+				AddAppOutbound(None, error)
+		}
+	}
+
+	def yarnAppRemove(username: String, appId: String): RemoveAppOutbound = {
+		askForCompute[AppStopResultResponse](KillYarnApp(appId))(SHORT_TIMEOUT) match {
+			case (Some(KilledYarnApp(id)), None) =>
+				RemoveAppOutbound(Some(id))
+			case (None, error) =>
+				RemoveAppOutbound(None, error)
+		}
+	}
+
+	def yarnAppShow(username: String): ShowAppOutbound = {
+		askForCompute[AppShowResultResponse](GetYarnAppsInfo)(SHORT_TIMEOUT) match {
+			case (Some(GottenYarnAppsInfo(schema, info)), None) =>
+				ShowAppOutbound(None, Some(schema), Some(info))
+			case (None, error) =>
+				ShowAppOutbound(error, None, None)
+		}
+	}
+
+	def nodesInfoShow(username: String): ShowNodesInfoOutbound = {
+		askForCompute[NodesInfoResultResponse](GetNodesInfo)(SHORT_TIMEOUT) match {
+			case (Some(GottenNodesInfo(schema, info)), None) =>
+				ShowNodesInfoOutbound(None, Some(schema), Some(info))
+			case (None, error) =>
+				ShowNodesInfoOutbound(error, None, None)
+		}
+	}
+
+
+	def databasesShow(token: String): ShowDatabasesOutbound = {
+		isLogin(token) match {
+			case Some(username) =>  //TODO: user name need ???
+				askForCompute[ShowDatabasesResultResponse](ShowDatabasesInfo(username))(SHORT_TIMEOUT) match {
+					case (Some(ShowedDatabasesInfo(info)), None) =>
+						ShowDatabasesOutbound(None, Some(info))
+					case (None, error) =>
+						ShowDatabasesOutbound(error, None)
+				}
+			case None =>
+				ShowDatabasesOutbound(error = Some("Please login first."))
+		}
+	}
+
+	def tablesShow(token: String, database: String): ShowTablesOutbound = {
+		isLogin(token) match {
+			case Some(username) =>  //TODO: user name need ???
+				askForCompute[ShowTablesInfoResultResponse](ShowTablesInfo(database, username))(SHORT_TIMEOUT) match {
+					case (Some(ShowedTablesInfo(info)), None) =>
+						ShowTablesOutbound(None, Some(info))
+					case (None, error) =>
+						ShowTablesOutbound(error, None)
+				}
+			case None =>
+				ShowTablesOutbound(error = Some("Please login first."))
+		}
+	}
+
+	def tableDescribe(token: String, table: String, database: String): DescribeTablesOutbound = {
+		isLogin(token) match {
+			case Some(username) =>  //TODO: user name need ???
+				askForCompute[DescribeTableResultResponse](DescribeTableInfo(table, database, username))(SHORT_TIMEOUT) match {
+					case (Some(DescribedTableInfo(info)), None) =>
+						DescribeTablesOutbound(None, Some(info))
+					case (None, error) =>
+						DescribeTablesOutbound(error, None)
+				}
+			case None =>
+				DescribeTablesOutbound(error = Some("Please login first."))
+		}
+	}
+
+
+
+	private def askForCompute[T: ClassTag](message: MbApi)(timeout: FiniteDuration): (Option[T], Option[String]) = {
 		try {
-			val result = Await.result(askFor(proxy)(message), timeout).asInstanceOf[T]
+			val result = Await.result(askFor(proxy)(message)(Timeout(timeout)), timeout).asInstanceOf[T]
 			(Some(result), None)
 		} catch {
 			case e: Exception =>
@@ -197,7 +288,7 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	}
 
 
-	private def askFor(actorRef: ActorRef)(message: MbApi): Future[MbApi] = {
+	private def askFor(actorRef: ActorRef)(message: MbApi)(implicit timeout: Timeout): Future[MbApi] = {
 		(actorRef ask message).mapTo[MbApi]
 	}
 

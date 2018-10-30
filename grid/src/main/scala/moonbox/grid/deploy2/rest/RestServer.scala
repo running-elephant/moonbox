@@ -29,6 +29,7 @@ import akka.stream.ActorMaterializer
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
 import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.grid.ConnectionType
 import moonbox.grid.config._
 import moonbox.grid.deploy2.MbService
 import org.json4s.jackson.Serialization
@@ -89,7 +90,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 							case false =>
 								LogoutOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
-								service.openSession(in.token, in.database)
+								service.openSession(in.token, in.database, in.isLocal)
 						}
 					}
 				}
@@ -159,6 +160,95 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 								CancelQueryOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
 								service.cancelQuery(in.token, in.jobId)
+						}
+					}
+				}
+			}
+		} ~
+		path("requestAccess") {
+			post {
+				entity(as[RequestAccessInbound]) { in =>
+					complete {
+						loginManager.isvalid(in.token.getOrElse("")) match {
+							case false =>
+								RequestAccessOutbound(None, error = Some("Token is incorrect or expired."))
+							case true =>
+								service.requestAccess(in.token.getOrElse(""), ConnectionType.REST)
+						}
+					}
+				}
+			}
+		} ~
+		path("addYarnApp") {
+			post {
+				entity(as[AddAppInbound]) { in =>
+					complete {
+						service.yarnAppAdd(in.username, in.config)
+					}
+				}
+			}
+		} ~
+		path("removeYarnApp") {
+			post {
+				entity(as[RemoveAppInbound]) { in =>
+					complete {
+						service.yarnAppRemove(in.username, in.appId)
+					}
+				}
+			}
+		} ~
+		path("showYarnApp") {
+			post {
+				entity(as[ShowAppInbound]) { in =>
+					complete {
+						service.yarnAppShow(in.username)
+					}
+				}
+			}
+		} ~
+		path("showNodesInfo") {
+			post {
+				entity(as[ShowNodesInfoInbound]) { in =>
+					complete {
+						service.nodesInfoShow(in.token)
+					}
+				}
+			}
+		} ~
+		path("metadata" / "showDatabases") { //第一次请求，moonbox将所有的数据库名 数据库连接信息 和 该标签，一起返回，比如（tag，（databasename， URL））
+			post {
+				entity(as[ShowDatabasesInbound]) { in =>
+					complete {
+						loginManager.isvalid(in.token) match {
+							case false => ShowDatabasesOutbound(error = Some("Token is incorrect or expired."))
+							case true =>
+								service.databasesShow(in.token)
+						}
+					}
+				}
+			}
+		} ~
+		path("metadata" / "showTables") {  //第二次请求根据数据库去获取该库下所有表名
+			post {
+				entity(as[ShowTablesInbound]) { in =>
+					complete {
+						loginManager.isvalid(in.token) match {
+							case false => ShowTablesOutbound(error = Some("Token is incorrect or expired."))
+							case true =>
+								service.tablesShow(in.token, in.database)
+						}
+					}
+				}
+			}
+		} ~
+		path("metadata" / "describeTable") {  //第三次请求根据表名获取所有字段信息
+			post {
+				entity(as[DescribeTablesInbound]) { in =>
+					complete {
+						loginManager.isvalid(in.token) match {
+							case false => DescribeTablesOutbound(error = Some("Token is incorrect or expired."))
+							case true =>
+								service.tableDescribe(in.token, in.table, in.database)
 						}
 					}
 				}

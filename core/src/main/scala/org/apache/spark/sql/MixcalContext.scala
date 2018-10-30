@@ -174,26 +174,30 @@ object MixcalContext extends MbLogging {
 		resourceMonitor
 	}
 
-	def start(conf: MbConf): Unit = {
+	def start(conf: MbConf, isOnYarn: Boolean): Unit = {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
 					case (key, value) => key.startsWith("moonbox.mixcal")
 				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
 
+				sparkContext = SparkContext.getOrCreate(sparkConf)
+
 				val sparkListener = new SparkResourceListener(sparkConf)
-				sparkContext = new SparkContext(sparkConf)
 				sparkContext.addSparkListener(sparkListener)
 				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
 
-				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
-				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
-				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
+				if (!isOnYarn) {
+					//val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
+					//val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
+					//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
+					Utils.getRuntimeJars().foreach(sparkContext.addJar)
+				}
 				logInfo("New a sparkContext instance.")
-				Utils.getRuntimeJars().foreach(sparkContext.addJar)
 			} else {
 				logInfo("Using an exists sparkContext.")
 			}
 		}
 	}
+
 }

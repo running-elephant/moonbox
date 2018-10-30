@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,25 +18,11 @@
  * >>
  */
 
-package moonbox.grid.timer
+package moonbox.protocol.app
 
-import java.util.Date
+trait JobResult
 
-object EventEntity {
-	val FUNC = "function"
-	val DEFINER = "definer"
-	val SQLS = "sqls"
-}
-
-case class EventEntity(
-	group: String,
-	name: String,
-	sqls: Seq[String],
-	config: String,
-	cronExpr: String,
-	definer: String,
-	start: Option[Date],
-	end: Option[Date],
-	desc: Option[String],
-	function: Function0[Unit]
-)
+//case object CachedData extends JobResult
+case class DirectData(jobId: String, schema: String, data: Seq[Seq[String]], hasNext: Boolean) extends JobResult
+case object UnitData extends JobResult
+case class Failed(message: String) extends JobResult

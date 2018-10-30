@@ -14,8 +14,13 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-protocol_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>

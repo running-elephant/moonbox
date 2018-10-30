@@ -203,9 +203,10 @@ trait EntityComponent extends DatabaseComponent {
 	class CatalogProcedureTable(tag: Tag) extends BaseTable[CatalogProcedure](tag, "procedures") {
 		def name = column[String]("name")
 		def cmds = column[Seq[String]]("cmds")
+		def config = column[String]("config")
 		def organizationId = column[Long]("organizationId")
 		def description = column[Option[String]]("description")
-		override def * = (id.?, name, cmds, organizationId, description, createBy,
+		override def * = (id.?, name, cmds, config, organizationId, description, createBy,
 			createTime, updateBy, updateTime) <> (CatalogProcedure.tupled, CatalogProcedure.unapply)
 	}
 

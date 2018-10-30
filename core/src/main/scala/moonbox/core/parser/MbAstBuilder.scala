@@ -473,7 +473,8 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val mqlList = visitProcCmds(ctx.procCmds())
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateProcedure(name, mqlList, ignoreIfExists)
+		val config = ctx.config.getText
+		CreateProcedure(name, mqlList, config, ignoreIfExists)
 	}
 
 	override def visitRenameProcedure(ctx: RenameProcedureContext): MbCommand = {

@@ -50,6 +50,9 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			group = "group_test",
 			name = "event_test",
 			sqls = Seq(),
+			config ="""|{
+				  | "spark.master": "local[*]",
+				  | "spark.app.name": "test1}"""".stripMargin,
 			cronExpr = "0/2 * * * * ?",
 			definer = "sally",
 			start = None,
@@ -64,12 +67,16 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			group = "group_test",
 			name = "event_test2",
 			sqls = Seq(),
+			config ="""|{
+				  | "spark.master": "local[*]",
+				  | "spark.app.name": "test1"} """.stripMargin,
 			cronExpr = "0/4 * * * * ?",
 			definer = "lee",
 			start = None,
 			end = None,
 			desc = None,
 			function = () => {})
+
 		)
 		Thread.sleep(10000)
 		timedEventService.getTimedEvents("group_test").foreach(println)

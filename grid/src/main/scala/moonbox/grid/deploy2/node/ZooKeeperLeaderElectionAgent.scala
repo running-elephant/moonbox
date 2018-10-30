@@ -1,6 +1,7 @@
 package moonbox.grid.deploy2.node
 
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.grid.config.{PERSIST_RETRY_TIMES, PERSIST_RETRY_WAIT, PERSIST_SERVERS}
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.framework.recipes.leader.{LeaderLatch, LeaderLatchListener}
 import org.apache.curator.retry.ExponentialBackoffRetry
@@ -8,7 +9,8 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 class ZooKeeperLeaderElectionAgent(val candidate: LeaderElectable,
     conf: MbConf) extends LeaderLatchListener with LeaderElectionAgent with MbLogging  {
 
-
+  private val ZK_CONNECTION_TIMEOUT_MILLIS = 15000
+  private val ZK_SESSION_TIMEOUT_MILLIS = 60000
   val WORKING_DIR = conf.get("moonbox.deploy.zookeeper.dir", "/moonbox") + "/leader_election"
 
   private var zk: CuratorFramework = _
@@ -21,14 +23,14 @@ class ZooKeeperLeaderElectionAgent(val candidate: LeaderElectable,
 	  // TODO
     logInfo("Starting ZooKeeper LeaderElection agent")
     zk = {
-		val servers = "localhost:2181"
-		val retryTimes = 3
-		val interval = 3000
-		val client = CuratorFrameworkFactory.newClient(servers,
-			1000, 1000,
-			new ExponentialBackoffRetry(interval, retryTimes))
-		client.start()
-		client
+        val servers = conf.get(PERSIST_SERVERS)
+        val retryTimes = conf.get(PERSIST_RETRY_TIMES)
+        val interval = conf.get(PERSIST_RETRY_WAIT).toInt
+        val client = CuratorFrameworkFactory.newClient(servers,
+            ZK_SESSION_TIMEOUT_MILLIS, ZK_CONNECTION_TIMEOUT_MILLIS,
+            new ExponentialBackoffRetry(interval, retryTimes))
+        client.start()
+        client
 	}
     leaderLatch = new LeaderLatch(zk, WORKING_DIR)
     leaderLatch.addListener(this)
