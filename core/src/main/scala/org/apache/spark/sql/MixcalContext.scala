@@ -178,8 +178,8 @@ object MixcalContext extends MbLogging {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
-					case (key, value) => key.startsWith("moonbox.mixcal")
-				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
+					case (key, value) => key.startsWith("moonbox.mixcal.local.")
+				}.map{ case (key, value) => (key.stripPrefix("moonbox.mixcal.local."), value)})
 
 				sparkContext = SparkContext.getOrCreate(sparkConf)
 

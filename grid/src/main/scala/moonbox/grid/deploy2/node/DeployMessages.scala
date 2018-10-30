@@ -23,7 +23,9 @@ object DeployMessages extends DeployMessage {
 		port: Int,
 		address: ActorRef,
 		cores: Int,
-		memory: Long) extends DeployMessage {
+		memory: Long,
+		jdbcPort: Int,
+		restPort: Int) extends DeployMessage {
 	}
 
 	case class MasterChanged(address: ActorRef) extends DeployMessage

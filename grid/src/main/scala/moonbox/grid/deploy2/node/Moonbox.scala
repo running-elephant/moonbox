@@ -203,6 +203,14 @@ class Moonbox(akkaSystem: ActorSystem,
 		case ReportYarnAppResource(adhocInfo, batchInfo) =>
 			master ! ReportNodesResource(NODE_ID, adhocInfo, batchInfo)
 
+		case ReportNodesResource(id, adhocInfo, jobs) =>
+			val nodeOption = nodes.find(_.id == id)
+			if (nodeOption.isDefined) {
+				nodeOption.get.yarnAdhocFreeCore = adhocInfo.coresFree
+				nodeOption.get.yarnAdhocFreeMemory = adhocInfo.memoryFree
+				nodeOption.get.yarnRunningBatchJob = jobs
+			}
+
 		case ElectedLeader =>
 			cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 			master = self
@@ -238,11 +246,13 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case CompleteRecovery => completeRecovery()
 
-		case RegisterNode(id, nodeHost, nodePort, endpoint, cores, memory) =>
+		case RegisterNode(id, nodeHost, nodePort, endpoint, cores, memory, nodeJdbcPort, nodeRestPort) =>
 			if (state == RoleState.SLAVE) {
 				endpoint ! NotMasterNode
 			} else {
 				val node = new NodeInfo(id, nodeHost, nodePort, cores, memory, endpoint)
+				node.jdbcPort = nodeJdbcPort
+				node.restPort = nodeRestPort
 				if (registerNode(node)) {
 					node.state = NodeState.ALIVE
 					persistenceEngine.addNode(node)
@@ -280,7 +290,7 @@ class Moonbox(akkaSystem: ActorSystem,
 		case MasterChanged(address) =>
 			logInfo("Master has changed, new master is at " + address)
 			master = address
-			master ! RegisterNode(generateNodeId(), host, port, self, 100, 100)
+			master ! RegisterNode(generateNodeId(), host, port, self, 100, 100, jdbcPort, restPort)
 		case UnreachableMember(member) =>
 			addressToNode.get(member.address).foreach(removeNode)
 			if (state == RoleState.RECOVERING && canCompleteRecovery) {
@@ -432,7 +442,7 @@ class Moonbox(akkaSystem: ActorSystem,
 							case ConnectionType.JDBC => node.jdbcPort
 							case ConnectionType.ODBC => node.odbcPort
 						}
-						requester ! RequestedAccess(s"${node.hostName}:$port")
+						requester ! RequestedAccess(s"${node.host}:$port")
 					case None => requester ! RequestAccessFailed("no available node in moonbox cluster")
 				}
 			} else {
@@ -688,10 +698,10 @@ class Moonbox(akkaSystem: ActorSystem,
 
 	private def tryRegisteringToMaster(): Unit = {
 		persistenceEngine.readMasterAddress().foreach { address =>
-			logDebug(s"Try registering to master $address")
+			logInfo(s"Try registering to master $address")
 			val core = Runtime.getRuntime.availableProcessors
 			val memory = Runtime.getRuntime.freeMemory
-			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, core, memory), self)
+			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, core, memory, jdbcPort, restPort), self)
 		}
 	}
 

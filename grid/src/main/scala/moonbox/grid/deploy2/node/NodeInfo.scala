@@ -51,6 +51,4 @@ case class NodeInfo(
 
 	var odbcPort: Int = 0
 
-	var hostName: String = ""
-
 }
