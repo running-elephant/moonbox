@@ -49,7 +49,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	private implicit val catalogSession = mbSession.userContext
 	private var currentJob: CommandInfo = _
 	private val resultSchemaHashMap = mutable.HashMap.empty[String, String]
-	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Seq[Any]]]
+	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Seq[String]]]
 
     private implicit val contextExecutor = {
         val executor = Executors.newFixedThreadPool(10)  //poolsize is temporarily set 10
@@ -84,7 +84,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		case FetchDataFromRunner(_, jobId, fetchSize) =>
 			val target = sender()
 			Future {
-				fetchData(jobId, fetchSize, target)
+				target ! fetchData(jobId, fetchSize)
 			}
 
 	}
@@ -114,11 +114,11 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	}
 
 
-	def fetchData(jobId: String, fetchSize: Long, target: ActorRef) = {
+	def fetchData(jobId: String, fetchSize: Long): DirectData = {
 		if (resultSchemaHashMap.get(jobId).isDefined && resultDataHashMap.get(jobId).isDefined) {
 
 			val schema = resultSchemaHashMap(jobId)
-			val buffer: ArrayBuffer[Seq[Any]] = ArrayBuffer.empty[Seq[Any]]
+			val buffer: ArrayBuffer[Seq[String]] = ArrayBuffer.empty[Seq[String]]
 			val iterator = resultDataHashMap(jobId)
 
 			var startSize: Long = 0
@@ -131,13 +131,13 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				println(s"remove jobId from result hashMap $jobId")
 				resultDataHashMap.remove(jobId)
 				resultSchemaHashMap.remove(jobId)
-				target ! FetchedDataFromRunner(jobId, schema, buffer, false)
+				DirectData(jobId, schema, buffer, false)
 			} else {
-				target ! FetchedDataFromRunner(jobId, schema, buffer, true)
+				DirectData(jobId, schema, buffer, true)
 			}
 		}
 		else {
-			target ! FetchDataFromRunnerFailed(jobId, s"jobId $jobId does not exist or has been removed in yarn.")
+			DirectData(jobId, "", Seq.empty[Seq[String]], false)
 		}
 	}
 
@@ -263,15 +263,17 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		}
 		resultSchemaHashMap.put(jobId, optimized.schema.json) //save schema
 
-		val buffer: ArrayBuffer[Seq[Any]] = ArrayBuffer.empty[Seq[Any]]
+		val buffer: ArrayBuffer[Seq[String]] = ArrayBuffer.empty[Seq[String]]
 		while (iter.hasNext) {
 			buffer += iter.next().toSeq.map { elem =>
 				if ( elem == null) { "" }
-				else elem
+				else { elem.toString }
 			}
 		}
 		resultDataHashMap.put(jobId, buffer.iterator)  //save data
-		UnitData
+
+		fetchData(jobId, 200)
+
 	}
 
 	def insertInto(insert: InsertInto): JobResult = {

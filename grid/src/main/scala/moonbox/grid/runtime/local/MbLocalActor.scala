@@ -94,6 +94,14 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                     context.watch(runner) // terminate
                     runner forward RunCommand(commandInfo)
             }
+
+        case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>
+            val client = sender()
+            sessionIdToJobRunner.get(sessionId) match {
+                case Some(actor) => actor forward m
+                case None => client ! FetchDataFromRunnerFailed(jobId, s"sessionId $sessionId does not exist or has been removed.")
+            }
+
         case ShowDatabasesInfo(username) =>
             val client = sender()
             //Future {

@@ -588,7 +588,7 @@ class Moonbox(akkaSystem: ActorSystem,
 		case m@FetchData(sessionId, jobId, fetchSize) =>
 			val client = sender()
 			sessionIdToJobRunner.get(sessionId) match {
-				case Some(Tuple2(actor, isLocal)) => actor forward m
+				case Some(Tuple2(actor, isLocal)) => actor forward FetchDataFromRunner(sessionId, jobId, fetchSize)
 				case None => client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
 			}
 
