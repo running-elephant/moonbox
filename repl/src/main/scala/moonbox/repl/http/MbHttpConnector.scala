@@ -41,12 +41,16 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
       client = new MbHttpClient(host, port, timeout * 1000)
-      val requestAccessOutbound = requestAccess(login(user, pwd).token.get)
+      val requestAccessOutbound = requestAccess(login(user, pwd).token.get, isLocal)
       val hp = requestAccessOutbound.address.get.split(":").map(_.trim)
+      try {
+        logout(token)
+      } catch {
+        case e: Exception => Console.err.println(s"WARNING: Logout before requestAccess failed: ${e.getMessage}")
+      }
       client = new MbHttpClient(hp(0), hp(1).toInt, timeout * 1000)
       token = login(user, pwd).token.get
       sessionId = openSession(token, db, isLocal).sessionId.get
-      closed = false
       true
     } catch {
       case e: Exception =>
@@ -56,7 +60,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def process(sqls: Seq[String]) = {
-    val _query = InteractiveQueryInbound(sessionId, token, sqls)
+    val _query = InteractiveQueryInbound(token, sessionId, sqls)
     val res = client.post(_query, "/query")
     val resObj = read[InteractiveQueryOutbound](res)
     resObj.error match {
@@ -93,8 +97,8 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
     close()
   }
 
-  private def requestAccess(token: String): RequestAccessOutbound = {
-    val res = client.post(RequestAccessInbound(Some(token), isLocal), "/requestAccess")
+  private def requestAccess(token: String, _islocal: Boolean): RequestAccessOutbound = {
+    val res = client.post(RequestAccessInbound(Some(token), _islocal), "/requestAccess")
     read[RequestAccessOutbound](res) match {
       case r@RequestAccessOutbound(Some(_), None) => r
       case other => throw new Exception(s"RequestAccess failed: address=${other.address}, error=${other.error}")
@@ -119,9 +123,9 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
     }
   }
 
-  private def openSession(token: String, database: String, isLocal: Boolean): OpenSessionOutbound = {
+  private def openSession(token: String, database: String, _isLocal: Boolean): OpenSessionOutbound = {
     val db = if (database == null || database.length == 0) None else Some(database)
-    val _openSession = OpenSessionInbound(token, db, isLocal)
+    val _openSession = OpenSessionInbound(token, db, _isLocal)
     val res = client.post(_openSession, "/openSession")
     read[OpenSessionOutbound](res) match {
       case r@OpenSessionOutbound(Some(_), None) => r
@@ -152,11 +156,10 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
       case InteractiveQueryOutbound(None, true, Some(d)) =>
         val data = d.data
         var numShowed = data.size
-        var dataBuf: Seq[Seq[Any]] = Nil
         val parsedSchema: Seq[String] = Utils.parseJson(d.schema).map(s => s"${s._1}(${s._2})").toSeq
         /* print data */
-        print(Utils.showString(data.take(numShowed), parsedSchema, max_count, truncate, showPromote = false))
-        while (numShowed < max_count) {
+        print(Utils.showString(data.take(numShowed), parsedSchema, max_count, truncate, showPromote = !d.hasNext))
+        while (numShowed < max_count && d.hasNext) {
           val fetchSize = math.min(DEFAULT_FETCH_SIZE, max_count - numShowed)
           val outbound = fetchNextResult(token, sessionId, d.cursor, fetchSize)
           val dataToShow = outbound.data.get.data
