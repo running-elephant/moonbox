@@ -32,9 +32,9 @@ import moonbox.util.SchemaUtil._
 class MoonboxResultSet(conn: MoonboxConnection,
                        stat: MoonboxStatement,
                        var rows: Seq[Seq[Any]],
-                       schema: String,
+                       var schema: String,
                        var hasMore: Boolean,
-                       cursor: Option[String]
+                       val cursor: Option[String]
                       ) extends ResultSet {
 
   var closed: Boolean = false

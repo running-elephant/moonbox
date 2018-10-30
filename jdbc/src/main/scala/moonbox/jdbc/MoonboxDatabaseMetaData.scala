@@ -223,12 +223,12 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 
 	override def getTables(catalog: String, schemaPattern: String, tableNamePattern: String, types: Array[String]): ResultSet = {
 		val statement = connection.createStatement()
-		if (catalog != null) {
+		/*if (catalog != null) {
 			statement.executeQuery("use " + catalog)
-		}
-		val resultSet = statement.executeQuery("show tables")
+		}*/
+		val resultSet = statement.executeQuery(s"show tables in $catalog like $tableNamePattern").asInstanceOf[MoonboxResultSet]
 		val schema = "{type: struct, fields: [{name: TABLE_NAME, type: varchar, nullable: true}]}"
-		new MoonboxResultSet(connection, resultSet.getStatement.asInstanceOf[MoonboxStatement], resultSet.asInstanceOf[MoonboxResultSet].rows, schema)
+		new MoonboxResultSet(connection, resultSet.getStatement, resultSet.rows, schema, resultSet.hasMore, resultSet.cursor)
 	}
 
 	override def supportsMultipleTransactions(): Boolean = ???
@@ -244,7 +244,8 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def nullPlusNonNullIsNull(): Boolean = ???
 
 	override def getPrimaryKeys(catalog: String, schema: String, table: String): ResultSet = {
-		new MoonboxResultSet(connection, connection.createStatement().asInstanceOf[MoonboxStatement], Seq.empty[Seq[Any]], null)
+		val schema = "{type: struct, fields: []}"
+		new MoonboxResultSet(connection, connection.createStatement().asInstanceOf[MoonboxStatement], Seq.empty[Seq[Any]], schema, hasMore = false, None)
 	}
 
 	override def supportsOpenCursorsAcrossRollback(): Boolean = ???
@@ -328,7 +329,7 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def supportsPositionedDelete(): Boolean = ???
 
 	override def getColumns(catalog: String, schemaPattern: String, tableNamePattern: String, columnNamePattern: String): ResultSet = {
-		val resultSet = connection.createStatement().executeQuery(s"desc $tableNamePattern")
+		val resultSet = connection.createStatement().executeQuery(s"desc $tableNamePattern").asInstanceOf[MoonboxResultSet]
 		val dataString = resultSet.asInstanceOf[MoonboxResultSet].rows.filter(row => row.head.asInstanceOf[String].equalsIgnoreCase("select")).head.last.asInstanceOf[String]
 		val schema =
 			s"""{type: struct,
@@ -348,7 +349,7 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 			val nameAndType = s.split(",")
 			Seq(null, null, null, nameAndType(0), null, nameAndType(1))
 		}
-		new MoonboxResultSet(connection, resultSet.getStatement.asInstanceOf[MoonboxStatement], data, schema)
+		new MoonboxResultSet(connection, resultSet.getStatement, data, schema, resultSet.hasMore, resultSet.cursor)
 	}
 
 	override def supportsResultSetType(`type`: Int): Boolean = ???

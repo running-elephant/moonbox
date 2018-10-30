@@ -125,7 +125,9 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def getHoldability: Int = 1
 
   override def setCatalog(catalog: String): Unit = {
+    this.createStatement().executeQuery(s"use $catalog")
     database = catalog
+    jdbcSession = jdbcSession.copy(database = catalog)
   }
 
   override def setHoldability(holdability: Int): Unit = {}

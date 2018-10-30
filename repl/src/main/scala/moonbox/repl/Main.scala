@@ -43,6 +43,7 @@ object Main extends JsonSerializer {
   var method: String = "rest"
   var retryTimes: Int = 3
   var timeout: Int = 300 // unit: second
+  var islocal: Boolean = true
   var user: String = _
   var host: String = "localhost"
   var port: Int = 9099
@@ -78,7 +79,7 @@ object Main extends JsonSerializer {
       checkParameters()
       connector = if (method == "rest" || method == "r") {
         //new RestConnector(timeout)
-        new MbHttpConnector(timeout)
+        new MbHttpConnector(timeout, islocal)
       } else {
         new JdbcConnector(timeout)
       }
@@ -268,6 +269,9 @@ object Main extends JsonSerializer {
       parse(tail)
     case ("-t" | "--timeout") :: IntParam(value) :: tail =>
       timeout = value
+      parse(tail)
+    case ("-r" | "--runtime") :: value :: tail =>
+      islocal = value.equalsIgnoreCase("local")
       parse(tail)
     case ("--help") :: tail =>
       printUsageAndExit(0)

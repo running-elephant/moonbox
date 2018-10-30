@@ -25,7 +25,7 @@ import moonbox.repl.adapter.{Connector, Utils}
 import org.json4s.jackson.Serialization.read
 
 // timeout: XXX seconds
-class MbHttpConnector(timeout: Int, var isLocal: Boolean) extends Connector {
+class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   var client: MbHttpClient = _
   var sessionId: String = _
   var token: String = _
@@ -119,7 +119,7 @@ class MbHttpConnector(timeout: Int, var isLocal: Boolean) extends Connector {
     }
   }
 
-  private def openSession(token: String, database: String, isLocal: Boolean = false): OpenSessionOutbound = {
+  private def openSession(token: String, database: String, isLocal: Boolean): OpenSessionOutbound = {
     val db = if (database == null || database.length == 0) None else Some(database)
     val _openSession = OpenSessionInbound(token, db, isLocal)
     val res = client.post(_openSession, "/openSession")
