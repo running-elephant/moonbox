@@ -103,7 +103,7 @@ case class ShowTables(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference(s"TABLES_IN_${database.getOrElse("DEFAULT")}", StringType, nullable = false)() :: Nil
+		AttributeReference("TABLE_NAME", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -126,7 +126,7 @@ case class ShowViews(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference(s"VIEWS_IN_${database.getOrElse("DEFAULT")}", StringType, nullable = false)() :: Nil
+		AttributeReference("VIEW_NAME", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -144,7 +144,7 @@ case class ShowFunctions(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference(s"FUNCTIONS_IN_${database.getOrElse("DEFAULT")}", StringType, nullable = false)() :: Nil
+		AttributeReference("FUNCTION_NAME", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {

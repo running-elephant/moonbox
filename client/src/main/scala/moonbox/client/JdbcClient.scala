@@ -108,14 +108,14 @@ class JdbcClient(host: String, port: Int) {
 	  if (channel != null) {
 		  channel.close()
 	  }
-	  if (bootstrap != null && bootstrap.group() != null) {
+	  /*if (bootstrap != null && bootstrap.group() != null) {
 		  bootstrap.group().shutdownGracefully()
-	  }
+	  }*/
 	  bootstrap = null
   }
 
   @throws(classOf[Exception])
-  def sendAndReceive(message: Any): Outbound = {
+  def sendAndReceive(message: Any, timeout: Long = timeout): Outbound = {
 	  message match {
 		  case in: Inbound =>
 			  send(in)

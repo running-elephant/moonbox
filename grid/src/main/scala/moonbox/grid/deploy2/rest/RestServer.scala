@@ -88,7 +88,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
-								LogoutOutbound(error = Some("Token is incorrect or expired."))
+								OpenSessionOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
 								service.openSession(in.token, in.database, in.isLocal)
 						}
@@ -102,7 +102,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
-								LogoutOutbound(error = Some("Token is incorrect or expired."))
+								CloseSessionOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
 								service.closeSession(in.token, in.sessionId)
 						}
@@ -116,9 +116,23 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					complete {
 						loginManager.isvalid(in.token) match {
 							case false =>
-								LogoutOutbound(error = Some("Token is incorrect or expired."))
+								InteractiveQueryOutbound(error = Some("Token is incorrect or expired."))
 							case true =>
 								service.interactiveQuery(in.token, in.sessionId, in.sqls)
+						}
+					}
+				}
+			}
+		} ~
+		path("nextResult") {
+			post {
+				entity(as[InteractiveNextResultInbound]) { in =>
+					complete {
+						loginManager.isvalid(in.token) match {
+							case false =>
+								InteractiveNextResultOutbound(error = Some("Token is incorrect or expired."))
+							case true =>
+								service.interactiveNextResult(in.token, in.sessionId, in.cursor, in.fetchSize)
 						}
 					}
 				}

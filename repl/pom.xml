@@ -23,7 +23,7 @@
             <artifactId>moonbox-jdbc_2.11</artifactId>
             <version>0.2.1-SNAPSHOT</version>
         </dependency>
-         <!--akka http-->
+         <!--&lt;!&ndash;akka http&ndash;&gt;
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http-core_2.11</artifactId>
@@ -31,16 +31,10 @@
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http_2.11</artifactId>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-jackson_2.11</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>jackson-databind</artifactId>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <artifactId>jackson-databind</artifactId>
@@ -65,7 +59,6 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>4.5.2</version>
-            <!--conflict with spark http client, so provide this module here-->
             <!--<scope>provided</scope>-->
         </dependency>
 

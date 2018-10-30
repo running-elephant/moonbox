@@ -111,13 +111,13 @@ class JdbcServerHandler(
         outbound.setId(closeSession.getId)
       case query@InteractiveQueryInbound(_, _, sqls, fetchSize, maxRows) =>
         val token = channelToToken.get(channel)
-        val sessionId = channelToSessionId.remove(channel)
+        val sessionId = channelToSessionId.get(channel)
         val outbound = mbService.interactiveQuery(token, sessionId, sqls, fetchSize, maxRows)
         logInfo(s"Query(sqls=$sqls, fetchSize=$fetchSize, maxRows=$maxRows) completed: " + prettyError(outbound.error))
         outbound.setId(query.getId)
       case next@InteractiveNextResultInbound(_, _, cursor, fetchSize) =>
         val token = channelToToken.get(channel)
-        val sessionId = channelToSessionId.remove(channel)
+        val sessionId = channelToSessionId.get(channel)
         val outbound = mbService.interactiveNextResult(token, sessionId, cursor, fetchSize)
         logInfo(s"NextResult_query(cursor=$cursor, fetchSize=$fetchSize) completed: " + prettyError(outbound.error))
         outbound.setId(next.getId)

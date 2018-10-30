@@ -25,32 +25,32 @@ import moonbox.repl.adapter.{Connector, Utils}
 import org.json4s.jackson.Serialization.read
 
 // timeout: XXX seconds
-class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
-  var client: MbHttpClient = _
-  var sessionId: String = _
-  var token: String = _
-  var closed: Boolean = _
+class MbHttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
+  var _client: MbHttpClient = _
+  var _sessionId: String = _
+  var _token: String = _
+  var _closed: Boolean = _
   var DEFAULT_FETCH_SIZE = 200
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
-      if (!closed) close()
+      if (!_closed) close()
     }
   }))
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
-      client = new MbHttpClient(host, port, timeout * 1000)
+      genClient(host, port, _timeout * 1000)
       val requestAccessOutbound = requestAccess(login(user, pwd).token.get, isLocal)
       val hp = requestAccessOutbound.address.get.split(":").map(_.trim)
       try {
-        logout(token)
+        logout(_token)
       } catch {
         case e: Exception => Console.err.println(s"WARNING: Logout before requestAccess failed: ${e.getMessage}")
       }
-      client = new MbHttpClient(hp(0), hp(1).toInt, timeout * 1000)
-      token = login(user, pwd).token.get
-      sessionId = openSession(token, db, isLocal).sessionId.get
+      genClient(hp(0), hp(1).toInt, _timeout * 1000)
+      login(user, pwd).token.get
+      openSession(_token, db, isLocal).sessionId.get
       true
     } catch {
       case e: Exception =>
@@ -60,8 +60,8 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def process(sqls: Seq[String]) = {
-    val _query = InteractiveQueryInbound(token, sessionId, sqls)
-    val res = client.post(_query, "/query")
+    val _query = InteractiveQueryInbound(_token, _sessionId, sqls, fetchSize = 1)
+    val res = _client.post(_query, "/query")
     val resObj = read[InteractiveQueryOutbound](res)
     resObj.error match {
       case None => showResult(resObj)
@@ -70,26 +70,15 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def close() = {
-    if (!closed && token != null) {
-      if (sessionId != null) {
+    if (!_closed && _token != null) {
+      if (_sessionId != null) {
         // close session first
-        val _closeSession = closeSession(token, sessionId)
-        _closeSession.error match {
-          case None =>
-            println(s"Session closed")
-            sessionId = null
-          case Some(err) => println(s"Close session failed: error=$err")
-        }
+        closeSession(_token, _sessionId)
       }
       // do logout
-      val _logout = logout(token)
-      _logout.error match {
-        case None =>
-          closed = true
-          println("Logout successfully")
-        case Some(err) => println(s"Logout Failed: error=$err")
-      }
+      logout(_token)
     }
+    _closed = true
   }
 
   override def shutdown() = {
@@ -97,8 +86,14 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
     close()
   }
 
+  /* timeout: XXX ms */
+  private def genClient(host: String, port: Int, timeout: Int): MbHttpClient = {
+    _client = new MbHttpClient(host, port, timeout)
+    _client
+  }
+
   private def requestAccess(token: String, _islocal: Boolean): RequestAccessOutbound = {
-    val res = client.post(RequestAccessInbound(Some(token), _islocal), "/requestAccess")
+    val res = _client.post(RequestAccessInbound(Some(token), _islocal), "/requestAccess")
     read[RequestAccessOutbound](res) match {
       case r@RequestAccessOutbound(Some(_), None) => r
       case other => throw new Exception(s"RequestAccess failed: address=${other.address}, error=${other.error}")
@@ -107,16 +102,18 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
 
   private def login(username: String, password: String): LoginOutbound = {
     val _login = LoginInbound(username, password)
-    val res = client.post(_login, "/login")
+    val res = _client.post(_login, "/login")
     read[LoginOutbound](res) match {
-      case r@LoginOutbound(Some(_), None) => r
+      case r@LoginOutbound(Some(token), None) =>
+        _token = token
+        r
       case other => throw new Exception(s"Login failed: token=${other.token}, error=${other.error}")
     }
   }
 
   private def logout(token: String): LogoutOutbound = {
     val _logout = LogoutInbound(token)
-    val res = client.post(_logout, "/logout")
+    val res = _client.post(_logout, "/logout")
     read[LogoutOutbound](res) match {
       case r@LogoutOutbound(None) => r
       case other => throw new Exception(s"Logout failed: error=${other.error}")
@@ -126,16 +123,18 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   private def openSession(token: String, database: String, _isLocal: Boolean): OpenSessionOutbound = {
     val db = if (database == null || database.length == 0) None else Some(database)
     val _openSession = OpenSessionInbound(token, db, _isLocal)
-    val res = client.post(_openSession, "/openSession")
+    val res = _client.post(_openSession, "/openSession")
     read[OpenSessionOutbound](res) match {
-      case r@OpenSessionOutbound(Some(_), None) => r
+      case r@OpenSessionOutbound(Some(sessionId), None) =>
+        _sessionId = sessionId
+        r
       case other => throw new Exception(s"Open session failed: sessionId=${other.sessionId}, error=${other.error}")
     }
   }
 
   private def closeSession(token: String, sessionId: String): CloseSessionOutbound = {
     val _closeSession = CloseSessionInbound(token, sessionId)
-    val res = client.post(_closeSession, "/closeSession")
+    val res = _client.post(_closeSession, "/closeSession")
     read[CloseSessionOutbound](res) match {
       case r@CloseSessionOutbound(None) => r
       case other => throw new Exception(s"Close session failed: error=${other.error}")
@@ -144,7 +143,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
 
   // TODO: api name
   private def fetchNextResult(token: String, sessionId: String, cursor: String, fetchSize: Long): InteractiveNextResultOutbound = {
-    val res = client.post(InteractiveNextResultInbound(token, sessionId, cursor, fetchSize), "/nextResult")
+    val res = _client.post(InteractiveNextResultInbound(token, sessionId, cursor, fetchSize), "/nextResult")
     read[InteractiveNextResultOutbound](res) match {
       case r@InteractiveNextResultOutbound(None, Some(_)) => r
       case other => throw new Exception(s"Fetch next result failed: error=${other.error}")
@@ -161,7 +160,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
         print(Utils.showString(data.take(numShowed), parsedSchema, max_count, truncate, showPromote = !d.hasNext))
         while (numShowed < max_count && d.hasNext) {
           val fetchSize = math.min(DEFAULT_FETCH_SIZE, max_count - numShowed)
-          val outbound = fetchNextResult(token, sessionId, d.cursor, fetchSize)
+          val outbound = fetchNextResult(_token, _sessionId, d.cursor, fetchSize)
           val dataToShow = outbound.data.get.data
           val promote = if (fetchSize == DEFAULT_FETCH_SIZE) false else true
           print(Utils.showString(dataToShow, parsedSchema, max_count, truncate, showPromote = promote, showSchema = false))
@@ -174,7 +173,7 @@ class MbHttpConnector(timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def cancel(): Unit = {
-    val _cancelInbound = CancelQueryInbound(token, sessionId)
-    client.post(_cancelInbound, "/cancel")
+    val cancelInbound = CancelQueryInbound(_token, _sessionId)
+    _client.post(cancelInbound, "/cancel")
   }
 }
