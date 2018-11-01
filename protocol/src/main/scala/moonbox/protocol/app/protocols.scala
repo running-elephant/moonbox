@@ -2,23 +2,25 @@ package moonbox.protocol.app
 
 import moonbox.protocol.app.JobState.JobState
 
+sealed trait AppApi
 
 case class RegisterAppRequest(id: String, batchJobId: Option[String], seq: Int, totalCores: Int, totalMemory: Long, freeCores: Int, freeMemory: Long )
 
 case object RegisterAppResponse
 
-case class StopBatchAppByPeace(jobId: String)
+case class StopBatchAppByPeace(jobId: String) extends AppApi
 
-case class StartBatchAppByPeace(jobId: String, config: String)
+case class StartBatchAppByPeace(jobId: String, config: String) extends AppApi
 
+case class StartedBatchAppResponse(jobId: String)
 
 case class RemoveJobFromWorker(id: String) //id is JobID[batch] / SessionID[adhoc]
 
-case class AssignTaskToWorker(taskInfo: TaskInfo)
+case class AssignTaskToWorker(taskInfo: TaskInfo) extends AppApi
 
-case class AllocateSession(username: String, database: Option[String])
+case class AllocateSession(username: String, database: Option[String]) extends AppApi
 
-case class FreeSession(sessionId: String)
+case class FreeSession(sessionId: String) extends AppApi
 
 sealed trait AllocateSessionResponse
 

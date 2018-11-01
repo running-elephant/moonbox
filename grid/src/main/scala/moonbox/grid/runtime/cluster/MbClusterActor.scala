@@ -55,11 +55,17 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
         s"akka.tcp://$systemName@$akkaHost:$akkaPort$akkaPath"
     }
 
-    private def startAppByConfig(launchConf: Map[String, String]): String = {
-        val id = newAppId + "_" + launchConf.getOrElse("name", "yarnapp") + "_" + launchConf.getOrElse("job.mode", "unknown")
+    private def startAppByConfig(launchConf: Map[String, String], batchJobId: Option[String] = None): String = {
+        val id = if (batchJobId.isEmpty) {
+            newAppId + "_" + launchConf.getOrElse("name", "yarnapp") + "_" + "adhoc"
+        } else {
+            newAppId + "_" + launchConf.getOrElse("name", "yarnapp") + "_" + "batch"
+        }
+
         val yarnAppMainConf = mutable.Map.empty[String, String]
         yarnAppMainConf += ("moonbox.mixcal.cluster.actor.path" -> getActorSelectorPath)
         yarnAppMainConf += ("moonbox.mixcal.cluster.yarn.id" -> id)
+        batchJobId.map{ jobId => yarnAppMainConf += ("moonbox.mixcal.cluster.yarn.batchId" -> jobId) }
 
         val yarnAppConfig = launchConf.filter{elem => elem._1.indexOf("spark.hadoop.") != -1}
                 .map{elem => (elem._1.replace("spark.hadoop.", ""), elem._2)}
@@ -71,6 +77,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
         appListenerMap.put(id, appListener)
 
         yarnAppMainConf  ++= conf.getAll.filter(_._1.toLowerCase.startsWith("moonbox"))
+                                        .filter(_._1.toLowerCase.indexOf("moonbox.mixcal.local") == -1)  //must have this line
         val handler = Future {
             MbAppLauncher.launch(yarnAppMainConf.toMap, launchConf,  appListener)
         }
@@ -125,9 +132,12 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
     override def receive: Receive = {
 
-        case request: MbApi =>
+        case request: AppApi =>
             log.info(request.toString)
             process.apply(request)  // TODO privilege check
+
+        case message: MbApi =>
+            internal2.apply(message)
 
         case result: JobStateChanged =>
             handle.apply(result)
@@ -164,16 +174,20 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
         case m@RegisterAppRequest(id, batchJobId, seq, totalCores, totalMemory, freeCores, freeMemory) =>
             val appDriver = sender()
             appDriver ! RegisterAppResponse
-            appActorRefMap.put(id, appDriver)
+            if (!appActorRefMap.contains(id)) {
+                appActorRefMap.put(id, appDriver)
 
-            if (batchJobId.isDefined && seq == -1) {  //batch first message trigger
-                nodeActor ! JobStateChanged(batchJobId.get, seq, JobState.SUCCESS, UnitData)
+                if (batchJobId.isDefined) {  //batch first message trigger, only send once
+                    logInfo(s"RegisterAppRequest batch jobId is started ${batchJobId.get}")
+                    jobIdToJobRunner.put(batchJobId.get, appDriver)
+                    nodeActor ! StartedBatchAppResponse(batchJobId.get)
+                }
             }
 
             if (appResourceMap.contains(id)){  //adhoc use this map
                 val submit = appResourceMap(id).submit
                 appResourceMap.update(id, YarnAppInfo(totalCores, totalMemory, freeCores, freeMemory, System.currentTimeMillis(), submit))
-            }else {
+            } else {
                 appResourceMap.put(id, YarnAppInfo(totalCores, totalMemory, freeCores, freeMemory, System.currentTimeMillis(), System.currentTimeMillis()))
             }
 
@@ -194,59 +208,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
     }
 
-
-    private def process: Receive = {
-        case request@AllocateSession(username, database) =>
-            val client = sender()
-            val yarnApp = selectYarnApp(false)
-            yarnApp match {
-                case Some(yarnActorRef) =>
-                    yarnActorRef.ask(request).mapTo[AllocateSessionResponse].onComplete {
-                        case Success(rsp) =>
-                            rsp match {
-                                case m@AllocatedSession(sessionId) =>
-                                    sessionIdToJobRunner.put(sessionId, yarnActorRef)
-                                    client ! m
-                                case m@AllocateSessionFailed(error) =>
-                                    client ! m
-                            }
-                        case Failure(e) =>
-                            client ! AllocateSessionFailed(e.getMessage)
-                    }
-                case None =>
-                    client ! AllocateSessionFailed("there is no available worker.")
-            }
-
-        case request@FreeSession(sessionId) =>
-            val client = sender()
-            sessionIdToJobRunner.get(sessionId) match {
-                case Some(worker) =>
-                    val future = worker.ask(request).mapTo[FreeSessionResponse]
-                    future.onComplete {
-                        case Success(response) =>
-                            response match {
-                                case m@FreedSession(id) =>
-                                    sessionIdToJobRunner.remove(id)
-                                    client ! m
-                                case m@FreeSessionFailed(error) =>
-                                    client ! m
-                            }
-                        case Failure(e) =>
-                            client ! FreeSessionFailed(e.getMessage)
-                    }
-                case None =>
-                    client ! FreeSessionFailed(s"Session $sessionId does not exist.")
-            }
-
-        case request@AssignTaskToWorker(sqlInfo) =>
-            val client = sender()
-            sessionIdToJobRunner.get(sqlInfo.sessionId.get) match {  //TODO: for adhoc
-                case Some(worker) =>
-                    worker ! request
-                case None =>
-                    client ! JobFailed(sqlInfo.jobId, "Session lost in master.")
-            }
-
+    private def internal2: Receive = {
         // Batch:
         //           ^------->   schedule      ^---f---->
         // client ---| node1 |---> master -----| node2  |----proxy------yarnAPP -----> Runner
@@ -264,27 +226,6 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
             } else { //TODO: how to do if no job config
 
             }
-        case m@FetchData(sessionId, jobId, fetchSize) =>
-            val client = sender()
-            sessionIdToJobRunner.get(sessionId) match {
-                case Some(actor) => actor ! FetchDataFromRunner(sessionId, jobId, fetchSize)
-                case None => client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
-            }
-
-        case StopBatchAppByPeace(jobId) =>  //stop all finished batch
-            if (jobIdToJobRunner.contains(jobId)) {
-                jobIdToJobRunner(jobId) ! StopBatchAppByPeace(jobId)
-            }
-
-        case StartBatchAppByPeace(jobId, config) =>
-            val requester = sender()
-
-            val typeConfig = ConfigFactory.parseString(config)
-            val typeMap = typeConfig.entrySet().asScala.map{ c => (c.getKey, c.getValue.unwrapped().toString)}.toMap
-            val newMap = typeMap + ("moonbox.mixcal.cluster.yarn.batchId" -> jobId)
-            val id = startAppByConfig(newMap)
-
-            requester ! StartedYarnApp(id)
 
 
         case m@JobCancelInternal(jobId) =>
@@ -295,6 +236,12 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
                 jobIdToJobRunner(jobId) ! RemoveJobFromWorker(jobId)
             }
 
+        case m@FetchData(sessionId, jobId, fetchSize) =>
+            val client = sender()
+            sessionIdToJobRunner.get(sessionId) match {
+                case Some(actor) => actor ! FetchDataFromRunner(sessionId, jobId, fetchSize)
+                case None => client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
+            }
 
         case GetYarnAppsInfo =>
             val requester = sender()
@@ -351,20 +298,98 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
             val id = startAppByConfig(typeMap)
             requester ! StartedYarnApp(id)
 
+    }
+
+
+    private def process: Receive = {
+        case request@AllocateSession(username, database) =>
+            val client = sender()
+            val yarnApp = selectYarnApp(false)
+            yarnApp match {
+                case Some(yarnActorRef) =>
+                    yarnActorRef.ask(request).mapTo[AllocateSessionResponse].onComplete {
+                        case Success(rsp) =>
+                            rsp match {
+                                case m@AllocatedSession(sessionId) =>
+                                    sessionIdToJobRunner.put(sessionId, yarnActorRef)
+                                    client ! m
+                                case m@AllocateSessionFailed(error) =>
+                                    client ! m
+                            }
+                        case Failure(e) =>
+                            client ! AllocateSessionFailed(e.getMessage)
+                    }
+                case None =>
+                    client ! AllocateSessionFailed("there is no available worker.")
+            }
+
+        case request@FreeSession(sessionId) =>
+            val client = sender()
+            sessionIdToJobRunner.get(sessionId) match {
+                case Some(worker) =>
+                    val future = worker.ask(request).mapTo[FreeSessionResponse]
+                    future.onComplete {
+                        case Success(response) =>
+                            response match {
+                                case m@FreedSession(id) =>
+                                    sessionIdToJobRunner.remove(id)
+                                    client ! m
+                                case m@FreeSessionFailed(error) =>
+                                    client ! m
+                            }
+                        case Failure(e) =>
+                            client ! FreeSessionFailed(e.getMessage)
+                    }
+                case None =>
+                    client ! FreeSessionFailed(s"Session $sessionId does not exist.")
+            }
+
+        case request@AssignTaskToWorker(taskInfo) =>
+            val client = sender()
+            taskInfo.sessionId match {
+                case Some(sessionId) =>
+                    sessionIdToJobRunner.get(taskInfo.sessionId.get) match {  //TODO: for adhoc
+                        case Some(worker) =>
+                            worker ! request
+                        case None =>
+                            client ! JobFailed(taskInfo.jobId, "Session lost in master.")
+                    }
+                case None =>
+                    jobIdToJobRunner.get(taskInfo.jobId) match {
+                        case Some(worker) =>
+                            worker ! request
+                        case None =>
+                            client ! JobFailed(taskInfo.jobId, "Session lost in master.")
+                    }
+            }
+
+        case m@StopBatchAppByPeace(jobId) =>  //stop all finished batch
+            logInfo(s"StopBatchAppByPeace $jobId")
+            if (jobIdToJobRunner.contains(jobId)) {
+                jobIdToJobRunner(jobId) ! m
+            }
+
+        case m@StartBatchAppByPeace(jobId, config) =>
+            val requester = sender()
+
+            val typeConfig = ConfigFactory.parseString(config)
+            val typeMap = typeConfig.entrySet().asScala.map{ c => (c.getKey, c.getValue.unwrapped().toString)}.toMap
+            val id = startAppByConfig(typeMap, Some(jobId))
+
+            //requester ! StartedYarnApp(id)
 
     }
 
 
     private def handle: Receive = {
-        case m@JobStateChanged(jobId, sessionId, jobState, result) =>
+        case m@JobStateChanged(jobId, seq, jobState, result) =>
             if (jobIdToJobRunner.contains(jobId)) { //batch clear mapping
-                jobIdToJobRunner.remove(jobId)
-                nodeActor ! m.copy(result = UnitData)
+                //jobIdToJobRunner.remove(jobId)
+                nodeActor ! m
             } else {
                 logInfo(s"In node adhoc, Job $jobId state changed to $jobState $result")
-                nodeActor ! m.copy(result = UnitData)
+                nodeActor ! m
             }
-
     }
 
 

@@ -183,7 +183,7 @@ object MixcalContext extends MbLogging {
 
 				sparkContext = SparkContext.getOrCreate(sparkConf)
 
-				val sparkListener = new SparkResourceListener(sparkConf)
+				val sparkListener = new SparkResourceListener(sparkContext.getConf)
 				sparkContext.addSparkListener(sparkListener)
 				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
 

@@ -400,7 +400,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging{
 	// -----------------------------------------------------------------
 
 	def createProcedure(procedure: CatalogProcedure) = {
-		insert(procedure, catalogProcedures)
+		insert[CatalogProcedure, CatalogProcedureTable](procedure, catalogProcedures)
 	}
 
 	def deleteProcedure(procedureId: Long) = {

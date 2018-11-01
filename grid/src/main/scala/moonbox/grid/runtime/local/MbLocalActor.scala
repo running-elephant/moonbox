@@ -31,7 +31,7 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
     override def preStart(): Unit = {
         // TODO init sparkContext
         try {
-            MbSession.startMixcalEnv(conf)
+            MbSession.startMixcalEnv(conf, false)
         } catch {
             case e: Exception =>
                 logError(e.getMessage)
