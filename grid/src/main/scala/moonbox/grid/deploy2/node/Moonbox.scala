@@ -12,7 +12,7 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbRunnableCommand}
+import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbCommand, MbRunnableCommand}
 import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
@@ -200,6 +200,21 @@ class Moonbox(akkaSystem: ActorSystem,
 		case ScheduleJob =>  //TODO:
 			schedule()
 
+		case StartedBatchAppResponse(jobId) =>
+			logInfo(s"StartedBatchAppResponse $jobId")
+			runningJobs.get(jobId) match {
+				case Some(jobInfo) =>
+					val expectedSeq = 0
+					if (expectedSeq < jobInfo.cmds.length) {
+						val command = jobInfo.cmds(expectedSeq)
+
+						sendSqlToDestination(command, jobInfo)
+					} else {
+						jobInfo.client ! JobCompleteWithExternalData(jobId, None)
+					}
+				case None =>
+			}
+
 		case ReportYarnAppResource(adhocInfo, batchInfo) =>
 			master ! ReportNodesResource(NODE_ID, adhocInfo, batchInfo)
 
@@ -290,7 +305,8 @@ class Moonbox(akkaSystem: ActorSystem,
 		case MasterChanged(address) =>
 			logInfo("Master has changed, new master is at " + address)
 			master = address
-			master ! RegisterNode(generateNodeId(), host, port, self, 100, 100, jdbcPort, restPort)
+			master ! RegisterNode(NODE_ID, host, port, self, 100, 100, jdbcPort, restPort)
+
 		case UnreachableMember(member) =>
 			addressToNode.get(member.address).foreach(removeNode)
 			if (state == RoleState.RECOVERING && canCompleteRecovery) {
@@ -370,34 +386,19 @@ class Moonbox(akkaSystem: ActorSystem,
 			}
 
 		case m@JobStateChanged(jobId, taskSeq, jobState, result) =>
+			logInfo(s"JobStateChanged send $jobId, $taskSeq, $jobState, $result")
 			runningJobs.get(jobId) match {
 				case Some(jobInfo) =>
 					jobState match {
 						case JobState.SUCCESS =>
 							if (jobInfo.seq == taskSeq) {
-
 								val expectedSeq = taskSeq + 1
 								if (expectedSeq < jobInfo.cmds.length) {
 									val nextCmd = jobInfo.cmds(expectedSeq)
-
-									if (jobInfo.isLocal) {
-										localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, nextCmd, jobInfo.seq))
-									}
-									else {
-										nextCmd match {
-											case m: MQLQuery =>
-												clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, QueryTask(m.query), jobInfo.seq))
-											case m: CreateTempView =>
-												val t = CreateTempViewTask(m.name, m.query, m.isCache, m.replaceIfExists)
-												clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq))
-											case m: InsertInto =>
-												val t = InsertIntoTask(m.table.table, m.table.database, m.query, m.overwrite)
-												clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq))
-											case m: MbRunnableCommand => //TODO:
-												localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, m, jobInfo.seq))
-										}
-									}
-								} else {
+									jobInfo.seq += 1
+									sendSqlToDestination(nextCmd, jobInfo)
+								}
+								else {
 									val response = result match {
 										case DirectData(_, schema, data, hasNext) =>
 											JobCompleteWithDirectData(jobId, schema, data, hasNext)
@@ -408,26 +409,48 @@ class Moonbox(akkaSystem: ActorSystem,
 
 									runningJobs.remove(jobId)
 									if (jobInfo.sessionId.isEmpty) { //kill yarn batch
-										jobIdToJobRunner(jobId) ! StopBatchAppByPeace(jobId)
+										clusterProxyActorRef ! StopBatchAppByPeace(jobId)
 									}
 									master ! JobStateChangedInternal(jobId, jobState)
 								}
 							}
-							case JobState.FAILED | JobState.KILLED	=>
-							if (jobState == JobState.FAILED) {
-								jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
-							} else {
-								jobInfo.client ! JobCancelSuccess(jobId)
-							}
-							runningJobs.remove(jobId)
-							master ! JobStateChangedInternal(jobId, jobState) //TODO: this is master
 
-							case _ =>
-						}
+						case JobState.FAILED | JobState.KILLED	=>
+								if (jobState == JobState.FAILED) {
+									jobInfo.client ! JobFailed(jobId, result.asInstanceOf[Failed].message)
+								} else {
+									jobInfo.client ! JobCancelSuccess(jobId)
+								}
+								runningJobs.remove(jobId)
+								master ! JobStateChangedInternal(jobId, jobState) //TODO: this is master
 
+						case _ =>
+					}
 				case None =>
 			}
 
+	}
+
+	private def sendSqlToDestination(command: MbCommand,  jobInfo: JobInfo) = {
+		logInfo(s"sendSqlToDestination send $command $jobInfo")
+
+		if (jobInfo.isLocal) {
+			localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, command, jobInfo.seq))
+		}
+		else {
+			command match {
+				case m: MQLQuery =>
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, QueryTask(m.query), jobInfo.seq, jobInfo.username))
+				case m: CreateTempView =>
+					val t = CreateTempViewTask(m.name, m.query, m.isCache, m.replaceIfExists)
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, jobInfo.username))
+				case m: InsertInto =>
+					val t = InsertIntoTask(m.table.table, m.table.database, m.query, m.overwrite)
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, jobInfo.username))
+				case m: MbRunnableCommand => //TODO:
+					localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, m, jobInfo.seq, jobInfo.username))
+			}
+		}
 	}
 
 	private def process: Receive = {
@@ -451,7 +474,6 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case m@OpenSession(username, database, isLocal) =>
 			val client = sender()
-
 			val actorRef = if (isLocal) {
 				localProxyActorRef
 			} else {
@@ -498,34 +520,21 @@ class Moonbox(akkaSystem: ActorSystem,
 			val date = new Date(now)
 			val jobId = newJobId(date)
 			try {
-				val jobInfo = createJob(jobId, Some(username), Some(sessionId), sqls, None, true, now, client)
 				sessionIdToJobRunner.get(sessionId) match {
-					case Some(Tuple2(actualActor, isLocal)) =>
+					case Some(runner) =>
+						val jobInfo = createJob(jobId, Some(username), Some(sessionId), sqls, None, runner._2, now, client)
 						jobInfo.status = JobState.RUNNING //update status
 						runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
+
 						val nextSeq = 0
 						if (nextSeq < jobInfo.cmds.length) {
 							val command = jobInfo.cmds(nextSeq)
 							//TODO: privilege check here
-							if (isLocal) {
-								actualActor ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, command, jobInfo.seq))
-							} else {
-								command match {
-									case m: MQLQuery =>
-										actualActor ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, QueryTask(m.query), jobInfo.seq, Some(username)))
-									case m: CreateTempView =>
-										val t = CreateTempViewTask(m.name, m.query, m.isCache, m.replaceIfExists)
-										actualActor ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, Some(username)))
-									case m: InsertInto =>
-										val t = InsertIntoTask(m.table.table, m.table.database, m.query, m.overwrite)
-										actualActor ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, Some(username)))
-									case m: MbRunnableCommand =>
-										localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, m, jobInfo.seq))
-								}
-							}
+
+							sendSqlToDestination(command, jobInfo)
 						}
 					case None =>
-						client ! JobFailed(jobInfo.jobId, "Session lost in master.")
+						client ! JobFailed(jobId, "Session lost in master.")
 				}
 			} catch {
 				case e: Exception =>
@@ -561,7 +570,8 @@ class Moonbox(akkaSystem: ActorSystem,
 		// node --> clusterproxy
 		case m@JobSubmitInternal(jobInfo) =>
 			runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
-			clusterProxyActorRef ! StartYarnApp(jobInfo.config.get)
+			clusterProxyActorRef ! StartBatchAppByPeace(jobInfo.jobId, jobInfo.config.get)
+
 
 
 		case m@JobProgress(jobId) =>
@@ -701,7 +711,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			logInfo(s"Try registering to master $address")
 			val core = Runtime.getRuntime.availableProcessors
 			val memory = Runtime.getRuntime.freeMemory
-			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(generateNodeId(), host, port, self, core, memory, jdbcPort, restPort), self)
+			akkaSystem.actorSelection(address + NODE_PATH).tell(RegisterNode(NODE_ID, host, port, self, core, memory, jdbcPort, restPort), self)
 		}
 	}
 
@@ -827,6 +837,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			cmds = commands,
 			seq = 0,
 			isLocal,
+			config = config,
 			status = JobState.WAITING,
 			errorMessage = None,
 			username = username,
