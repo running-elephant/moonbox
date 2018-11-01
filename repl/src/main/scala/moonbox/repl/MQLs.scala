@@ -73,7 +73,7 @@ object MQLs {
 		"ALTER EVENT name DISABLE",
 		"ALTER EVENT name ON SCHEDULE AT '...'",
 		"ALTER DEFINER name EVENT name",
-		"RENAME PROC name to name",
+		"RENAME PROC name TO name",
 		"DROP PROC name",
 		"DROP EVENT name",
 		"DESC EVENT name",

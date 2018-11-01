@@ -23,8 +23,9 @@ package moonbox.repl
 import java.io.{PrintWriter, StringWriter}
 import java.util.Locale
 
-import moonbox.repl.adapter.{Connector, JdbcConnector, Utils}
-import moonbox.repl.http.MbHttpConnector
+import moonbox.repl.connector.Connector
+import moonbox.repl.connector.jdbc.JdbcConnector
+import moonbox.repl.connector.rest.HttpConnector
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.reader.impl.completer.StringsCompleter
@@ -38,7 +39,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 
-object Main extends JsonSerializer {
+object Main {
 
   var method: String = "rest"
   var retryTimes: Int = 3
@@ -79,7 +80,7 @@ object Main extends JsonSerializer {
       checkParameters()
       connector = if (method == "rest" || method == "r") {
         //new RestConnector(timeout)
-        new MbHttpConnector(timeout, islocal)
+        new HttpConnector(timeout, islocal)
       } else {
         new JdbcConnector(timeout)
       }
@@ -215,23 +216,28 @@ object Main extends JsonSerializer {
   }
 
   private def process(sqlList: Seq[String]): Unit = {
+    val compositedSql = sqlList.mkString(";")
     val headSql = sqlList.head
     headSql.toUpperCase(Locale.ROOT) match {
       case "" =>
       case stmt if stmt.startsWith(PARAMETER_PREFIX) =>
-        enqueueWithLimit(historyMqls, sqlList: _*)
+        enqueueWithLimit(historyMqls, compositedSql)
         processSetSqls(headSql, sqlList)
       case "HISTORY" | "H" =>
         val data = historyMqls.zipWithIndex.map(u => Seq(historyMqls.length - u._2, u._1 + ";"))
         print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
       case "RECONNECT" | "R" =>
-        connector.close()
+        try {
+          connector.close()
+        } catch {
+          case e: Exception => Console.err.print(s"Close failed: ${e.getMessage}")
+        }
         repl()
       case "EXIT" | "QUIT" | "Q" =>
         connector.shutdown()
         System.exit(0)
       case _ =>
-        enqueueWithLimit(historyMqls, sqlList: _*)
+        enqueueWithLimit(historyMqls, compositedSql)
         connector.process(sqlList)
     }
   }

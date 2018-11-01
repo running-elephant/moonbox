@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,10 +18,13 @@
  * >>
  */
 
-package moonbox.repl.adapter
+package moonbox.repl.connector.jdbc
 
 import java.sql.{Connection, DriverManager, ResultSetMetaData, Statement}
 import java.util.Properties
+
+import moonbox.repl.Utils
+import moonbox.repl.connector.Connector
 
 class JdbcConnector(timeout: Int) extends Connector {
   var connection: Connection = _
@@ -49,7 +52,8 @@ class JdbcConnector(timeout: Int) extends Connector {
     stmt = connection.createStatement()
     stmt.setQueryTimeout(timeout)
     stmt.setFetchSize(200)
-    sqls.foreach { sql =>
+    val compositedSql = sqls.mkString("", ";", ";") :: Nil
+    compositedSql.foreach { sql =>
       if (stmt.execute(sql)) {  //if can get result
         val rs = stmt.getResultSet
         val metaData: ResultSetMetaData = rs.getMetaData
@@ -81,7 +85,7 @@ class JdbcConnector(timeout: Int) extends Connector {
   }
 
   override def shutdown(): Unit = {
-
+    /* need to do nothing */
   }
 
   override def cancel(): Unit = {

@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,15 +18,16 @@
  * >>
  */
 
-package moonbox.repl.http
+package moonbox.repl.connector.rest
 
 import moonbox.protocol.client._
-import moonbox.repl.adapter.{Connector, Utils}
+import moonbox.repl.Utils
+import moonbox.repl.connector.Connector
 import org.json4s.jackson.Serialization.read
 
 // timeout: XXX seconds
-class MbHttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
-  var _client: MbHttpClient = _
+class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
+  var _client: HttpClient = _
   var _sessionId: String = _
   var _token: String = _
   var _closed: Boolean = _
@@ -87,8 +88,8 @@ class MbHttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   /* timeout: XXX ms */
-  private def genClient(host: String, port: Int, timeout: Int): MbHttpClient = {
-    _client = new MbHttpClient(host, port, timeout)
+  private def genClient(host: String, port: Int, timeout: Int): HttpClient = {
+    _client = new HttpClient(host, port, timeout)
     _client
   }
 

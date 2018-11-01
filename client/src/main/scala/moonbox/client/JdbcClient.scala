@@ -22,7 +22,7 @@ package moonbox.client
 
 import java.io.IOException
 import java.net.SocketAddress
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 import io.netty.bootstrap.Bootstrap
@@ -35,60 +35,63 @@ import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.protocol.client._
 
 object JdbcClient {
-	val DAEMON_NIOEVENTLOOPGROUP = new NioEventLoopGroup(0, new DefaultThreadFactory(this.getClass, true))
+  val daemonNioEventLoopGroup = new NioEventLoopGroup(0, new DefaultThreadFactory(this.getClass, true))
+  val nioEventLoopGroup = new NioEventLoopGroup()
 }
 
 class JdbcClient(host: String, port: Int) {
-	import JdbcClient._
-	private var bootstrap: Bootstrap = _
-	private var channel: Channel = _
-	private val messageId = new AtomicLong(0L)
-	private var connected: Boolean = false
-	private var timeout = 1000 * 15: Long //time unit: ms
-	private val promises = new ConcurrentHashMap[Long, ChannelPromise]
-	private val responses = new ConcurrentHashMap[Long, Outbound]
-	private val callbacks = new ConcurrentHashMap[Long, Outbound => Any]
 
-	def setTimeout(timeout: Long): this.type = {
-		this.timeout = timeout
-		this
-	}
+  import JdbcClient._
 
-	def getTimeout: Long = {
-		this.timeout
-	}
+  private var bootstrap: Bootstrap = _
+  private var channel: Channel = _
+  private val messageId = new AtomicLong(0L)
+  private var connected: Boolean = false
+  private var timeout = 1000 * 15: Long //time unit: ms
+  private val promises = new ConcurrentHashMap[Long, ChannelPromise]
+  private val responses = new ConcurrentHashMap[Long, Outbound]
+  private val callbacks = new ConcurrentHashMap[Long, Outbound => Any]
 
-	@throws(classOf[Exception])
-	def connect(): Unit = {
-		bootstrap = new Bootstrap()
-			.group(DAEMON_NIOEVENTLOOPGROUP)
-			.channel(classOf[NioSocketChannel])
-			.option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
-			.option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
-			.option[java.lang.Integer](ChannelOption.SO_RCVBUF, 10240)
-			.handler(new ChannelInitializer[SocketChannel]() {
-				override def initChannel(ch: SocketChannel) = {
-					ch.pipeline.addLast(new ObjectEncoder,
-						new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)),
-						new ClientInboundHandler(promises, responses, callbacks))
-				}
-			})
-		val channelFuture = bootstrap.connect(host, port)
-		channelFuture.syncUninterruptibly()
-		channel = channelFuture.channel()
-		if (!channelFuture.await(timeout)) {
-			throw new IOException(s"Connecting to $host timed out (${timeout} ms)")
-		} else if (channelFuture.cause != null) {
-			throw new IOException(s"Failed to connect to $host", channelFuture.cause)
-		}
-		this.connected = true
-	}
+  def setTimeout(timeout: Long): this.type = {
+    this.timeout = timeout
+    this
+  }
 
-	@throws(classOf[Exception])
-	def getRemoteAddress: SocketAddress = {
-		if (channel != null) channel.remoteAddress()
-		else throw new ChannelException("channel unestablished")
-	}
+  def getTimeout: Long = {
+    this.timeout
+  }
+
+  @throws(classOf[Exception])
+  def connect(): Unit = {
+    bootstrap = new Bootstrap()
+      .group(daemonNioEventLoopGroup)
+      .channel(classOf[NioSocketChannel])
+      .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
+      .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
+      .option[java.lang.Integer](ChannelOption.SO_RCVBUF, 10240)
+      .handler(new ChannelInitializer[SocketChannel]() {
+        override def initChannel(ch: SocketChannel) = {
+          ch.pipeline.addLast(new ObjectEncoder,
+            new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)),
+            new ClientInboundHandler(promises, responses, callbacks))
+        }
+      })
+    val channelFuture = bootstrap.connect(host, port)
+    channelFuture.syncUninterruptibly()
+    channel = channelFuture.channel()
+    if (!channelFuture.await(timeout)) {
+      throw new IOException(s"Connecting to $host timed out (${timeout} ms)")
+    } else if (channelFuture.cause != null) {
+      throw new IOException(s"Failed to connect to $host", channelFuture.cause)
+    }
+    this.connected = true
+  }
+
+  @throws(classOf[Exception])
+  def getRemoteAddress: SocketAddress = {
+    if (channel != null) channel.remoteAddress()
+    else throw new ChannelException("channel unestablished")
+  }
 
   def genMessageId: Long = messageId.getAndIncrement()
 
@@ -97,49 +100,44 @@ class JdbcClient(host: String, port: Int) {
   def sendWithCallback(msg: Any, callback: Outbound => Any) = send(msg, callback)
 
   def isConnected: Boolean = {
-	  this.connected
+    this.connected
   }
 
   def isActive: Boolean = {
-	  channel.isActive
+    channel.isActive
   }
 
   def close(): Unit = {
-	  if (channel != null) {
-		  channel.close()
-	  }
-	  /*if (bootstrap != null && bootstrap.group() != null) {
-		  bootstrap.group().shutdownGracefully()
-	  }*/
-	  bootstrap = null
+    if (channel != null) {
+      channel.close()
+    }
+    /* EventLoopGroup should not be shutdown */
+    bootstrap = null
   }
 
   @throws(classOf[Exception])
   def sendAndReceive(message: Any, timeout: Long = timeout): Outbound = {
-	  message match {
-		  case in: Inbound =>
-			  send(in)
-			  val messageId = in.getId
-			  try {
-				  if (promises.containsKey(messageId)) {
-					  val promise = promises.get(messageId)
-					  if (!promise.await(timeout))
-						  throw new Exception(s"No response within $timeout ms")
-					  else {
-						  if (promise.isSuccess) {
-							  responses.get(messageId)
-						  } else {
-							  throw promise.cause()
-						  }
-					  }
-				  } else {
-					  throw new Exception(s"Send message failed: $message")
-				  }
-			  } finally {
-				  release(messageId)
-			  }
-		  case _ => throw new Exception("Unsupported message format")
-	  }
+    message match {
+      case in: Inbound =>
+        send(in)
+        val messageId = in.getId
+        try {
+          if (!promises.containsKey(messageId)) {
+            throw new Exception(s"Send message failed: $message")
+          }
+          val promise = promises.get(messageId)
+          if (!promise.await(timeout)) {
+            throw new Exception(s"No response within $timeout ms")
+          }
+          if (!promise.isSuccess) {
+            throw promise.cause()
+          }
+          responses.get(messageId)
+        } finally {
+          release(messageId)
+        }
+      case _ => throw new Exception("Unsupported message format")
+    }
   }
 
   private def release(key: Long): Unit = {
@@ -147,29 +145,29 @@ class JdbcClient(host: String, port: Int) {
     responses.remove(key)
   }
 
-	@throws(classOf[Exception])
-	def send(message: Any): Unit = {
-		message match {
-		  case in: Inbound =>
-			  val messageId = in.getId
-			  promises.put(messageId, channel.newPromise())
-			  channel.writeAndFlush(in).sync()
-		  case _ => throw new Exception("Unsupported message")
-		}
-	}
+  @throws(classOf[Exception])
+  def send(message: Any): Unit = {
+    message match {
+      case in: Inbound =>
+        val messageId = in.getId
+        promises.put(messageId, channel.newPromise())
+        channel.writeAndFlush(in).sync()
+      case _ => throw new Exception("Unsupported message")
+    }
+  }
 
   def getRemoteAddress(channel: Channel): String = {
     channel.remoteAddress().toString
   }
 
-	@throws(classOf[Exception])
+  @throws(classOf[Exception])
   def send(message: Any, callback: Outbound => Any): Unit = {
-		message match {
-			case in: Inbound =>
-				callbacks.put(in.getId, callback)
-				channel.writeAndFlush(message).sync()
-			case _ => throw new Exception("Unsupported message")
-		}
+    message match {
+      case in: Inbound =>
+        callbacks.put(in.getId, callback)
+        channel.writeAndFlush(message).sync()
+      case _ => throw new Exception("Unsupported message")
+    }
   }
 
 }

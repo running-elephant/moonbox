@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,14 +18,14 @@
  * >>
  */
 
-package moonbox.repl.http
+package moonbox.repl.connector.rest
 
 import java.net.URI
 import java.nio.charset.StandardCharsets
 
 import moonbox.protocol.client._
 import org.apache.http.HttpStatus
-import org.apache.http.client.HttpClient
+import org.apache.http.client.{HttpClient => ApacheHttpClient}
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.entity.EntityBuilder
 import org.apache.http.client.methods.{HttpGet, HttpPost}
@@ -34,9 +34,9 @@ import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
 
 
-class MbHttpClient(host: String, port: Int, socketTimeout: Int) {
+class HttpClient(host: String, port: Int, socketTimeout: Int) {
 
-  val _client: HttpClient = HttpClients.createDefault()
+  val _client: ApacheHttpClient = HttpClients.createDefault()
   val PROTOCOL_PREFIX = "http"
   val baseUrl: String = s"$PROTOCOL_PREFIX://$host:$port"
   //  var DEFAULT_SOCKET_TIMEOUT = 1000 * 60 * 30 // 30 minutes
