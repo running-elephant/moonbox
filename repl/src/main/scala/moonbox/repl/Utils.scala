@@ -20,6 +20,9 @@
 
 package moonbox.repl
 
+import java.io.File
+
+import com.typesafe.config.ConfigFactory
 import org.json.JSONObject
 
 import scala.annotation.tailrec
@@ -187,6 +190,35 @@ object Utils {
       sb.append(s"Showing at most top $numRows $rowsString\n")
     }
     sb.toString()
+  }
+
+  def getHttpHostAndPort: (String, Int) = {
+    val defaultFile = new File(moonbox.common.util.Utils.getDefaultPropertiesFile().get)
+    val defaultConfig = ConfigFactory.parseFile(defaultFile)
+    val port = if ( defaultConfig.hasPathOrNull("moonbox.rest.server.port") ) {
+      if ( defaultConfig.getIsNull("moonbox.rest.server.port") ) { 9090 }
+      else{
+        defaultConfig.getInt("moonbox.rest.server.port")
+      }
+    } else {
+      9090
+    }
+    val host = "localhost"
+    (host, port)
+
+  }
+
+  def showDataResult(schema: Option[Seq[String]], data: Option[Seq[Seq[Any]]], error: Option[String]): Unit = {
+    if(schema.isDefined && data.isDefined){
+      println(showString(data.get, schema.get))
+    }
+    if(error.isDefined) {
+      println(s"ERROR: ${error.get}")
+    }
+  }
+
+  def showDataResult2(data: Any): Unit = {
+    println("data:" + data)
   }
 
 }

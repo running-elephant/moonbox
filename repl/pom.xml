@@ -20,6 +20,12 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-common_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-jdbc_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -46,5 +52,18 @@
             <artifactId>httpclient</artifactId>
             <version>4.5.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-yarn-client</artifactId>
+            <version>2.6.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.6.5</version>
+        </dependency>
+
     </dependencies>
 </project>
