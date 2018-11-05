@@ -79,8 +79,28 @@ case class BatchQueryProgressOutbound(
 case class CancelQueryInbound(token: String, jobId: String) extends Inbound
 case class CancelQueryOutbound(error: Option[String] = None) extends Outbound
 
+// job and event
+case class ShowRunningEventsInbound(username: String) extends Inbound
+case class ShowRunningEventsOutbound(error: Option[String] = None,
+								 schema: Option[Seq[String]] = None,
+								 data: Option[Seq[Seq[Any]]] = None) extends Outbound
+
+
+case class ShowNodeJobsInbound(username: String) extends Inbound
+case class ShowNodeJobsOutbound(error: Option[String] = None,
+								 schema: Option[Seq[String]] = None,
+								 data: Option[Seq[Seq[Any]]] = None) extends Outbound
+
+
+case class ShowClusterJobsInbound(username: String) extends Inbound
+case class ShowClusterJobsOutbound(error: Option[String] = None,
+								 schema: Option[Seq[String]] = None,
+								 data: Option[Seq[Seq[Any]]] = None) extends Outbound
+
+
+
 // yarn app
-case class ShowNodesInfoInbound(token: String) extends Inbound
+case class ShowNodesInfoInbound(username: String) extends Inbound
 case class ShowNodesInfoOutbound(error: Option[String] = None,
 								 schema: Option[Seq[String]] = None,
 								 data: Option[Seq[Seq[Any]]] = None) extends Outbound

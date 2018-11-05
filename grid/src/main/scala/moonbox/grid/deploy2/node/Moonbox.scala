@@ -253,27 +253,36 @@ class Moonbox(akkaSystem: ActorSystem,
 				nodeOption.get.yarnRunningBatchJob = jobs
 			}
 
-		case RegisterTimedEvent(event) =>
-			val target = sender()
-			Future {
-				if (!timedEventService.timedEventExists(event.group, event.name)) {
-					timedEventService.addTimedEvent(event)}
-			}.onComplete {
-				case Success(_) =>
-					target ! RegisteredTimedEvent
-				case Failure(e) =>
-					target ! RegisterTimedEventFailed(e.getMessage)
+		case m@RegisterTimedEvent(event) =>
+			if (state == RoleState.SLAVE) {
+				master forward m
+			} else {
+				val target = sender()
+				Future {
+					if (!timedEventService.timedEventExists(event.group, event.name)) {
+						timedEventService.addTimedEvent(event)
+					}
+				}.onComplete {
+					case Success(_) =>
+						target ! RegisteredTimedEvent
+					case Failure(e) =>
+						target ! RegisterTimedEventFailed(e.getMessage)
+				}
 			}
 
-		case UnregisterTimedEvent(group, name) =>
-			val target = sender()
-			Future {
-				timedEventService.deleteTimedEvent(group, name)
-			}.onComplete {
-				case Success(_) =>
-					target ! UnregisteredTimedEvent
-				case Failure(e) =>
-					target ! UnregisterTimedEventFailed(e.getMessage)
+		case m@UnregisterTimedEvent(group, name) =>
+			if (state == RoleState.SLAVE) {
+				master forward m
+			} else {
+				val target = sender()
+				Future {
+					timedEventService.deleteTimedEvent(group, name)
+				}.onComplete {
+					case Success(_) =>
+						target ! UnregisteredTimedEvent
+					case Failure(e) =>
+						target ! UnregisterTimedEventFailed(e.getMessage)
+				}
 			}
 	}
 
@@ -753,6 +762,65 @@ class Moonbox(akkaSystem: ActorSystem,
 					Seq(elem.id, elem.host, elem.port, elem.jdbcPort, elem.restPort, elem.coresFree, elem.memoryFree, elem.yarnAdhocFreeCore, elem.yarnAdhocFreeMemory)}.toSeq
 				requester ! GottenNodesInfo(schema, data)
 			}
+
+		case m@GetRunningEvents =>
+			if (state == RoleState.SLAVE) {
+				master forward m
+			} else {
+				val requester = sender()
+				val schema = Seq("group", "name", "desc", "status", "start", "end", "prev", "next")
+				val eventInfo = timedEventService.getTimedEvents().map{ event =>
+					val startTime = event.startTime.map(Utils.formatDate).getOrElse("")
+					val endTime  = event.endTime.map(Utils.formatDate).getOrElse("")
+					val preTime  = event.preFireTime.map(Utils.formatDate).getOrElse("")
+					val nextTime = event.nextFireTime.map(Utils.formatDate).getOrElse("")
+
+					Seq(event.group, event.name, event.cronDescription, event.status, startTime, endTime, preTime, nextTime)
+				}
+				requester ! GottenNodesInfo(schema, eventInfo)
+			}
+
+		case m@GetNodeJobInfo =>
+			val schema = Seq("jobid", "type", "command", "seq", "status", "submit by", "submit time", "update time")
+			val requester = sender()
+			val runningRows: Seq[Seq[Any]] = runningJobs.map { case (jobId, jobInfo) =>
+				val jobType: String = if (jobInfo.localSessionId.isDefined && jobInfo.clusterSessionId.isDefined) { "adhoc-local" }
+								else if (jobInfo.localSessionId.isDefined) { "adhoc-yarn" }
+								else { "batch" }
+				Seq(jobInfo.jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.seq, jobInfo.status, jobInfo.username.getOrElse(""),  Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime))
+			}.toSeq
+			requester ! GottenNodeJobInfo(schema, runningRows)
+
+		case m@GetClusterJobInfo =>
+			if (state == RoleState.SLAVE) {
+				master forward m
+			} else {
+				val jobType = "batch"
+				val requester = sender()
+				val schema = Seq("jobid", "type", "command", "status", "submit by", "submit time", "update time", "running worker")
+				val noExist = "*"
+				val waitingRows = waitingJobs.map { jobInfo =>
+					Seq(jobInfo.jobId, "batch", jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""),
+						Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)
+				}
+				val runningRows: Seq[Seq[Any]] = allocatedBatchJobs.map { case (jobId, jobInfo) =>
+					val nodeInfo = registeredNodes.find(_.endpoint == node)
+					val workerId = if (nodeInfo.isDefined) { nodeInfo.get.id }
+				    				else { noExist }
+						Seq(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), workerId)
+					}.toSeq
+
+				val completeRows: Seq[Seq[Any]] = completeJobs.map { case (jobId, jobInfo) =>
+						Seq(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)
+					}.toSeq
+
+				val failedRows: Seq[Seq[Any]] = failedJobs.map{case (jobId, jobInfo) =>
+						Seq(jobId, jobType, jobInfo.cmds.mkString(";\n"), jobInfo.status, jobInfo.username.getOrElse(""), Utils.formatDate(jobInfo.submitTime), Utils.formatDate(jobInfo.updateTime), noExist)
+					}.toSeq
+
+				requester ! GottenClusterJobInfo(schema, waitingRows ++ runningRows ++ completeRows ++ failedRows)
+			}
+
 	}
 
 

@@ -227,7 +227,34 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			post {
 				entity(as[ShowNodesInfoInbound]) { in =>
 					complete {
-						service.nodesInfoShow(in.token)
+						service.nodesInfoShow(in.username)
+					}
+				}
+			}
+		} ~
+		path("showRunningEvents") {
+			post {
+				entity(as[ShowRunningEventsInbound]) { in =>
+					complete {
+						service.runningEventsShow(in.username)
+					}
+				}
+			}
+		} ~
+		path("showNodeJobs") {
+			post {
+				entity(as[ShowNodeJobsInbound]) { in =>
+					complete {
+						service.nodeJobsShow(in.username)
+					}
+				}
+			}
+		} ~
+		path("showClusterJobs") {
+			post {
+				entity(as[ShowClusterJobsInbound]) { in =>
+					complete {
+						service.clusterJobsShow(in.username)
 					}
 				}
 			}
