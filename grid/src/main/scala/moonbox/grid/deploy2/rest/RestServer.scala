@@ -20,16 +20,18 @@
 
 package moonbox.grid.deploy2.rest
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Sink
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
 import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.ConnectionType
+import moonbox.grid.{ConnectionInfo, ConnectionType}
 import moonbox.grid.config._
 import moonbox.grid.deploy2.MbService
 import org.json4s.jackson.Serialization
@@ -58,7 +60,8 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 	implicit val shouldWritePretty = ShouldWritePretty.True
 
 
-	val routes: Route = {
+	//val routes: Route = {
+	def routes(implicit connectionInfo: ConnectionInfo): Route = {
 		path("login") {
 			post {
 				entity(as[LoginInbound]) { in =>
@@ -278,10 +281,18 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 		for (offset <- 0 to maxRetries) {
 			val tryPort = if (port == 0) port else port + offset
 			try {
-				bindingFuture = Http().bindAndHandle(routes, host, tryPort)
-				val serverBinding: ServerBinding = Await.result(bindingFuture, new FiniteDuration(10, SECONDS))
-				logInfo(s"RestServer is listening on ${serverBinding.localAddress.toString}.")
-				return serverBinding.localAddress.getPort
+				//bindingFuture = Http().bindAndHandle(routes, host, tryPort)
+				//val serverBinding: ServerBinding = Await.result(bindingFuture, new FiniteDuration(10, SECONDS))
+				//logInfo(s"RestServer is listening on ${serverBinding.localAddress.toString}.")
+				//return serverBinding.localAddress.getPort
+				val f: Future[Done] = Http().bind(host, tryPort).runWith(Sink foreach { conn =>
+					val client =  conn.remoteAddress
+					val local = conn.localAddress
+					val connectionInfo = ConnectionInfo(client, local, ConnectionType.REST)
+					conn.handleWith(routes(connectionInfo))
+				})
+				logInfo(s"RestServer is listening on $tryPort.")
+				return tryPort
 			} catch {
 				case e: Exception =>
 					if (offset >= maxRetries) {

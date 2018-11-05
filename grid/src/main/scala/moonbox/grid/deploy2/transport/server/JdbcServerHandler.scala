@@ -21,12 +21,13 @@
 package moonbox.grid.deploy2.transport.server
 
 import java.io.{PrintWriter, StringWriter}
+import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
-import moonbox.grid.ConnectionType
+import moonbox.grid.{ConnectionInfo, ConnectionType}
 import moonbox.grid.deploy2.MbService
 import moonbox.protocol.client._
 
@@ -53,6 +54,7 @@ class JdbcServerHandler(
   override def channelInactive(ctx: ChannelHandlerContext) = {
     val channel = ctx.channel()
     if (channelToToken.containsKey(channel)) {
+      implicit val connection = getConnectionInfo(ctx)
       val token = channelToToken.remove(channel)
       if (channelToSessionId.containsKey(channel)) {
         val sessionId = channelToSessionId.remove(channel)
@@ -71,7 +73,21 @@ class JdbcServerHandler(
     }
   }
 
+  private def getConnectionInfo(ctx: ChannelHandlerContext) : ConnectionInfo = {
+    val remote = ctx.channel().remoteAddress() match {
+      case i:InetSocketAddress => i
+      case _ => throw new Exception("unknown socket address ")
+    }
+    val local = ctx.channel().localAddress() match {
+      case i:InetSocketAddress => i
+      case _ => throw new Exception("unknown socket address ")
+    }
+
+    ConnectionInfo(remote, local, ConnectionType.JDBC)
+  }
+
   private def handleMessage(ctx: ChannelHandlerContext, message: Any): Unit = {
+    implicit val connection:ConnectionInfo = getConnectionInfo(ctx)
     val channel = ctx.channel()
     val result = message match {
       case login: LoginInbound =>

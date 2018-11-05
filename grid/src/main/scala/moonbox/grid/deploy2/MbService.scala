@@ -20,15 +20,18 @@
 
 package moonbox.grid.deploy2
 
+import java.net.InetSocketAddress
+
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import moonbox.protocol.client._
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.grid.ConnectionType
+import moonbox.grid.ConnectionInfo
 import moonbox.grid.ConnectionType.ConnectionType
 import moonbox.grid.api._
+import moonbox.grid.deploy2.audit.{AuditInfo, AuditLogger}
 import moonbox.grid.deploy2.authenticate.LoginManager
 import moonbox.grid.deploy2.rest.TokenManager
 
@@ -41,13 +44,16 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	private val SHORT_TIMEOUT = new FiniteDuration(10, SECONDS)
 	private val LONG_TIMEOUT = new FiniteDuration(3600 * 24, SECONDS)
 // TODO
+	private val auditLogger = AuditLogger(conf.getAll)
+
 	private val loginManager = new LoginManager(catalogContext, new TokenManager(conf), this)
 
 	def getLoginManager(): LoginManager = loginManager
 
-	def requestAccess(token: String, isLocal: Boolean, connectionType: ConnectionType): RequestAccessOutbound = {
+	def requestAccess(token: String, isLocal: Boolean, connectionType: ConnectionType)(implicit connection: ConnectionInfo): RequestAccessOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("access", username, connection))
 				askForCompute[RequestAccessResponse](RequestAccess(connectionType, isLocal))(SHORT_TIMEOUT) match {
 					case (Some(RequestedAccess(address)), None) =>
 						RequestAccessOutbound(Some(address), None)
@@ -61,7 +67,8 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	def login(username: String, password: String): LoginOutbound = {
+	def login(username: String, password: String)(implicit connection: ConnectionInfo): LoginOutbound = {
+		auditLogger.log(AuditInfo("login", username, connection))
 		loginManager.login(username, password) match {
 			case Some(token) =>
 				LoginOutbound(Some(token), None)
@@ -74,14 +81,16 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		loginManager.isLogin(token)
 	}
 
-	def logout(token: String): LogoutOutbound = {
+	def logout(token: String)(implicit connection: ConnectionInfo): LogoutOutbound = {
+		auditLogger.log(AuditInfo("logout", loginManager.isLogin(token).getOrElse("unknown"), connection))
 		loginManager.logout(token)
 		LogoutOutbound(None)
 	}
 
-	def openSession(token: String, database: Option[String], isLocal: Boolean): OpenSessionOutbound = {
+	def openSession(token: String, database: Option[String], isLocal: Boolean)(implicit connection: ConnectionInfo): OpenSessionOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("openSession", username, connection))
 				askForCompute[OpenSessionResponse](OpenSession(username, database, isLocal))(SHORT_TIMEOUT) match {
 					case (Some(OpenedSession(sessionId)), None) =>
 						loginManager.putSession(token, sessionId)
@@ -96,9 +105,11 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	def closeSession(token: String, sessionId: String): CloseSessionOutbound = {
+	def closeSession(token: String, sessionId: String)(implicit connection: ConnectionInfo =
+														ConnectionInfo(new InetSocketAddress(0), new InetSocketAddress(0))): CloseSessionOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("closeSession", username, connection))
 				askForCompute[CloseSessionResponse](CloseSession(sessionId))(SHORT_TIMEOUT) match {
 					case (Some(ClosedSession), None) =>
 						loginManager.removeSession(token)
@@ -113,10 +124,10 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	def interactiveQuery(token: String, sessionId: String,
-		sqls: Seq[String], fetchSize: Int = 200, maxRows: Long = 10000): InteractiveQueryOutbound = {
+	def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int = 200, maxRows: Long = 10000)(implicit connection: ConnectionInfo): InteractiveQueryOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("interactiveQuery", username, connection, sql=Some(sqls.mkString(";"))))
 				askForCompute[JobResultResponse](JobQuery(sessionId, username, sqls))(LONG_TIMEOUT) match {
 					case (Some(JobFailed(jobId, error)), None) =>
 						InteractiveQueryOutbound(error = Some(error))
@@ -149,9 +160,10 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	}
 
 
-	def batchQuery(token: String, sqls: Seq[String], config: String): BatchQueryOutbound = {
+	def batchQuery(token: String, sqls: Seq[String], config: String)(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("batchQuery", username, connection, sql=Some(sqls.mkString(";"))))
 				askForCompute[JobHandleResponse](JobSubmit(username, sqls, config, async = true))(SHORT_TIMEOUT) match {
 					case (Some(JobAccepted(jobId)), None) =>
 						BatchQueryOutbound(jobId = Some(jobId))
@@ -165,9 +177,10 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	def cancelQuery(token: String, jobId: String): CancelQueryOutbound = {
+	def cancelQuery(token: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
+				auditLogger.log(AuditInfo("cancelQuery", username, connection, sql=Some(jobId)))
 				askForCompute[JobCancelResponse](JobCancel(jobId))(SHORT_TIMEOUT) match {
 					case (Some(JobCancelSuccess(id)), None) =>
 						CancelQueryOutbound()
@@ -288,8 +301,8 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	}
 
 
-	private def askFor(actorRef: ActorRef)(message: MbApi)(implicit timeout: Timeout): Future[MbApi] = {
-		(actorRef ask message).mapTo[MbApi]
+	private def askFor(actorRef: ActorRef)(message: MbApi)(implicit timeout: Timeout): Future[MbJobApi] = {
+		(actorRef ask message).mapTo[MbJobApi]
 	}
 
 
