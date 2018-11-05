@@ -24,17 +24,16 @@ import akka.actor.ActorRef
 import moonbox.core.command.MbCommand
 import moonbox.protocol.app.JobState.JobState
 
-case class JobInfo(
-				  jobId: String,
-				  sessionId: Option[String] = None,
-				  cmds: Seq[MbCommand],
-				  var seq: Int = -1,
-				  isLocal: Boolean,
-				  config: Option[String] = None,
-				  var status: JobState,
-				  var errorMessage: Option[String],
-				  username: Option[String] = None,
-				  submitTime: Long,
-				  var updateTime: Long,
-				  client: ActorRef
-				  )
+case class JobInfo(	  jobId: String,
+					  localSessionId: Option[String] = None, 	//local
+					  clusterSessionId: Option[String] = None, 	//remote
+					  cmds: Seq[MbCommand],
+					  var seq: Int = -1,
+					  isLocal: Boolean,
+					  config: Option[String] = None,
+					  var status: JobState,
+					  var errorMessage: Option[String],
+					  username: Option[String] = None,
+					  submitTime: Long,
+					  var updateTime: Long,
+					  client: ActorRef)

@@ -4,15 +4,15 @@ import moonbox.protocol.app.JobState.JobState
 
 sealed trait AppApi
 
-case class RegisterAppRequest(id: String, batchJobId: Option[String], seq: Int, totalCores: Int, totalMemory: Long, freeCores: Int, freeMemory: Long )
+case class RegisterAppRequest(id: String, batchJobId: Option[String], seq: Int, totalCores: Int, totalMemory: Long, freeCores: Int, freeMemory: Long ) extends AppApi
 
-case object RegisterAppResponse
+case object RegisterAppResponse extends AppApi
 
 case class StopBatchAppByPeace(jobId: String) extends AppApi
 
 case class StartBatchAppByPeace(jobId: String, config: String) extends AppApi
 
-case class StartedBatchAppResponse(jobId: String)
+case class StartedBatchAppResponse(jobId: String) extends AppApi
 
 case class RemoveJobFromWorker(id: String) //id is JobID[batch] / SessionID[adhoc]
 
@@ -34,7 +34,7 @@ case class FreedSession(sessionId: String) extends FreeSessionResponse
 
 case class FreeSessionFailed(error: String) extends FreeSessionResponse
 
-case class FetchDataFromRunner(sessionId: String, jobId: String, fetchSize: Long)  //
+case class FetchDataFromRunner(sessionId: String, jobId: String, fetchSize: Long)  extends AppApi //
 
 sealed trait FetchDataFromRunnerResponse
 

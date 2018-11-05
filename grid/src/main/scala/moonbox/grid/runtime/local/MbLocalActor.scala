@@ -10,7 +10,8 @@ import moonbox.core.resource.ResourceMonitor
 import moonbox.core.{CatalogContext, MbSession}
 import moonbox.grid.api._
 import moonbox.grid.config._
-import moonbox.grid.deploy2.node.DeployMessages.{AssignCommandToWorker, RunCommand}
+import moonbox.grid.deploy2.node.ScheduleMessage
+import moonbox.grid.deploy2.node.ScheduleMessage._
 import moonbox.protocol.app._
 import moonbox.protocol.client.{DatabaseInfo, TableInfo}
 
@@ -44,6 +45,20 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
     }
 
     override def receive: Receive = {
+        case request: AppApi  =>
+            application.apply(request)
+
+        case request: ScheduleMessage =>
+            schedule.apply(request)
+
+        case request: MbMetaDataApi =>
+            metaData.apply(request)
+
+        case a => logInfo(s"recv unknown message: $a")
+
+    }
+
+    private def application: Receive = {
         case AllocateSession(username, database) =>
             val requester = sender()
             logInfo(s"MbWorker::AllocateSession $requester $username $database")
@@ -75,8 +90,18 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                 case Failure(e) =>
                     requester ! FreeSessionFailed(e.getMessage)
             }
+
+        case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>
+            val client = sender()
+            sessionIdToJobRunner.get(sessionId) match {
+                case Some(actor) => actor forward m
+                case None => client ! FetchDataFromRunnerFailed(jobId, s"sessionId $sessionId does not exist or has been removed.")
+            }
+    }
+
+    private def schedule: Receive = {
         case assign@AssignCommandToWorker(commandInfo) =>
-            logInfo(s"MbWorker::AssignJobToWorker $commandInfo")
+            logInfo(s"AssignJobToWorker $commandInfo")
             val requester = sender()
             commandInfo.sessionId match {
                 case Some(sessionId) => // adhoc
@@ -95,16 +120,12 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                     runner forward RunCommand(commandInfo)
             }
 
-        case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>
-            val client = sender()
-            sessionIdToJobRunner.get(sessionId) match {
-                case Some(actor) => actor forward m
-                case None => client ! FetchDataFromRunnerFailed(jobId, s"sessionId $sessionId does not exist or has been removed.")
-            }
+    }
 
+    private def metaData: Receive = {
         case ShowDatabasesInfo(username) =>
             val client = sender()
-            //Future {
+            Future {
                 catalogContext.getUserOption(username) match {
                     case Some(catalogUser) =>
                         val databases = catalogContext.listDatabase(catalogUser.organizationId)
@@ -113,10 +134,13 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                     case None =>
                         client ! ShowedDatabasesInfoFailed("Not Find User in db")
                 }
-            //}
+            }.onComplete {
+                case Success(seid) =>
+                case Failure(e) =>  client ! ShowedDatabasesInfoFailed(e.getMessage)
+            }
         case ShowTablesInfo(database, username) =>
             val client = sender()
-           // Future {
+            Future {
                 catalogContext.getUserOption(username) match {
                     case Some(catalogUser) =>
                         val databaseId = catalogContext.getDatabase(catalogUser.organizationId, database).id.get
@@ -125,10 +149,14 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                     case None =>
                         client ! ShowedTablesInfoFailed("Not Find User in db")
                 }
-           // }
+            }.onComplete {
+                case Success(seid) =>
+                case Failure(e) =>  client ! ShowedTablesInfoFailed(e.getMessage)
+            }
+
         case DescribeTableInfo(tablename, database, username) =>
             val client = sender()
-            //Future {
+            Future {
                 catalogContext.getUserOption(username) match {
                     case Some(catalogUser) =>
                         val databaseId = catalogContext.getDatabase(catalogUser.organizationId, database).id.get
@@ -140,8 +168,7 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                         }
                         mb.mixcal.sparkSession.catalog.setCurrentDatabase(database)
 
-                        val optimized = mb.optimizedPlan(s"select * from $tablename")
-                        //val optimized = mb.optimizedPlan(s"select * from $database.$tablename")
+                        val optimized = mb.optimizedPlan(s"select * from $tablename where 1 = 0")
                         val columns = optimized.schema.fields.map{ field => (field.name, field.dataType.simpleString)}.toSeq
 
                         val tableInfo = TableInfo(
@@ -154,10 +181,12 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                     case None =>
                         client ! DescribedTableInfoFailed("Not Find User in db")
                 }
-            //}
-        case a => logInfo(s"recv unknown message: $a")
-
+            }.onComplete {
+                case Success(seid) =>
+                case Failure(e) =>  client ! DescribedTableInfoFailed(e.getMessage)
+            }
     }
+
 
     private def createDateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
 

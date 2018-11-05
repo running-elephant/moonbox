@@ -73,7 +73,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				clean(JobState.KILLED)
 				self ! PoisonPill
 			}
-
 		case FetchDataFromRunner(_, jobId, fetchSize) =>
 			val target = sender()
 			Future {
@@ -85,9 +84,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		Future {
 			println(s"run $taskInfo")
 			taskInfo.task match {
-				//case runnable: MbRunnableCommand =>
-				//	val row = runnable.run(mbSession)
-				//	DirectData(row.map(_.toSeq.map(_.toString)))
 				case tempView: CreateTempViewTask =>
 					createTempView(tempView)
 				case query: QueryTask =>
@@ -102,7 +98,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def fetchData(jobId: String, fetchSize: Long): DirectData = {
 		if (resultSchemaHashMap.get(jobId).isDefined && resultDataHashMap.get(jobId).isDefined) {
-
 			val schema = resultSchemaHashMap(jobId)
 			val buffer: ArrayBuffer[Seq[String]] = ArrayBuffer.empty[Seq[String]]
 			val iterator = resultDataHashMap(jobId)
@@ -114,7 +109,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			}
 
 			if (!iterator.hasNext) {
-				println(s"remove jobId from result hashMap $jobId")
+				logInfo(s"remove jobId from result hashMap $jobId")
 				resultDataHashMap.remove(jobId)
 				resultSchemaHashMap.remove(jobId)
 				DirectData(jobId, schema, buffer, false)
@@ -155,7 +150,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 					iter = mbSession.toDT(child, queryable).iter
 				case _ =>
 					iter = mbSession.toDF(plan).collect().iterator
-
 			}
 		} catch {
 			case e: ColumnSelectPrivilegeException =>
@@ -237,10 +231,6 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	private def successCallback(jobId: String, seqNum: Int, result: JobResult, requester: ActorRef, shutdown: Boolean): Unit = {
 		requester ! JobStateChanged(jobId, seqNum, JobState.SUCCESS, result)
-//		if (shutdown) {
-//			clean(JobState.SUCCESS)
-//			self ! PoisonPill
-//		}
 	}
 
 	private def failureCallback(jobId: String, seqNum: Int, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
@@ -248,19 +238,11 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		logError(e.getStackTrace.map(_.toString).mkString("\n"))
 		logError(errorMessage)
 		requester ! JobStateChanged(jobId, seqNum, JobState.FAILED, Failed(errorMessage))
-//		if (shutdown) {
-//			clean(JobState.FAILED)
-//			self ! PoisonPill
-//		}
 	}
 
     private def cancelCallback(jobId: String, seqNum: Int, e: Throwable, requester: ActorRef, shutdown: Boolean): Unit = {
         logWarning(e.getStackTrace.map(_.toString).mkString("\n"))
         requester ! JobStateChanged(jobId, seqNum, JobState.KILLED, Failed(e.getMessage))
-//        if (shutdown) {
-//            clean(JobState.KILLED)
-//            self ! PoisonPill
-//        }
     }
 
 }

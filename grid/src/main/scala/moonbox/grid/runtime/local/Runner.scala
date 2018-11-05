@@ -30,7 +30,7 @@ import moonbox.core.command._
 import moonbox.core.config.CACHE_IMPLEMENTATION
 import moonbox.core.datasys.{DataSystem, Insertable}
 import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker, TableInsertPrivilegeException}
-import moonbox.grid.deploy2.node.DeployMessages._
+import moonbox.grid.deploy2.node.ScheduleMessage._
 import moonbox.grid.timer.{EventCall, EventEntity}
 import moonbox.protocol.app.JobState.JobState
 import moonbox.protocol.app._
@@ -128,7 +128,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			}
 
 			if (!iterator.hasNext) {
-				println(s"remove jobId from result hashMap $jobId")
+				logInfo(s"remove jobId from result hashMap $jobId")
 				resultDataHashMap.remove(jobId)
 				resultSchemaHashMap.remove(jobId)
 				DirectData(jobId, schema, buffer, false)

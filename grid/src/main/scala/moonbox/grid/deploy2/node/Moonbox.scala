@@ -1,10 +1,10 @@
 package moonbox.grid.deploy2.node
 
 import java.text.SimpleDateFormat
-import java.util.{Date, Locale}
+import java.util.{Date, Locale, Random}
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Address, Cancellable, ExtendedActorSystem, Props}
-import akka.cluster.Cluster
+import akka.cluster.{Cluster, ClusterEvent}
 import akka.cluster.ClusterEvent._
 import akka.pattern._
 import akka.util.Timeout
@@ -17,10 +17,10 @@ import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
 import moonbox.grid.deploy2.MbService
-import moonbox.grid.deploy2.node.DeployMessages.{ScheduleJob, _}
+import moonbox.grid.deploy2.node.DeployMessages._
+import moonbox.grid.deploy2.node.ScheduleMessage._
 import moonbox.grid.deploy2.rest.RestServer
 import moonbox.grid.deploy2.transport.TransportServer
-import moonbox.grid.runtime.cluster.ClusterMessage.ReportYarnAppResource
 import moonbox.grid.runtime.cluster.MbClusterActor
 import moonbox.grid.runtime.local.MbLocalActor
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
@@ -56,20 +56,21 @@ class Moonbox(akkaSystem: ActorSystem,
 
 	private var nextJobNumber = 0
 
-	private val nodes = new mutable.HashSet[NodeInfo]()
+	private val registeredNodes = new mutable.HashSet[NodeInfo]()
 	private val addressToNode = new mutable.HashMap[Address, NodeInfo]()
 
-	// for batch
+	// for batch and interactive
+	private val runningJobs = new mutable.HashMap[String, JobInfo]() //in every node
+
+	// for batch in master
 	private val jobIdToNode = new mutable.HashMap[String, ActorRef]()
 	private val waitingJobs = new mutable.Queue[JobInfo]()
-
-	// for batch and interactive
-	private val runningJobs = new mutable.HashMap[String, JobInfo]()
+	private val allocatedBatchJobs = new mutable.HashMap[String, JobInfo]()  //only in master
 	private val completeJobs = new mutable.HashMap[String, JobInfo]()
 	private val failedJobs = new mutable.HashMap[String, JobInfo]()
 
 	// for interactive
-	private val sessionIdToJobRunner = new mutable.HashMap[String, (ActorRef, Boolean)]()  // actorRef is local / remote
+	private val sessionIdToJobRunner = new mutable.HashMap[String, ActorRef]()  // actorRef is local / remote
 
 	// for cancel job
 	private val jobIdToJobRunner = new mutable.HashMap[String, ActorRef]()      // actorRef is remote
@@ -155,7 +156,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			new FiniteDuration(10, SECONDS),
 			new FiniteDuration(10, SECONDS)) {
 			println(s"-----------$state---------")
-			println(nodes.map(n => n.toString + ":" + n.state).mkString("\n"))
+			println(registeredNodes.map(n => n.toString + ":" + n.state).mkString("\n"))
 			println(addressToNode.map(_.toString()).mkString("\n"))
 			if(state == RoleState.MASTER) {
 				println(persistenceEngine.readNodes().mkString("\n"))
@@ -163,7 +164,6 @@ class Moonbox(akkaSystem: ActorSystem,
 			println
 		}
 
-		//TODO: all node should start persist engine ?
 		clusterProxyActorRef = akkaSystem.actorOf(Props(classOf[MbClusterActor], conf, self), s"MbClusterActor")
 
 		localProxyActorRef = akkaSystem.actorOf(Props(classOf[MbLocalActor], conf, catalogContext), s"MbLocalActor")
@@ -191,15 +191,35 @@ class Moonbox(akkaSystem: ActorSystem,
 		case request: MbMetaDataApi =>
 			metaData.apply(request)
 
+		case request: MbManagementApi =>
+			management.apply(request)
+
 		case response: JobStateChanged =>
-			handle.apply(response)
+			jobResult.apply(response)
 
-		case request: MbApi =>
-			process.apply(request)
+		case request: MbNodeApi =>
+			node.apply(request)
 
-		case ScheduleJob =>  //TODO:
-			schedule()
+		case request: DeployMessage  =>
+			deployment.apply(request)
 
+		case request: ClusterEvent.ReachabilityEvent =>
+			deployment.apply(request)
+
+		case request: ScheduleMessage =>
+			schedule.apply(request)
+
+		case request: MbJobApi =>
+			interface.apply(request)
+
+		case request: AppApi =>
+			application.apply(request)
+
+		case e =>
+			logInfo(s"moonbox receiving unknown message $e")
+	}
+
+	private def application: Receive = {
 		case StartedBatchAppResponse(jobId) =>
 			logInfo(s"StartedBatchAppResponse $jobId")
 			runningJobs.get(jobId) match {
@@ -208,24 +228,57 @@ class Moonbox(akkaSystem: ActorSystem,
 					if (expectedSeq < jobInfo.cmds.length) {
 						val command = jobInfo.cmds(expectedSeq)
 
-						sendSqlToDestination(command, jobInfo)
+						sendSqlToDest(command, jobInfo)
 					} else {
 						jobInfo.client ! JobCompleteWithExternalData(jobId, None)
 					}
 				case None =>
 			}
+	}
 
-		case ReportYarnAppResource(adhocInfo, batchInfo) =>
-			master ! ReportNodesResource(NODE_ID, adhocInfo, batchInfo)
+	private def schedule: Receive = {
+		case ScheduleJob =>  //TODO:
+			scheduleJob()
+
+		case ReportYarnAppResource(adhocInfo, batchNum) =>
+			if(master != null) {
+				master ! ReportNodesResource(NODE_ID, adhocInfo, batchNum)
+			}
 
 		case ReportNodesResource(id, adhocInfo, jobs) =>
-			val nodeOption = nodes.find(_.id == id)
+			val nodeOption = registeredNodes.find(_.id == id)
 			if (nodeOption.isDefined) {
 				nodeOption.get.yarnAdhocFreeCore = adhocInfo.coresFree
 				nodeOption.get.yarnAdhocFreeMemory = adhocInfo.memoryFree
 				nodeOption.get.yarnRunningBatchJob = jobs
 			}
 
+		case RegisterTimedEvent(event) =>
+			val target = sender()
+			Future {
+				if (!timedEventService.timedEventExists(event.group, event.name)) {
+					timedEventService.addTimedEvent(event)}
+			}.onComplete {
+				case Success(_) =>
+					target ! RegisteredTimedEvent
+				case Failure(e) =>
+					target ! RegisterTimedEventFailed(e.getMessage)
+			}
+
+		case UnregisterTimedEvent(group, name) =>
+			val target = sender()
+			Future {
+				timedEventService.deleteTimedEvent(group, name)
+			}.onComplete {
+				case Success(_) =>
+					target ! UnregisteredTimedEvent
+				case Failure(e) =>
+					target ! UnregisterTimedEventFailed(e.getMessage)
+			}
+	}
+
+
+	private def deployment: Receive = {
 		case ElectedLeader =>
 			cluster.subscribe(self, classOf[UnreachableMember], classOf[ReachableMember])
 			master = self
@@ -251,7 +304,7 @@ class Moonbox(akkaSystem: ActorSystem,
 				new FiniteDuration(10, SECONDS),
 				new FiniteDuration(10, SECONDS)) {
 				println
-				println(nodes.map(n => n.toString + ":" + n.state).mkString("\n"))
+				println(registeredNodes.map(n => n.toString + ":" + n.state).mkString("\n"))
 				println(addressToNode.map(_.toString()).mkString("\n"))
 				if(state == RoleState.MASTER) {
 					println(persistenceEngine.readNodes().mkString("\n"))
@@ -272,15 +325,15 @@ class Moonbox(akkaSystem: ActorSystem,
 					node.state = NodeState.ALIVE
 					persistenceEngine.addNode(node)
 					endpoint ! RegisteredNode(self)
-					schedule()
+					scheduleJob()
 				} else {
 					val nodeAddress = endpoint.path.address
-					logWarning("Node registration failed. Attempted to re-register node at same address: " +
-						nodeAddress
-					)
+					logWarning("Node registration failed. Attempted to re-register node at same address: " + nodeAddress)
 					endpoint ! RegisterNodeFailed("Attempted to re-register node at same address: " + nodeAddress)
 				}
 			}
+		case RegisterNodeFailed(message) =>
+			logError(s"RegisterNodeFailed $message")
 
 		case RevokedLeadership =>
 			if (state == RoleState.MASTER) {
@@ -290,7 +343,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			if (timedEventService != null) {
 				timedEventService.stop()
 			}
-			nodes.clear()
+			registeredNodes.clear()
 			addressToNode.clear()
 			waitingJobs.clear()
 			logInfo("Have not been elected leader! New state: " + state)
@@ -313,71 +366,44 @@ class Moonbox(akkaSystem: ActorSystem,
 				completeRecovery()
 			}
 			logInfo(s"Node ${member.address} leaved.")
+
 		case ReachableMember(member) =>
-			nodes.filter(_.endpoint.path.address == member.address).foreach { node =>
+			registeredNodes.filter(_.endpoint.path.address == member.address).foreach { node =>
 				node.state = NodeState.ALIVE
 				addressToNode(member.address) = node
 				persistenceEngine.addNode(node)
 			}
 			logInfo(s"Node reconnected: " + member.address)
 
-
-		case RegisterTimedEvent(event) =>
-			val target = sender()
-			Future {
-				if (!timedEventService.timedEventExists(event.group, event.name)) {
-					timedEventService.addTimedEvent(event)}
-			}.onComplete {
-				case Success(_) =>
-					target ! RegisteredTimedEvent
-				case Failure(e) =>
-					target ! RegisterTimedEventFailed(e.getMessage)
-			}
-
-		case UnregisterTimedEvent(group, name) =>
-			val target = sender()
-			Future {
-				timedEventService.deleteTimedEvent(group, name)
-			}.onComplete {
-				case Success(_) =>
-					target ! UnregisteredTimedEvent
-				case Failure(e) =>
-					target ! UnregisterTimedEventFailed(e.getMessage)
-			}
-
-		case e =>
-			println(e)
 	}
 
-
-
-	private def handle: Receive = {
+	private def node: Receive = {
 		case JobStateChangedInternal(jobId, jobState) =>
 			logInfo(s"In Master: Job $jobId state changed to $jobState ")
 			jobState match {
 				case JobState.SUCCESS =>
-					runningJobs.get(jobId) match {
+					allocatedBatchJobs.get(jobId) match {
 						case Some(jobInfo) =>
 							jobInfo.status = jobState //update status
 							jobInfo.updateTime = Utils.now
 							retainedCompleteJobs += jobId
 							completeJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
-							jobIdToJobRunner.remove(jobId)  //batch clear mapping in master
+							jobIdToNode.remove(jobId)  //batch clear mapping in master
 							trimJobsIfNecessary(retainedCompleteJobs, completeJobs, retainedSuccessJobNum)
 						case None =>
 						// do nothing
 					}
 
 				case JobState.FAILED | JobState.KILLED =>
-					runningJobs.get(jobId) match {
+					allocatedBatchJobs.get(jobId) match {
 						case Some(jobInfo) => //batch no response, adhoc response in node proxy
 							jobInfo.status = jobState //update status
 							jobInfo.updateTime = Utils.now
 							retainedFailedJobs += jobId
 							failedJobs.put(jobId, jobInfo)
 							runningJobs.remove(jobId)
-							jobIdToJobRunner.remove(jobId)  //batch clear mapping in master
+							jobIdToNode.remove(jobId)  //batch clear mapping in master
 							trimJobsIfNecessary(retainedFailedJobs, failedJobs, retainedFailedJobNum)
 						case None =>
 						// do nothing
@@ -385,6 +411,18 @@ class Moonbox(akkaSystem: ActorSystem,
 				case _ =>
 			}
 
+		case m@JobCancelInternal =>
+			clusterProxyActorRef forward m
+
+		// node --> clusterproxy
+		case m@JobSubmitInternal(jobInfo) =>
+			runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
+			clusterProxyActorRef ! StartBatchAppByPeace(jobInfo.jobId, jobInfo.config.get)
+
+	}
+
+
+	private def jobResult: Receive = {
 		case m@JobStateChanged(jobId, taskSeq, jobState, result) =>
 			logInfo(s"JobStateChanged send $jobId, $taskSeq, $jobState, $result")
 			runningJobs.get(jobId) match {
@@ -396,9 +434,9 @@ class Moonbox(akkaSystem: ActorSystem,
 								if (expectedSeq < jobInfo.cmds.length) {
 									val nextCmd = jobInfo.cmds(expectedSeq)
 									jobInfo.seq += 1
-									sendSqlToDestination(nextCmd, jobInfo)
+									sendSqlToDest(nextCmd, jobInfo)
 								}
-								else {
+								else { //the last sql
 									val response = result match {
 										case DirectData(_, schema, data, hasNext) =>
 											JobCompleteWithDirectData(jobId, schema, data, hasNext)
@@ -408,7 +446,7 @@ class Moonbox(akkaSystem: ActorSystem,
 									jobInfo.client ! response
 
 									runningJobs.remove(jobId)
-									if (jobInfo.sessionId.isEmpty) { //kill yarn batch
+									if (jobInfo.localSessionId.isEmpty && jobInfo.clusterSessionId.isEmpty) { //kill yarn batch
 										clusterProxyActorRef ! StopBatchAppByPeace(jobId)
 									}
 									master ! JobStateChangedInternal(jobId, jobState)
@@ -431,29 +469,29 @@ class Moonbox(akkaSystem: ActorSystem,
 
 	}
 
-	private def sendSqlToDestination(command: MbCommand,  jobInfo: JobInfo) = {
+	private def sendSqlToDest(command: MbCommand, jobInfo: JobInfo) = {
 		logInfo(s"sendSqlToDestination send $command $jobInfo")
 
 		if (jobInfo.isLocal) {
-			localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, command, jobInfo.seq))
+			localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.localSessionId, command, jobInfo.seq))
 		}
 		else {
 			command match {
 				case m: MQLQuery =>
-					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, QueryTask(m.query), jobInfo.seq, jobInfo.username))
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.clusterSessionId, QueryTask(m.query), jobInfo.seq, jobInfo.username))
 				case m: CreateTempView =>
 					val t = CreateTempViewTask(m.name, m.query, m.isCache, m.replaceIfExists)
-					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, jobInfo.username))
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.clusterSessionId, t, jobInfo.seq, jobInfo.username))
 				case m: InsertInto =>
 					val t = InsertIntoTask(m.table.table, m.table.database, m.query, m.overwrite)
-					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.sessionId, t, jobInfo.seq, jobInfo.username))
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.clusterSessionId, t, jobInfo.seq, jobInfo.username))
 				case m: MbRunnableCommand => //TODO:
-					localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.sessionId, m, jobInfo.seq, jobInfo.username))
+					localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.localSessionId, m, jobInfo.seq, jobInfo.username))
 			}
 		}
 	}
 
-	private def process: Receive = {
+	private def interface: Receive = {
 		case m@RequestAccess(connectionType, isLocal) =>
 			if (state == RoleState.MASTER) {
 				val requester = sender()
@@ -474,44 +512,103 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case m@OpenSession(username, database, isLocal) =>
 			val client = sender()
-			val actorRef = if (isLocal) {
-				localProxyActorRef
+			if (isLocal) {
+				localProxyActorRef.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse].onComplete {
+					case Success(rsp) =>
+						rsp match {
+							case AllocatedSession(sessionId) =>
+								sessionIdToJobRunner.put(sessionId, localProxyActorRef)
+								client ! OpenedSession(sessionId)
+							case AllocateSessionFailed(error) =>
+								client ! OpenSessionFailed(error)
+						}
+					case Failure(e) =>
+						client ! OpenSessionFailed(e.getMessage)
+				}
 			} else {
-				clusterProxyActorRef
-			}
-
-			actorRef.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse].onComplete {
-				case Success(rsp) =>
-					rsp match {
-						case AllocatedSession(sessionId) =>
-							sessionIdToJobRunner.put(sessionId, (actorRef, isLocal))
-							client ! OpenedSession(sessionId)
-						case AllocateSessionFailed(error) =>
-							client ! OpenSessionFailed(error)
+				def handle(response1: AllocateSessionResponse, actor1: ActorRef, response2: AllocateSessionResponse, actor2: ActorRef) = {
+					if (response1.isInstanceOf[AllocatedSession] && response2.isInstanceOf[AllocatedSession]) {
+						val rsp1 = response1.asInstanceOf[AllocatedSession]
+						val rsp2 = response2.asInstanceOf[AllocatedSession]
+						sessionIdToJobRunner.put(rsp1.sessionId, actor1)
+						sessionIdToJobRunner.put(rsp2.sessionId, actor2)
+						client ! OpenedSession(rsp2.sessionId + "#" + rsp1.sessionId)
+					} else if (response1.isInstanceOf[AllocateSessionFailed] && response2.isInstanceOf[AllocateSessionFailed]) {
+						val rsp1 = response1.asInstanceOf[AllocateSessionFailed]
+						val rsp2 = response2.asInstanceOf[AllocateSessionFailed]
+						client ! OpenSessionFailed(rsp1.error + "#" + rsp2.error)
+					} else if (response1.isInstanceOf[AllocatedSession] && response1.isInstanceOf[AllocateSessionFailed]) {
+						val rsp1 = response1.asInstanceOf[AllocatedSession]
+						val rsp2 = response2.asInstanceOf[AllocateSessionFailed]
+						actor1 ! FreeSession(rsp1.sessionId)
+						client ! OpenSessionFailed("#" + rsp2.error)
+					} else if (response1.isInstanceOf[AllocateSessionFailed] && response2.isInstanceOf[AllocatedSession]) {
+						val rsp1 = response1.asInstanceOf[AllocateSessionFailed]
+						val rsp2 = response2.asInstanceOf[AllocatedSession]
+						actor2 ! FreeSession(rsp2.sessionId)
+						client ! OpenSessionFailed(rsp1.error + "#")
 					}
-				case Failure(e) =>
-					client ! OpenSessionFailed(e.getMessage)
+				}
+
+				Future {
+					for {
+						a <- clusterProxyActorRef.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse]
+						b <- localProxyActorRef.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse]
+					} yield handle(a, clusterProxyActorRef, b, localProxyActorRef)
+				}
 			}
 
 		case CloseSession(sessionId) =>
 			val client = sender()
-			sessionIdToJobRunner.get(sessionId) match {
-				case Some(Tuple2(worker, islocal)) =>
-					val future = worker.ask(FreeSession(sessionId)).mapTo[FreeSessionResponse]
-					future.onComplete {
-						case Success(response) =>
-							response match {
-								case FreedSession(id) =>
-									sessionIdToJobRunner.remove(id)
-									client ! ClosedSession
-								case FreeSessionFailed(error) =>
-									client ! CloseSessionFailed(error)
-							}
-						case Failure(e) =>
-							client ! CloseSessionFailed(e.getMessage)
+			if(sessionId.split("#").length == 1) {
+				val localSessionId = sessionId.split("#")(0)
+				sessionIdToJobRunner.get(localSessionId) match {
+					case Some(worker) =>
+						val future = worker.ask(FreeSession(localSessionId)).mapTo[FreeSessionResponse]
+						future.onComplete {
+							case Success(response) =>
+								response match {
+									case FreedSession(id) =>
+										sessionIdToJobRunner.remove(id)
+										client ! ClosedSession
+									case FreeSessionFailed(error) =>
+										client ! CloseSessionFailed(error)
+								}
+							case Failure(e) =>
+								client ! CloseSessionFailed(e.getMessage)
+						}
+					case None =>
+						client ! CloseSessionFailed(s"Session $sessionId does not exist.")
+				}
+			} else {
+				def handle(response1: FreeSessionResponse, response2: FreeSessionResponse) = {
+					if (response1.isInstanceOf[FreedSession] && response2.isInstanceOf[FreedSession]) {
+						val rsp1 = response1.asInstanceOf[FreedSession]
+						val rsp2 = response2.asInstanceOf[FreedSession]
+						sessionIdToJobRunner.remove(rsp1.sessionId)
+						sessionIdToJobRunner.remove(rsp2.sessionId)
+						client ! ClosedSession
+					} else if (response1.isInstanceOf[FreeSessionFailed] && response2.isInstanceOf[FreeSessionFailed]) {
+						val rsp1 = response1.asInstanceOf[FreeSessionFailed]
+						val rsp2 = response2.asInstanceOf[FreeSessionFailed]
+						client ! CloseSessionFailed(rsp1.error + "#" + rsp2.error)
+					} else if (response1.isInstanceOf[FreedSession] && response1.isInstanceOf[FreeSessionFailed]) {
+						val rsp2 = response2.asInstanceOf[FreeSessionFailed]
+						client ! CloseSessionFailed("#" + rsp2.error)
+					} else if (response1.isInstanceOf[FreeSessionFailed] && response2.isInstanceOf[FreedSession]) {
+						val rsp1 = response1.asInstanceOf[FreeSessionFailed]
+						client ! CloseSessionFailed(rsp1.error + "#")
 					}
-				case None =>
-					client ! CloseSessionFailed(s"Session $sessionId does not exist.")
+				}
+
+				Future {
+					val localSessionId  = sessionId.split("#")(0)
+					val remoteSessionId = sessionId.split("#")(1)
+					for {
+						a <- clusterProxyActorRef.ask(FreeSession(localSessionId)).mapTo[FreeSessionResponse]
+						b <- localProxyActorRef.ask(FreeSession(remoteSessionId)).mapTo[FreeSessionResponse]
+					} yield handle(a, b)
+				}
 			}
 
 		case JobQuery(sessionId, username, sqls) =>
@@ -520,21 +617,24 @@ class Moonbox(akkaSystem: ActorSystem,
 			val date = new Date(now)
 			val jobId = newJobId(date)
 			try {
-				sessionIdToJobRunner.get(sessionId) match {
-					case Some(runner) =>
-						val jobInfo = createJob(jobId, Some(username), Some(sessionId), sqls, None, runner._2, now, client)
-						jobInfo.status = JobState.RUNNING //update status
-						runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
+				if (sessionId.split("#").forall(id => sessionIdToJobRunner.contains(id))) {
+					val jobInfo =  if ( sessionId.split("#").length == 1) {
+						createJob(jobId, Some(username), Some(sessionId.split("#")(0)),  None, sqls, None, !sessionId.contains("#"), now, client)
+					} else  {  // equal to 2
+						createJob(jobId, Some(username), Some(sessionId.split("#")(0)),  Some(sessionId.split("#")(1)), sqls, None, !sessionId.contains("#"), now, client)
+					}
 
-						val nextSeq = 0
-						if (nextSeq < jobInfo.cmds.length) {
-							val command = jobInfo.cmds(nextSeq)
-							//TODO: privilege check here
+					jobInfo.status = JobState.RUNNING //update status
+					runningJobs.put(jobInfo.jobId, jobInfo) //for response to client
 
-							sendSqlToDestination(command, jobInfo)
-						}
-					case None =>
-						client ! JobFailed(jobId, "Session lost in master.")
+					val nextSeq = 0
+					if (nextSeq < jobInfo.cmds.length) {
+						val command = jobInfo.cmds(nextSeq)
+						sendSqlToDest(command, jobInfo)
+					}
+
+				} else {
+					client ! JobFailed(jobId, "Session lost in master.")
 				}
 			} catch {
 				case e: Exception =>
@@ -555,7 +655,7 @@ class Moonbox(akkaSystem: ActorSystem,
 				val date = new Date(now)
 				val jobId = newJobId(date)  //master generate jobId
 				try {
-					val jobInfo = createJob(jobId, Some(username), None, sqls, Some(config), false, now, client)
+					val jobInfo = createJob(jobId, Some(username), None, None, sqls, Some(config), false, now, client)
 					waitingJobs.enqueue(jobInfo)
 					persistenceEngine.addJob(jobInfo)
 					if (async) {
@@ -566,13 +666,6 @@ class Moonbox(akkaSystem: ActorSystem,
 						client ! JobFailed(jobId, e.getMessage)
 				}
 			}
-
-		// node --> clusterproxy
-		case m@JobSubmitInternal(jobInfo) =>
-			runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
-			clusterProxyActorRef ! StartBatchAppByPeace(jobInfo.jobId, jobInfo.config.get)
-
-
 
 		case m@JobProgress(jobId) =>
 			if ( state == RoleState.SLAVE ) {
@@ -598,7 +691,7 @@ class Moonbox(akkaSystem: ActorSystem,
 		case m@FetchData(sessionId, jobId, fetchSize) =>
 			val client = sender()
 			sessionIdToJobRunner.get(sessionId) match {
-				case Some(Tuple2(actor, isLocal)) => actor forward FetchDataFromRunner(sessionId, jobId, fetchSize)
+				case Some(actor) => actor forward FetchDataFromRunner(sessionId, jobId, fetchSize)
 				case None => client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
 			}
 
@@ -615,17 +708,17 @@ class Moonbox(akkaSystem: ActorSystem,
 						client ! JobCancelSuccess(jobInfo.jobId)
 					case None =>
 						if (sessionIdToJobRunner.contains(jobId)) { //adhoc, sessionid --> jobId
-							runningJobs.filter(_._2.sessionId.isDefined).find(_._2.sessionId.get == jobId).map(_._2) match {
+							runningJobs.get(jobId) match {
 								case Some(jobInfo) =>
-									val worker = sessionIdToJobRunner(jobId)._1
-									worker ! JobCancelInternal(jobId)
+									jobInfo.localSessionId.foreach( localProxyActorRef ! JobCancelInternal(_))
+									jobInfo.clusterSessionId.foreach( clusterProxyActorRef ! JobCancelInternal(_))
 								case None =>
 									client ! JobCancelSuccess(jobId)
 							}
 						} else {
 							runningJobs.get(jobId) match { //batch --> jobId
 								case Some(jobInfo) =>
-									jobIdToJobRunner.get(jobId) match {
+									jobIdToNode.get(jobId) match {
 										case Some(worker) =>
 											worker ! JobCancelInternal(jobId)
 										case None =>
@@ -638,9 +731,9 @@ class Moonbox(akkaSystem: ActorSystem,
 				}
 			}
 
-		case m@JobCancelInternal =>
-			clusterProxyActorRef forward m
+	}
 
+	private def management: Receive = {
 		case m@GetYarnAppsInfo =>
 			clusterProxyActorRef forward m
 
@@ -656,11 +749,10 @@ class Moonbox(akkaSystem: ActorSystem,
 			} else {
 				val requester = sender()
 				val schema = Seq("id", "host", "port", "jdbc", "rest", "local_core", "local_mem", "yarn_core", "yarn_mem" )
-				val data = nodes.map{ elem=>
+				val data = registeredNodes.map{ elem=>
 					Seq(elem.id, elem.host, elem.port, elem.jdbcPort, elem.restPort, elem.coresFree, elem.memoryFree, elem.yarnAdhocFreeCore, elem.yarnAdhocFreeMemory)}.toSeq
 				requester ! GottenNodesInfo(schema, data)
 			}
-
 	}
 
 
@@ -675,17 +767,16 @@ class Moonbox(akkaSystem: ActorSystem,
 			localProxyActorRef forward m
 	}
 
-	private def schedule(): Unit = {  //only for batch schedule
-		//TODO: jobId to cluster or local
+	private def scheduleJob(): Unit = {  //only for batch schedule
 		if (waitingJobs.nonEmpty) {
-			val jobInfo = waitingJobs.head
-			val nodeOpt = nodes.toSeq.sortWith(_.yarnRunningBatchJob < _.yarnRunningBatchJob).headOption
+			val jobInfo = waitingJobs.head //TODO: how to schedule
+			val nodeOpt = registeredNodes.toSeq.sortWith(_.yarnRunningBatchJob < _.yarnRunningBatchJob).headOption
 
 			nodeOpt match {
 				case Some(node) =>
 					val e = node.endpoint
-					jobIdToJobRunner.put(jobInfo.jobId, e)
-					runningJobs.put(jobInfo.jobId, waitingJobs.dequeue().copy(status = JobState.RUNNING, updateTime = Utils.now))
+					jobIdToNode.put(jobInfo.jobId, e)
+					allocatedBatchJobs.put(jobInfo.jobId, waitingJobs.dequeue().copy(status = JobState.RUNNING, updateTime = Utils.now))
 					persistenceEngine.removeJob(jobInfo)
 					e ! JobSubmitInternal(jobInfo)
 				case None =>
@@ -694,12 +785,20 @@ class Moonbox(akkaSystem: ActorSystem,
 	}
 
 	private def selectAdhocNode(isLocal: Boolean): Option[NodeInfo] = {  //only for adhoc apply
-		val nodeOpt = if (isLocal) {
-			nodes.toSeq.filter(_.coresFree > 0).sortWith(_.coresFree > _.coresFree).headOption
+		val nodes = if (isLocal) {
+			registeredNodes.toSeq.filter(_.coresFree > 0).sortWith(_.coresFree > _.coresFree)
 		} else {
-			nodes.toSeq.filter(_.yarnAdhocFreeCore > 0).sortWith(_.yarnAdhocFreeCore > _.yarnAdhocFreeCore).headOption
+			registeredNodes.toSeq.filter(_.yarnAdhocFreeCore > 0).sortWith(_.yarnAdhocFreeCore > _.yarnAdhocFreeCore)
 		}
-		nodeOpt
+		/**  core:  4 3 2 1 -> interval:  4 7 9 10 -> [0-4), [4-7), [7-9), [9-10), find random number in which interval  */
+		var initNum = 0
+		val nodeWithInterval = nodes.map { node =>
+			initNum += node.coresFree
+			(initNum, node)
+		}
+		val randIndex = new Random().nextInt(initNum)
+		nodeWithInterval.find(randIndex < _._1 ).map(_._2)
+
 	}
 
 	private def selectNode(): String = {
@@ -725,7 +824,7 @@ class Moonbox(akkaSystem: ActorSystem,
 	}
 
 	private def canCompleteRecovery = {
-		nodes.count(_.state == NodeState.UNKNOWN) == 0
+		registeredNodes.count(_.state == NodeState.UNKNOWN) == 0
 	}
 
 	private def beginRecovery(storedJobs: Seq[JobInfo], storedNodes: Seq[NodeInfo]) = {
@@ -754,16 +853,16 @@ class Moonbox(akkaSystem: ActorSystem,
 	private def completeRecovery() : Unit = {
 		if (state != RoleState.RECOVERING) { return }
 		state = RoleState.COMPLETING_RECOVERY
-		nodes.filter(_.state == NodeState.UNKNOWN).foreach(removeNode)
+		registeredNodes.filter(_.state == NodeState.UNKNOWN).foreach(removeNode)
 		state = RoleState.MASTER
 		logInfo("Recovery complete. New State: " + state)
-		schedule()
+		scheduleJob()
 	}
 
 	private def registerNode(node: NodeInfo): Boolean = {
-		nodes.filter { n =>
+		registeredNodes.filter { n =>
 			(n.host == node.host && n.port == node.port) && (n.state == NodeState.DEAD)
-		}.foreach(n => nodes -= n)
+		}.foreach(n => registeredNodes -= n)
 
 		val nodeAddress = node.endpoint.path.address
 		if (addressToNode.contains(nodeAddress)) {
@@ -776,7 +875,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			}
 		}
 
-		nodes += node
+		registeredNodes += node
 		addressToNode(nodeAddress) = node
 		logInfo(s"Registering node $nodeAddress with ${node.cores} cores, ${node.memory} RAM")
 		true
@@ -824,7 +923,8 @@ class Moonbox(akkaSystem: ActorSystem,
 	val mbParser = new MbParser
 	private def createJob(jobId: String,
 						  username: Option[String],
-						  sessionId: Option[String],
+						  localSessionId: Option[String],
+						  clusterSessionId: Option[String],
 						  sqls: Seq[String],
 						  config: Option[String],
 						  isLocal: Boolean,
@@ -833,7 +933,8 @@ class Moonbox(akkaSystem: ActorSystem,
 		val commands = sqls.map(mbParser.parsePlan)
 		JobInfo(
 			jobId = jobId,
-			sessionId = sessionId,
+			localSessionId = localSessionId,
+			clusterSessionId = clusterSessionId,
 			cmds = commands,
 			seq = 0,
 			isLocal,
