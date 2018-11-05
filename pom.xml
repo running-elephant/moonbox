@@ -41,6 +41,7 @@
         <module>dataadapter/sqlserver-adapter</module>
         <module>dataadapter/hbase-adapter</module>
         <module>dataadapter/cassandra-adapter</module>
+        <module>dataadapter/clickhouse-adapter</module>
         <module>assembly</module>
     </modules>
 
