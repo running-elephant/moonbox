@@ -6,7 +6,7 @@ if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
 fi
 
 JAVA="java"
-JAVA_OPTS="-cp ${MOONBOX_HOME}/libs/moonbox-repl_2.11-0.2.1-SNAPSHOT.jar"
+JAVA_OPTS="-cp ${MOONBOX_HOME}/libs/moonbox-repl_2.11-0.3.0-SNAPSHOT.jar"
 
 case $1 in
 cluster)
