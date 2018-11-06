@@ -183,6 +183,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>clickhouse</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-clickhouse-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>dist</id>
             <build>
                 <plugins>
