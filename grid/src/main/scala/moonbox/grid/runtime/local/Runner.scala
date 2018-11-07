@@ -58,14 +58,14 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	override def receive: Receive = {
 		case RunCommand(cmdInfo) =>
-			logInfo(s"Runner::RunJob  $cmdInfo")
+			logInfo(s"Runner::RunCommand  $cmdInfo")
 			currentJob = cmdInfo
 			val target = sender()
 			run(cmdInfo, target).onComplete {
 				case Success(data) =>
 					successCallback(cmdInfo.jobId, cmdInfo.seq, data, target, cmdInfo.sessionId.isEmpty)
 				case Failure(e) =>
-                    if(e.getMessage.contains("cancelled job")){
+                    if(e.getMessage != null && e.getMessage.contains("cancelled job")){
                         cancelCallback(cmdInfo.jobId, cmdInfo.seq, e, target, false) //TaskKilledException can not catch
                     }else{
                         failureCallback(cmdInfo.jobId, cmdInfo.seq, e, target, cmdInfo.sessionId.isEmpty)

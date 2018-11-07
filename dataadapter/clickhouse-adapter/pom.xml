@@ -9,8 +9,9 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <name>Moonbox Project Data Adapter Oracle</name>
-    <artifactId>moonbox-oracle-adapter</artifactId>
+
+    <artifactId>moonbox-clickhouse-adapter</artifactId>
+    <name>Moonbox Project Data Adapter ClickHouse</name>
 
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
@@ -18,20 +19,19 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope>
         </dependency>
-        <!--<dependency>
-            <groupId>com.oracle</groupId>
-            <artifactId>ojdbc6</artifactId>
-            <version>11.2.0.3</version>
-        </dependency>-->
+
+        <dependency>
+            <groupId>ru.yandex.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.1.41</version>
+        </dependency>
+
     </dependencies>
+
+
+
 </project>

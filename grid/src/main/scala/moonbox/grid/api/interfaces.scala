@@ -86,6 +86,20 @@ case object GetNodesInfo extends MbManagementApi
 sealed trait NodesInfoResultResponse
 case class GottenNodesInfo(schema: Seq[String], info: Seq[Seq[Any]]) extends NodesInfoResultResponse with MbManagementApi
 
+case object GetRunningEvents extends MbManagementApi
+sealed trait RunningEventsResponse
+case class GottenRunningEvents(schema: Seq[String], info: Seq[Seq[Any]]) extends RunningEventsResponse with MbManagementApi
+
+case object GetNodeJobInfo extends MbManagementApi
+sealed trait NodeJobInfoResultResponse
+case class GottenNodeJobInfo(schema: Seq[String], info: Seq[Seq[Any]]) extends NodeJobInfoResultResponse with MbManagementApi
+
+case object GetClusterJobInfo extends MbManagementApi
+sealed trait ClusterJobInfoResultResponse
+case class GottenClusterJobInfo(schema: Seq[String], info: Seq[Seq[Any]]) extends ClusterJobInfoResultResponse with MbManagementApi
+
+
+
 //node (for yarn command)
 case object GetYarnAppsInfo extends MbManagementApi
 sealed trait AppShowResultResponse

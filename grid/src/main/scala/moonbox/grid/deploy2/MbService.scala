@@ -245,6 +245,33 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
+	def runningEventsShow(username: String): ShowRunningEventsOutbound = {
+		askForCompute[RunningEventsResponse](GetRunningEvents)(SHORT_TIMEOUT) match {
+			case (Some(GottenRunningEvents(schema, info)), None) =>
+				ShowRunningEventsOutbound(None, Some(schema), Some(info))
+			case (None, error) =>
+				ShowRunningEventsOutbound(error, None, None)
+		}
+	}
+
+	def nodeJobsShow(username: String): ShowNodeJobsOutbound = {
+		askForCompute[NodeJobInfoResultResponse](GetNodeJobInfo)(SHORT_TIMEOUT) match {
+			case (Some(GottenNodeJobInfo(schema, info)), None) =>
+				ShowNodeJobsOutbound(None, Some(schema), Some(info))
+			case (None, error) =>
+				ShowNodeJobsOutbound(error, None, None)
+		}
+	}
+
+	def clusterJobsShow(username: String): ShowClusterJobsOutbound = {
+		askForCompute[ClusterJobInfoResultResponse](GetClusterJobInfo)(SHORT_TIMEOUT) match {
+			case (Some(GottenClusterJobInfo(schema, info)), None) =>
+				ShowClusterJobsOutbound(None, Some(schema), Some(info))
+			case (None, error) =>
+				ShowClusterJobsOutbound(error, None, None)
+		}
+	}
+
 
 	def databasesShow(token: String): ShowDatabasesOutbound = {
 		isLogin(token) match {

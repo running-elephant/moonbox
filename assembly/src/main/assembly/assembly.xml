@@ -139,6 +139,9 @@
                 <!--cassandra-->
                 <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
                 <include>edp.moonbox:moonbox-cassandra-adapter</include>
+                <!--clickhouse-->
+                <include>ru.yandex.clickhouse:clickhouse-jdbc</include>
+                <include>edp.moonbox:moonbox-clickhouse-adapter</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>

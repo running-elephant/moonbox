@@ -82,7 +82,7 @@ mql
     | ALTER VIEW name=tableIdentifier AS query                                                  # setViewQuery
     | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
 
-    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier config=STRING AS procCmds      # createProcedure
+    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier OPTIONS propertyList AS procCmds # createProcedure
     | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
     | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
     | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys

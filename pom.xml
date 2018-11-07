@@ -8,7 +8,7 @@
     <artifactId>moonbox-parent_2.11</artifactId>
     <packaging>pom</packaging>
     <name>Moonbox Project Parent POM</name>
-    <version>0.2.1-SNAPSHOT</version>
+    <version>0.3.0-SNAPSHOT</version>
 
     <licenses>
         <license>
@@ -41,6 +41,7 @@
         <module>dataadapter/sqlserver-adapter</module>
         <module>dataadapter/hbase-adapter</module>
         <module>dataadapter/cassandra-adapter</module>
+        <module>dataadapter/clickhouse-adapter</module>
         <module>assembly</module>
     </modules>
 

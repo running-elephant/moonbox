@@ -5,7 +5,7 @@
     <parent>
         <artifactId>moonbox-parent_2.11</artifactId>
         <groupId>edp.moonbox</groupId>
-        <version>0.2.1-SNAPSHOT</version>
+        <version>0.3.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -25,32 +25,32 @@
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-common_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-grid_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-repl_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-catalyst_2.11</artifactId>
-            <version>0.2.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
        <!-- <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-dataadapter_2.11</artifactId>
-            <version>0.2.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>-->
 
 
@@ -178,6 +178,16 @@
                 <dependency>
                     <groupId>edp.moonbox</groupId>
                     <artifactId>moonbox-cassandra-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>clickhouse</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-clickhouse-adapter</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

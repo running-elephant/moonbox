@@ -68,5 +68,7 @@ moonbox {
     spark.app.name = "test1"
     pushdown.enable = true
     column.permission.enable = true
+    spark.sql.cbo.enabled = true
+    spark.sql.constraintPropagation.enabled = false
   }
 }
