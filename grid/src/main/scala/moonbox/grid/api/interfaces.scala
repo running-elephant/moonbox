@@ -63,7 +63,7 @@ case class JobProgress(jobId: String) extends MbJobApi
 sealed trait JobProgressResponse
 case class JobProgressState(jobId: String, jobInfo: JobInfo) extends MbJobApi with JobProgressResponse
 
-case class JobCancel(jobId: String) extends MbJobApi
+case class JobCancel(jobId: Option[String], sessionId: Option[String]) extends MbJobApi
 sealed trait JobCancelResponse
 case class JobCancelSuccess(jobId: String) extends MbJobApi with JobCancelResponse
 case class JobCancelFailed(jobId: String, error: String) extends MbJobApi with JobCancelResponse

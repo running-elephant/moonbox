@@ -76,7 +76,7 @@ case class BatchQueryProgressOutbound(
 	state: Option[String] = None) extends Outbound
 
 // interactive and batch
-case class CancelQueryInbound(token: String, jobId: String) extends Inbound
+case class CancelQueryInbound(token: String, jobId: Option[String], sessionId: Option[String]) extends Inbound
 case class CancelQueryOutbound(error: Option[String] = None) extends Outbound
 
 // yarn app

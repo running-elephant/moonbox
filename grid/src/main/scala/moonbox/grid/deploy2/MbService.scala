@@ -177,11 +177,11 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 		}
 	}
 
-	def cancelQuery(token: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
+	def cancelQuery(token: String, jobId: Option[String], sessionId: Option[String])(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		isLogin(token) match {
 			case Some(username) =>
-				auditLogger.log(AuditInfo("cancelQuery", username, connection, sql=Some(jobId)))
-				askForCompute[JobCancelResponse](JobCancel(jobId))(SHORT_TIMEOUT) match {
+				auditLogger.log(AuditInfo("cancelQuery", username, connection, sql=None, detail = Some(s"jobId=${jobId.orNull}, sessionId=${sessionId.orNull}")))
+				askForCompute[JobCancelResponse](JobCancel(jobId, sessionId))(SHORT_TIMEOUT) match {
 					case (Some(JobCancelSuccess(id)), None) =>
 						CancelQueryOutbound()
 					case (Some(JobCancelFailed(id, error)), None) =>

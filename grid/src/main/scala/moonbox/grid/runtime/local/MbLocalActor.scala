@@ -54,6 +54,9 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
         case request: MbMetaDataApi =>
             metaData.apply(request)
 
+        case request: MbNodeApi =>
+            node.apply(request)
+
         case a => logInfo(s"recv unknown message: $a")
 
     }
@@ -185,6 +188,12 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
                 case Success(seid) =>
                 case Failure(e) =>  client ! DescribedTableInfoFailed(e.getMessage)
             }
+    }
+
+    private def node: Receive = {
+        case JobCancelInternal(sessionId) =>
+            sessionIdToJobRunner.get(sessionId).foreach(_ forward CancelJob(sessionId))
+        case other => logError(s"MbLocalActor received unknown message: MbNodeApi[$other]")
     }
 
 

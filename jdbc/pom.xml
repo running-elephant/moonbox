@@ -51,6 +51,7 @@
             <groupId>com.alibaba</groupId>
             <artifactId>druid</artifactId>
             <version>1.0.18</version>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <groupId>com.alibaba</groupId>
@@ -64,7 +65,7 @@
         </dependency>
     </dependencies>
 
-    <build>
+    <!--<build>
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -103,5 +104,5 @@
                 </executions>
             </plugin>
         </plugins>
-    </build>
+    </build>-->
 </project>
