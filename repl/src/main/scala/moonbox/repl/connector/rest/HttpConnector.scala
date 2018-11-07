@@ -41,7 +41,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
-      genClient(host, port, _timeout * 1000)
+      initClient(host, port, _timeout * 1000)
       val requestAccessOutbound = requestAccess(login(user, pwd).token.get, isLocal)
       val hp = requestAccessOutbound.address.get.split(":").map(_.trim)
       try {
@@ -49,9 +49,9 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
       } catch {
         case e: Exception => Console.err.println(s"WARNING: Logout before requestAccess failed: ${e.getMessage}")
       }
-      genClient(hp(0), hp(1).toInt, _timeout * 1000)
-      login(user, pwd).token.get
-      openSession(_token, db, isLocal).sessionId.get
+      initClient(hp(0), hp(1).toInt, _timeout * 1000)
+      login(user, pwd)
+      openSession(_token, db, isLocal)
       true
     } catch {
       case e: Exception =>
@@ -61,8 +61,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def process(sqls: Seq[String]) = {
-    val _query = InteractiveQueryInbound(_token, _sessionId, sqls, fetchSize = 1)
-    val res = _client.post(_query, "/query")
+    val res = _client.post(InteractiveQueryInbound(_token, _sessionId, sqls, fetchSize = 1), "/query")
     val resObj = read[InteractiveQueryOutbound](res)
     resObj.error match {
       case None => showResult(resObj)
@@ -88,9 +87,8 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   /* timeout: XXX ms */
-  private def genClient(host: String, port: Int, timeout: Int): HttpClient = {
+  private def initClient(host: String, port: Int, timeout: Int): Unit = {
     _client = new HttpClient(host, port, timeout)
-    _client
   }
 
   private def requestAccess(token: String, _islocal: Boolean): RequestAccessOutbound = {
@@ -102,8 +100,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   private def login(username: String, password: String): LoginOutbound = {
-    val _login = LoginInbound(username, password)
-    val res = _client.post(_login, "/login")
+    val res = _client.post(LoginInbound(username, password), "/login")
     read[LoginOutbound](res) match {
       case r@LoginOutbound(Some(token), None) =>
         _token = token
@@ -113,8 +110,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   private def logout(token: String): LogoutOutbound = {
-    val _logout = LogoutInbound(token)
-    val res = _client.post(_logout, "/logout")
+    val res = _client.post(LogoutInbound(token), "/logout")
     read[LogoutOutbound](res) match {
       case r@LogoutOutbound(None) => r
       case other => throw new Exception(s"Logout failed: error=${other.error}")
@@ -123,8 +119,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
 
   private def openSession(token: String, database: String, _isLocal: Boolean): OpenSessionOutbound = {
     val db = if (database == null || database.length == 0) None else Some(database)
-    val _openSession = OpenSessionInbound(token, db, _isLocal)
-    val res = _client.post(_openSession, "/openSession")
+    val res = _client.post(OpenSessionInbound(token, db, _isLocal), "/openSession")
     read[OpenSessionOutbound](res) match {
       case r@OpenSessionOutbound(Some(sessionId), None) =>
         _sessionId = sessionId
@@ -134,8 +129,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   private def closeSession(token: String, sessionId: String): CloseSessionOutbound = {
-    val _closeSession = CloseSessionInbound(token, sessionId)
-    val res = _client.post(_closeSession, "/closeSession")
+    val res = _client.post(CloseSessionInbound(token, sessionId), "/closeSession")
     read[CloseSessionOutbound](res) match {
       case r@CloseSessionOutbound(None) => r
       case other => throw new Exception(s"Close session failed: error=${other.error}")
@@ -176,7 +170,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   }
 
   override def cancel(): Unit = {
-    val cancelInbound = CancelQueryInbound(_token, _sessionId)
+    val cancelInbound = CancelQueryInbound(_token, jobId = None, sessionId = Some(_sessionId))
     _client.post(cancelInbound, "/cancel")
   }
 }

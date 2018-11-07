@@ -141,7 +141,7 @@ class JdbcServerHandler(
         val token = channelToToken.get(channel)
         val username = mbService.getLoginManager().tokenManager.decode(token)
         val sessionId = channelToSessionId.get(channel)
-        val outbound = mbService.cancelQuery(token, sessionId)
+        val outbound = mbService.cancelQuery(token, jobId = None, sessionId=Some(sessionId))
         logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(outbound.error))
         outbound.setId(cancel.getId)
       case _ => logInfo("Received unsupported message, do noting!")

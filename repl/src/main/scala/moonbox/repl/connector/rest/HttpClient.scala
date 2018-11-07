@@ -28,7 +28,7 @@ import org.apache.http.HttpStatus
 import org.apache.http.client.{HttpClient => ApacheHttpClient}
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.client.entity.EntityBuilder
-import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.client.methods.{HttpGet, HttpPost, HttpUriRequest}
 import org.apache.http.entity.ContentType
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
@@ -55,7 +55,18 @@ class HttpClient(host: String, port: Int, socketTimeout: Int) {
     val uri = s"$baseUrl/$api"
     httpPost.setURI(new URI(uri))
     httpPost.setConfig(createRequestConfig())
-    val response = _client.execute(httpPost)
+    doPost(httpPost)
+  }
+
+  def get(uri: String): String = {
+    val httpGet = new HttpGet()
+    httpGet.setURI(new URI(uri))
+    httpGet.setConfig(createRequestConfig())
+    doPost(httpGet)
+  }
+
+  private def doPost(request: HttpUriRequest): String = {
+    val response = _client.execute(request)
     response.getStatusLine.getStatusCode match {
       case HttpStatus.SC_OK =>
         var charset = ContentType.getOrDefault(response.getEntity).getCharset
@@ -67,18 +78,6 @@ class HttpClient(host: String, port: Int, socketTimeout: Int) {
         val msg = s"Status code: $code, ${response.getStatusLine.getReasonPhrase}"
         throw new Exception(msg)
     }
-  }
-
-  def get(uri: String): String = {
-    val httpGet = new HttpGet()
-    httpGet.setURI(new URI(uri))
-    httpGet.setConfig(createRequestConfig())
-    val response = _client.execute(httpGet)
-    var charset = ContentType.getOrDefault(response.getEntity).getCharset
-    if (charset == null) {
-      charset = StandardCharsets.UTF_8
-    }
-    EntityUtils.toString(response.getEntity, charset)
   }
 
   private def createRequestConfig(connectionTimeout: Int = DEFAULT_CONNECTION_TIMEOUT): RequestConfig = {

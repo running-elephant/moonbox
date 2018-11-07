@@ -147,7 +147,6 @@ object Main {
             /* add line reader history */
             enqueueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
             setHistory(lineReader.asInstanceOf[LineReaderImpl])
-
             process(cleanedSqls)
           }
         } catch {
@@ -156,9 +155,7 @@ object Main {
               connector.cancel()
             }
           case e: Exception =>
-            val stringWriter = new StringWriter()
-            e.printStackTrace(new PrintWriter(stringWriter))
-            System.err.println(stringWriter.toString)
+            System.err.println(e.getMessage)
         }
       }
     } else {
@@ -230,13 +227,15 @@ object Main {
       case "RECONNECT" | "R" =>
         try {
           connector.close()
-        } catch {
-          case e: Exception => Console.err.print(s"Close failed: ${e.getMessage}")
+        } finally {
+          repl()
         }
-        repl()
       case "EXIT" | "QUIT" | "Q" =>
-        connector.shutdown()
-        System.exit(0)
+        try {
+          connector.shutdown()
+        } finally {
+          System.exit(0)
+        }
       case _ =>
         enqueueWithLimit(historyMqls, compositedSql)
         connector.process(sqlList)

@@ -190,7 +190,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
                 case false =>
                   CancelQueryOutbound(error = Some("Token is incorrect or expired."))
                 case true =>
-                  service.cancelQuery(in.token, in.jobId)
+                  service.cancelQuery(in.token, jobId = in.jobId, sessionId = in.sessionId)
               }
             }
           }

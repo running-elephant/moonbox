@@ -123,12 +123,12 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
             logInfo(s"MbWorker::RemoveJobFromWorker $jobId")
             if (sessionIdToJobRunner.contains(jobId) ) {  // adhoc
                 val runner = sessionIdToJobRunner(jobId)
-                runner ! CancelJob(jobId)
+                runner forward CancelJob(jobId)
             }
 
             if (jobIdToJobRunner.contains(jobId)) {  //batch
                 val runner = jobIdToJobRunner(jobId)
-                runner ! CancelJob(jobId)
+                runner forward CancelJob(jobId)
             }
 
         case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>

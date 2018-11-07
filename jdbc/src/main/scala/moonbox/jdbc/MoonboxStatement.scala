@@ -139,7 +139,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def cancel() = {
     beforeAction()
-    val cancelMessage = CancelQueryInbound(null, null).setId(client.genMessageId)
+    val cancelMessage = CancelQueryInbound(null, None, None).setId(client.genMessageId)
     val cancelResp = client.sendAndReceive(cancelMessage, getQueryTimeout)
     cancelResp match {
       case CancelQueryOutbound(Some(error)) => throw new SQLException(s"Cancel query failed: $error")

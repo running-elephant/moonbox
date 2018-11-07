@@ -67,8 +67,13 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
                     }
 			}
 		case CancelJob(jobId) =>
-            logInfo(s"Runner::CancelJob [WARNING] !!! $jobId")
+      logInfo(s"Runner::CancelJob [WARNING] !!! $jobId")
+			/* for batch */
 			mbSession.cancelJob(jobId)
+			if (currentJob.sessionId.isDefined && currentJob.sessionId.get == jobId){
+				/* for adhoc */
+				mbSession.cancelJob(currentJob.jobId)
+			}
 		case KillRunner =>
 			logInfo(s"Runner::KillRunner $currentJob")
 			if(currentJob == null || currentJob.sessionId.isDefined) {  //if a runner have not a job OR it is an adhoc, release resources

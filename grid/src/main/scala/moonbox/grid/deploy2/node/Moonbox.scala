@@ -383,8 +383,9 @@ class Moonbox(akkaSystem: ActorSystem,
 				persistenceEngine.addNode(node)
 			}
 			logInfo(s"Node reconnected: " + member.address)
-		case a: Any =>
-			logInfo(s"recv deploy message: " + a )
+		case n@NotMasterNode => logInfo(n.toString)
+		case other => logInfo(s"moonbox receiving unknown deploy message: $other")
+
 	}
 
 	private def node: Receive = {
@@ -421,9 +422,35 @@ class Moonbox(akkaSystem: ActorSystem,
 				case _ =>
 			}
 
-		case m@JobCancelInternal =>
-			clusterProxyActorRef forward m
-
+		case m@JobCancelInternal(jobId) =>
+			state match {
+				case RoleState.MASTER =>
+					waitingJobs.find(_.jobId == jobId) match {
+						case Some(jobInfo) =>
+							logInfo(s"Handling job cancel: jobInfo=$jobInfo, RoleState=MASTER")
+							waitingJobs.dequeueFirst(_.jobId == jobId)
+							persistenceEngine.removeJob(jobInfo)
+							/* for audit */
+							jobInfo.status = JobState.KILLED //update status
+							jobInfo.updateTime = Utils.now
+							retainedFailedJobs += jobId
+							failedJobs.put(jobId, jobInfo)
+							trimJobsIfNecessary(retainedFailedJobs, failedJobs, retainedFailedJobNum)
+						case None =>
+							jobIdToNode.get(jobId) match {
+								case Some(node) =>
+									logInfo(s"Transferring job cancel to slave node(node=$node): jobId=$jobId")
+									node ! JobCancelInternal(jobId)
+								case None => /* no-op */
+									logWarning(s"Invalid jobId in jobCancel: jobId=$jobId")
+							}
+					}
+				case RoleState.SLAVE =>
+					clusterProxyActorRef forward m
+				case RoleState.RECOVERING =>
+				case RoleState.COMPLETING_RECOVERY =>
+				case other => logError(s"Unknown role state: $other")
+			}
 		// node --> clusterproxy
 		case m@JobSubmitInternal(jobInfo) =>
 			runningJobs.put(jobInfo.jobId, jobInfo)  //for response to client
@@ -725,40 +752,29 @@ class Moonbox(akkaSystem: ActorSystem,
 			}
 
 
-		case m@JobCancel(jobId) =>
-			if ( state == RoleState.SLAVE ) {
-				master forward m
-			}
-			else {
-				val client = sender()
-				waitingJobs.find(_.jobId == jobId) match {
-					case Some(jobInfo) =>
-						waitingJobs.dequeueFirst(_.jobId == jobId)
-						persistenceEngine.removeJob(jobInfo)
-						client ! JobCancelSuccess(jobInfo.jobId)
-					case None =>
-						if (sessionIdToJobRunner.contains(jobId)) { //adhoc, sessionid --> jobId
-							runningJobs.get(jobId) match {
-								case Some(jobInfo) =>
-									jobInfo.localSessionId.foreach( localProxyActorRef ! JobCancelInternal(_))
-									jobInfo.clusterSessionId.foreach( clusterProxyActorRef ! JobCancelInternal(_))
-								case None =>
-									client ! JobCancelSuccess(jobId)
-							}
-						} else {
-							runningJobs.get(jobId) match { //batch --> jobId
-								case Some(jobInfo) =>
-									jobIdToNode.get(jobId) match {
-										case Some(worker) =>
-											worker ! JobCancelInternal(jobId)
-										case None =>
-											client ! JobCancelSuccess(jobId)
-									}
-								case None =>
-									client ! JobCancelSuccess(jobId)
-							}
-						}
-				}
+		case m@JobCancel(jobId, sessionId) =>
+			val requester = sender()
+			(jobId, sessionId) match {
+				case (_, Some(id)) =>
+					/* for interactive mode */
+					logInfo(s"Handling interactive job cancel: sessionId=$id")
+					if (id.contains('#')) {
+						/* cluster */
+						id.split("#").foreach(sId => sessionIdToJobRunner.get(sId).foreach(_ ! JobCancelInternal(sId)))
+					} else {
+						/* local */
+						sessionIdToJobRunner.get(id).foreach(_ ! JobCancelInternal(id))
+					}
+					requester ! JobCancelSuccess(id)
+				case (Some(id), _) =>
+					/* for batch mode */
+					logInfo(s"Transferring batch job cancel to master: jobId=$id")
+					master forward JobCancelInternal(id)
+					requester ! JobCancelSuccess(id)
+				case _ => /* no-op */
+					val message = s"Invalid job cancel: jobId=${jobId.orNull}, sessionId={${sessionId.orNull}}"
+					logWarning(message)
+					requester ! JobCancelFailed(null, message)
 			}
 	}
 
