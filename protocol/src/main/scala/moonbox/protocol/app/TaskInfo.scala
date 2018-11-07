@@ -28,6 +28,8 @@ case class QueryTask(query: String) extends Task
 
 case class CreateTempViewTask(name: String, query: String, isCache: Boolean, replaceIfExists: Boolean) extends Task
 
+case class UseDatabaseTask(db: String) extends Task
+
 case class TaskInfo(jobId: String,
 					sessionId: Option[String] = None,
 					task: Task,

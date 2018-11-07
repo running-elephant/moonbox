@@ -12,7 +12,7 @@ import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.CatalogContext
-import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbCommand, MbRunnableCommand}
+import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbCommand, MbRunnableCommand, UseDatabase}
 import moonbox.core.parser.MbParser
 import moonbox.grid.api._
 import moonbox.grid.config._
@@ -383,7 +383,8 @@ class Moonbox(akkaSystem: ActorSystem,
 				persistenceEngine.addNode(node)
 			}
 			logInfo(s"Node reconnected: " + member.address)
-
+		case a: Any =>
+			logInfo(s"recv deploy message: " + a )
 	}
 
 	private def node: Receive = {
@@ -494,6 +495,9 @@ class Moonbox(akkaSystem: ActorSystem,
 				case m: InsertInto =>
 					val t = InsertIntoTask(m.table.table, m.table.database, m.query, m.overwrite)
 					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.clusterSessionId, t, jobInfo.seq, jobInfo.username))
+				case m: UseDatabase =>
+					clusterProxyActorRef ! AssignTaskToWorker(TaskInfo(jobInfo.jobId, jobInfo.clusterSessionId, UseDatabaseTask(m.db), jobInfo.seq, jobInfo.username))
+					localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.localSessionId, m, jobInfo.seq, jobInfo.username))
 				case m: MbRunnableCommand => //TODO:
 					localProxyActorRef ! AssignCommandToWorker(CommandInfo(jobInfo.jobId, jobInfo.localSessionId, m, jobInfo.seq, jobInfo.username))
 			}
@@ -699,10 +703,27 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case m@FetchData(sessionId, jobId, fetchSize) =>
 			val client = sender()
-			sessionIdToJobRunner.get(sessionId) match {
-				case Some(actor) => actor forward FetchDataFromRunner(sessionId, jobId, fetchSize)
-				case None => client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
+			val validSessionId = if (sessionId.indexOf("#") != -1) {
+									sessionId.split('#')(1)
+								 } else { sessionId }
+			sessionIdToJobRunner.get(validSessionId) match {
+				case Some(actor) =>
+					val future = actor.ask(FetchDataFromRunner(validSessionId, jobId, fetchSize)).mapTo[FetchDataFromRunnerResponse]
+					future.onComplete {
+						case Success(response) =>
+							response match {
+								case FetchedDataFromRunner(jobId, schema, date, hasNext) =>
+									client ! FetchDataSuccess(schema, date, hasNext)
+								case FetchDataFromRunnerFailed(jobId, error) =>
+									client ! FetchDataFailed(error)
+							}
+						case Failure(e) =>
+							client ! FetchDataFailed(e.getMessage)
+					}
+				case None =>
+					client ! FetchDataFailed(s"sessionId $sessionId does not exist or has been removed.")
 			}
+
 
 		case m@JobCancel(jobId) =>
 			if ( state == RoleState.SLAVE ) {
@@ -739,7 +760,6 @@ class Moonbox(akkaSystem: ActorSystem,
 						}
 				}
 			}
-
 	}
 
 	private def management: Receive = {

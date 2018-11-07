@@ -73,6 +73,7 @@ object Main {
   val terminal: Terminal = TerminalBuilder.builder.signalHandler(handler).build()
   val autoCompleter = new StringsCompleter(MQLs.MQL.map(_.toLowerCase()): _*)
   val lineReader: LineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
+  System.setProperty("log4j.configuration", "")  //close log4j print in repl
 
   def main(args: Array[String]) {
     parse(args.toList)

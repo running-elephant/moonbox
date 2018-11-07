@@ -24,10 +24,12 @@ import java.util.concurrent.Executors
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.catalog.UserContext
+import moonbox.core.command.MbRunnableCommand
 import moonbox.core.datasys.{DataSystem, Insertable}
 import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker, TableInsertPrivilegeException}
 import moonbox.protocol.app.JobState.JobState
-import moonbox.protocol.app._
+import moonbox.protocol.app.{UnitData, _}
 import org.apache.spark.sql.optimizer.WholePushdown
 import org.apache.spark.sql.{Row, SaveMode}
 
@@ -76,7 +78,11 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		case FetchDataFromRunner(_, jobId, fetchSize) =>
 			val target = sender()
 			Future {
-				target ! fetchData(jobId, fetchSize)
+				val directData = fetchData(jobId, fetchSize)
+				target ! FetchedDataFromRunner(jobId, directData.schema, directData.data, directData.hasNext)
+			}.onComplete {
+				case Success(_) =>
+				case Failure(e) => target ! FetchDataFromRunnerFailed(jobId, e.getMessage)
 			}
 	}
 
@@ -90,6 +96,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 					mqlQuery(query, taskInfo.jobId)
 				case insert: InsertIntoTask =>
 					insertInto(insert)
+				case database: UseDatabaseTask =>  //only for use database command
+					useDatabase(database.db)
 				case _ => throw new Exception("Unsupported command.")
 
 			}
@@ -217,6 +225,18 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 						mbSession.toDF(plan).write.format(format).options(options).mode(saveMode).save()
 				}
 		}
+		UnitData
+	}
+
+	def useDatabase(db: String)(implicit ctx: UserContext): JobResult = {
+		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
+		ctx.databaseId = currentDb.id.get
+		ctx.databaseName = currentDb.name
+		ctx.isLogical = currentDb.isLogical
+		if (!mbSession.mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
+			mbSession.mixcal.sqlToDF(s"create database if not exists ${currentDb.name}")
+		}
+		mbSession.mixcal.sparkSession.catalog.setCurrentDatabase(ctx.databaseName)
 		UnitData
 	}
 

@@ -84,7 +84,11 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		case FetchDataFromRunner(_, jobId, fetchSize) =>
 			val target = sender()
 			Future {
-				target ! fetchData(jobId, fetchSize)
+				val directData = fetchData(jobId, fetchSize)
+				target ! FetchedDataFromRunner(jobId, directData.schema, directData.data, directData.hasNext)
+			}.onComplete {
+				case Success(_) =>
+				case Failure(e) => target ! FetchDataFromRunnerFailed(jobId, e.getMessage)
 			}
 
 	}

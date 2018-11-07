@@ -156,13 +156,15 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
       case InteractiveQueryOutbound(None, true, Some(d)) =>
         val data = d.data
         var numShowed = data.size
+        var hasNext = d.hasNext
         val parsedSchema: Seq[String] = Utils.parseJson(d.schema).map(s => s"${s._1}(${s._2})").toSeq
         /* print data */
         print(Utils.showString(data.take(numShowed), parsedSchema, max_count, truncate, showPromote = !d.hasNext))
-        while (numShowed < max_count && d.hasNext) {
+        while (numShowed < max_count && hasNext) {
           val fetchSize = math.min(DEFAULT_FETCH_SIZE, max_count - numShowed)
           val outbound = fetchNextResult(_token, _sessionId, d.cursor, fetchSize)
           val dataToShow = outbound.data.get.data
+          hasNext = outbound.data.get.hasNext
           val promote = if (fetchSize == DEFAULT_FETCH_SIZE) false else true
           print(Utils.showString(dataToShow, parsedSchema, max_count, truncate, showPromote = promote, showSchema = false))
           numShowed += dataToShow.size

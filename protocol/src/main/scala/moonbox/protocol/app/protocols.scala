@@ -36,9 +36,9 @@ case class FreeSessionFailed(error: String) extends FreeSessionResponse
 
 case class FetchDataFromRunner(sessionId: String, jobId: String, fetchSize: Long)  extends AppApi //
 
-sealed trait FetchDataFromRunnerResponse
+sealed trait FetchDataFromRunnerResponse extends AppApi
 
-case class FetchedDataFromRunner(jobId: String, schema: String, date: Seq[Seq[Any]], hasNext: Boolean) extends FetchDataFromRunnerResponse
+case class FetchedDataFromRunner(jobId: String, schema: String, date: Seq[Seq[String]], hasNext: Boolean) extends FetchDataFromRunnerResponse
 
 case class FetchDataFromRunnerFailed(jobId: String, error: String) extends FetchDataFromRunnerResponse
 

@@ -277,6 +277,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
                 case Some(sessionId) =>
                     sessionIdToJobRunner.get(taskInfo.sessionId.get) match {  //TODO: for adhoc
                         case Some(worker) =>
+                            logInfo(s"AssignTaskToWorker $taskInfo for adhoc $worker")
                             worker ! request
                         case None =>
                             client ! JobFailed(taskInfo.jobId, "Session lost in master.")
@@ -284,6 +285,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
                 case None =>
                     jobIdToJobRunner.get(taskInfo.jobId) match {
                         case Some(worker) =>
+                            logInfo(s"AssignTaskToWorker $taskInfo for batch $worker")
                             worker ! request
                         case None =>
                             client ! JobFailed(taskInfo.jobId, "Session lost in master.")
