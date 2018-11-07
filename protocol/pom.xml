@@ -10,5 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-protocol_2.11</artifactId>
+    <packaging>jar</packaging>
+    <name>Moonbox Project Protocol</name>
 
 </project>

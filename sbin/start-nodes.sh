@@ -12,10 +12,6 @@ nodes_address=`echo ${nodes_lines} | sed 's/[[:space:]]/,/g'`
 cat "${MOONBOX_HOME}/conf/nodes" | grep -v '#' | sed '/^$/d' | sed 's/[[:space:]]//g'| while read line
 do
     host_name=`echo ${line} | cut -d ':' -f 1`
-    akka_port=`echo ${line} | grep ':' |  cut -d ':' -f 2`
-    if [ -z "$akka_port" ]; then
-        akka_port="2551"
-    fi
     ssh_options="$MOONBOX_SSH_OPTIONS"
     if [ -z "$ssh_options" ]; then
         ssh_options="-p 22"
@@ -24,8 +20,8 @@ do
     echo "SSH $host_name $ssh_options ..."
 
     ssh -T ${ssh_options} ${host_name}  << EEOF
-        echo "remote moonbox_home is empty \${MOONBOX_HOME}, use local MOONBOX_HOME ${MOONBOX_HOME}, ip:${host_name}, akka_port:${akka_port}, ssh_options:${ssh_options}"
-        ${MOONBOX_HOME}/sbin/start-node.sh  ${host_name}  ${akka_port}  ${nodes_address}
+        echo "remote moonbox_home is empty \${MOONBOX_HOME}, use local MOONBOX_HOME ${MOONBOX_HOME}, host:${host_name}, ssh_options:${ssh_options}"
+        ${MOONBOX_HOME}/sbin/start-node.sh  ${nodes_address}
 
 EEOF
     if [ $? -ne 0 ] ;then

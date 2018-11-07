@@ -10,6 +10,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-yarnapp_2.11</artifactId>
+    <packaging>jar</packaging>
+    <name>Moonbox Project YarnApp</name>
 
     <dependencies>
         <dependency>
