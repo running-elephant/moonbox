@@ -156,7 +156,7 @@
             <outputDirectory>cluster</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <unpack>false</unpack>
-            <scope>cluster</scope>
+            <scope>runtime</scope>
             <useProjectArtifact>false</useProjectArtifact>
         </dependencySet>
     </dependencySets>
