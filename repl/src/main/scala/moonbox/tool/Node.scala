@@ -23,6 +23,27 @@ object Node {
     val username = System.getProperty("user.name", "root")
     implicit val formats = DefaultFormats
 
+    def doShowDatabases(user: String, password: String): ShowDatabasesOutbound = {
+        val token = login(user, password)
+        val dbs = showDatabases(token, true)
+        logout(token)
+        dbs
+    }
+
+    def doShowTables(user: String, password: String, database: String): ShowTablesOutbound = {
+        val token = login(user, password)
+        val tbs = showTables(token, database)
+        logout(token)
+        tbs
+    }
+
+    def doDescTables(user: String, password: String, table: String, database: String): DescribeTablesOutbound = {
+        val token = login(user, password)
+        val tbs = descTable(token, table, database)
+        logout(token)
+        tbs
+    }
+
     def showDatabases(token: String, detail: Boolean): ShowDatabasesOutbound = {
         timeout = 60
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
@@ -53,6 +74,13 @@ object Node {
         val _login = LoginInbound(user, password)
         val res = client.post(_login, "/login")
         read[LoginOutbound](res).token.get
+    }
+
+    def logout(token: String): String = {
+        client = new HttpClient(httpHost, httpPort, timeout * 1000)
+        val _logout = LogoutInbound(token)
+        val res = client.post(_logout, "/logout")
+        read[LogoutOutbound](res).error.get
     }
 
     def submit(token: String, mode: String, sqls: Seq[String], config: String): String = {
@@ -193,17 +221,14 @@ object Node {
             val b = parse(config)
             killApplication(b, value)
         case ("-sd" | "--showdatabases" ) :: value :: tail =>
-            val rsp = showDatabases(token, true)
+            val rsp = doShowDatabases(user, password)
             showDataResult2(rsp)
         case ("-st" | "--showtables" ) :: value :: tail =>
-            val rsp = showTables(token, database)
+            val rsp = doShowTables(user, password, database)
             showDataResult2(rsp)
         case ("-d" | "--desctable" ) :: value :: tail =>
-            val rsp =  descTable(token, table, database)
+            val rsp =  doDescTables(user, password, table, database)
             showDataResult2(rsp)
-        case ("-o" | "--token") :: value :: tail =>
-            token = value
-            doCommand(tail)
         case ("-t" | "--table") :: value :: tail =>
             table = value
             doCommand(tail)

@@ -30,8 +30,8 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   var _client: HttpClient = _
   var _sessionId: String = _
   var _token: String = _
-  var _closed: Boolean = _
-  var DEFAULT_FETCH_SIZE = 200
+  @volatile var _closed: Boolean = _
+  var DEFAULT_FETCH_SIZE = if (isLocal) { 200 } else { 50 }
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {

@@ -195,15 +195,27 @@ object Utils {
   def getHttpHostAndPort: (String, Int) = {
     val defaultFile = new File(moonbox.common.util.Utils.getDefaultPropertiesFile().get)
     val defaultConfig = ConfigFactory.parseFile(defaultFile)
-    val port = if ( defaultConfig.hasPathOrNull("moonbox.rest.server.port") ) {
-      if ( defaultConfig.getIsNull("moonbox.rest.server.port") ) { 9090 }
-      else{
-        defaultConfig.getInt("moonbox.rest.server.port")
+
+    val restPortPath = "moonbox.rest.server.port"
+    val port = if ( defaultConfig.hasPathOrNull(restPortPath) ) {
+      if ( defaultConfig.getIsNull(restPortPath) ) { 8080 }
+      else {
+        defaultConfig.getInt(restPortPath)
       }
     } else {
-      9090
+      8080
     }
-    val host = "localhost"
+
+    val restHostPath = "moonbox.host"
+    val host = if ( defaultConfig.hasPathOrNull(restHostPath) ) {
+      if ( defaultConfig.getIsNull(restHostPath) ) { "localhost" }
+      else {
+        defaultConfig.getString(restHostPath)
+      }
+    } else {
+      "localhost"
+    }
+
     (host, port)
 
   }
