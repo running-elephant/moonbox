@@ -20,19 +20,17 @@
 
 package moonbox.repl
 
-import java.io.{PrintWriter, StringWriter}
 import java.util.Locale
 
 import moonbox.repl.connector.Connector
 import moonbox.repl.connector.jdbc.JdbcConnector
 import moonbox.repl.connector.rest.HttpConnector
 import org.jline.reader.impl.LineReaderImpl
-import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.impl.history.DefaultHistory
+import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
+import org.jline.terminal.Terminal.{Signal, SignalHandler}
 import org.jline.terminal.{Terminal, TerminalBuilder}
-import org.jline.terminal.Terminal.Signal
-import org.jline.terminal.Terminal.SignalHandler
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -73,7 +71,7 @@ object Main {
   val terminal: Terminal = TerminalBuilder.builder.signalHandler(handler).build()
   val autoCompleter = new StringsCompleter(MQLs.MQL.map(_.toLowerCase()): _*)
   val lineReader: LineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
-  System.setProperty("log4j.configuration", "")  //close log4j print in repl
+  System.setProperty("log4j.configuration", "") //close log4j print in repl
 
   def main(args: Array[String]) {
     parse(args.toList)
@@ -83,7 +81,7 @@ object Main {
         //new RestConnector(timeout)
         new HttpConnector(timeout, islocal)
       } else {
-        new JdbcConnector(timeout)
+        new JdbcConnector(timeout, islocal)
       }
       repl()
     } while (retryTimes > 0)
@@ -169,6 +167,8 @@ object Main {
       """
         |Use: %SET TRUNCATE=[Int]  /*Set the column length to truncate, 0 denotes unabridged*/
         |     %SET MAX_COUNT=[Int]  /*Set max rows to show in console*/
+        |     %SET TIMEOUT=[Int]  /*Set timeout(second) of connection from moonbox server*/
+        |     %SET FETCH_SIZE=[Long]  /*Set size for per data fetch*/
       """.stripMargin
     Console.err.println(message)
   }
@@ -181,15 +181,17 @@ object Main {
         val k = kv.substring(0, idx).trim
         val v = kv.substring(idx + 1).trim
         k match {
-          case "MAX_COUNT" => connector.max_count = v.toInt
-          case "TRUNCATE" => connector.truncate = v.toInt
+          case "MAX_COUNT" => connector.setMaxRowsShow(v.toInt)
+          case "TRUNCATE" => connector.setMaxColumnLength(v.toInt)
+          case "TIMEOUT" => connector.setTimeout(v.toInt)
+          case "FETCH_SIZE" => connector.setFetchSize(v.toInt)
           case _ =>
             Console.err.println(s"""Unknown parameter key in set statement "$setStatement".""")
             printSetHelp()
         }
       } catch {
         case _: NumberFormatException =>
-          Console.err.println("Value format invalid: should be Int.")
+          Console.err.println("Value type invalid.")
           printSetHelp()
         case _: IndexOutOfBoundsException =>
           Console.err.println("Invalid parameter set statement.")
@@ -224,18 +226,9 @@ object Main {
       case "HISTORY" | "H" =>
         val data = historyMqls.zipWithIndex.map(u => Seq(historyMqls.length - u._2, u._1 + ";"))
         print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
-      case "RECONNECT" | "R" =>
-        try {
-          connector.close()
-        } finally {
-          repl()
-        }
-      case "EXIT" | "QUIT" | "Q" =>
-        try {
-          connector.shutdown()
-        } finally {
-          System.exit(0)
-        }
+      case "RECONNECT" | "R" => try connector.close() finally repl()
+      case "EXIT" | "QUIT" | "Q" => try connector.shutdown() finally System.exit(0)
+      case "STATE" | "STATUS" => connector.connectionState.prettyShow()
       case _ =>
         enqueueWithLimit(historyMqls, compositedSql)
         connector.process(sqlList)
@@ -270,9 +263,6 @@ object Main {
     case ("-p" | "--password") :: value :: tail =>
       password = value
       parse(tail)
-    case ("-z" | "--zookeeper") :: value :: tail =>
-      password = value
-      parse(tail)
     case ("-t" | "--timeout") :: IntParam(value) :: tail =>
       timeout = value
       parse(tail)
@@ -295,7 +285,7 @@ object Main {
         "   -h, --host      Connect to host.\n" +
         "   -P, --port      Port num to ues for connecting to server.\n" +
         "   -p, --password  Password to use when connecting to server.\n" +
-        "	  -z, --zookeeper Zookeeper quorum to get active master address.\n" +
+//        "	  -z, --zookeeper Zookeeper quorum to get active master address.\n" +
         "   -u, --user :    User for login.\n" +
         "   --help"
     )

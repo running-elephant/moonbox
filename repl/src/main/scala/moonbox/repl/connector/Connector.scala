@@ -22,12 +22,37 @@ package moonbox.repl.connector
 
 trait Connector {
 
-  var max_count: Int = 500 /* max rows to show in console */
-  var truncate: Int = 50 /* the column length to truncate, 0 denotes unabridged */
+  protected var max_count: Int = 500 /* max rows to show in console */
+  protected var truncate: Int = 50 /* the column length to truncate, 0 denotes unabridged */
 
   def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean
   def process(sqls: Seq[String]): Unit
   def close(): Unit
   def shutdown(): Unit
   def cancel(): Unit
+  def connectionState: ConnectionState
+  def setTimeout(timeSeconds: Int): Unit = {
+    Option(connectionState) match {
+      case Some(x) => x.timeout = timeSeconds * 1000
+      case None => throw new Exception("Connection state is uninitialized.")
+    }
+  }
+  def setFetchSize(size: Long): Unit = {
+    Option(connectionState) match {
+      case Some(x) => x.fetchSize = size
+      case None => throw new Exception("Connection state is uninitialized.")
+    }
+  }
+  def setMaxColumnLength(length: Int): Unit = {
+    Option(connectionState) match {
+      case Some(x) => x.maxColumnLength = length
+      case None => throw new Exception("Connection state is uninitialized.")
+    }
+  }
+  def setMaxRowsShow(size: Int): Unit = {
+    Option(connectionState) match {
+      case Some(x) => x.maxRowsShow = size
+      case None => throw new Exception("Connection state is uninitialized.")
+    }
+  }
 }
