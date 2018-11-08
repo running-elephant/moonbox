@@ -83,15 +83,15 @@ object Node {
         read[LogoutOutbound](res).error.get
     }
 
-    def submit(token: String, mode: String, sqls: Seq[String], config: String): String = {
+    def submit(token: String, sqls: Seq[String], config: String): String = {
         timeout = 60
-        client = new HttpClient(httpHost, 18092, timeout * 1000)
+        client = new HttpClient(httpHost, httpPort, timeout * 1000)
         val _submit = BatchQueryInbound(token,  sqls, config)
         val res = client.post(_submit, "/submit")
         read[BatchQueryOutbound](res).jobId.get
     }
 
-    def addYarn(config: String): AddAppOutbound = {
+    def addYarn(config: String): AddAppOutbound = { //for adhoc app
         timeout = 60
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
         val _login = AddAppInbound(username, config)

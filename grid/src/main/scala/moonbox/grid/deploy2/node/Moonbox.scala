@@ -788,10 +788,10 @@ class Moonbox(akkaSystem: ActorSystem,
 		case m@GetYarnAppsInfo =>
 			clusterProxyActorRef forward m
 
-		case m@KillYarnApp =>
+		case m:KillYarnApp =>
 			clusterProxyActorRef forward m
 
-		case m@StartYarnApp =>
+		case m:StartYarnApp =>
 			clusterProxyActorRef forward m
 
 		case m@GetNodesInfo =>
@@ -819,7 +819,7 @@ class Moonbox(akkaSystem: ActorSystem,
 
 					Seq(event.group, event.name, event.cronDescription, event.status, startTime, endTime, preTime, nextTime)
 				}
-				requester ! GottenNodesInfo(schema, eventInfo)
+				requester ! GottenRunningEvents(schema, eventInfo)
 			}
 
 		case m@GetNodeJobInfo =>

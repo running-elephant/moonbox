@@ -421,11 +421,11 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
         val now = System.currentTimeMillis()
         val availableNode = appListenerMap.asScala.filter(_._2.state == SparkAppHandle.State.RUNNING)
                 .filter { elem => appResourceMap.contains(elem._1) && appActorRefMap.contains(elem._1) && appConfigurationMap.contains(elem._1) }
-        val selected =  availableNode.filter(elem => appConfigurationMap(elem._1).getOrElse("job.mode", "adhoc") == "adhoc").filter(elem => appResourceMap(elem._1).coresFree > 0 && now - appResourceMap(elem._1).lastHeartbeat < 60000).keys
-                    .toSeq.sortWith(appResourceMap(_).coresFree > appResourceMap(_).coresFree).map {
-                appActorRefMap(_)
-            }.headOption
-
+        val selected = availableNode.filter(elem => appConfigurationMap(elem._1).getOrElse("job.mode", "adhoc") == "adhoc")
+                                    .filter(elem => appResourceMap(elem._1).coresFree > 0 && now - appResourceMap(elem._1).lastHeartbeat < 60000).keys
+                                    .toSeq.sortWith(appResourceMap(_).coresFree > appResourceMap(_).coresFree)
+                                    .map { appActorRefMap(_)}
+                                    .headOption
         selected
     }
 

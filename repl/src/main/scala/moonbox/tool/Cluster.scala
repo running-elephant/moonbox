@@ -27,7 +27,7 @@ object Cluster {
     def showRunningEvents(): ShowRunningEventsOutbound = {
         timeout = 60
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
-        val _login = ShowNodesInfoInbound(username)
+        val _login = ShowRunningEventsInbound(username)
         val res = client.post(_login, "/showRunningEvents")
         read[ShowRunningEventsOutbound](res)
     }
@@ -35,7 +35,7 @@ object Cluster {
     def showNodeJobs(): ShowNodeJobsOutbound = {
         timeout = 60
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
-        val _login = ShowNodesInfoInbound(username)
+        val _login = ShowNodeJobsInbound(username)
         val res = client.post(_login, "/showNodeJobs")
         read[ShowNodeJobsOutbound](res)
     }
@@ -43,7 +43,7 @@ object Cluster {
     def showClusterJobs(): ShowClusterJobsOutbound = {
         timeout = 60
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
-        val _login = ShowNodesInfoInbound(username)
+        val _login = ShowClusterJobsInbound(username)
         val res = client.post(_login, "/showClusterJobs")
         read[ShowClusterJobsOutbound](res)
     }
