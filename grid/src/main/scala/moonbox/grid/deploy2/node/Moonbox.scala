@@ -25,7 +25,7 @@ import moonbox.grid.runtime.cluster.MbClusterActor
 import moonbox.grid.runtime.local.MbLocalActor
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
 import moonbox.grid.{ConnectionType, JobInfo}
-import moonbox.protocol.app._
+import moonbox.protocol.app.{FreeSessionResponse, _}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -533,6 +533,7 @@ class Moonbox(akkaSystem: ActorSystem,
 
 	private def interface: Receive = {
 		case m@RequestAccess(connectionType, isLocal) =>
+			logInfo(s"RequestAccess $connectionType, $isLocal")
 			if (state == RoleState.MASTER) {
 				val requester = sender()
 				val nodeOpt = selectAdhocNode(isLocal)
@@ -551,6 +552,7 @@ class Moonbox(akkaSystem: ActorSystem,
 			}
 
 		case m@OpenSession(username, database, isLocal) =>
+			logInfo(s"OpenSession $username, $database, $isLocal")
 			val client = sender()
 			if (isLocal) {
 				localProxyActorRef.ask(AllocateSession(username, database)).mapTo[AllocateSessionResponse].onComplete {
@@ -572,7 +574,7 @@ class Moonbox(akkaSystem: ActorSystem,
 						val rsp2 = response2.asInstanceOf[AllocatedSession]
 						sessionIdToJobRunner.put(rsp1.sessionId, actor1)
 						sessionIdToJobRunner.put(rsp2.sessionId, actor2)
-						client ! OpenedSession(rsp2.sessionId + "#" + rsp1.sessionId)
+						client ! OpenedSession(rsp2.sessionId + "#" + rsp1.sessionId) //  local sessionId # cluster sessionId
 					} else if (response1.isInstanceOf[AllocateSessionFailed] && response2.isInstanceOf[AllocateSessionFailed]) {
 						val rsp1 = response1.asInstanceOf[AllocateSessionFailed]
 						val rsp2 = response2.asInstanceOf[AllocateSessionFailed]
@@ -600,6 +602,7 @@ class Moonbox(akkaSystem: ActorSystem,
 
 		case CloseSession(sessionId) =>
 			val client = sender()
+			logInfo(s"CloseSession $sessionId")
 			if(sessionId.split("#").length == 1) {
 				val localSessionId = sessionId.split("#")(0)
 				sessionIdToJobRunner.get(localSessionId) match {
@@ -645,13 +648,14 @@ class Moonbox(akkaSystem: ActorSystem,
 					val localSessionId  = sessionId.split("#")(0)
 					val remoteSessionId = sessionId.split("#")(1)
 					for {
-						a <- clusterProxyActorRef.ask(FreeSession(localSessionId)).mapTo[FreeSessionResponse]
-						b <- localProxyActorRef.ask(FreeSession(remoteSessionId)).mapTo[FreeSessionResponse]
+						a <- clusterProxyActorRef.ask(FreeSession(remoteSessionId)).mapTo[FreeSessionResponse]
+						b <- localProxyActorRef.ask(FreeSession(localSessionId)).mapTo[FreeSessionResponse]
 					} yield handle(a, b)
 				}
 			}
 
 		case JobQuery(sessionId, username, sqls) =>
+			logInfo(s"JobQuery $sessionId, $username $sqls")
 			val client = sender()
 			val now = Utils.now
 			val date = new Date(now)
@@ -686,6 +690,7 @@ class Moonbox(akkaSystem: ActorSystem,
 		// client <--------------- master -------------------proxy------yarnAPP------- Runner
 		//
 		case job@JobSubmit(username, sqls, config, async) =>
+			logInfo(s"JobSubmit $username, $sqls, $config, $async")
 			if ( state == RoleState.SLAVE ) {
 				master forward job
 			}
@@ -753,6 +758,7 @@ class Moonbox(akkaSystem: ActorSystem,
 
 
 		case m@JobCancel(jobId, sessionId) =>
+			logInfo(s"JobCancel $jobId, $sessionId")
 			val requester = sender()
 			(jobId, sessionId) match {
 				case (_, Some(id)) =>
