@@ -244,15 +244,15 @@ class MbSqlBuilder(plan: LogicalPlan, dialect: MbDialect) extends MbLogging {
   private def windowToSQL(w: Window): String = {
     build(
       "SELECT",
-      (w.child.output ++ w.windowOutputSet).map(dialect.expressionToSQL).mkString(", "),
+      (w.child.output ++ w.windowOutputSet).map(expressionToSQL).mkString(", "),
       if (w.child == OneRowRelation) "" else "FROM",
       logicalPlanToSQL(w.child)
     )
   }
 
   private def aggregateToSQL(a: Aggregate): String = {
-    val groupingSQL = a.groupingExpressions.map(dialect.expressionToSQL).mkString(",")
-    val aggregateSQL = if (a.aggregateExpressions.nonEmpty) a.aggregateExpressions.map(dialect.expressionToSQL).mkString(", ")
+    val groupingSQL = a.groupingExpressions.map(expressionToSQL).mkString(",")
+    val aggregateSQL = if (a.aggregateExpressions.nonEmpty) a.aggregateExpressions.map(expressionToSQL).mkString(", ")
     else if (a.groupingExpressions.nonEmpty) groupingSQL
     else throw new Exception("both aggregateExpression and groupingExpression in Aggregate are empty.")
     //
