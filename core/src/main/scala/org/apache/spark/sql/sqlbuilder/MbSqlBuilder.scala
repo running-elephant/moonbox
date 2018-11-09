@@ -82,11 +82,11 @@ class MbSqlBuilder(plan: LogicalPlan, dialect: MbDialect) extends MbLogging {
   def logicalPlanToSQL(logicalPlan: LogicalPlan): String = logicalPlan match {
     case Distinct(p: Project) =>
       val child = logicalPlanToSQL(p.child)
-      val expression = p.projectList.map(dialect.expressionToSQL(_)).mkString(",")
+      val expression = p.projectList.map(expressionToSQL(_)).mkString(",")
       dialect.projectToSQL(p, isDistinct = true, child, expression)
     case p: Project =>
       val child = logicalPlanToSQL(p.child)
-      val expression = p.projectList.map(dialect.expressionToSQL(_)).mkString(",")
+      val expression = p.projectList.map(expressionToSQL(_)).mkString(",")
       dialect.projectToSQL(p, isDistinct = false, child, expression)
     case SubqueryAlias(alias, child) =>
       val childSql = logicalPlanToSQL(child)
@@ -110,23 +110,23 @@ class MbSqlBuilder(plan: LogicalPlan, dialect: MbDialect) extends MbLogging {
         case _: Aggregate => "HAVING"
         case _ => "WHERE"
       }
-      build(logicalPlanToSQL(child), whereOrHaving, dialect.expressionToSQL(condition))
+      build(logicalPlanToSQL(child), whereOrHaving, expressionToSQL(condition))
     case Limit(limitExpr, child) =>
-      dialect.limitSQL(logicalPlanToSQL(child), dialect.expressionToSQL(limitExpr))
+      dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
     case GlobalLimit(limitExpr, child) =>
-      dialect.limitSQL(logicalPlanToSQL(child), dialect.expressionToSQL(limitExpr))
+      dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
     case LocalLimit(limitExpr, child) =>
-      dialect.limitSQL(logicalPlanToSQL(child), dialect.expressionToSQL(limitExpr))
+      dialect.limitSQL(logicalPlanToSQL(child), expressionToSQL(limitExpr))
     case s: Sort =>
       build(
         logicalPlanToSQL(s.child),
         if (s.global) "ORDER BY" else "SORT BY",
-        s.order.map(dialect.expressionToSQL).mkString(", ")
+        s.order.map(expressionToSQL).mkString(", ")
       )
     case p: Join =>
       val left = logicalPlanToSQL(p.left)
       val right = logicalPlanToSQL(p.right)
-      val condition = p.condition.map(condition => " ON " + dialect.expressionToSQL(condition)).getOrElse("")
+      val condition = p.condition.map(condition => " ON " + expressionToSQL(condition)).getOrElse("")
       dialect.joinSQL(p, left, right, condition)
   }
 
