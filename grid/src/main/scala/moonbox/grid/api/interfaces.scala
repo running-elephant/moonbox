@@ -119,18 +119,18 @@ case class StartedYarnAppFailed(id: String, error: String) extends AppStartResul
 sealed trait MbMetaDataApi extends MbApi
 
 case class ShowDatabasesInfo(username: String) extends MbMetaDataApi
-sealed trait ShowDatabasesResultResponse
+sealed trait ShowDatabasesResultResponse extends MbMetaDataApi
 case class ShowedDatabasesInfo(info: Seq[DatabaseInfo]) extends ShowDatabasesResultResponse
 case class ShowedDatabasesInfoFailed(error: String) extends ShowDatabasesResultResponse
 
 case class ShowTablesInfo(database: String, username: String) extends MbMetaDataApi
-sealed trait ShowTablesInfoResultResponse
+sealed trait ShowTablesInfoResultResponse extends MbMetaDataApi
 case class ShowedTablesInfo(tables: Seq[String]) extends ShowTablesInfoResultResponse
 case class ShowedTablesInfoFailed(error: String) extends ShowTablesInfoResultResponse
 
 
 case class DescribeTableInfo(table: String, database: String, username: String) extends MbMetaDataApi
-sealed trait DescribeTableResultResponse
+sealed trait DescribeTableResultResponse extends MbMetaDataApi
 case class DescribedTableInfo(info: TableInfo) extends DescribeTableResultResponse
 case class DescribedTableInfoFailed(error: String) extends DescribeTableResultResponse
 

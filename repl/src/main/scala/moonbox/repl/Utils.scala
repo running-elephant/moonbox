@@ -185,8 +185,8 @@ object Utils {
       sb.append(sep)
     }
     // For Data that has more than "numRows" records
-    val rowsString = if (numRows == 1) "row" else "rows"
     if (showPromote){
+      val rowsString = if (numRows == 1) "row" else "rows"
       sb.append(s"Showing at most top $numRows $rowsString\n")
     }
     sb.toString()
@@ -231,6 +231,10 @@ object Utils {
 
   def showDataResult2(data: Any): Unit = {
     println("data:" + data)
+  }
+
+  def secondToMs(timeout: Int): Int = {
+    timeout * 1000
   }
 
 }

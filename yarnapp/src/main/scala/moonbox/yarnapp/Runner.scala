@@ -25,7 +25,6 @@ import java.util.concurrent.Executors
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog.UserContext
-import moonbox.core.command.MbRunnableCommand
 import moonbox.core.datasys.{DataSystem, Insertable}
 import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker, TableInsertPrivilegeException}
 import moonbox.protocol.app.JobState.JobState
@@ -80,7 +79,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				clean(JobState.KILLED)
 				self ! PoisonPill
 			}
-		case FetchDataFromRunner(_, jobId, fetchSize) =>
+		case FetchDataFromRunner(sessionId, jobId, fetchSize) =>
+			logInfo(s"Runner::FetchDataFromRunner $sessionId, jobId, fetchSize")
 			val target = sender()
 			Future {
 				val directData = fetchData(jobId, fetchSize)
@@ -193,7 +193,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 		}
 		resultDataHashMap.put(jobId, buffer.iterator)  //save data
 
-		fetchData(jobId, 200)
+		fetchData(jobId, 50)
 	}
 
 	def insertInto(insert: InsertIntoTask): JobResult = {

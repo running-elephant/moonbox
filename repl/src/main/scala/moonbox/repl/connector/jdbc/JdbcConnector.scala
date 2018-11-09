@@ -24,21 +24,39 @@ import java.sql.{Connection, DriverManager, ResultSetMetaData, Statement}
 import java.util.Properties
 
 import moonbox.repl.Utils
-import moonbox.repl.connector.Connector
+import moonbox.repl.connector.{ConnectionState, ConnectionType, Connector, RuntimeMode}
 
-class JdbcConnector(timeout: Int) extends Connector {
+import scala.collection.mutable.ArrayBuffer
+
+class JdbcConnector(_timeout: Int, isLocal: Boolean) extends Connector {
   var connection: Connection = _
   var stmt: Statement = _
+  var _connectionState: ConnectionState = _
+  var _fetchSize = if (isLocal) 200 else 50
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
       Class.forName("moonbox.jdbc.MbDriver")
       val url = s"jdbc:moonbox://${host}:${port}/default"
+      val mode = if (isLocal) "local" else "cluster"
       val prop = new Properties()
       prop.setProperty("user", user)
       prop.setProperty("password", pwd)
-      /*prop.setProperty("fetchsize", 200.toString)*/
+      prop.setProperty("mode", mode)
       connection = DriverManager.getConnection(url, prop)
+      _connectionState =
+        ConnectionState(host = "unknown",
+          port = 0,
+          connectionType = ConnectionType.JDBC,
+          runtimeMode = if (isLocal) RuntimeMode.LOCAL else RuntimeMode.CLUSTER,
+          username = user,
+          token = "unknown",
+          sessionId = "unknown",
+          timeout = Utils.secondToMs(_timeout),
+          fetchSize = _fetchSize,
+          maxColumnLength = this.truncate,
+          maxRowsShow = this.max_count
+        )
       true
     } catch {
       case e: Exception =>
@@ -48,16 +66,16 @@ class JdbcConnector(timeout: Int) extends Connector {
   }
 
   override def process(sqls: Seq[String]): Unit = {
-    val numShow = max_count
+    val numShow = _connectionState.maxRowsShow
     stmt = connection.createStatement()
-    stmt.setQueryTimeout(timeout)
-    stmt.setFetchSize(200)
+    stmt.setQueryTimeout(_connectionState.timeout)
+    stmt.setFetchSize(_connectionState.fetchSize.toInt)
     val compositedSql = sqls.mkString("", ";", ";") :: Nil
     compositedSql.foreach { sql =>
       if (stmt.execute(sql)) {  //if can get result
         val rs = stmt.getResultSet
         val metaData: ResultSetMetaData = rs.getMetaData
-        var dataBuf = Seq[Seq[Any]]()
+        var dataBuf = ArrayBuffer[Seq[Any]]()
         val columnCount = metaData.getColumnCount
         val schema = (1 to columnCount).map { index =>
           val name = metaData.getColumnName(index)
@@ -72,7 +90,7 @@ class JdbcConnector(timeout: Int) extends Connector {
           dataBuf :+= colData
           rowCount += 1
         }
-        print(Utils.showString(dataBuf, schema, numShow, truncate))
+        print(Utils.showString(dataBuf, schema, numShow, _connectionState.maxColumnLength))
       }
     }
   }
@@ -94,4 +112,5 @@ class JdbcConnector(timeout: Int) extends Connector {
     }
   }
 
+  override def connectionState = _connectionState
 }

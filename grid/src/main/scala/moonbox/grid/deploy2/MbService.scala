@@ -328,8 +328,8 @@ class MbService(conf: MbConf, catalogContext: CatalogContext, proxy: ActorRef) e
 	}
 
 
-	private def askFor(actorRef: ActorRef)(message: MbApi)(implicit timeout: Timeout): Future[MbJobApi] = {
-		(actorRef ask message).mapTo[MbJobApi]
+	private def askFor(actorRef: ActorRef)(message: MbApi)(implicit timeout: Timeout): Future[MbApi] = {
+		(actorRef ask message).mapTo[MbApi]
 	}
 
 

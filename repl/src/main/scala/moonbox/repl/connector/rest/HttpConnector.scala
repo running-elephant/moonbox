@@ -22,16 +22,19 @@ package moonbox.repl.connector.rest
 
 import moonbox.protocol.client._
 import moonbox.repl.Utils
-import moonbox.repl.connector.Connector
+import moonbox.repl.connector.{ConnectionState, ConnectionType, Connector, RuntimeMode}
 import org.json4s.jackson.Serialization.read
+
+import scala.collection.mutable.ArrayBuffer
 
 // timeout: XXX seconds
 class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   var _client: HttpClient = _
   var _sessionId: String = _
   var _token: String = _
+  var _connectionState: ConnectionState = _
   @volatile var _closed: Boolean = _
-  var DEFAULT_FETCH_SIZE = if (isLocal) { 200 } else { 50 }
+  var _fetchSize = if (isLocal) 200 else 50
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
@@ -41,7 +44,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
-      initClient(host, port, _timeout * 1000)
+      initClient(host, port, Utils.secondToMs(_timeout))
       val requestAccessOutbound = requestAccess(login(user, pwd).token.get, isLocal)
       val hp = requestAccessOutbound.address.get.split(":").map(_.trim)
       try {
@@ -49,9 +52,22 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
       } catch {
         case e: Exception => Console.err.println(s"WARNING: Logout before requestAccess failed: ${e.getMessage}")
       }
-      initClient(hp(0), hp(1).toInt, _timeout * 1000)
+      initClient(hp(0), hp(1).toInt, Utils.secondToMs(_timeout))
       login(user, pwd)
       openSession(_token, db, isLocal)
+      _connectionState =
+        ConnectionState(host = hp(0),
+          port = hp(1).toInt,
+          connectionType = ConnectionType.REST,
+          runtimeMode = if (isLocal) RuntimeMode.LOCAL else RuntimeMode.CLUSTER,
+          username = user,
+          token = _token,
+          sessionId = _sessionId,
+          timeout = Utils.secondToMs(_timeout),
+          fetchSize = _fetchSize,
+          maxColumnLength = this.truncate,
+          maxRowsShow = this.max_count
+        )
       true
     } catch {
       case e: Exception =>
@@ -148,21 +164,24 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
   private def showResult(queryOutbound: InteractiveQueryOutbound): Unit = {
     queryOutbound match {
       case InteractiveQueryOutbound(None, true, Some(d)) =>
+        val dataBuf = ArrayBuffer.empty[Seq[Any]]
         val data = d.data
         var numShowed = data.size
         var hasNext = d.hasNext
         val parsedSchema: Seq[String] = Utils.parseJson(d.schema).map(s => s"${s._1}(${s._2})").toSeq
         /* print data */
-        print(Utils.showString(data.take(numShowed), parsedSchema, max_count, truncate, showPromote = !d.hasNext || numShowed >= max_count))
-        while (numShowed < max_count && hasNext) {
-          val fetchSize = math.min(DEFAULT_FETCH_SIZE, max_count - numShowed)
+        dataBuf ++= data
+//        print(Utils.showString(data.take(numShowed), parsedSchema, _connectionState.maxRowsShow, _connectionState.maxColumnLength, showPromote = !d.hasNext || numShowed >= _connectionState.maxRowsShow))
+        while (numShowed < _connectionState.maxRowsShow && hasNext) {
+          val fetchSize = math.min(_connectionState.fetchSize, _connectionState.maxRowsShow - numShowed)
           val outbound = fetchNextResult(_token, _sessionId, d.cursor, fetchSize)
           val dataToShow = outbound.data.get.data
           hasNext = outbound.data.get.hasNext
           numShowed += dataToShow.size
-          val promote = if (numShowed < max_count && hasNext) false else true
-          print(Utils.showString(dataToShow, parsedSchema, max_count, truncate, showPromote = promote, showSchema = false))
+          dataBuf ++= data
         }
+//        val promote = if (numShowed < _connectionState.maxRowsShow && hasNext) false else true
+        print(Utils.showString(dataBuf, parsedSchema, _connectionState.maxRowsShow, _connectionState.maxColumnLength))
       case InteractiveQueryOutbound(None, false, _) => /* no-op */
       case InteractiveQueryOutbound(error, _, _) => throw new Exception(s"SQL query failed: error=$error")
       case _ => throw new Exception(s"SQL query failed.")
@@ -173,4 +192,6 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
     val cancelInbound = CancelQueryInbound(_token, jobId = None, sessionId = Some(_sessionId))
     _client.post(cancelInbound, "/cancel")
   }
+
+  override def connectionState: ConnectionState = _connectionState
 }
