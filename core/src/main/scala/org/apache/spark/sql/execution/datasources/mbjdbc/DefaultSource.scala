@@ -27,11 +27,29 @@ import org.apache.spark.sql.{SQLContext, SaveMode, _}
 
 class DefaultSource extends CreatableRelationProvider
 	with RelationProvider {
+    //TODO: in yarn cluster, if not driver name, app throws no suitable driver exception. It should config driver or code add automatically
+	private def addDriverIfNecessary(parameters: Map[String, String]): Map[String, String]	 = {
+			val newParameters = if (parameters.get("type").isDefined && parameters.get("driver").isEmpty) {
+					val driver = parameters("type").toLowerCase match {
+							case "clickhouse" =>  Some("ru.yandex.clickhouse.ClickHouseDriver")
+							case "mysql" => Some("com.mysql.jdbc.Driver")
+							case "oracle" => Some("oracle.jdbc.driver.OracleDriver")
+							case "sqlserver" => Some("com.microsoft.sqlserver.jdbc.SQLServerDriver")
+							case "presto" => Some("com.facebook.presto.jdbc.PrestoDriver")
+							case _ => None
+					}
+					if (driver.isDefined) {
+							parameters.updated("driver", driver.get)
+					} else { parameters }
+			} else { parameters }
+			newParameters
+	}
 
   override def createRelation(
 								 sqlContext: SQLContext,
 								 parameters: Map[String, String]): BaseRelation = {
-	val jdbcOptions = new JDBCOptions(parameters)
+	val newParameters = addDriverIfNecessary(parameters)
+	val jdbcOptions = new JDBCOptions(newParameters)
 	val partitionColumn = jdbcOptions.partitionColumn
 	val lowerBound = jdbcOptions.lowerBound
 	val upperBound = jdbcOptions.upperBound
@@ -54,7 +72,8 @@ class DefaultSource extends CreatableRelationProvider
 								 mode: SaveMode,
 								 parameters: Map[String, String],
 								 df: DataFrame): BaseRelation = {
-	val options = new JDBCOptions(parameters)
+	val newParameters = addDriverIfNecessary(parameters)
+	val options = new JDBCOptions(newParameters)
 	val isCaseSensitive = sqlContext.conf.caseSensitiveAnalysis
 
 	val conn = JdbcUtils.createConnectionFactory(options)()
@@ -96,6 +115,6 @@ class DefaultSource extends CreatableRelationProvider
 	  conn.close()
 	}
 
-	createRelation(sqlContext, parameters)
+	createRelation(sqlContext, newParameters)
   }
 }

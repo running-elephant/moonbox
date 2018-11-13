@@ -28,13 +28,12 @@ import org.json4s.jackson.Serialization.read
 import scala.collection.mutable.ArrayBuffer
 
 // timeout: XXX seconds
-class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
+class HttpConnector(_timeout: Int, val isLocal: Boolean, nextFetchSize: Int) extends Connector {
   var _client: HttpClient = _
   var _sessionId: String = _
   var _token: String = _
   var _connectionState: ConnectionState = _
   @volatile var _closed: Boolean = _
-  var _fetchSize = if (isLocal) 200 else 50
 
   Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
     override def run(): Unit = {
@@ -64,7 +63,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
           token = _token,
           sessionId = _sessionId,
           timeout = Utils.secondToMs(_timeout),
-          fetchSize = _fetchSize,
+          fetchSize = nextFetchSize,
           maxColumnLength = this.truncate,
           maxRowsShow = this.max_count
         )
@@ -178,7 +177,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean) extends Connector {
           val dataToShow = outbound.data.get.data
           hasNext = outbound.data.get.hasNext
           numShowed += dataToShow.size
-          dataBuf ++= data
+          dataBuf ++= dataToShow
         }
 //        val promote = if (numShowed < _connectionState.maxRowsShow && hasNext) false else true
         print(Utils.showString(dataBuf, parsedSchema, _connectionState.maxRowsShow, _connectionState.maxColumnLength))

@@ -28,11 +28,10 @@ import moonbox.repl.connector.{ConnectionState, ConnectionType, Connector, Runti
 
 import scala.collection.mutable.ArrayBuffer
 
-class JdbcConnector(_timeout: Int, isLocal: Boolean) extends Connector {
+class JdbcConnector(_timeout: Int, isLocal: Boolean, nextFetchSize: Int) extends Connector {
   var connection: Connection = _
   var stmt: Statement = _
   var _connectionState: ConnectionState = _
-  var _fetchSize = if (isLocal) 200 else 50
 
   override def prepare(host: String, port: Int, user: String, pwd: String, db: String): Boolean = {
     try {
@@ -53,7 +52,7 @@ class JdbcConnector(_timeout: Int, isLocal: Boolean) extends Connector {
           token = "unknown",
           sessionId = "unknown",
           timeout = Utils.secondToMs(_timeout),
-          fetchSize = _fetchSize,
+          fetchSize = nextFetchSize,
           maxColumnLength = this.truncate,
           maxRowsShow = this.max_count
         )
