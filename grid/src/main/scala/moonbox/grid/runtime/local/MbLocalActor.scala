@@ -32,6 +32,10 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
     override def preStart(): Unit = {
         // TODO init sparkContext
         try {
+            val mixCallConf = conf.getAll.filter(elem => elem._1.contains("moonbox.mixcal.local"))
+                       .map{elem => (elem._1.replace("moonbox.mixcal.local", "moonbox.mixcal"), elem._2)}.toSeq
+            conf.set(mixCallConf)
+
             MbSession.startMixcalEnv(conf, false)
         } catch {
             case e: Exception =>
@@ -64,7 +68,7 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
     private def application: Receive = {
         case AllocateSession(username, database) =>
             val requester = sender()
-            logInfo(s"MbWorker::AllocateSession $requester $username $database")
+            logInfo(s"AllocateSession $requester $username $database")
             Future {
                 val mbSession = MbSession.getMbSession(conf).bindUser(username, database)
                 val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
@@ -79,7 +83,7 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
             }
         case FreeSession(sessionId) =>
             val requester = sender()
-            logInfo(s"MbWorker::FreeSession $requester $sessionId")
+            logInfo(s"FreeSession $requester $sessionId")
             Future {
                 if (sessionIdToJobRunner.get(sessionId).isDefined) {
                     val runner = sessionIdToJobRunner.get(sessionId).head
@@ -95,6 +99,7 @@ class MbLocalActor(conf: MbConf, catalogContext: CatalogContext) extends Actor w
             }
 
         case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>
+            logInfo(s"FetchDataFromRunner $sessionId, $jobId, $fetchSize")
             val client = sender()
             sessionIdToJobRunner.get(sessionId) match {
                 case Some(actor) => actor forward m

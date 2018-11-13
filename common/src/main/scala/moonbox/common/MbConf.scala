@@ -29,7 +29,7 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 
 	def this() = this(true)
 
-	private val settings = new ConcurrentHashMap[String, String]()
+	private var settings = new ConcurrentHashMap[String, String]()
 
 	@transient private lazy val reader: ConfigReader = {
 		val _reader = new ConfigReader(new MbConfigProvider(settings))
@@ -115,5 +115,10 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 		}
 	}
 
+	override def clone(): MbConf = {
+		val result = super.clone().asInstanceOf[MbConf]
+		result.settings = new ConcurrentHashMap[String, String](settings)
+		result
+	}
 }
 

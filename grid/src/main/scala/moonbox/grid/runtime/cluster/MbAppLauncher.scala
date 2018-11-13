@@ -27,6 +27,9 @@ object MbAppLauncher {
 
         val appArgs = ArrayBuffer.empty[String]
         yarnAppMainConf.foreach { elem => appArgs += elem._1; appArgs += elem._2 }
+        launchConf.map{ elem => (s"moonbox.mixcal.${elem._1}", elem._2)}.foreach { elem =>
+            appArgs += elem._1; appArgs += elem._2  //mixCallConf, change moonbox.mixcal.cluster to moonbox.mixcal, mbsession config need
+        }
 
         val launcher = new SparkLauncher()
         launcher.setAppName(appName)

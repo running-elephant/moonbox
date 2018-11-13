@@ -14,6 +14,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.JobInfo
 import moonbox.grid.api._
 import moonbox.grid.config._
+import moonbox.grid.deploy2.node.Moonbox
 import moonbox.grid.deploy2.node.ScheduleMessage.ReportYarnAppResource
 import moonbox.protocol.app.{StopBatchAppByPeace, _}
 import org.apache.spark.launcher.SparkAppHandle
@@ -30,7 +31,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
     private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
 
-    private val sparkAppHandleMap: ConcurrentHashMap[String, Future[SparkAppHandle]] = new ConcurrentHashMap[String, Future[SparkAppHandle]]
+    private val sparkAppHandleMap: ConcurrentHashMap[String, SparkAppHandle] = new ConcurrentHashMap[String, SparkAppHandle]
     private val appListenerMap: ConcurrentHashMap[String, MbAppListener] = new ConcurrentHashMap[String, MbAppListener]()
 
     private val appResourceMap = new mutable.HashMap[String, AppResourceInfo]   //id -- yarn resource
@@ -49,7 +50,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
     private def getActorSelectorPath: String = {
         val akkaPort = context.system.settings.config.getString("akka.remote.netty.tcp.port")
         val akkaHost = context.system.settings.config.getString("akka.remote.netty.tcp.hostname")
-        val akkaPath = MbClusterActor.PROXY_PATH
+        val akkaPath = s"${Moonbox.NODE_PATH}/${MbClusterActor.CLUSTER_NAME}"
         val systemName = conf.get(CLUSTER_NAME)
 
         s"akka.tcp://$systemName@$akkaHost:$akkaPort$akkaPath"
@@ -75,11 +76,18 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
         yarnAppMainConf  ++= conf.getAll.filter(_._1.toLowerCase.startsWith("moonbox"))
                                         .filter(_._1.toLowerCase.indexOf("moonbox.mixcal.local") == -1)  //must have this line
-        val handler = Future {
+        Future {
             MbAppLauncher.launch(yarnAppMainConf.toMap, launchConf, appListener)
+        }.onComplete{
+            case Success(handler) =>
+                logInfo(s"startAppByConfig Succeed yarnid: $yarnId")
+                sparkAppHandleMap.put(yarnId, handler)
+            case Failure(e) =>
+                logError(s"startAppByConfig Failed, error: ${e.getMessage}")
+                e.printStackTrace()
         }
+
         appResourceMap.put(yarnId, AppResourceInfo(-1, -1, -1, -1, -1, System.currentTimeMillis()))
-        sparkAppHandleMap.put(yarnId, handler)
         yarnId
     }
 
@@ -173,6 +181,25 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
             }
     }
 
+    private def updateRunningYarnAppFile(id: String) = {
+        import org.json4s.jackson.Serialization.write
+        implicit val formats = DefaultFormats
+        val status = appListenerMap.get(id).state
+        val appId =  appListenerMap.get(id).appId
+        if (status == SparkAppHandle.State.SUBMITTED || status == SparkAppHandle.State.RUNNING) { //add
+            val cfg = if(appConfigurationMap.contains(id)) {
+                val map = appConfigurationMap(id)
+                Some(write(map))
+            } else { None }
+            Utils.updateYarnAppInfo2File(appId, cfg, true)
+        } else if (status == SparkAppHandle.State.FINISHED || status == SparkAppHandle.State.LOST) { //del
+            val cfg = if(appConfigurationMap.contains(id)) {
+                val map = appConfigurationMap(id)
+                Some(write(map))
+            } else { None }
+            Utils.updateYarnAppInfo2File(appId, cfg, false)
+        }
+    }
 
     private def application: Receive = {
         case m@RegisterAppRequest(id, batchJobId, seq, totalCores, totalMemory, freeCores, freeMemory) =>
@@ -187,23 +214,7 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
                     nodeActor ! StartedBatchAppResponse(batchJobId.get)
                 } else {
                     Future {
-                        import org.json4s.jackson.Serialization.write
-                        implicit val formats = DefaultFormats
-                        val status = appListenerMap.get(id).state
-                        val appId =  appListenerMap.get(id).appId
-                        if (status == SparkAppHandle.State.SUBMITTED || status == SparkAppHandle.State.RUNNING) { //add
-                            val cfg = if(appConfigurationMap.contains(id)) {
-                                val map = appConfigurationMap(id)
-                                Some(write(map))
-                            } else { None }
-                            Utils.updateYarnAppInfo2File(appId, cfg, true)
-                        } else if (status == SparkAppHandle.State.FINISHED || status == SparkAppHandle.State.LOST) { //del
-                            val cfg = if(appConfigurationMap.contains(id)) {
-                                val map = appConfigurationMap(id)
-                                Some(write(map))
-                            } else { None }
-                            Utils.updateYarnAppInfo2File(appId, cfg, false)
-                        }
+                        updateRunningYarnAppFile(id)
                     }
                 }
             }
@@ -311,11 +322,11 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
     private def jobResult: Receive = {
         case m@JobStateChanged(jobId, seq, jobState, result) =>
             if (jobIdToJobRunner.contains(jobId)) { //batch clear mapping
-                nodeActor ! m
+                logInfo(s"In node batch, Job $jobId $seq state changed to $jobState")
             } else {
-                logInfo(s"In node adhoc, Job $jobId state changed to $jobState $result")
-                nodeActor ! m
+                logInfo(s"In node adhoc, Job $jobId $seq state changed to $jobState")
             }
+            nodeActor ! m
     }
 
 
@@ -369,11 +380,14 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
         case StartYarnApp(config) =>
             val requester = sender()
+            try {  //parse config exception
+                logInfo(s"StartYarnApp $config")
+                val typeConfig = ConfigFactory.parseString(config)
+                val typeMap = typeConfig.entrySet().asScala.map { c => (c.getKey, c.getValue.unwrapped().toString) }.toMap
+                val id = startAppByConfig(typeMap)
+                requester ! StartedYarnApp(id)
+            }catch { case e: Exception => e.printStackTrace()}
 
-            val typeConfig = ConfigFactory.parseString(config)
-            val typeMap = typeConfig.entrySet().asScala.map{ c => (c.getKey, c.getValue.unwrapped().toString)}.toMap
-            val id = startAppByConfig(typeMap)
-            requester ! StartedYarnApp(id)
     }
 
 
@@ -383,22 +397,22 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
     private def stopApp(id: String): Unit = {
         if(sparkAppHandleMap.containsKey(id)) {
-            sparkAppHandleMap.get(id).foreach(_.stop())
+            sparkAppHandleMap.get(id).stop()
         }
     }
 
     private def killApp(id: String): Unit = {
         if(sparkAppHandleMap.containsKey(id)) {
-            sparkAppHandleMap.get(id).foreach(_.kill())
+            sparkAppHandleMap.get(id).kill()
         }
     }
 
     private def stopAllApp(): Unit = {
-        sparkAppHandleMap.values().asScala.foreach(_.foreach(_.stop()))
+        sparkAppHandleMap.values().asScala.foreach(_.stop())
     }
 
     private def killAllApp(): Unit = {
-        sparkAppHandleMap.values().asScala.foreach(_.foreach(_.kill()))
+        sparkAppHandleMap.values().asScala.foreach(_.kill())
     }
 
     private var nextAppNumber = 0
@@ -434,5 +448,5 @@ class MbClusterActor(conf: MbConf, nodeActor: ActorRef) extends Actor with MbLog
 
 object MbClusterActor {
     val PROXY_PATH = "/user/MbClusterActor"
-
+    val CLUSTER_NAME = "MbClusterActor"
 }
