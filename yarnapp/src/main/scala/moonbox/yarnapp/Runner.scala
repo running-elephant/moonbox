@@ -43,7 +43,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	private implicit val catalogSession = mbSession.userContext
 	private var currentJob: TaskInfo = _
 	private val resultSchemaHashMap = mutable.HashMap.empty[String, String]
-	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Seq[String]]]
+	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Row]]
     private implicit val contextExecutor = {
         val executor = Executors.newFixedThreadPool(10)  //poolsize is temporarily set 10
         ExecutionContext.fromExecutor(executor)
@@ -66,7 +66,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
                     }
 			}
 		case CancelJob(jobId) =>
-      logInfo(s"Runner::CancelJob [WARNING] !!! $jobId")
+      		logInfo(s"Runner::CancelJob [WARNING] !!! $jobId")
 			/* for batch */
 			mbSession.cancelJob(jobId)
 			if (currentJob.sessionId.isDefined && currentJob.sessionId.get == jobId){
@@ -80,7 +80,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 				self ! PoisonPill
 			}
 		case FetchDataFromRunner(sessionId, jobId, fetchSize) =>
-			logInfo(s"Runner::FetchDataFromRunner $sessionId, jobId, fetchSize")
+			logInfo(s"Runner::FetchDataFromRunner $sessionId, $jobId, $fetchSize")
 			val target = sender()
 			Future {
 				val directData = fetchData(jobId, fetchSize)
@@ -117,7 +117,10 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 			var startSize: Long = 0
 			while (iterator.hasNext && startSize < fetchSize) {
-				buffer += iterator.next()
+				buffer += iterator.next().toSeq.map { elem =>
+									if ( elem == null) { "" }
+									else { elem.toString }
+							}
 				startSize += 1
 			}
 
@@ -152,7 +155,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def mqlQuery(query: QueryTask, jobId: String): JobResult = {
 		val optimized = mbSession.optimizedPlan(query.query)
-		var iter: scala.Iterator[Row] = null
+		var iter: scala.Iterator[Row] = Iterator[Row]()
 
 		try {
             mbSession.mixcal.setJobGroup(jobId)  //cancel
@@ -182,16 +185,11 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
                     }
                 }
 		}
+		resultSchemaHashMap.clear()
 		resultSchemaHashMap.put(jobId, optimized.schema.json) //save schema
 
-		val buffer: ArrayBuffer[Seq[String]] = ArrayBuffer.empty[Seq[String]]
-		while (iter.hasNext) {
-			buffer += iter.next().toSeq.map { elem =>
-				if ( elem == null) { "" }
-				else { elem.toString }
-			}
-		}
-		resultDataHashMap.put(jobId, buffer.iterator)  //save data
+		resultDataHashMap.clear()
+		resultDataHashMap.put(jobId, iter)  //save data
 
 		fetchData(jobId, 50)
 	}

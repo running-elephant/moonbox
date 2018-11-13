@@ -23,7 +23,7 @@ trait AuditLogDao extends MbLogging{
     def postBatchEvent(): Unit = {
         val batchSize = getBatchSize
         val events = getBatchEvent(batchSize)
-        logInfo(s"send $batchSize : ${events.size} ")
+        logDebug(s"send $batchSize : ${events.size} ")
         postEvents(events)
     }
 

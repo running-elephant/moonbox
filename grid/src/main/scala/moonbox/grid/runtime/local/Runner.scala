@@ -49,7 +49,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 	private implicit val catalogSession = mbSession.userContext
 	private var currentJob: CommandInfo = _
 	private val resultSchemaHashMap = mutable.HashMap.empty[String, String]
-	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Seq[String]]]
+	private val resultDataHashMap = mutable.HashMap.empty[String, Iterator[Row]]
 
     private implicit val contextExecutor = {
         val executor = Executors.newFixedThreadPool(10)  //poolsize is temporarily set 10
@@ -132,7 +132,10 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 			var startSize: Long = 0
 			while (iterator.hasNext && startSize < fetchSize) {
-				buffer += iterator.next()
+				buffer += iterator.next().toSeq.map { elem =>
+					if ( elem == null) { "" }
+					else { elem.toString }
+				}
 				startSize += 1
 			}
 
@@ -235,7 +238,7 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 
 	def mqlQuery(query: MQLQuery, jobId: String): JobResult = {
 		val format = conf.get(CACHE_IMPLEMENTATION.key, CACHE_IMPLEMENTATION.defaultValueString)
-		var iter: scala.Iterator[Row] = null
+		var iter: scala.Iterator[Row] = Iterator[Row]()
 		val options = conf.getAll.filterKeys(_.startsWith("moonbox.cache")).+("jobId" -> jobId)
 		val optimized = mbSession.optimizedPlan(query.query)
 		try {
@@ -244,10 +247,8 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
 			plan match {
 				case WholePushdown(child, queryable) =>
                     logInfo(s"WholePushdown $query")
-					//mbSession.toDT(child, queryable).write().format(format).options(options).save()
 					iter = mbSession.toDT(child, queryable).iter
 				case _ =>
-					//mbSession.toDF(plan).write.format(format).options(options).save()
 					iter = mbSession.toDF(plan).collect().iterator
 			}
 		} catch {
@@ -262,24 +263,17 @@ class Runner(conf: MbConf, mbSession: MbSession) extends Actor with MbLogging {
                     val plan = mbSession.pushdownPlan(optimized, pushdown = false)
                     plan match {
                         case WholePushdown(child, queryable) =>
-                            //mbSession.toDF(child).write.format(format).options(options).save()
 							iter = mbSession.toDT(child, queryable).iter
                         case _ =>
-                            //mbSession.toDF(plan).write.format(format).options(options).save()
 							iter = mbSession.toDF(plan).collect().iterator
                     }
                 }
 		}
+		resultSchemaHashMap.clear()
 		resultSchemaHashMap.put(jobId, optimized.schema.json) //save schema
 
-		val buffer: ArrayBuffer[Seq[String]] = ArrayBuffer.empty[Seq[String]]
-		while (iter.hasNext) {
-			buffer += iter.next().toSeq.map { elem =>
-				if ( elem == null) { "" }
-				else { elem.toString }
-			}
-		}
-		resultDataHashMap.put(jobId, buffer.iterator)  //save data
+		resultDataHashMap.clear()
+		resultDataHashMap.put(jobId, iter)  //save data
 
 		fetchData(jobId, 200)
 

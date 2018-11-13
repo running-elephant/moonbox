@@ -61,7 +61,7 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
 
         case AllocateSession(username, database) =>
             val requester = sender()
-            logInfo(s"MbWorker::AllocateSession $requester $username $database")
+            logInfo(s"AllocateSession $requester $username $database")
             Future {
                 val mbSession = MbSession.getMbSession(conf).bindUser(username, database)
                 val runner = context.actorOf(Props(classOf[Runner], conf, mbSession))
@@ -77,7 +77,7 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
 
         case FreeSession(sessionId) =>
             val requester = sender()
-            logInfo(s"MbWorker::FreeSession $requester $sessionId")
+            logInfo(s"FreeSession $requester $sessionId")
             Future {
                 if (sessionIdToJobRunner.get(sessionId).isDefined) {
                     val runner = sessionIdToJobRunner.get(sessionId).head
@@ -93,7 +93,7 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
             }
 
         case assign@AssignTaskToWorker(taskInfo) =>
-            logInfo(s"MbWorker::AssignTaskToWorker $taskInfo")
+            logInfo(s"AssignTaskToWorker $taskInfo")
             val requester = sender()
             taskSeqNum += 1
 
@@ -120,7 +120,7 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
             }
 
         case kill@RemoveJobFromWorker(jobId) =>
-            logInfo(s"MbWorker::RemoveJobFromWorker $jobId")
+            logInfo(s"RemoveJobFromWorker $jobId")
             if (sessionIdToJobRunner.contains(jobId) ) {  // adhoc
                 val runner = sessionIdToJobRunner(jobId)
                 runner forward CancelJob(jobId)
@@ -132,7 +132,7 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
             }
 
         case m@FetchDataFromRunner(sessionId, jobId, fetchSize) =>
-            logInfo(s"MbWorker::FetchDataFromRunner $m")
+            logInfo(s"FetchDataFromRunner $m")
             val client = sender()
             sessionIdToJobRunner.get(sessionId) match {
                 case Some(actor) => actor forward m
@@ -140,13 +140,13 @@ class YarnAppActor(conf: MbConf, akkaSystem: ActorSystem, continue: CountDownLat
             }
 
         case m@StopBatchAppByPeace(jobId) =>
-            logInfo(s"MbWorker::StopBatchAppByPeace $jobId  ${jobIdToJobRunner.contains(jobId)}")
+            logInfo(s"StopBatchAppByPeace $jobId  ${jobIdToJobRunner.contains(jobId)}")
             if (jobIdToJobRunner.contains(jobId)) {
                 stopAll
             }
 
         case Terminated(actor)  => context.unwatch(actor)  //only for batch
-            logInfo(s"MbWorker::Terminated $actor}")
+            logInfo(s"Terminated $actor}")
             val jobId: Option[String] = runnerToJobId.get(actor)
             if(jobId.isDefined && jobIdToJobRunner.contains(jobId.get) ) {
                 jobIdToJobRunner.remove(jobId.get)

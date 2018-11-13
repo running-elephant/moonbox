@@ -2,11 +2,13 @@ package moonbox.grid.deploy2.audit
 
 import java.util.{Timer, TimerTask}
 
+import moonbox.common.MbLogging
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class AuditLogger(conf: Map[String, String]) {
-
+class AuditLogger(conf: Map[String, String]) extends MbLogging{
+    //TODO: use MbConf as input param
     val mode = conf.getOrElse("moonbox.audit.implementation", "local")
     val initialDelay = conf.getOrElse("moonbox.audit.initDelay", "1000").toInt
     val intervalDelay = conf.getOrElse("moonbox.audit.intervalDelay", "5000").toInt
@@ -14,16 +16,16 @@ class AuditLogger(conf: Map[String, String]) {
 
     val factory = mode.toUpperCase match {
         case "MYSQL" =>
-            println("audit to mysql")
+            logInfo("audit to mysql")
             new MySqlAuditLogDaoFactory(conf)
         case ("ELASTICSEARCH" | "ES") =>
-            println("audit to es")
+            logInfo("audit to es")
             new ElasticSearchAuditLogDaoFactory(conf)
         case ("LOCALFILE" | "LOCAL") =>
-            println("audit to local")
+            logInfo("audit to local")
             new LocalFileAuditLogDaoFactory(conf)
         case _ =>
-            println("audit to black hole")
+            logInfo("audit to black hole")
             new BlackHoleAuditLogDaoFactory(conf)
     }
 
