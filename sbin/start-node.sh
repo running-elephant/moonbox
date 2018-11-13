@@ -17,11 +17,11 @@ if [ $# -ne 1 ]; then #if start from local, it has 3 parameters
     nodes_address=`echo ${nodes_lines} | sed 's/[[:space:]]/,/g'`
 
     echo "start Moonbox --address $nodes_address"
-    java ${JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy2.node.Moonbox -n ${nodes_address} 1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
+    java ${JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy2.node.Moonbox -n ${nodes_address} 1>${MOONBOX_HOME}/log/"node-$USER-$date.log" 2>&1 &
 else
     #start from remote
     echo "start Moonbox(with input) --nodes ${1}"
-    java ${JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy2.node.Moonbox -n ${1}  1>${MOONBOX_HOME}/log/"master-$USER-$date.log" 2>&1 &
+    java ${JAVA_OPTS} -cp "${MOONBOX_HOME}/libs/*"  moonbox.grid.deploy2.node.Moonbox -n ${1}  1>${MOONBOX_HOME}/log/"node-$USER-$date.log" 2>&1 &
 fi
 
 if [ $? -eq 0 ]; then
