@@ -65,24 +65,23 @@ class NodeSuite extends FunSuite {
     test("add") {
         val config =
             """
-              |{       implementation = "spark"
-              |        name = "test-ddd"
-              |        spark.master = "yarn"
-              |        spark.submit.deployMode = "cluster"
-              |        spark.yarn.resourcemanager.address = "kitty:8032"
-              |        spark.yarn.resourcemanager.hostname = "kitty"
-              |        spark.yarn.access.namenodes = "hdfs://kitty:8020"
-              |        spark.loglevel = "INFO"
-              |        spark.app.name = "test1"
-              |        spark.cores.max = 1
-              |        spark.yarn.am.memory = "64m"
-              |        spark.yarn.am.cores = 1
-              |        spark.executor.instances = 1
-              |        spark.executor.cores = 1
-              |        spark.executor.memory = "512m"
-              |        pushdown.enable = true
-              |        job.mode = "adhoc"
-              |      }
+              |{    "implementation":"spark",
+              |     "name": "test-bbb",
+              |     "spark.master": "yarn",
+              |     "spark.submit.deployMode": "cluster",
+              |     "spark.hadoop.yarn.resourcemanager.address" :"kitty:8032",
+              |     "spark.hadoop.yarn.resourcemanager.hostname": "kitty",
+              |     "spark.yarn.access.namenodes": "hdfs://kitty:8020",
+              |     "spark.loglevel": "INFO",
+              |     "spark.app.name": "test1",
+              |     "spark.cores.max": 1 ,
+              |     "spark.yarn.am.memory": "64m",
+              |     "spark.yarn.am.cores": 1,
+              |     "spark.executor.instances":1,
+              |     "spark.executor.cores": 1,
+              |     "spark.executor.memory": "512m",
+              |     "pushdown.enable":true
+              |}
             """.stripMargin
 
         val ret = Node.addYarn(config)

@@ -47,6 +47,7 @@ object Main {
   var host: String = "localhost"
   var port: Int = 9099
   var password: String = _
+  var fetchSize: Int = 0
   val DELIMITER: String = ";"
   val PARAMETER_PREFIX: String = "%SET "
   val historyMqls: mutable.Queue[String] = new mutable.Queue[String]()
@@ -75,13 +76,14 @@ object Main {
 
   def main(args: Array[String]) {
     parse(args.toList)
+    if(fetchSize == 0) { fetchSize = if(islocal) { 200 } else { 50 } }
     do {
       checkParameters()
       connector = if (method == "rest" || method == "r") {
         //new RestConnector(timeout)
-        new HttpConnector(timeout, islocal)
+        new HttpConnector(timeout, islocal, fetchSize)
       } else {
-        new JdbcConnector(timeout, islocal)
+        new JdbcConnector(timeout, islocal, fetchSize)
       }
       repl()
     } while (retryTimes > 0)
@@ -268,6 +270,9 @@ object Main {
       parse(tail)
     case ("-r" | "--runtime") :: value :: tail =>
       islocal = value.equalsIgnoreCase("local")
+      parse(tail)
+    case ("-f" | "--fetchsize") :: IntParam(value) :: tail =>
+      fetchSize = value
       parse(tail)
     case ("--help") :: tail =>
       printUsageAndExit(0)

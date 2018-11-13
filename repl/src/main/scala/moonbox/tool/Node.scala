@@ -1,5 +1,6 @@
 package moonbox.tool
 
+import com.typesafe.config.ConfigFactory
 import moonbox.protocol.client._
 import moonbox.repl.IntParam
 import moonbox.repl.connector.rest.HttpClient
@@ -76,11 +77,11 @@ object Node {
         read[LoginOutbound](res).token.get
     }
 
-    def logout(token: String): String = {
+    def logout(token: String): Option[String] = {
         client = new HttpClient(httpHost, httpPort, timeout * 1000)
         val _logout = LogoutInbound(token)
         val res = client.post(_logout, "/logout")
-        read[LogoutOutbound](res).error.get
+        read[LogoutOutbound](res).error
     }
 
     def submit(token: String, sqls: Seq[String], config: String): String = {
@@ -124,12 +125,12 @@ object Node {
     }
 
 
-    def getAllAppInfo(map: Map[String, String]): (Seq[String], Seq[Seq[String]]) = {
+    def getAllAppInfo(map: Map[String, Any]): (Seq[String], Seq[Seq[String]]) = {
         val schema = Seq("appid", "name", "progress", "starttime", "endtime")
         var yarnClient: YarnClient = null
         try {
             val yarnConf = new YarnConfiguration
-            map.foreach(elem => yarnConf.set(elem._1, elem._2))
+            map.foreach(elem => yarnConf.set(elem._1, elem._2.toString))
 
             yarnClient = YarnClient.createYarnClient
             yarnClient.init(yarnConf)
@@ -146,14 +147,14 @@ object Node {
         }
     }
 
-    def killApplication(map: Map[String, String], appid: String): Boolean = {
+    def killApplication(map: Map[String, Any], appid: String): Boolean = {
         var yarnClient: YarnClient = null
         try {
             if (appid.split('_').length != 3) {
                 throw new Exception(s"appid $appid format is not corrent")
             }
             val yarnConf = new YarnConfiguration
-            map.foreach(elem => yarnConf.set(elem._1, elem._2))
+            map.foreach(elem => yarnConf.set(elem._1, elem._2.toString))
 
             yarnClient = YarnClient.createYarnClient
             yarnClient.init(yarnConf)
@@ -178,13 +179,13 @@ object Node {
         System.exit(0)
     }
 
-    def parse(value: String): Map[String, String] = {
+    def parse(value: String): Map[String, Any] = {
         if(value == null) {
             throw new Exception("Value is Null")
         }
         val b = scala.util.parsing.json.JSON.parseFull(value)
         b match {
-            case Some(map: Map[String, String]) => map
+            case Some(map: Map[String, Any]) => map
             case None => throw new Exception("Parsing failed")
             case other => throw new Exception("Unknown data structure: " + other)
         }
@@ -204,31 +205,31 @@ object Node {
         case ("-c" | "--config") :: value :: tail =>
             config = value
             doCommand(tail)
-        case ("-a" | "--addyarnapp") :: value :: tail =>
-            val rsp = addYarn(value)
+        case ("-a" | "--addyarnapp") :: tail =>
+            val rsp = addYarn(config)  //json string
             showAppIdResult(rsp.appId, rsp.error)
-        case ("-r" | "--removeyarnapp") :: value :: tail =>
-            val rsp = removeYarnApp(value)
+        case ("-r" | "--removeyarnapp") :: id :: tail =>
+            val rsp = removeYarnApp(id)
             showAppIdResult(rsp.appId, rsp.error)
         case ("-sy" | "--showyarnapp") :: tail =>
             val rsp = showYarnApp()
             showDataResult(rsp.schema, rsp.data, rsp.error)
         case ("-l" | "--listyarnapp" ) :: tail =>
-            val b = parse(config)
+            val b = parse(config)  //json
             val rsp = getAllAppInfo(b)
             showDataResult(Option(rsp._1), Option(rsp._2), None)
         case ("-k" | "--killyarnapp" ) :: value :: tail =>
-            val b = parse(config)
+            val b = parse(config)  //json
             killApplication(b, value)
-        case ("-sd" | "--showdatabases" ) :: value :: tail =>
+        case ("-sd" | "--showdatabases" ) :: tail =>
             val rsp = doShowDatabases(user, password)
-            showDataResult2(rsp)
-        case ("-st" | "--showtables" ) :: value :: tail =>
+            showDataResultJson(rsp)
+        case ("-st" | "--showtables" ) :: tail =>
             val rsp = doShowTables(user, password, database)
-            showDataResult2(rsp)
-        case ("-d" | "--desctable" ) :: value :: tail =>
+            showDataResultJson(rsp)
+        case ("-dt" | "--desctable" ) :: tail =>
             val rsp =  doDescTables(user, password, table, database)
-            showDataResult2(rsp)
+            showDataResultJson(rsp)
         case ("-t" | "--table") :: value :: tail =>
             table = value
             doCommand(tail)
@@ -262,12 +263,15 @@ object Node {
         System.err.println(
             "Usage: moonbox [options]\n" +
                     "options:\n" +
-                    "   -t, --timeout  1000         Timeout for http request \n" +
+                    "   -t, --timeout  1000            Timeout for http request \n" +
                     "   -a, --addyarnapp config        Add Yarn App to this node\n" +
                     "   -r, --removeyarnapp id         Remove Yarn App to this node.\n" +
-                    "   -s, --showyarnapp              Show all yarn app in this node.\n" +
+                    "   -sy, --showyarnapp             Show all yarn app in this node.\n" +
                     "   -c config -l, --listyarnapp    Show all yarn app by config \n" +
                     "   -c config -k, --killyarnapp    Kill Yarn App Id by config \n" +
+                    "   -sd, --showdatabases           Show databases \n"+
+                    "   -st, --showtables              Show tables in database" +
+                    "   -dt, --desctable               Describe one table in database" +
                     "   --help"
         )
         System.exit(exitCode)

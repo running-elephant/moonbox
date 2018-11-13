@@ -229,8 +229,15 @@ object Utils {
     }
   }
 
-  def showDataResult2(data: Any): Unit = {
-    println("data:" + data)
+  def toJson[T <: AnyRef](obj: T): String = {
+    import org.json4s.DefaultFormats
+    import org.json4s.jackson.Serialization.writePretty
+    implicit val formats = DefaultFormats
+    writePretty[T](obj)
+  }
+
+  def showDataResultJson[T <: AnyRef](data: T): Unit = {
+    println("data:" + toJson(data))
   }
 
   def secondToMs(timeout: Int): Int = {
