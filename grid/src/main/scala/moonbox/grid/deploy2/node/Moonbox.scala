@@ -164,9 +164,9 @@ class Moonbox(akkaSystem: ActorSystem,
 			println
 		}
 
-		clusterProxyActorRef = akkaSystem.actorOf(Props(classOf[MbClusterActor], conf, self), s"MbClusterActor")
+		clusterProxyActorRef = context.actorOf(Props(classOf[MbClusterActor], conf.clone(), self), s"MbClusterActor")
 
-		localProxyActorRef = akkaSystem.actorOf(Props(classOf[MbLocalActor], conf, catalogContext), s"MbLocalActor")
+		localProxyActorRef = context.actorOf(Props(classOf[MbLocalActor], conf.clone(), catalogContext), s"MbLocalActor")
 
 	}
 
@@ -367,7 +367,9 @@ class Moonbox(akkaSystem: ActorSystem,
 		case MasterChanged(address) =>
 			logInfo("Master has changed, new master is at " + address)
 			master = address
-			master ! RegisterNode(NODE_ID, host, port, self, 100, 100, jdbcPort, restPort)
+			val core = Runtime.getRuntime.availableProcessors
+			val memory = Runtime.getRuntime.freeMemory
+			master ! RegisterNode(NODE_ID, host, port, self, core, memory, jdbcPort, restPort)
 
 		case UnreachableMember(member) =>
 			addressToNode.get(member.address).foreach(removeNode)
@@ -461,7 +463,7 @@ class Moonbox(akkaSystem: ActorSystem,
 
 	private def jobResult: Receive = {
 		case m@JobStateChanged(jobId, taskSeq, jobState, result) =>
-			logInfo(s"JobStateChanged send $jobId, $taskSeq, $jobState, $result")
+			logInfo(s"JobStateChanged send $jobId, $taskSeq, $jobState")
 			runningJobs.get(jobId) match {
 				case Some(jobInfo) =>
 					jobState match {
@@ -534,22 +536,27 @@ class Moonbox(akkaSystem: ActorSystem,
 	private def interface: Receive = {
 		case m@RequestAccess(connectionType, isLocal) =>
 			logInfo(s"RequestAccess $connectionType, $isLocal")
-			if (state == RoleState.MASTER) {
-				val requester = sender()
-				val nodeOpt = selectAdhocNode(isLocal)
-				nodeOpt match {
-					case Some(node) =>
-						val port = connectionType match {
-							case ConnectionType.REST => node.restPort
-							case ConnectionType.JDBC => node.jdbcPort
-							case ConnectionType.ODBC => node.odbcPort
-						}
-						requester ! RequestedAccess(s"${node.host}:$port")
-					case None => requester ! RequestAccessFailed("no available node in moonbox cluster")
+			val requester = sender()
+            if (state == RoleState.MASTER) {
+                val nodeOpt = selectAdhocNode(isLocal)
+                nodeOpt match {
+                    case Some(node) =>
+                        val port = connectionType match {
+                            case ConnectionType.REST => node.restPort
+                            case ConnectionType.JDBC => node.jdbcPort
+                            case ConnectionType.ODBC => node.odbcPort
+                        }
+                        requester ! RequestedAccess(s"${node.host}:$port")
+                    case None => requester ! RequestAccessFailed("no available node in moonbox cluster")
+                }
+            } else {
+				if (master == null) {
+					requester ! RequestAccessFailed("no available Master in moonbox cluster")
+				} else {
+					master forward m
 				}
-			} else {
-				master forward m
-			}
+            }
+
 
 		case m@OpenSession(username, database, isLocal) =>
 			logInfo(s"OpenSession $username, $database, $isLocal")
@@ -691,11 +698,8 @@ class Moonbox(akkaSystem: ActorSystem,
 		//
 		case job@JobSubmit(username, sqls, config, async) =>
 			logInfo(s"JobSubmit $username, $sqls, $config, $async")
-			if ( state == RoleState.SLAVE ) {
-				master forward job
-			}
-			else if ( state == RoleState.MASTER ) {
-				val client = sender() //enqueue for schedule later
+			val client = sender() //enqueue for schedule later
+			if ( state == RoleState.MASTER ) {
 				val now = Utils.now
 				val date = new Date(now)
 				val jobId = newJobId(date)  //master generate jobId
@@ -710,14 +714,17 @@ class Moonbox(akkaSystem: ActorSystem,
 					case e: Exception =>
 						client ! JobFailed(jobId, e.getMessage)
 				}
+			} else {
+				if ( master == null) {
+					client ! JobFailed("", "No Selected Master in cluster")
+				} else {
+					master forward job
+				}
 			}
 
 		case m@JobProgress(jobId) =>
-			if ( state == RoleState.SLAVE ) {
-				master forward m
-			}
-			else {
-				val client = sender()
+			val client = sender()
+			if ( state == RoleState.MASTER ) {
 				val jobInfo = runningJobs.get(jobId).orElse(
 					completeJobs.get(jobId).orElse(
 						failedJobs.get(jobId).orElse(
@@ -730,6 +737,12 @@ class Moonbox(akkaSystem: ActorSystem,
 						client ! JobProgressState(job.jobId, job)
 					case None =>
 						client ! JobFailed(jobId, s"Job $jobId does not exist or has been removed.")
+				}
+			} else {
+				if (master == null) {
+					client ! JobFailed(jobId, "No Selected Master in cluster")
+				} else {
+					master forward m
 				}
 			}
 
@@ -799,9 +812,9 @@ class Moonbox(akkaSystem: ActorSystem,
 				master forward m
 			} else {
 				val requester = sender()
-				val schema = Seq("id", "host", "port", "jdbc", "rest", "local_core", "local_mem", "yarn_core", "yarn_mem" )
+				val schema = Seq("id", "host", "port", "jdbc", "rest", "local_core", "local_mem", "yarn_core", "yarn_mem", "heart beat" )
 				val data = registeredNodes.map{ elem=>
-					Seq(elem.id, elem.host, elem.port, elem.jdbcPort, elem.restPort, elem.coresFree, elem.memoryFree, elem.yarnAdhocFreeCore, elem.yarnAdhocFreeMemory)}.toSeq
+					Seq(elem.id, elem.host, elem.port, elem.jdbcPort, elem.restPort, elem.coresFree, elem.memoryFree, elem.yarnAdhocFreeCore, elem.yarnAdhocFreeMemory, Utils.formatDate(elem.lastHeartbeat) )}.toSeq
 				requester ! GottenNodesInfo(schema, data)
 			}
 
@@ -906,9 +919,11 @@ class Moonbox(akkaSystem: ActorSystem,
 			initNum += node.coresFree
 			(initNum, node)
 		}
-		val randIndex = new Random().nextInt(initNum)
-		nodeWithInterval.find(randIndex < _._1 ).map(_._2)
-
+		if (initNum == 0) { None }
+		else {
+			val randIndex = new Random().nextInt(initNum)  // initNum must > 0, or it will throw exception
+			nodeWithInterval.find(randIndex < _._1).map(_._2)
+		}
 	}
 
 	private def selectNode(): String = {
