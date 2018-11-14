@@ -28,7 +28,7 @@ import org.apache.kudu.client.KuduClient.KuduClientBuilder
 import org.apache.kudu.client.KuduScanner.KuduScannerBuilder
 import org.apache.kudu.client.SessionConfiguration.FlushMode
 import org.apache.kudu.client._
-import org.apache.kudu.spark.kudu.{DefaultSource, KuduRelation}
+import org.apache.kudu.spark.kudu.KuduContext
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -131,10 +131,20 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
     (columns, filters.toArray)
   }
 
+  private def getScanLocalityType(): ReplicaSelection = {
+    props.getOrElse(SCAN_LOCALITY, "closest_replica").toLowerCase match {
+      case "leader_only" => ReplicaSelection.LEADER_ONLY
+      case "closest_replica" => ReplicaSelection.CLOSEST_REPLICA
+      case other => throw new IllegalArgumentException(s"Unsupported replica selection type '$other'")
+    }
+  }
+
   override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
-    val kuduRelation = new DefaultSource().createRelation(sparkSession.sqlContext, props, plan.schema)
-    val (columns, filters) = collectFilters(plan)
-    val kuduRdd = kuduRelation.asInstanceOf[KuduRelation].buildScan(columns, filters)
+    val faultTolerantScanner = props.getOrElse(FAULT_TOLERANT_SCANNER, "false").toBoolean
+    val table = getClient.openTable(tableName())
+    val (requiredColumns, predicates) = ExpressionUtils.findPredicates(plan, table.getSchema)
+    val kuduRdd = new KuduRDD(new KuduContext(masterAddress(), sparkSession.sparkContext), 1024 * 1024 * 20, requiredColumns, predicates,
+      table, faultTolerantScanner, getScanLocalityType(), sparkSession.sparkContext)
     sparkSession.createDataFrame(kuduRdd, plan.schema)
   }
 
@@ -148,17 +158,15 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
     buildKuduScanner(plan, scannerBuilder, kuduTable)
     val kuduScanner = scannerBuilder.build()
     val iterator: Iterator[Row] = new Iterator[Row] {
-      val limitValue: Long = kuduScanner.getLimit
-      /*hack the limit operator with two iterator*/
-      val limitIterator = 1.toLong to limitValue toIterator
+      var limitValue: Long = kuduScanner.getLimit
       var iterOption: Option[RowResultIterator] = getIter
 
       override def hasNext = {
         iterOption match {
           case Some(iter) =>
-            if (iter.hasNext && limitIterator.hasNext) true
-            else if (!limitIterator.hasNext) {
-              logWarning(s"To make limit($limitValue) to come into force, stop the iteration.")
+            if (iter.hasNext && limitValue > 0) true
+            else if (limitValue <= 0) {
+              logWarning(s"To make limit($limitValue) take effect forcibly, stop the iteration.")
               false
             } else {
               iterOption = getIter
@@ -169,7 +177,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
       }
 
       override def next() = {
-        limitIterator.next()
+        limitValue -= 1
         val rowResult = iterOption.get.next()
         val row = new ArrayBuffer[Any]()
         for (i <- 0 until rowResult.getSchema.getColumnCount) {

@@ -6,12 +6,39 @@ import org.apache.kudu.client.KuduPredicate
 import org.apache.kudu.client.KuduPredicate.ComparisonOp
 import org.apache.kudu.{ColumnSchema, Schema, Type}
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, LogicalPlan, Project}
+import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.sources
 import org.apache.spark.sql.types.StringType
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 object ExpressionUtils {
+
+  def findPredicates(plan: LogicalPlan, schema: Schema): (Array[String], Array[KuduPredicate]) = {
+    val filters: ArrayBuffer[KuduPredicate] = new ArrayBuffer()
+    var cols: Array[String] = Array.empty
+    plan.children.foreach { child =>
+      val (c, fs) = findPredicates(child, schema)
+      cols = c
+      filters ++= fs
+    }
+    plan match {
+      case Filter(condition, child) =>
+        filters ++= ExpressionUtils.toKuduPredicate(condition, schema)
+      case LogicalRelation(_, output, _) => cols = output.map(_.name).toArray
+      case Project(projectList, _) =>
+        if (projectList.nonEmpty) {
+          cols = projectList.map(_.name).toArray
+        } else {
+          cols = cols.take(1)
+        }
+      case Aggregate(groupingExpressions, aggregateExpressions, child) => /* no-op, TODO: support aggregate push down */
+      case _ => /* no-op */
+    }
+    (cols, filters.toArray)
+  }
 
   def predicate2Filter(predicate: Expression): sources.Filter = {
     predicate match {
