@@ -26,26 +26,26 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.catalog._
 import moonbox.core.config._
-import org.apache.spark.sql.optimizer.MbOptimizer
+import moonbox.core.datasys.DataSystem
+import moonbox.core.udf.UdfUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import moonbox.core.datasys.DataSystem
-import moonbox.core.resource.ResourceMonitor
-import moonbox.core.udf.UdfUtils
+import org.apache.spark.sql.hive.{HiveClientUtils, HiveTableScan}
+import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
-import org.apache.spark.sql.hive.{HiveClientUtils, HiveTableScans}
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
 	import MixcalContext._
 	val sparkSession = {
 		SparkSession.clearDefaultSession()
+		SparkSession.clearActiveSession()
 		SparkSession.builder().sparkContext(getSparkContext(conf))
-			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScans(sparkSession)))
+			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScan(sparkSession)))
 			.getOrCreate()
 	}
 	lazy val mbOptimizer = new MbOptimizer(sparkSession)
@@ -98,16 +98,18 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 		val typ = props("type")
 		val catalog = sparkSession.sessionState.catalog
-		if (catalog.tableExists(tableIdentifier)) {
+		/*if (catalog.tableExists(tableIdentifier)) {
 			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
-		}
+		}*/
 		if (typ == "hive") {
-			val catalogTable = HiveClientUtils.getHiveClient(props).getTable(props("hivedb"), props("hivetable"))
-			catalog.createTable(catalogTable.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL), ignoreIfExists = true)
+			val hiveClient = HiveClientUtils.getHiveClient(props)
+			val hiveCatalog = hiveClient.getTable(props("hivedb"), props("hivetable"))
+			catalog.createTable(hiveCatalog.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL, properties = hiveCatalog.properties ++ props), ignoreIfExists = true)
+			catalog.createPartitions(tableIdentifier, hiveClient.getPartitions(hiveCatalog), ignoreIfExists = true)
 		} else {
 			val createTableSql =
 				s"""
-				   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
+				   |create table if not exists ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
 				   |using ${DataSystem.lookupDataSource(typ)}
 				   |options($propsString)
 			 """.stripMargin

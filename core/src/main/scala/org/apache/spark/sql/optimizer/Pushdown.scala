@@ -21,7 +21,7 @@
 package org.apache.spark.sql.optimizer
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.expressions.{AttributeReference, EqualTo}
+import org.apache.spark.sql.catalyst.expressions.{AttributeReference, EqualTo, ExprId}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import moonbox.core.datasys.{DataSystem, Pushdownable}
@@ -82,11 +82,24 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 	}
 
 	private def replacePushdownSubtree(graph: MbTreeNode, points: mutable.HashSet[MbTreeNode]): LogicalPlan = {
-		graph.plan.transformDown {
+		logInfo(s"\n===== Old logical plan before partial push down =====\n${graph.plan.toString()}")
+		val newPlan = graph.plan.transformDown {
 			case logicalPlan: LogicalPlan if points.map(_.plan).contains(logicalPlan) =>
 				val treeNode = points.find(_.plan.equals(logicalPlan)).get
-				treeNode.dataSystem.asInstanceOf[Pushdownable].buildScan(treeNode.plan, sparkSession).logicalPlan
+				val oldAttrs = logicalPlan.output
+				val plan2 = treeNode.dataSystem.asInstanceOf[Pushdownable].buildScan(treeNode.plan, sparkSession).logicalPlan
+				val newAttrs = plan2.output
+				val newIdToOldId = mutable.Map.empty[ExprId, ExprId]
+				newAttrs.zip(oldAttrs).foreach(elem => newIdToOldId += (elem._1.exprId -> elem._2.exprId))
+				plan2.transformExpressions {
+					case a: AttributeReference =>
+						if (newIdToOldId.contains(a.exprId)){
+							a.copy()(exprId = newIdToOldId(a.exprId), a.qualifier, a.isGenerated)
+						} else a
+				}
 		}
+		logInfo(s"\n===== New logical plan with partial push down =====\n${newPlan.toString()}")
+		newPlan
 	}
 
 	private def buildDataSystemTree(plan: LogicalPlan): MbTreeNode = {

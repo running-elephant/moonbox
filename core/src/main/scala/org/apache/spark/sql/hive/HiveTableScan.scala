@@ -26,9 +26,8 @@ import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Expression}
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.SparkPlan
-import org.apache.spark.sql.hive.execution.HiveTableScanExec
 
-case class HiveTableScans(sparkSession: SparkSession) extends Strategy {
+case class HiveTableScan(sparkSession: SparkSession) extends Strategy {
 	def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
 		case PhysicalOperation(projectList, predicates, relation: CatalogRelation) =>
 			// Filter out all predicates that only deal with partition keys, these are given to the
