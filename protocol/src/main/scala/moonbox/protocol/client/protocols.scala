@@ -32,7 +32,7 @@ case class LogoutOutbound(error: Option[String]) extends Outbound
 case class RequestAccessInbound(token: Option[String] = None, isLocal: Boolean) extends Inbound
 case class RequestAccessOutbound(address: Option[String] = None, error: Option[String] = None) extends Outbound
 
-case class OpenSessionInbound(token: String, database: Option[String], isLocal: Boolean) extends Inbound
+case class OpenSessionInbound(token: String, database: Option[String], isLocal: Boolean = false) extends Inbound
 case class OpenSessionOutbound(sessionId: Option[String] = None, error: Option[String] = None) extends Outbound
 
 case class CloseSessionInbound(token: String, sessionId: String) extends Inbound
@@ -45,17 +45,14 @@ case class InteractiveQueryInbound(
 	sessionId: String,
 	sqls: Seq[String],
 	fetchSize: Int = 1000,
-	maxRows: Long = 1000) extends Inbound
+	maxRows: Long = 10000) extends Inbound
 case class InteractiveQueryOutbound(
 	error: Option[String] = None,
-	hasResult: Boolean = false,
 	data: Option[ResultData] = None) extends Outbound
 
 case class InteractiveNextResultInbound(
 	token: String,
-	sessionId: String,
-	cursor: String,
-	fetchSize: Long
+	sessionId: String
 ) extends Inbound
 
 case class InteractiveNextResultOutbound(
@@ -72,8 +69,8 @@ case class BatchQueryOutbound(
 
 case class BatchQueryProgressInbound(token: String, jobId: String) extends Inbound
 case class BatchQueryProgressOutbound(
-	error: Option[String] = None,
-	state: Option[String] = None) extends Outbound
+	message: String,
+	state: Option[String]) extends Outbound
 
 // interactive and batch
 case class CancelQueryInbound(token: String, jobId: Option[String], sessionId: Option[String]) extends Inbound

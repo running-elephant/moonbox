@@ -32,7 +32,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging{
+class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging {
 	import profile.api._
 
 	initializeIfNeeded()
@@ -110,7 +110,7 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging{
 		if (!EntityComponent.isInitialized.getAndSet(true)) {
 			// if initialize failed, throw fatal exception, then jvm exit.
 			Await.result(initialize(),
-				new FiniteDuration(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), MILLISECONDS))
+				new FiniteDuration(conf.get(JDBC_CATALOG_AWAIT_TIMEOUT), MILLISECONDS))
 		}
 	}
 

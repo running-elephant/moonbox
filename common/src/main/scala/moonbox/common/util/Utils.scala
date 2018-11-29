@@ -22,7 +22,7 @@ package moonbox.common.util
 
 import java.io.{ByteArrayInputStream, ObjectInputStream, ObjectOutputStream, _}
 import java.lang.reflect.Field
-import java.net.InetAddress
+import java.net.{Inet4Address, InetAddress, NetworkInterface}
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 import java.util.{Collections, Date, Properties, Map => JMap}
@@ -212,7 +212,7 @@ object Utils extends MbLogging {
 	def getYarnAppJar(env: Map[String, String] = sys.env): Option[String] = {
 		if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
 			val projectPath = System.getProperty("user.dir")
-			val depLocalDir = s"$projectPath" + File.separator + "yarnapp" +  File.separator +"target"
+			val depLocalDir = s"$projectPath" + File.separator + "clusterapp" +  File.separator +"target"
 			val file = new File(depLocalDir)
 			val jarFile = file.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-")).map(_.getAbsolutePath).headOption
 			jarFile
@@ -232,7 +232,7 @@ object Utils extends MbLogging {
 	}
 
 
-	def updateYarnAppInfo2File(id: String, cfg: Option[String], addOrDel: Boolean, env: Map[String, String] = sys.env): Unit = {
+	/*def updateYarnAppInfo2File(id: String, cfg: Option[String], addOrDel: Boolean, env: Map[String, String] = sys.env): Unit = {
 		val appIdFile = if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
 			val projectPath = System.getProperty("user.dir")
 			val depLocalDir = s"$projectPath" + File.separator + "yarnapp" +  File.separator +"target"
@@ -276,7 +276,7 @@ object Utils extends MbLogging {
 			}
 		}
 
-	}
+	}*/
 
 
 	def delete (file: File) {
@@ -293,8 +293,55 @@ object Utils extends MbLogging {
 		}
 	}
 
-	def checkHost(host: String, message: String): Unit = {
-		assert(host.indexOf(':') == -1, message)
+	private val customHostname: Option[String] = sys.env.get("MOONBOX_LOCAL_HOSTNAME")
+
+	private lazy val localIpAddress: InetAddress = findLocalInetAddress()
+
+	private def findLocalInetAddress(): InetAddress = {
+		val defaultIpOverride = System.getenv("MOONBOX_LOCAL_IP")
+		if (defaultIpOverride != null) {
+			InetAddress.getByName(defaultIpOverride)
+		} else {
+			val address = InetAddress.getLocalHost
+			if (address.isLoopbackAddress) {
+				// Address resolves to something like 127.0.1.1, which happens on Debian; try to find
+				// a better address using the local network interfaces
+				// getNetworkInterfaces returns ifs in reverse order compared to ifconfig output order
+				// on unix-like system. On windows, it returns in index order.
+				// It's more proper to pick ip address following system output order.
+				val activeNetworkIFs = NetworkInterface.getNetworkInterfaces.asScala.toSeq
+				val reOrderedNetworkIFs = activeNetworkIFs.reverse
+
+				for (ni <- reOrderedNetworkIFs) {
+					val addresses = ni.getInetAddresses.asScala
+						.filterNot(addr => addr.isLinkLocalAddress || addr.isLoopbackAddress).toSeq
+					if (addresses.nonEmpty) {
+						val addr = addresses.find(_.isInstanceOf[Inet4Address]).getOrElse(addresses.head)
+						// because of Inet6Address.toHostName may add interface at the end if it knows about it
+						val strippedAddress = InetAddress.getByAddress(addr.getAddress)
+						// We've found an address that looks reasonable!
+						logWarning("Your hostname, " + InetAddress.getLocalHost.getHostName + " resolves to" +
+							" a loopback address: " + address.getHostAddress + "; using " +
+							strippedAddress.getHostAddress + " instead (on interface " + ni.getName + ")")
+						logWarning("Set MOONBOX_LOCAL_IP if you need to bind to another address")
+						return strippedAddress
+					}
+				}
+				logWarning("Your hostname, " + InetAddress.getLocalHost.getHostName + " resolves to" +
+					" a loopback address: " + address.getHostAddress + ", but we couldn't find any" +
+					" external IP address!")
+				logWarning("Set MOONBOX_LOCAL_IP if you need to bind to another address")
+			}
+			address
+		}
+	}
+
+	def checkHost(host: String): Unit = {
+		assert(host != null && host.indexOf(':') == -1, s"Expected hostname but get $host")
+	}
+
+	def localHostName(): String = {
+		customHostname.getOrElse(localIpAddress.getHostAddress)
 	}
 
 	def now: Long = System.currentTimeMillis()

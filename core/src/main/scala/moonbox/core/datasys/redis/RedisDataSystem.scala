@@ -37,7 +37,7 @@ class RedisDataSystem(props: Map[String, String])
 
 	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
 		require(props.contains("jobId"))
-		val servers = props.getOrElse(CACHE_SERVERS.key, CACHE_SERVERS.defaultValueString)
+		val servers = props.getOrElse("", "")
 		val redisClient = new RedisCache(servers)
 		val jobId = props("jobId")
 		redisClient.put[String, String, String]("SCHEMA", jobId, table.schema.json)

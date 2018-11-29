@@ -30,10 +30,10 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 
 	private val conf: MbConf = new MbConf()
 		.set(CATALOG_IMPLEMENTATION.key, "h2")
-		.set(CATALOG_URL.key, "jdbc:h2:mem:testdb0;DB_CLOSE_DELAY=-1")
-		.set(CATALOG_USER.key, "testUser")
-		.set(CATALOG_PASSWORD.key, "testPass")
-		.set(CATALOG_DRIVER.key, "org.h2.Driver")
+		.set(JDBC_CATALOG_URL.key, "jdbc:h2:mem:testdb0;DB_CLOSE_DELAY=-1")
+		.set(JDBC_CATALOG_USER.key, "testUser")
+		.set(JDBC_CATALOG_PASSWORD.key, "testPass")
+		.set(JDBC_CATALOG_DRIVER.key, "org.h2.Driver")
 
 
 	val catalog = new CatalogContext(conf)

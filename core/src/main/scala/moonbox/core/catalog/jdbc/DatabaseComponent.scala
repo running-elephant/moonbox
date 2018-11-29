@@ -27,13 +27,16 @@ import moonbox.common.exception.UnsupportedException
 import moonbox.core.config._
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc._
+
 trait DatabaseComponent {
 	protected val conf: MbConf
-	private lazy val implementation = conf.get(CATALOG_IMPLEMENTATION)
-	protected lazy val url: String = conf.get(CATALOG_URL)
-	private lazy val user = conf.get(CATALOG_USER)
-	private lazy val password = conf.get(CATALOG_PASSWORD)
-	private lazy val driver = conf.get(CATALOG_DRIVER)
+	private lazy val implementation: String = conf.get(CATALOG_IMPLEMENTATION)
+		.getOrElse(throw new NoSuchElementException(CATALOG_IMPLEMENTATION.key))
+	protected lazy val url: String = conf.get(JDBC_CATALOG_URL)
+	    .getOrElse(throw new NoSuchElementException(JDBC_CATALOG_URL.key))
+	private lazy val user: String = conf.get(JDBC_CATALOG_USER).orNull
+	private lazy val password: String = conf.get(JDBC_CATALOG_PASSWORD).orNull
+	private lazy val driver: String = conf.get(JDBC_CATALOG_DRIVER).orNull
 	protected lazy val profile = {
 		implementation.toLowerCase(Locale.ROOT) match {
 			case "mysql" => MySQLProfile

@@ -21,7 +21,7 @@
 package moonbox.grid.scheduler
 
 import moonbox.common.util.ListenerEvent
-
+/*
 trait MbListenerInterface {
 
 	def onJobSubmitted(jobSubmitted: JobSubmitted): Unit
@@ -37,4 +37,4 @@ trait MbListenerInterface {
 	def onJobGettingResult(jobGettingResult: JobGettingResult): Unit
 
 	def onOtherEvent(event: ListenerEvent): Unit
-}
+}*/

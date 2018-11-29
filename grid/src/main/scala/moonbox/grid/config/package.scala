@@ -34,9 +34,7 @@ package object config {
 	val JWT_ALGORITHM = ConfigBuilder("moonbox.jwt.algorithm")
 		.stringConf
 		.createWithDefaultString("HS256")
-//	val JWT_TIMEOUT = ConfigBuilder("moonbox.jwt.timeout")
-//		.timeConf
-//		.createWithDefaultString("300m")
+
 	val JWT_SECRET = ConfigBuilder("moonbox.jwt.secret")
 		.stringConf
 		.createWithDefaultString("moonbox_secret")
@@ -111,51 +109,53 @@ package object config {
 		TIMER_SERVICE_QUARTZ_MISFIRE_THRESHOLD.key -> TIMER_SERVICE_QUARTZ_MISFIRE_THRESHOLD.defaultValueString
 	)
 
-	val REST_SERVER_ENABLE = ConfigBuilder("moonbox.rest.server.enable")
+	val REST_SERVER_ENABLE = ConfigBuilder("moonbox.deploy.rest.enable")
 		.booleanConf
 		.createWithDefault(true)
-	val REST_SERVER_PORT = ConfigBuilder("moonbox.rest.server.port")
+	val REST_SERVER_PORT = ConfigBuilder("moonbox.deploy.rest.port")
 	    .intConf
 		.createWithDefault(9090)
-	val REST_SERVER_REQUEST_TIME = ConfigBuilder("moonbox.rest.server.request-timeout")
+	val REST_SERVER_REQUEST_TIME = ConfigBuilder("moonbox.deploy.rest.request-timeout")
 	    .timeConf
 		.createWithDefaultString("1800s")
-	val REST_SERVER_IDLE_TIMEOUT = ConfigBuilder("moonbox.rest.server.idle-timeout")
+	val REST_SERVER_IDLE_TIMEOUT = ConfigBuilder("moonbox.deploy.rest.idle-timeout")
 	    .timeConf
 	    .createWithDefaultString("1800s")
-	val REST_CLIENT_IDLE_TIME = ConfigBuilder("moonbox.rest.client.idle-timeout")
+	val REST_CLIENT_IDLE_TIME = ConfigBuilder("moonbox.deploy.rest.client.idle-timeout")
 	    .timeConf
 	    .createWithDefaultString("1800s")
 
-	val TCP_SERVER_ENABLE = ConfigBuilder("moonbox.tcp.server.enable")
+	val TCP_SERVER_ENABLE = ConfigBuilder("moonbox.deploy.tcp.enable")
 	    .booleanConf
 	    .createWithDefault(true)
 
-	val TCP_SERVER_PORT = ConfigBuilder("moonbox.tcp.server.port")
+	val TCP_SERVER_PORT = ConfigBuilder("moonbox.deploy.tcp.port")
 	    .intConf
 	    .createWithDefault(10010)
 
-	val ODBC_SERVER_CLASS = ConfigBuilder("moonbox.odbc.server.className")
+	val ODBC_SERVER_ENABLE = ConfigBuilder("moonbox.deploy.thrift.enable")
+	    .booleanConf
+	    .createWithDefault(false)
+	val ODBC_SERVER_PORT = ConfigBuilder("moonbox.deploy.thrift.port")
+	    .intConf
+	    .createWithDefault(10020)
+	val ODBC_SERVER_CLASS = ConfigBuilder("moonbox.deploy.thrift.className")
 	    .stringConf
 	    .createWithDefaultString("moonbox.odbc.server.MoonboxODBCServer")
 
-
-	val PERSIST_ENABLE = ConfigBuilder("moonbox.persist.enable")
-	    .booleanConf.createWithDefault(false)
-	val PERSIST_IMPLEMENTATION = ConfigBuilder("moonbox.persist.implementation")
+	val RECOVERY_MODE = ConfigBuilder("moonbox.deploy.recovery.implementation")
 	    .stringConf
-	    .createWithDefaultString("NONE")
-
-	val PERSIST_SERVERS = ConfigBuilder("moonbox.persist.zookeeper.servers")
+	    .createWithDefault("NONE")
+	val RECOVERY_ZOOKEEPER_URL = ConfigBuilder("moonbox.deploy.recovery.zookeeper.url")
 	    .stringConf
-	    .createWithDefaultString("localhost:2181")
-	val PERSIST_WORKING_DIR = ConfigBuilder("moonbox.persist.zookeeper.dir")
-	    .stringConf
-	    .createWithDefaultString("/moonbox")
-	val PERSIST_RETRY_TIMES = ConfigBuilder("moonbox.persist.zookeeper.retry.times")
-	    .intConf
-	    .createWithDefault(3)
-	val PERSIST_RETRY_WAIT = ConfigBuilder("moonbox.persist.zookeeper.retry.wait")
+	    .createWithDefault("localhost:2181")
+	val RECOVERY_ZOOKEEPER_DIR = ConfigBuilder("moonbox.deploy.recovery.zookeeper.dir")
+		.stringConf
+		.createWithDefault("/moonbox")
+	val RECOVERY_ZOOKEEPER_RETRY_TIMES = ConfigBuilder("moonbox.deploy.recovery.zookeeper.retry.times")
+		.intConf
+		.createWithDefault(3)
+	val RECOVERY_ZOOKEEPER_RETRY_WAIT = ConfigBuilder("moonbox.deploy.recovery.zookeeper.retry.wait")
 	    .timeConf
 	    .createWithDefaultString("1s")
 
@@ -167,7 +167,7 @@ package object config {
 	    .createWithDefaultString("ERROR")
 	val RPC_AKKA_ACTOR_PROVIDER = ConfigBuilder("moonbox.rpc.akka.actor.provider")
 	    .stringConf
-	    .createWithDefaultString("akka.cluster.ClusterActorRefProvider")
+	    .createWithDefaultString("akka.remote.RemoteActorRefProvider")
 	val RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE = ConfigBuilder("moonbox.rpc.akka.actor.debug.autoreceive")
 	    .stringConf
 	    .createWithDefaultString("off")
@@ -180,40 +180,20 @@ package object config {
 	val RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS = ConfigBuilder("moonbox.rpc.akka.remote.log-remote-lifecycle-events")
 	    .stringConf
 	    .createWithDefaultString("off")
-	val RPC_AKKA_CLUSTER_AUTODOWN = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down")
-	    .stringConf
-	    .createWithDefaultString("off")
-	val RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.auto-down-unreachable-after")
-	    .stringConf
-	    .createWithDefaultString("off")
-    val RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE = ConfigBuilder("moonbox.rpc.akka.cluster.failure-detector.acceptable-heartbeat-pause")
-        .timeConf
-        .createWithDefaultString("3s")
-	val RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER = ConfigBuilder("moonbox.rpc.akka.cluster.retry-unsuccessful-join-after")
-            .timeConf
-            .createWithDefaultString("3s")
-    val RPC_AKKA_EXTENSIONS_0 = ConfigBuilder("moonbox.rpc.akka.extensions.0")
-	    .stringConf
-	    .createWithDefaultString("akka.cluster.client.ClusterClientReceptionist")
-    //https://doc.akka.io/docs/akka/2.4.3/java/cluster-usage.html
 
 	val AKKA_DEFAULT_CONFIG = Map(
 		RPC_AKKA_LOGLEVEL.key -> RPC_AKKA_LOGLEVEL.defaultValueString,
 		RPC_AKKA_ACTOR_PROVIDER.key -> RPC_AKKA_ACTOR_PROVIDER.defaultValueString,
 		RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE.key -> RPC_AKKA_ACTOR_DEBUG_AUTORECEIVE.defaultValueString,
 		RPC_AKKA_REMOTE_TRANSPORT.key -> RPC_AKKA_REMOTE_TRANSPORT.defaultValueString,
-		RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.key -> RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.defaultValueString,
-		RPC_AKKA_CLUSTER_AUTODOWN.key -> RPC_AKKA_CLUSTER_AUTODOWN.defaultValueString,
-		RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.key -> RPC_AKKA_CLUSTER_AUTODOWN_UNREACHABLE_AFTER.defaultValueString,
-        RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.key -> RPC_AKKA_CLUSTER_FAILURE_DETECTOR_HEARTBEAT_PAUSE.defaultValueString,
-        RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER.key -> RPC_AKKA_CLUSTER_RETRY_UNSUCCESSFUL_JOIN_AFTER.defaultValueString,
-		RPC_AKKA_EXTENSIONS_0.key -> RPC_AKKA_EXTENSIONS_0.defaultValueString
+		RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.key -> RPC_AKKA_REMOTE_LOG_REMOTE_LIFECYCLE_EVENTS.defaultValueString
 	)
 
 	val AKKA_HTTP_DEFAULT_CONFIG = Map(
 		"moonbox.rest.akka.http.server.request-timeout" -> REST_SERVER_REQUEST_TIME.defaultValueString,
 		"moonbox.rest.akka.http.server.idle-timeout" -> REST_SERVER_IDLE_TIMEOUT.defaultValueString,
-		"moonbox.rest.akka.http.client.idle-timeout" -> REST_CLIENT_IDLE_TIME.defaultValueString
+		"moonbox.rest.akka.http.client.idle-timeout" -> REST_CLIENT_IDLE_TIME.defaultValueString,
+		"moonbox.rest.akka.http.server.remote-address-header" -> "on"
 	)
 
 
@@ -222,8 +202,8 @@ package object config {
 	    .createWithDefault(10000)
 
 	val WORKER_TIMEOUT = ConfigBuilder("moonbox.worker.timeout")
-	    .longConf
-	    .createWithDefault(60)
+	    .timeConf
+	    .createWithDefaultString("30m")
 
 	val WORKER_STATEREPORT_INTERVAL = ConfigBuilder("moonbox.worker.stateReport.interval")
 	    .timeConf

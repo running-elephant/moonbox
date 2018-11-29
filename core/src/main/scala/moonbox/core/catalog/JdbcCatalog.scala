@@ -33,7 +33,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	private val jdbcDao = new JdbcDao(conf)
 
 	private def await[T](f: Future[T]): T = {
-		Await.result(f, new FiniteDuration(conf.get(CATALOG_RESULT_AWAIT_TIMEOUT), MILLISECONDS))
+		Await.result(f, new FiniteDuration(conf.get(JDBC_CATALOG_AWAIT_TIMEOUT), MILLISECONDS))
 	}
 
 	def close(): Unit = {

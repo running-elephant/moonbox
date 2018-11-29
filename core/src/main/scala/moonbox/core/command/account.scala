@@ -50,7 +50,11 @@ case class CreateSa(
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createUser(catalogUser, catalogOrganization.name, ignoreIfExists)
+
+		mbSession.catalog.createUser(
+			catalogUser.copy(password = PasswordEncryptor.encryptSHA(catalogUser.password)),
+			catalogOrganization.name, ignoreIfExists
+		)
 		Seq.empty[Row]
 	}
 }
@@ -80,7 +84,7 @@ case class AlterSaSetPassword(
 		val existUser: CatalogUser = mbSession.catalog.getUser(catalogOrganization.id.get, name)
 		require(existUser.isSA, s"ROOT can not alter non-sa.")
 		mbSession.catalog.alterUser(
-			existUser.copy(password = newPassword, updateBy = ctx.userId, updateTime = Utils.now)
+			existUser.copy(password = PasswordEncryptor.encryptSHA(newPassword), updateBy = ctx.userId, updateTime = Utils.now)
 		)
 		Seq.empty[Row]
 	}
@@ -114,7 +118,9 @@ case class CreateUser(
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
-		mbSession.catalog.createUser(catalogUser, ctx.organizationName, ignoreIfExists)
+		mbSession.catalog.createUser(
+			catalogUser.copy(password = PasswordEncryptor.encryptSHA(catalogUser.password)),
+			ctx.organizationName, ignoreIfExists)
 		Seq.empty[Row]
 	}
 }
@@ -139,7 +145,7 @@ case class AlterUserSetPassword(
 			if (name.equalsIgnoreCase("ROOT")) {
 				val root = mbSession.catalog.getUser(-1, "ROOT")
 				mbSession.catalog.alterUser(root.copy(
-					password = newPassword,
+					password = PasswordEncryptor.encryptSHA(newPassword),
 					updateBy = ctx.userId,
 					updateTime = Utils.now))
 			} else {
@@ -151,7 +157,7 @@ case class AlterUserSetPassword(
 			if ((canAccount && (!name.equalsIgnoreCase("ROOT") && !mbSession.catalog.isSa(existUser.id.get))) || (ctx.userName == name)) {
 				mbSession.catalog.alterUser(
 					existUser.copy(
-						password = newPassword,
+						password = PasswordEncryptor.encryptSHA(newPassword),
 						updateBy = ctx.userId,
 						updateTime = Utils.now
 					)

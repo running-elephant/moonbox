@@ -1,0 +1,56 @@
+/*-
+ * <<
+ * Moonbox
+ * ==
+ * Copyright (C) 2016 - 2018 EDP
+ * ==
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * >>
+ */
+
+package moonbox.grid.deploy.rest
+
+import java.util.UUID
+
+import moonbox.common.MbConf
+import moonbox.grid.config._
+import org.json4s.DefaultFormats
+import org.json4s.native.JsonMethods._
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
+
+class TokenManager(conf: MbConf) {
+
+	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM.key, JWT_ALGORITHM.defaultValueString)
+//	private val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get / 1000)
+	private val _JWT_SECRET = conf.get(JWT_SECRET.key, JWT_SECRET.defaultValueString)
+
+	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
+
+	def encode(username: String): String = {
+		val jwtClaim: JwtClaim = JwtClaim() + ("username", username) + ("seed", UUID.randomUUID().toString)
+		Jwt.encode(jwtHeader, jwtClaim, _JWT_SECRET)
+	}
+
+	def decode(token: String): Option[String] = {
+		implicit val formats = DefaultFormats
+		Jwt.decodeRaw(token, _JWT_SECRET, JwtAlgorithm.allHmac()).map { decoded =>
+			Some(parse(decoded).extract[Username])
+		}.getOrElse(None).map(_.username)
+	}
+
+	def isvalid(token: String): Boolean = {
+		Jwt.isValid(token, _JWT_SECRET, JwtAlgorithm.allHmac())
+	}
+
+	private case class Username(username: String, seed: String)
+}

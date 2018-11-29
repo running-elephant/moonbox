@@ -30,7 +30,6 @@ class EventJob extends Job with MbLogging {
 		val sqls = dataMap.get(EventEntity.SQLS).asInstanceOf[Seq[String]]
 		val func = dataMap.get(EventEntity.FUNC).asInstanceOf[() => Unit]
 		logInfo(s"""Timed event fire as user '$definer' run sqls (${sqls.mkString(", ")})""")
-		//MbMaster.singleton ! JobSubmit(definer, sqls, async = true)
 		func()
 	}
 }

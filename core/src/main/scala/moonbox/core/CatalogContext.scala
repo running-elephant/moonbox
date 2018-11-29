@@ -111,8 +111,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def createUser(userDefinition: CatalogUser, organization: String, ignoreIfExists: Boolean): Unit = {
-		val encryptedUser = userDefinition.copy(password = PasswordEncryptor.encryptSHA(userDefinition.password))
-		catalog.createUser(encryptedUser, organization, ignoreIfExists)
+		catalog.createUser(userDefinition, organization, ignoreIfExists)
 	}
 
 	def renameUser(organizationId: Long, organization: String, user: String, newUser: String, updateBy: Long): Unit = {
@@ -120,8 +119,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 	}
 
 	def alterUser(userDefinition: CatalogUser): Unit = {
-		val encryptedUser = userDefinition.copy(password = PasswordEncryptor.encryptSHA(userDefinition.password))
-		catalog.alterUser(encryptedUser)
+		catalog.alterUser(userDefinition)
 	}
 
 	def dropUser(organizationId: Long, organization: String, name: String, ignoreIfNotExists: Boolean): Unit = {

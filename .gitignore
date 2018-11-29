@@ -23,7 +23,7 @@ metastore_db
 spark-warehouse
 *.bak
 *.pyc
-conf/moonbox-defaults.conf
+conf/moonbox-defaults.conf.bak
 conf/moonbox-env.sh
 conf/nodes
 check_illegal.py

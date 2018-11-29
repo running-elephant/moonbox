@@ -52,7 +52,7 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-yarnapp_2.11</artifactId>
+            <artifactId>moonbox-clusterapp_2.11</artifactId>
             <version>${project.version}</version>
             <exclusions>
                 <exclusion>
@@ -82,11 +82,7 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-cluster_${scala.library}</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-cluster-tools_${scala.library}</artifactId>
+            <artifactId>akka-remote_${scala.library}</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.curator</groupId>

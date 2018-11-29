@@ -37,7 +37,7 @@ class DefaultSource extends SchemaRelationProvider with CreatableRelationProvide
 
 	override def createRelation(sqlContext: SQLContext, mode: SaveMode, parameters: Map[String, String], data: DataFrame) = {
 		require(parameters.contains("jobId"))
-		val servers = parameters.getOrElse(CACHE_SERVERS.key, CACHE_SERVERS.defaultValueString)
+		val servers = parameters.getOrElse("", "")
 		val redisClient = new RedisCache(servers)
 		val jobId = parameters("jobId")
 		redisClient.put[String, String, String]("SCHEMA", jobId, data.schema.json)
@@ -87,7 +87,7 @@ class DefaultSource extends SchemaRelationProvider with CreatableRelationProvide
 case class RedisRelation(props: Map[String, String], userSchema: StructType)
 	(@transient val context: SQLContext) extends BaseRelation with InsertableRelation {
 	require(props.contains("jobId"))
-	val servers = props.getOrElse(CACHE_SERVERS.key, CACHE_SERVERS.defaultValueString)
+	val servers = props.getOrElse("", "")
 	val redisClient = new RedisCache(servers)
 	val jobId = props("jobId")
 
