@@ -18,8 +18,9 @@
  * >>
  */
 
-package moonbox.grid.scheduler
+package moonbox.grid.listener
 
-class StreamSchedulerBackend {
-
+import moonbox.common.util.ListenerEvent
+trait ListenerInterface {
+	def onEvent(event: ListenerEvent): Unit
 }

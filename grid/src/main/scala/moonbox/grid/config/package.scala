@@ -197,7 +197,7 @@ package object config {
 	)
 
 
-	val LISTENER_BUS_EVENT_QUEUE_SIZE = ConfigBuilder("moonbox.scheduler.listenerbus.eventqueue.size")
+	val LISTENER_BUS_EVENT_QUEUE_SIZE = ConfigBuilder("moonbox.master.listenerbus.eventqueue.size")
 	    .intConf
 	    .createWithDefault(10000)
 

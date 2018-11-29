@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -19,7 +18,7 @@
  * >>
  */
 
-package moonbox.grid.scheduler
+package moonbox.grid.listener
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{LinkedBlockingDeque, Semaphore}
@@ -30,13 +29,13 @@ import moonbox.grid.config._
 
 import scala.util.DynamicVariable
 
-class MbListenerBus(conf: MbConf) extends ListenerBus[MbListenerInterface, ListenerEvent] {
+class MbListenerBus(conf: MbConf) extends ListenerBus[ListenerInterface, ListenerEvent] {
 	self =>
 	import MbListenerBus._
 	private lazy val EVENT_QUEUE_CAPACITY: Int = {
 		val queueSize: Int = conf.get(LISTENER_BUS_EVENT_QUEUE_SIZE)
 		if (queueSize < 0) {
-			throw new Exception("moonbox.scheduler.listenerbus.eventqueue.size must be > 0!")
+			throw new Exception("moonbox.master.listenerbus.eventqueue.size must be > 0!")
 		}
 		queueSize
 	}
@@ -107,23 +106,9 @@ class MbListenerBus(conf: MbConf) extends ListenerBus[MbListenerInterface, Liste
 	}
 
 	override protected def doPostEvent(
-		listener: MbListenerInterface,
+		listener: ListenerInterface,
 		event: ListenerEvent): Unit = {
-		event match {
-			case jobSubmitted: JobSubmitted =>
-				listener.onJobSubmitted(jobSubmitted)
-			case jobAccepted: JobAccepted =>
-				listener.onJobAccepted(jobAccepted)
-			case jobReject: JobReject =>
-				listener.onJobReject(jobReject)
-			case jobStart: JobStart =>
-				listener.onJobStart(jobStart)
-			case jobEnd: JobEnd =>
-				listener.onJobEnd(jobEnd)
-			case jobGettingResult: JobGettingResult =>
-				listener.onJobGettingResult(jobGettingResult)
-			case _ => listener.onOtherEvent(event)
-		}
+		listener.onEvent(event)
 	}
 }
 
@@ -131,4 +116,3 @@ object MbListenerBus {
 	val withinListenerThread = new DynamicVariable[Boolean](false)
 	val name = "MbListenerBus"
 }
-*/
