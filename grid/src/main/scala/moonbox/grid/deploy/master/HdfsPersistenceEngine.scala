@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 import java.net.URI
 

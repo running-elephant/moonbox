@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}

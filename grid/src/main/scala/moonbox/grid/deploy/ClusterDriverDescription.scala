@@ -1,9 +1,9 @@
-package moonbox.grid.deploy.cluster
+package moonbox.grid.deploy
 
-private[deploy] case class DriverDescription(
+private[deploy] case class ClusterDriverDescription(
 	username: String,
 	sqls: Seq[String],
-	config: String) {
+	config: String) extends DriverDescription {
 	override def toString: String = {
 		s"DriverDescription ($username ${sqls.mkString(";")})"
 	}

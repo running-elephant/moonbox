@@ -22,7 +22,7 @@ package moonbox.grid.deploy
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Address, Props}
 import moonbox.common.MbConf
-import moonbox.grid.deploy.cluster.master.{WorkerInfo, ZookeeperPersistenceEngine}
+import moonbox.grid.deploy.master.{WorkerInfo, ZookeeperPersistenceEngine}
 import moonbox.localservice.LocalZookeeper
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 

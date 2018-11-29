@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.cluster.worker
+package moonbox.grid.deploy.worker
 
 object WorkerState extends Enumeration {
 	type WorkerState = Value

@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 import akka.actor.ActorSystem
 import moonbox.common.MbConf

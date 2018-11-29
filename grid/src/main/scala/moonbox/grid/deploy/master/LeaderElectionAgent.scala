@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 trait LeaderElectionAgent {
   	val candidate: LeaderElectable

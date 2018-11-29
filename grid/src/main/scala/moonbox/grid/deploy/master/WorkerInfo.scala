@@ -1,7 +1,7 @@
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 import akka.actor.{ActorRef, Address}
-import moonbox.grid.deploy.cluster.worker.WorkerState
+import moonbox.grid.deploy.worker.WorkerState
 
 import scala.collection.mutable
 

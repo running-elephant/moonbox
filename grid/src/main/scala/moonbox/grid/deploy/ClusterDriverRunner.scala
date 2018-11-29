@@ -1,22 +1,21 @@
-package moonbox.grid.deploy.cluster.worker
+package moonbox.grid.deploy
 
 import akka.actor.ActorRef
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.deploy.cluster.DriverDescription
-import moonbox.grid.deploy.cluster.ClusterDeployMessages.DriverStateChanged
-import moonbox.grid.deploy.cluster.master.{DriverInfo, DriverState}
+import moonbox.grid.deploy.DeployMessages.DriverStateChanged
+import moonbox.grid.deploy.master.DriverState
 import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 
 private[deploy] class ClusterDriverRunner(
 	conf: MbConf,
 	val driverId: String,
-	val desc: DriverDescription,
-	val worker: ActorRef) extends MbLogging {
+	val desc: ClusterDriverDescription,
+	val worker: ActorRef) extends DriverRunner with MbLogging {
 
 	private var sparkAppHandle: SparkAppHandle = _
 
-	def start() = {
+	override def start() = {
 		new Thread("ClusterDriverRunner for " + driverId) {
 			override def run(): Unit = {
 				try {
@@ -45,7 +44,9 @@ private[deploy] class ClusterDriverRunner(
 							val state = handle.getState match {
 								case SparkAppHandle.State.UNKNOWN | SparkAppHandle.State.LOST =>
 									DriverState.UNKNOWN
-								case SparkAppHandle.State.SUBMITTED | SparkAppHandle.State.CONNECTED =>
+								case SparkAppHandle.State.CONNECTED =>
+									DriverState.CONNECTED
+								case SparkAppHandle.State.SUBMITTED  =>
 									DriverState.SUBMITTED
 								case SparkAppHandle.State.RUNNING =>
 									DriverState.RUNNING
@@ -68,7 +69,7 @@ private[deploy] class ClusterDriverRunner(
 		}.start()
 	}
 
-	def kill() = {
+	override def kill() = {
 		val appId = if (sparkAppHandle != null) {
 			sparkAppHandle.getAppId
 		} else "<unknown>"

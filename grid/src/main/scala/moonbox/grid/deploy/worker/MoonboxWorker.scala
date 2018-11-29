@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.cluster.worker
+package moonbox.grid.deploy.worker
 
 import java.net.URI
 import java.text.SimpleDateFormat
@@ -8,10 +8,11 @@ import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
-import moonbox.grid.deploy.cluster.ClusterDeployMessages._
-import moonbox.grid.deploy.cluster.master.{DriverState, MoonboxMaster}
-import moonbox.grid.deploy.cluster.master.MoonboxMaster._
+import moonbox.grid.deploy.master.{DriverState, MoonboxMaster}
+import moonbox.grid.deploy.master.MoonboxMaster._
 import moonbox.grid.config.WORKER_TIMEOUT
+import moonbox.grid.deploy._
+import moonbox.grid.deploy.DeployMessages._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -39,8 +40,8 @@ class MoonboxWorker(
 	private var connected = false
 	private var connectionAttemptCount = 0
 
-	private val drivers = new mutable.HashMap[String, ClusterDriverRunner]
-	private val finishedDrivers = new mutable.LinkedHashMap[String, ClusterDriverRunner]
+	private val drivers = new mutable.HashMap[String, DriverRunner]
+	private val finishedDrivers = new mutable.LinkedHashMap[String, DriverRunner]
 
 	private var registerToMasterScheduler: Option[Cancellable] = None
 
@@ -76,7 +77,14 @@ class MoonboxWorker(
 
 		case LaunchDriver(driverId, driverDesc) =>
 			logInfo(s"Ask to launch cluster driver $driverId")
-			val driver = new ClusterDriverRunner(conf, driverId, driverDesc, self)
+			val driver = driverDesc match {
+				case cluster: ClusterDriverDescription =>
+					new ClusterDriverRunner(conf, driverId, cluster, self)
+				case client: ClientDriverDescription =>
+					new ClientDriverRunner(conf, driverId, client, self)
+				case local: LocalDriverDescription =>
+					new LocalDriverRunner
+			}
 			drivers(driverId) = driver
 			driver.start()
 

@@ -1,4 +1,4 @@
-package moonbox.grid.deploy.cluster.master
+package moonbox.grid.deploy.master
 
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
@@ -11,11 +11,10 @@ import moonbox.core.CatalogContext
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.MbService
-import moonbox.grid.deploy.cluster.DriverDescription
-import moonbox.grid.deploy.cluster.ClusterDeployMessages._
-import moonbox.grid.deploy.cluster.master.DriverState.DriverState
-import moonbox.grid.deploy.cluster.worker.WorkerState
+import moonbox.grid.deploy.{ClusterDriverDescription, DeployMessages, MbService}
+import DeployMessages._
+import moonbox.grid.deploy.master.DriverState.DriverState
+import moonbox.grid.deploy.worker.WorkerState
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.thrift.ThriftServer
 import moonbox.grid.deploy.rest.RestServer
@@ -286,7 +285,7 @@ class MoonboxMaster(
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				val driver = createDriver(DriverDescription(username, sqls, config))
+				val driver = createDriver(ClusterDriverDescription(username, sqls, config))
 				persistenceEngine.addDriver(driver)
 				waitingDrivers += driver
 				drivers.add(driver)
@@ -463,7 +462,7 @@ class MoonboxMaster(
 		appId
 	}
 
-	private def createDriver(desc: DriverDescription): DriverInfo = {
+	private def createDriver(desc: ClusterDriverDescription): DriverInfo = {
 		val now = System.currentTimeMillis()
 		val date = new Date(now)
 		new DriverInfo(now, newDriverId(date), desc, date)
