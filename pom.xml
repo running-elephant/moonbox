@@ -124,15 +124,9 @@
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-cluster_${scala.library}</artifactId>
+                <artifactId>akka-remote_${scala.library}</artifactId>
                 <version>${akka.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-cluster-tools_${scala.library}</artifactId>
-                <version>${akka.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
                 <artifactId>akka-http-core_2.11</artifactId>
