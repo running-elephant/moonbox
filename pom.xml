@@ -29,8 +29,6 @@
         <module>repl</module>
         <module>jdbc</module>
         <module>testkit</module>
-        <module>clientapp</module>
-        <module>clusterapp</module>
         <module>external/spark-hbase-connector</module>
         <module>external/spark-presto-connector</module>
         <module>dataadapter/elasticsearch-adapter</module>
@@ -43,6 +41,8 @@
         <module>dataadapter/hbase-adapter</module>
         <module>dataadapter/cassandra-adapter</module>
         <module>dataadapter/clickhouse-adapter</module>
+        <module>batch</module>
+        <module>interactive</module>
         <module>assembly</module>
 
     </modules>

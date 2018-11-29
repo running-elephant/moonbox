@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>moonbox-clientapp_2.11</artifactId>
+    <artifactId>moonbox-interactiveapp_2.11</artifactId>
     <packaging>jar</packaging>
     <name>Moonbox Project ClientApp</name>
 

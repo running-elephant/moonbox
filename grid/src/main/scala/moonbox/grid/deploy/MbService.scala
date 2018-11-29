@@ -37,7 +37,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
-class MbService(
+private[deploy] class MbService(
 	conf: MbConf,
 	catalogContext: CatalogContext,
 	masterRef: ActorRef,

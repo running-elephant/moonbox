@@ -335,7 +335,7 @@ class MoonboxMaster(
 						logInfo(msg)
 						sender() ! BatchJobCancelResponse(driverId, success = true, msg)
 					case None =>
-						val msg = s"Driver $driverId has already finished ro does not exist."
+						val msg = s"Driver $driverId has already finished or does not exist."
 						logWarning(msg)
 						sender() ! BatchJobCancelResponse(driverId, success = false, msg)
 				}
@@ -351,7 +351,6 @@ class MoonboxMaster(
 			}
 		case e => println(e)
 	}
-
 
 	override def onDisconnected(remoteAddress: Address): Unit = {
 		logInfo(s"$remoteAddress got disassociated, removing it.")

@@ -77,14 +77,7 @@ class MoonboxWorker(
 
 		case LaunchDriver(driverId, driverDesc) =>
 			logInfo(s"Ask to launch cluster driver $driverId")
-			val driver = driverDesc match {
-				case cluster: ClusterDriverDescription =>
-					new ClusterDriverRunner(conf, driverId, cluster, self)
-				case client: ClientDriverDescription =>
-					new ClientDriverRunner(conf, driverId, client, self)
-				case local: LocalDriverDescription =>
-					new LocalDriverRunner
-			}
+			val driver = new DriverRunner(conf, driverId, driverDesc, self)
 			drivers(driverId) = driver
 			driver.start()
 
