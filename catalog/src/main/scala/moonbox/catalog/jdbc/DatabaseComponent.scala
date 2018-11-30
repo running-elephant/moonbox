@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,13 +18,13 @@
  * >>
  */
 
-package moonbox.core.catalog.jdbc
+package moonbox.catalog.jdbc
 
 import java.util.Locale
 
+import moonbox.catalog.config._
 import moonbox.common.MbConf
 import moonbox.common.exception.UnsupportedException
-import moonbox.core.config._
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc._
 

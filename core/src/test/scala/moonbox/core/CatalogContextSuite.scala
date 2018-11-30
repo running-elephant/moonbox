@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,12 +18,11 @@
  * >>
  */
 
-package moonbox.core.catalog
+package moonbox.core
 
+import moonbox.catalog.config._
+import moonbox.catalog.{CatalogUser, NoSuchUserException, PasswordEncryptor, UserExistsException, _}
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.{CatalogContext, MbSession}
-import moonbox.core.config._
-import org.apache.spark.sql.types.StructType
 import org.scalatest.FunSuite
 
 class CatalogContextSuite extends FunSuite with MbLogging {

@@ -1,4 +1,4 @@
-package moonbox.application.client
+package moonbox.application.interactive
 
 import java.net.InetAddress
 import java.util.concurrent.CountDownLatch
@@ -8,7 +8,7 @@ import moonbox.common.{MbConf, MbLogging}
 
 import scala.collection.JavaConverters._
 
-object MoonboxClientApp extends MbLogging {
+object Main extends MbLogging {
 
 	def main(args: Array[String]) {
 		val sparkConf = (0 until args.length / 2).map { index =>
@@ -24,7 +24,7 @@ object MoonboxClientApp extends MbLogging {
 		val akkaMap = Map("akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
 			"akka.remote.enabled-transports.0" ->"akka.remote.netty.tcp",
 			"akka.remote.netty.tcp.hostname" -> InetAddress.getLocalHost.getHostName,
-			"akka.remote.netty.tcp.port" -> 0
+			"akka.remote.netty.tcp.port" -> "0"
 		)
 		val akkaConf: Config = ConfigFactory.parseMap(akkaMap.asJava)
 		val system = ActorSystem("YarnAppSystem", akkaConf)
@@ -36,8 +36,8 @@ object MoonboxClientApp extends MbLogging {
 	}
 }
 
-class MoonboxClientApp() extends Actor {
+class Main() extends Actor {
 	override def receive: Receive = {
-
+		case e =>
 	}
 }

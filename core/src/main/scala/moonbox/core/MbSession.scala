@@ -23,23 +23,23 @@ package moonbox.core
 
 import moonbox.common.util.ParseUtils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog.{CatalogColumn, UserContext, CatalogTable}
+import moonbox.catalog.{CatalogColumn, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import moonbox.core.execution.standalone.DataTable
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
-import org.apache.spark.sql.catalyst.analysis.{NoSuchPermanentFunctionException, UnresolvedFunction, UnresolvedRelation}
+import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import moonbox.core.datasys.{DataSystem, Pushdownable}
-import org.apache.spark.sql.{AnalysisException, DataFrame, MixcalContext}
+import moonbox.core.datasys.Pushdownable
+import org.apache.spark.sql.{DataFrame, MixcalContext}
 
 import scala.collection.mutable
 
 class MbSession(conf: MbConf) extends MbLogging {
 	implicit var userContext: UserContext = _
-	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE.key, MIXCAL_PUSHDOWN_ENABLE.defaultValue.get)
-	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE.key, MIXCAL_COLUMN_PERMISSION_ENABLE.defaultValue.get)
+	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE)
+	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE)
 
 	private val userVariable = new mutable.HashMap[String, String]()
 	val catalog = new CatalogContext(conf)
@@ -136,7 +136,8 @@ class MbSession(conf: MbConf) extends MbLogging {
 				val parsedPlan = mixcal.parsedLogicalPlan(preparedSql)
 				prepareAnalyze(qualifierFunctionName(parsedPlan))
 				mixcal.registerView(table, preparedSql)
-			} else {// if table not exists, throws NoSuchTableException exception
+			} else {
+				// if table not exists, throws NoSuchTableException exception
 				val catalogTable = table.database.map(db => catalog.getTable(userContext.organizationId, db, table.table))
 					.getOrElse(catalog.getTable(userContext.databaseId, table.table))
 				mixcal.registerTable(table, catalogTable.properties)

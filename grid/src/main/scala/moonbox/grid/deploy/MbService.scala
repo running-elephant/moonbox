@@ -25,48 +25,24 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.CatalogContext
-import moonbox.grid.deploy.audit.{AuditEvent, AuditLogger}
+import moonbox.grid.deploy.audit.AuditLogger
 import moonbox.grid.deploy.messages.Message
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.security.LoginManager
-import moonbox.grid.deploy.rest.TokenManager
 import moonbox.protocol.client._
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
 private[deploy] class MbService(
 	conf: MbConf,
-	catalogContext: CatalogContext,
 	masterRef: ActorRef,
 	auditLogger: AuditLogger) extends MbLogging {
 
 	private val SHORT_TIMEOUT = new FiniteDuration(10, SECONDS)
 	private val LONG_TIMEOUT = new FiniteDuration(3600 * 24, SECONDS)
-	private val loginManager = new LoginManager(catalogContext, new TokenManager(conf), this)
 
-	/*def requestAccess(token: String, isLocal: Boolean, connectionType: ConnectionType)(implicit connection: ConnectionInfo): RequestAccessOutbound = {
-		isLogin(token) match {
-			case Some(username) =>
-				//auditLogger.log(AuditInfo("access", username, connection))
-				askSync[RequestAccessResponse](RequestAccess(connectionType, isLocal))(SHORT_TIMEOUT) match {
-					case (Some(RequestedAccess(address)), _) =>
-						RequestAccessOutbound(Some(address), None)
-					case (Some(RequestAccessFailed(error)), _) =>
-						RequestAccessOutbound(error = Some(error))
-					case (None, error) =>
-						RequestAccessOutbound(None, error = error)
-				}
-			case None =>
-				RequestAccessOutbound(None, error = Some("Please login first."))
-		}
-	}*/
-
-	def decodeToken(token: String): Option[String] = {
-		loginManager.tokenManager.decode(token)
-	}
+	private val loginManager = new LoginManager(conf, this)
 
 	def login(username: String, password: String)(implicit connection: ConnectionInfo): LoginOutbound = {
 		auditLogger.log(username, "login")
@@ -225,114 +201,9 @@ private[deploy] class MbService(
 	}
 
 
-	/*def yarnAppAdd(username: String, config: String): AddAppOutbound = {
-		askSync[AppStartResultResponse](StartYarnApp(config))(SHORT_TIMEOUT) match {  //TODO: user name need log
-			case (Some(StartedYarnApp(id)), _) =>
-				AddAppOutbound(Some(id))
-			case (Some(StartedYarnAppFailed(id, error)), _) =>
-				AddAppOutbound(None, Some(error))
-			case (None, error) =>
-				AddAppOutbound(None, error)
-		}
+	def decodeToken(token: String): Option[String] = {
+		loginManager.decode(token)
 	}
-
-	def yarnAppRemove(username: String, appId: String): RemoveAppOutbound = {
-		askSync[AppStopResultResponse](KillYarnApp(appId))(SHORT_TIMEOUT) match {
-			case (Some(KilledYarnApp(id)), _) =>
-				RemoveAppOutbound(Some(id))
-			case
-			case (None, error) =>
-				RemoveAppOutbound(None, error)
-		}
-	}
-
-	def yarnAppShow(username: String): ShowAppOutbound = {
-		askSync[AppShowResultResponse](GetYarnAppsInfo)(SHORT_TIMEOUT) match {
-			case (Some(GottenYarnAppsInfo(schema, info)), _) =>
-				ShowAppOutbound(None, Some(schema), Some(info))
-			case (None, error) =>
-				ShowAppOutbound(error, None, None)
-		}
-	}
-
-	def nodesInfoShow(username: String): ShowNodesInfoOutbound = {
-		askSync[NodesInfoResultResponse](GetNodesInfo)(SHORT_TIMEOUT) match {
-			case (Some(GottenNodesInfo(schema, info)), _) =>
-				ShowNodesInfoOutbound(None, Some(schema), Some(info))
-			case (None, error) =>
-				ShowNodesInfoOutbound(error, None, None)
-		}
-	}
-
-	def runningEventsShow(username: String): ShowRunningEventsOutbound = {
-		askSync[RunningEventsResponse](GetRunningEvents)(SHORT_TIMEOUT) match {
-			case (Some(GottenRunningEvents(schema, info)), _) =>
-				ShowRunningEventsOutbound(None, Some(schema), Some(info))
-			case (None, error) =>
-				ShowRunningEventsOutbound(error, None, None)
-		}
-	}
-
-	def nodeJobsShow(username: String): ShowNodeJobsOutbound = {
-		askSync[NodeJobInfoResultResponse](GetNodeJobInfo)(SHORT_TIMEOUT) match {
-			case (Some(GottenNodeJobInfo(schema, info)), _) =>
-				ShowNodeJobsOutbound(None, Some(schema), Some(info))
-			case (None, error) =>
-				ShowNodeJobsOutbound(error, None, None)
-		}
-	}
-
-	def clusterJobsShow(username: String): ShowClusterJobsOutbound = {
-		askSync[ClusterJobInfoResultResponse](GetClusterJobInfo)(SHORT_TIMEOUT) match {
-			case (Some(GottenClusterJobInfo(schema, info)), _) =>
-				ShowClusterJobsOutbound(None, Some(schema), Some(info))
-			case (None, error) =>
-				ShowClusterJobsOutbound(error, None, None)
-		}
-	}
-
-
-	def databasesShow(token: String): ShowDatabasesOutbound = {
-		isLogin(token) match {
-			case Some(username) =>  //TODO: user name need ???
-				askSync[ShowDatabasesResultResponse](ShowDatabasesInfo(username))(SHORT_TIMEOUT) match {
-					case (Some(ShowedDatabasesInfo(info)), _) =>
-						ShowDatabasesOutbound(None, Some(info))
-					case (None, error) =>
-						ShowDatabasesOutbound(error, None)
-				}
-			case None =>
-				ShowDatabasesOutbound(error = Some("Please login first."))
-		}
-	}
-
-	def tablesShow(token: String, database: String): ShowTablesOutbound = {
-		isLogin(token) match {
-			case Some(username) =>  //TODO: user name need ???
-				askSync[ShowTablesInfoResultResponse](ShowTablesInfo(database, username))(SHORT_TIMEOUT) match {
-					case (Some(ShowedTablesInfo(info)), _) =>
-						ShowTablesOutbound(None, Some(info))
-					case (None, error) =>
-						ShowTablesOutbound(error, None)
-				}
-			case None =>
-				ShowTablesOutbound(error = Some("Please login first."))
-		}
-	}
-
-	def tableDescribe(token: String, table: String, database: String): DescribeTablesOutbound = {
-		isLogin(token) match {
-			case Some(username) =>  //TODO: user name need ???
-				askSync[DescribeTableResultResponse](DescribeTableInfo(table, database, username))(SHORT_TIMEOUT) match {
-					case (Some(DescribedTableInfo(info)), _) =>
-						DescribeTablesOutbound(None, Some(info))
-					case (None, error) =>
-						DescribeTablesOutbound(error, None)
-				}
-			case None =>
-				DescribeTablesOutbound(error = Some("Please login first."))
-		}
-	}*/
 
 	private def askSync[T: ClassTag](message: Message)(timeout: FiniteDuration): Either[T, String] = {
 		try {

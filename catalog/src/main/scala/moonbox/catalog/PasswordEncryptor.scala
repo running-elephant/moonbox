@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.core.catalog
+package moonbox.catalog
 
 import java.security.MessageDigest
 

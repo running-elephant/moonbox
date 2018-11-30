@@ -1,4 +1,4 @@
-package moonbox.application.cluster
+package moonbox.application.batch
 
 import org.apache.spark.SparkContext
 

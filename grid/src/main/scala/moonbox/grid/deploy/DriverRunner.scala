@@ -1,5 +1,7 @@
 package moonbox.grid.deploy
 
+import java.io.File
+
 import akka.actor.ActorRef
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
@@ -20,7 +22,7 @@ private[deploy] class DriverRunner(
 			override def run(): Unit = {
 				try {
 					val launcher = new SparkLauncher()
-
+					launcher.redirectOutput(new File(System.getProperty("user.dir") + File.separator + driverId + ".log"))
 					launcher
 						.setAppName(driverId)
 						.setMaster(desc.master)
@@ -78,7 +80,7 @@ private[deploy] class DriverRunner(
 		val appId = if (sparkAppHandle != null) {
 			sparkAppHandle.getAppId
 		} else "<unknown>"
-		logInfo(s"Killing yarn application with id: $appId.")
+		logInfo(s"Killing application with id: $appId.")
 		sparkAppHandle.stop()
 	}
 

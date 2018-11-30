@@ -11,7 +11,7 @@
 
     <artifactId>moonbox-batchapp_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Moonbox Project Yarn Cluster Application</name>
+    <name>Moonbox Project Batch Application</name>
 
     <dependencies>
         <dependency>

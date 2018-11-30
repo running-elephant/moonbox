@@ -24,8 +24,7 @@ import akka.actor.ActorSystem
 import akka.serialization.SerializationExtension
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
-import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
-import org.apache.curator.retry.ExponentialBackoffRetry
+import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 
 import scala.collection.JavaConversions._
@@ -58,17 +57,6 @@ class ZookeeperPersistenceEngine(conf: MbConf, akkaSystem: ActorSystem) extends 
 	private def serializeInfoFile(path: String, value: AnyRef): Unit = {
 		try {
 			val serialized: Array[Byte] = SerializationExtension(akkaSystem).serialize(value).get
-			/*value match {
-				case actorRef: ActorRef =>
-					SerializationExtension(akkaSystem).serialize(value).get
-				case _ =>
-					val bos = new ByteArrayOutputStream()
-					val oos = new ObjectOutputStream(bos)
-					oos.writeObject(value)
-					oos.flush()
-					oos.close()
-					bos.toByteArray
-			}*/
 			if (exist(path)) {
 				zk.delete().deletingChildrenIfNeeded().forPath(WORKING_DIR  + "/" + path)
 			}

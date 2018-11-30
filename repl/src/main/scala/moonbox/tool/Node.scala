@@ -1,6 +1,5 @@
 package moonbox.tool
 
-import com.typesafe.config.ConfigFactory
 import moonbox.protocol.client._
 import moonbox.repl.IntParam
 import moonbox.repl.connector.rest.HttpClient
@@ -185,7 +184,7 @@ object Node {
         }
         val b = scala.util.parsing.json.JSON.parseFull(value)
         b match {
-            case Some(map: Map[String, Any]) => map
+            case Some(map: Map[_, _]) => map.asInstanceOf[Map[String, Any]]
             case None => throw new Exception("Parsing failed")
             case other => throw new Exception("Unknown data structure: " + other)
         }

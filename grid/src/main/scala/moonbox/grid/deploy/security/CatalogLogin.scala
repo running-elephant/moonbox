@@ -20,13 +20,22 @@
 
 package moonbox.grid.deploy.security
 
-import moonbox.core.CatalogContext
-import moonbox.core.catalog.PasswordEncryptor
+import moonbox.catalog.{JdbcCatalog, PasswordEncryptor}
+import moonbox.common.MbConf
 
-class CatalogLogin(catalogContext: CatalogContext) extends Login {
+class CatalogLogin(conf: MbConf) extends Login {
+	private val catalog = new JdbcCatalog(conf)
+
+	Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+		override def run(): Unit = {
+			if (catalog != null) {
+				catalog.close()
+			}
+		}
+	}))
 
 	override def doLogin(username: String, password: String): Boolean = {
-		catalogContext.getUserOption(username) match {
+		catalog.getUserOption(username) match {
 			case Some(user) if user.password == PasswordEncryptor.encryptSHA(password) => true
 			case _ => false
 		}

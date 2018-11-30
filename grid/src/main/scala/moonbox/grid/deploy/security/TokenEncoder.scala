@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.grid.deploy.rest
+package moonbox.grid.deploy.security
 
 import java.util.UUID
 
@@ -28,11 +28,11 @@ import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods._
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 
-class TokenManager(conf: MbConf) {
+private[deploy] class TokenEncoder(conf: MbConf) {
 
-	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM.key, JWT_ALGORITHM.defaultValueString)
-//	private val _JWT_TIMEOUT = conf.get(JWT_TIMEOUT.key, JWT_TIMEOUT.defaultValue.get / 1000)
-	private val _JWT_SECRET = conf.get(JWT_SECRET.key, JWT_SECRET.defaultValueString)
+	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM)
+
+	private val _JWT_SECRET = conf.get(JWT_SECRET)
 
 	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 

@@ -20,8 +20,7 @@
 
 package moonbox.core.command
 
-import moonbox.core.MbSession
-import moonbox.core.catalog.UserContext
+import moonbox.core.{MbSession, UserContext}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.types.{StructField, StructType}

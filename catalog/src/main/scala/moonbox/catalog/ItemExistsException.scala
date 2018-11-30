@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.core.catalog
+package moonbox.catalog
 
 class ExistsException(msg: String) extends Exception(msg)
 

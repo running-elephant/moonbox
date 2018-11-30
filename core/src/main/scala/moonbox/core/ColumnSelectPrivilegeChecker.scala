@@ -20,7 +20,7 @@
 
 package moonbox.core
 
-import moonbox.core.catalog._
+import moonbox.catalog._
 import moonbox.core.command._
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._

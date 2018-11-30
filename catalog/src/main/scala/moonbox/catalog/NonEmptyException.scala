@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.core.catalog
+package moonbox.catalog
 
 class NonEmptyException(message: String)
 	extends Exception(s"$message is not empty. Please clear it first or use CASCADE keyword.")

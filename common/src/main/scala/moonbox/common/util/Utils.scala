@@ -178,8 +178,7 @@ object Utils extends MbLogging {
 				val jarFile = s"${jarFileOpt.get}"
 				val destDirPath = s"$srcDirPath" + File.separator + "moonbox" + File.separator + "runtime"
 				val destDirFile = new File(destDirPath)
-				FileUtils.deleteDirectory(destDirFile)
-
+				Utils.delete(destDirFile)
 				val cmd = Array("tar", "-C", srcDirPath,  "-xvf", jarFile, "moonbox" + File.separator + "runtime")
 				val pro = Runtime.getRuntime.exec(cmd)
 				pro.waitFor()
@@ -212,7 +211,7 @@ object Utils extends MbLogging {
 	def getYarnAppJar(env: Map[String, String] = sys.env): Option[String] = {
 		if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
 			val projectPath = System.getProperty("user.dir")
-			val depLocalDir = s"$projectPath" + File.separator + "clusterapp" +  File.separator +"target"
+			val depLocalDir = s"$projectPath" + File.separator + "batch" +  File.separator +"target"
 			val file = new File(depLocalDir)
 			val jarFile = file.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-")).map(_.getAbsolutePath).headOption
 			jarFile
@@ -230,54 +229,6 @@ object Utils extends MbLogging {
 			}
 		}
 	}
-
-
-	/*def updateYarnAppInfo2File(id: String, cfg: Option[String], addOrDel: Boolean, env: Map[String, String] = sys.env): Unit = {
-		val appIdFile = if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
-			val projectPath = System.getProperty("user.dir")
-			val depLocalDir = s"$projectPath" + File.separator + "yarnapp" +  File.separator +"target"
-			new File(depLocalDir + File.separator  + "appid" )
-		} else {
-			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}cluster" })
-			new File(pluginDir.get +  File.separator  + "appid")
-		}
-
-		val lines: Seq[String] = if(appIdFile.exists()) {
-			val bufferedSource = Source.fromFile(appIdFile)
-			val iter = bufferedSource.getLines()
-			val idAndConfig = ArrayBuffer.empty[String]
-			while(iter.hasNext) {
-				idAndConfig.append(iter.next())
-			}
-
-			bufferedSource.close()
-			idAndConfig
-		} else { Seq.empty[String] }
-
-		if (addOrDel) { //add
-			val prevLines = lines.filter(_.indexOf(id) != -1) //find id
-			if ( prevLines.isEmpty ) {
-				var fw: FileWriter = null
-				try {
-					fw = new FileWriter(appIdFile, true)
-					fw.write(id + " | " + cfg.getOrElse("") + "\n")
-				}finally {
-					if (fw != null) { fw.close() }
-				}
-			}
-		} else {  //delete
-			val newlines = lines.filter(_.indexOf(id) == -1)
-			var fw: FileWriter = null
-			try {
-				fw = new FileWriter(appIdFile, true)
-				newlines.foreach{ line => fw.write(line)}
-			} finally {
-				if (fw != null) { fw.close() }
-			}
-		}
-
-	}*/
-
 
 	def delete (file: File) {
 		if (file == null) {

@@ -11,7 +11,7 @@
 
     <artifactId>moonbox-interactiveapp_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Moonbox Project ClientApp</name>
+    <name>Moonbox Project Interactive Application</name>
 
     <dependencies>
         <dependency>

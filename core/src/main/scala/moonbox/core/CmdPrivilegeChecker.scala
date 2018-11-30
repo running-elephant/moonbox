@@ -21,7 +21,6 @@
 package moonbox.core
 
 import moonbox.common.MbLogging
-import moonbox.core.catalog.UserContext
 import moonbox.core.command.PrivilegeType.{PrivilegeType, DDL => _, _}
 import moonbox.core.command._
 

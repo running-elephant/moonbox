@@ -24,7 +24,7 @@ import java.util.Locale
 
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog._
+import moonbox.catalog._
 import moonbox.core.config._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD

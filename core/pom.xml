@@ -25,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-localservice_2.11</artifactId>
+            <artifactId>moonbox-catalog_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -53,14 +53,6 @@
             <artifactId>spark-yarn_2.11</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.typesafe.slick</groupId>
-            <artifactId>slick_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.typesafe.slick</groupId>
-            <artifactId>slick-hikaricp_2.11</artifactId>
-        </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>

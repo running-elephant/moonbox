@@ -18,15 +18,14 @@
  * >>
  */
 
-package moonbox.application.client
+package moonbox.application.interactive
 
 import java.util.concurrent.Executors
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog.UserContext
 import moonbox.core.datasys.{DataSystem, Insertable}
-import moonbox.core.{ColumnSelectPrivilegeException, MbSession, TableInsertPrivilegeChecker, TableInsertPrivilegeException}
+import moonbox.core._
 import moonbox.protocol.app.JobState.JobState
 import moonbox.protocol.app.{UnitData, _}
 import org.apache.spark.sql.optimizer.WholePushdown

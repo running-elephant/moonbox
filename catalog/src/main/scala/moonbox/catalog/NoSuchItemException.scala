@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.core.catalog
+package moonbox.catalog
 
 class NoSuchDatabaseException(db: String)
 	extends Exception(s"Database '$db' not found")

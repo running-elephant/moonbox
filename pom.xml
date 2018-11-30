@@ -44,6 +44,7 @@
         <module>batch</module>
         <module>interactive</module>
         <module>assembly</module>
+        <module>catalog</module>
 
     </modules>
 
@@ -158,6 +159,11 @@
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-framework</artifactId>
+                <version>${curator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-recipes</artifactId>
                 <version>${curator.version}</version>
             </dependency>
             <dependency>

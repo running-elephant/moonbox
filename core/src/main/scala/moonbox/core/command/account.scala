@@ -21,8 +21,8 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.MbSession
-import moonbox.core.catalog._
+import moonbox.core.{MbSession, UserContext}
+import moonbox.catalog._
 import org.apache.spark.sql.Row
 
 

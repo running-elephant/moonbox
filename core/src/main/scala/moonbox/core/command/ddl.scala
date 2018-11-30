@@ -21,9 +21,9 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.catalog._
+import moonbox.catalog._
 import moonbox.core.datasys.DataSystem
-import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier}
+import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, UserContext}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 

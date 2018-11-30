@@ -7,12 +7,11 @@ import akka.actor.{ActorSystem, Address, Cancellable, Props}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.CatalogContext
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{ClusterDriverDescription, DeployMessages, MbService}
-import DeployMessages._
+import moonbox.grid.deploy.{ClusterDriverDescription, MbService}
+import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.WorkerState
 import moonbox.grid.deploy.messages.Message._
@@ -20,7 +19,6 @@ import moonbox.grid.deploy.thrift.ThriftServer
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
-
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.collection.mutable
@@ -42,6 +40,8 @@ class MoonboxMaster(
 
 	private var state = RecoveryState.STANDBY
 
+	private var mbService: MbService = _
+
 	private val idToWorker = new mutable.HashMap[String, WorkerInfo]
 	private val addressToWorker = new mutable.HashMap[Address, WorkerInfo]
 	private val workers = new mutable.HashSet[WorkerInfo]
@@ -58,7 +58,6 @@ class MoonboxMaster(
 	private var recoveryCompletionScheduler: Cancellable = _
 	private var checkForWorkerTimeOutTask: Cancellable = _
 
-	private var catalogContext: CatalogContext = _
 	private var timedEventService: TimedEventService = _
 
 	private var restServer: Option[RestServer] = None
@@ -73,15 +72,6 @@ class MoonboxMaster(
 
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
-
-		// start catalog
-		try {
-			catalogContext = new CatalogContext(conf)
-		} catch {
-			case e: Exception =>
-				logError("Could not start the CatalogContext.", e)
-				gracefullyShutdown()
-		}
 
 		// for check DEAD worker
 		checkForWorkerTimeOutTask = system.scheduler.schedule(
@@ -110,7 +100,13 @@ class MoonboxMaster(
 		}
 
 		// TODO
-		val mbService = new MbService(conf, catalogContext, self, new BlackHoleAuditLogger)
+		 try {
+			mbService = new MbService(conf, self, new BlackHoleAuditLogger)
+		} catch {
+			case e: Exception =>
+				logError("Could not start catalog.", e)
+				gracefullyShutdown()
+		}
 
 		// start timer
 		try {
@@ -191,9 +187,6 @@ class MoonboxMaster(
 
 		if (timedEventService != null) {
 			timedEventService.stop()
-		}
-		if (catalogContext != null) {
-			catalogContext.stop()
 		}
 		if (persistenceEngine != null) {
 			persistenceEngine.close()
@@ -478,7 +471,7 @@ class MoonboxMaster(
 	private def removeDriver(driverId: String, state: DriverState, exception: Option[Exception]) {
 		drivers.find(_.id == driverId) match {
 			case Some(driver) =>
-				logInfo(s"Removing driver: $driverId")
+				logInfo(s"Removing driver: $driverId. Final state $state")
 				drivers -= driver
 				// TODO complete retain
 				completedDrivers += driver

@@ -23,17 +23,13 @@ package moonbox.core.cache
 import java.util
 
 import moonbox.common.util.Utils
-import moonbox.localservice.LocalRedis
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class RedisCacheSuite extends FunSuite with BeforeAndAfterAll {
 
 	var redisCache: Cache = _
-	var localServer: LocalRedis = _
 
 	override protected def beforeAll(): Unit = {
-		localServer = new LocalRedis()
-		localServer.start()
 		redisCache = new RedisCache("localhost:6379")
 	}
 
@@ -87,6 +83,5 @@ class RedisCacheSuite extends FunSuite with BeforeAndAfterAll {
 	}*/
 
 	override protected def afterAll(): Unit = {
-		localServer.stop()
 	}
 }

@@ -1,4 +1,4 @@
-package moonbox.application.client
+package moonbox.application.interactive
 
 import java.util.UUID
 import java.util.concurrent.CountDownLatch

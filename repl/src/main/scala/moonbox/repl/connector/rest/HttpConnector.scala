@@ -153,7 +153,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean, nextFetchSize: Int) ext
 
   // TODO: api name
   private def fetchNextResult(token: String, sessionId: String, cursor: String, fetchSize: Long): InteractiveNextResultOutbound = {
-    val res = _client.post(InteractiveNextResultInbound(token, sessionId, cursor, fetchSize), "/nextResult")
+    val res = _client.post(InteractiveNextResultInbound(token, sessionId), "/nextResult")
     read[InteractiveNextResultOutbound](res) match {
       case r@InteractiveNextResultOutbound(None, Some(_)) => r
       case other => throw new Exception(s"Fetch next result failed: error=${other.error}")
@@ -162,7 +162,7 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean, nextFetchSize: Int) ext
 
   private def showResult(queryOutbound: InteractiveQueryOutbound): Unit = {
     queryOutbound match {
-      case InteractiveQueryOutbound(None, true, Some(d)) =>
+      case InteractiveQueryOutbound(None, Some(d)) =>
         val dataBuf = ArrayBuffer.empty[Seq[Any]]
         val data = d.data
         var numShowed = data.size
@@ -181,8 +181,8 @@ class HttpConnector(_timeout: Int, val isLocal: Boolean, nextFetchSize: Int) ext
         }
 //        val promote = if (numShowed < _connectionState.maxRowsShow && hasNext) false else true
         print(Utils.showString(dataBuf, parsedSchema, _connectionState.maxRowsShow, _connectionState.maxColumnLength))
-      case InteractiveQueryOutbound(None, false, _) => /* no-op */
-      case InteractiveQueryOutbound(error, _, _) => throw new Exception(s"SQL query failed: error=$error")
+      case InteractiveQueryOutbound(None, _) => /* no-op */
+      case InteractiveQueryOutbound(error, _) => throw new Exception(s"SQL query failed: error=$error")
       case _ => throw new Exception(s"SQL query failed.")
     }
   }
