@@ -40,152 +40,154 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
-	import MixcalContext._
-	val sparkSession = {
-		SparkSession.clearDefaultSession()
-		SparkSession.clearActiveSession()
-		SparkSession.builder().sparkContext(getSparkContext(conf))
-			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScan(sparkSession)))
-			.getOrCreate()
-	}
-	lazy val mbOptimizer = new MbOptimizer(sparkSession)
 
-	import sparkSession.sessionState
+  import MixcalContext._
 
-	def parsedLogicalPlan(sql: String): LogicalPlan = sessionState.sqlParser.parsePlan(sql)
+  val sparkSession = {
+    SparkSession.clearDefaultSession()
+    SparkSession.clearActiveSession()
+    SparkSession.builder().sparkContext(getSparkContext(conf))
+      .withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScan(sparkSession)))
+      .getOrCreate()
+  }
+  lazy val mbOptimizer = new MbOptimizer(sparkSession)
 
-	def analyzedLogicalPlan(plan: LogicalPlan): LogicalPlan = sessionState.analyzer.execute(plan)
+  import sparkSession.sessionState
 
-	def optimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = sessionState.optimizer.execute(plan)
+  def parsedLogicalPlan(sql: String): LogicalPlan = sessionState.sqlParser.parsePlan(sql)
 
-	def furtherOptimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = mbOptimizer.execute(plan)
+  def analyzedLogicalPlan(plan: LogicalPlan): LogicalPlan = sessionState.analyzer.execute(plan)
 
-	def emptyDataFrame: DataFrame = sparkSession.emptyDataFrame
+  def optimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = sessionState.optimizer.execute(plan)
 
-	def reset(): Unit = {
-		logInfo(s"Reset sparkSession.")
-		sparkSession.sessionState.catalog.reset()
-	}
+  def furtherOptimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = mbOptimizer.execute(plan)
 
-	def setJobGroup(group: String, desc: String = ""): Unit = {
-		logInfo(s"Set job group id as $group.")
-		sparkSession.sparkContext.setJobGroup(group, desc)
-	}
+  def emptyDataFrame: DataFrame = sparkSession.emptyDataFrame
 
-	def clearJobGroup(): Unit = {
-		logInfo("Clear job groups.")
-		sparkSession.sparkContext.clearJobGroup()
-	}
+  def reset(): Unit = {
+    logInfo(s"Reset sparkSession.")
+    sparkSession.sessionState.catalog.reset()
+  }
 
-	def cancelJobGroup(group: String): Unit = {
-		logInfo(s"Cancel job group $group.")
-		sparkSession.sparkContext.cancelJobGroup(group)
-	}
+  def setJobGroup(group: String, desc: String = ""): Unit = {
+    logInfo(s"Set job group id as $group.")
+    sparkSession.sparkContext.setJobGroup(group, desc)
+  }
 
-	def sqlToDF(sql: String): DataFrame = {
-		sparkSession.sql(sql)
-	}
+  def clearJobGroup(): Unit = {
+    logInfo("Clear job groups.")
+    sparkSession.sparkContext.clearJobGroup()
+  }
 
-	def treeToDF(tree: LogicalPlan): DataFrame = {
-		Dataset.ofRows(sparkSession, tree)
-	}
+  def cancelJobGroup(group: String): Unit = {
+    logInfo(s"Cancel job group $group.")
+    sparkSession.sparkContext.cancelJobGroup(group)
+  }
 
-	def rddToDF(rdd: RDD[Row], schema: StructType): DataFrame = {
-		sparkSession.createDataFrame(rdd, schema)
-	}
+  def sqlToDF(sql: String): DataFrame = {
+    sparkSession.sql(sql)
+  }
 
-	def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
-		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
-		val typ = props("type")
-		val catalog = sparkSession.sessionState.catalog
-		/*if (catalog.tableExists(tableIdentifier)) {
-			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
-		}*/
-		if (typ == "hive") {
-			val hiveClient = HiveClientUtils.getHiveClient(props)
-			val hiveCatalog = hiveClient.getTable(props("hivedb"), props("hivetable"))
-			catalog.createTable(hiveCatalog.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL, properties = hiveCatalog.properties ++ props), ignoreIfExists = true)
-			catalog.createPartitions(tableIdentifier, hiveClient.getPartitions(hiveCatalog), ignoreIfExists = true)
-		} else {
-			val createTableSql =
-				s"""
-				   |create table if not exists ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
-				   |using ${DataSystem.lookupDataSource(typ)}
-				   |options($propsString)
+  def treeToDF(tree: LogicalPlan): DataFrame = {
+    Dataset.ofRows(sparkSession, tree)
+  }
+
+  def rddToDF(rdd: RDD[Row], schema: StructType): DataFrame = {
+    sparkSession.createDataFrame(rdd, schema)
+  }
+
+  def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
+    val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
+    val typ = props("type")
+    val catalog = sparkSession.sessionState.catalog
+    /*if (catalog.tableExists(tableIdentifier)) {
+      catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
+    }*/
+    if (typ == "hive") {
+      val hiveClient = HiveClientUtils.getHiveClient(props)
+      val hiveCatalog = hiveClient.getTable(props("hivedb"), props("hivetable"))
+      catalog.createTable(hiveCatalog.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL, properties = hiveCatalog.properties ++ props), ignoreIfExists = true)
+      catalog.createPartitions(tableIdentifier, hiveClient.getPartitions(hiveCatalog), ignoreIfExists = true)
+    } else {
+      val createTableSql =
+        s"""
+           |create table if not exists ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
+           |using ${DataSystem.lookupDataSource(typ)}
+           |options($propsString)
 			 """.stripMargin
-			sqlToDF(createTableSql)
-		}
-	}
+      sqlToDF(createTableSql)
+    }
+  }
 
-	def registerFunction(db: String, func: CatalogFunction): Unit = {
-		val funcName = s"$db.${func.name}"
-		val (nonSourceResources, sourceResources) = func.resources.partition { resource =>
-			resource.resourceType match {
-				case _: NonSourceResource => true
-				case _: SourceResource => false
-			}
-		}
-		val loadResources = nonSourceResources.map { nonSource =>
-			nonSource.resourceType match {
-				case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
-				case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
-				case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
-			}
-		}
-		sparkSession.sessionState.catalog.loadFunctionResources(loadResources)
-		if (sourceResources.nonEmpty) {
-			sourceResources.foreach { source =>
-				source.resourceType match {
-					case ScalaResource =>
-						sparkSession.sessionState.functionRegistry.registerFunction(
-							funcName, UdfUtils.scalaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-					case _ =>
-						sparkSession.sessionState.functionRegistry.registerFunction(
-							funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-				}
-			}
-		} else {
-			sparkSession.sessionState.functionRegistry.registerFunction(
-				funcName, UdfUtils.nonSourceFunctionBuilder(funcName, func.className, func.methodName)
-			)
-		}
-	}
+  def registerFunction(db: String, func: CatalogFunction): Unit = {
+    val funcName = s"$db.${func.name}"
+    val (nonSourceResources, sourceResources) = func.resources.partition { resource =>
+      resource.resourceType match {
+        case _: NonSourceResource => true
+        case _: SourceResource => false
+      }
+    }
+    val loadResources = nonSourceResources.map { nonSource =>
+      nonSource.resourceType match {
+        case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
+        case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
+        case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
+      }
+    }
+    sparkSession.sessionState.catalog.loadFunctionResources(loadResources)
+    if (sourceResources.nonEmpty) {
+      sourceResources.foreach { source =>
+        source.resourceType match {
+          case ScalaResource =>
+            sparkSession.sessionState.functionRegistry.registerFunction(
+              funcName, UdfUtils.scalaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+          case _ =>
+            sparkSession.sessionState.functionRegistry.registerFunction(
+              funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+        }
+      }
+    } else {
+      sparkSession.sessionState.functionRegistry.registerFunction(
+        funcName, UdfUtils.nonSourceFunctionBuilder(funcName, func.className, func.methodName)
+      )
+    }
+  }
 
 }
 
 object MixcalContext extends MbLogging {
-	// TODO SparkContext.getOrCreate()
-	private var sparkContext: SparkContext = _
-	private var resourceMonitor: SparkResourceMonitor = _
+  // TODO SparkContext.getOrCreate()
+  private var sparkContext: SparkContext = _
+  private var resourceMonitor: SparkResourceMonitor = _
 
-	private def getSparkContext(conf: MbConf): SparkContext = {
-		sparkContext
-	}
+  private def getSparkContext(conf: MbConf): SparkContext = {
+    sparkContext
+  }
 
-	def getMixcalResourceMonitor: SparkResourceMonitor = {
-		resourceMonitor
-	}
+  def getMixcalResourceMonitor: SparkResourceMonitor = {
+    resourceMonitor
+  }
 
-	def start(conf: MbConf): Unit = {
-		synchronized {
-			if (sparkContext == null || sparkContext.isStopped) {
-				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
-					case (key, value) => key.startsWith("moonbox.mixcal")
-				}.map{case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
+  def start(conf: MbConf): Unit = {
+    synchronized {
+      if (sparkContext == null || sparkContext.isStopped) {
+        val sparkConf = new SparkConf().setAll(conf.getAll.filter {
+          case (key, value) => key.startsWith("moonbox.mixcal")
+        }.map { case (key, value) => (key.stripPrefix("moonbox.mixcal."), value) })
 
-				val sparkListener = new SparkResourceListener(sparkConf)
-				sparkContext = new SparkContext(sparkConf)
-				sparkContext.addSparkListener(sparkListener)
-				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
+        val sparkListener = new SparkResourceListener(sparkConf)
+        sparkContext = new SparkContext(sparkConf)
+        sparkContext.addSparkListener(sparkListener)
+        resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
 
-				val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
-				val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
-				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
-				logInfo("New a sparkContext instance.")
-				Utils.getRuntimeJars().foreach(sparkContext.addJar)
-			} else {
-				logInfo("Using an exists sparkContext.")
-			}
-		}
-	}
+        val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
+        val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
+        //org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
+        logInfo("New a sparkContext instance.")
+        Utils.getRuntimeJars().foreach(sparkContext.addJar)
+      } else {
+        logInfo("Using an exists sparkContext.")
+      }
+    }
+  }
 }

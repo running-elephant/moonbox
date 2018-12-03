@@ -179,7 +179,7 @@ case class MountTable(
 			if (!validate) {
 				throw new Exception("Can't connect to the database. Please check your connecting parameters.")
 			} else {
-				mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
+//				mbSession.mixcal.registerTable(TableIdentifier(table.table, Some(database)), props)
 
 				val catalogTable = CatalogTable(
 					name = table.table,
