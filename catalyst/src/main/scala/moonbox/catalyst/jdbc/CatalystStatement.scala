@@ -29,7 +29,6 @@ import moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor
 import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.parser.SqlParser
 import moonbox.catalyst.jdbc.JDBCUtils._
-import org.apache.spark.sql.UDFRegistration
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.StructType
 
@@ -45,7 +44,7 @@ class CatalystStatement(url: String, props: Properties) extends Statement {
       val schema = executor.getTableSchema
       val tableName = Option(newProps.getProperty(MongoJDBCUtils.COLLECTION_KEY)).getOrElse(newProps.getProperty("collection"))
       parser.registerTable(tableName, schema, "mongo")
-      executor.adaptorFunctionRegister(parser.getRegister)
+      //executor.adaptorFunctionRegister(parser.getRegister)
       val plan = parser.parse(sql)
       val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
       maxFieldSize = index2SqlType.size
@@ -55,7 +54,7 @@ class CatalystStatement(url: String, props: Properties) extends Statement {
       val schema = executor.getTableSchema
       val tableName = newProps.getProperty(EsUtil.DB_NAME)  //database
       parser.registerTable(tableName, schema, "es")
-      executor.adaptorFunctionRegister(parser.getRegister)
+      //executor.adaptorFunctionRegister(parser.getRegister)
       val plan = parser.parse(sql)
       val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
       maxFieldSize = index2SqlType.size
@@ -69,8 +68,8 @@ class CatalystStatement(url: String, props: Properties) extends Statement {
       val schema = clazz.getDeclaredMethod("getTableSchema").invoke(obj)
       val tableName = newProps.getProperty(JDBCUtils.TABLE_KEY)
       parser.registerTable(tableName, schema.asInstanceOf[StructType], clazz.getSimpleName.stripSuffix("$"))
-      val register = parser.getRegister
-      clazz.getDeclaredMethod("adaptorFunctionRegister", classOf[UDFRegistration]).invoke(obj, register)
+      //val register = parser.getRegister
+      //clazz.getDeclaredMethod("adaptorFunctionRegister", classOf[UDFRegistration]).invoke(obj, register)
       val plan = parser.parse(sql)
       val (iter, index2SqlType, columnLabel2Index) = clazz.getDeclaredMethod("execute4Jdbc", classOf[LogicalPlan]).invoke(obj, plan)
       maxFieldSize = index2SqlType.asInstanceOf[Map[Int, Int]].size

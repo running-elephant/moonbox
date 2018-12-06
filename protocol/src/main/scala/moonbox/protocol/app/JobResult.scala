@@ -22,7 +22,6 @@ package moonbox.protocol.app
 
 trait JobResult
 
-//case object CachedData extends JobResult
 case class DirectData(jobId: String, schema: String, data: Seq[Seq[String]], hasNext: Boolean) extends JobResult
 case object UnitData extends JobResult
 case class Failed(message: String) extends JobResult

@@ -26,7 +26,6 @@ import java.util
 import java.util.{ArrayList, Properties}
 
 import moonbox.catalyst.adapter.elasticsearch5.client.AggWrapper.AggregationType
-import moonbox.common.MbLogging
 import org.apache.spark.sql.types._
 import org.elasticsearch.client.RestClientBuilder
 import org.json.JSONArray
@@ -43,7 +42,7 @@ import org.json.JSONObject
 
 case class ShapeType(name: String, tpe: AnyRef, level: Int)
 
-class EsRestClient(param: Map[String, String]) extends MbLogging{
+class EsRestClient(param: Map[String, String]) {
 
     val nodes: Array[String] = param("nodes").split(",")   // 1.1.1.1:9200,2.2.2.2:9200
     //val port = param.getOrElse("es.port", "9200")
@@ -331,7 +330,7 @@ class EsRestClient(param: Map[String, String]) extends MbLogging{
     def putSchema(index: String, mtype: String, schema: StructType): Boolean = {
 
         val mapping = generateCreateMapping(index, mtype, schema)
-        logInfo("putSchema" + mapping)
+        System.out.println("putSchema" + mapping)
 
         val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
         val response: Response = restClient.performRequest("PUT", s"""/$index""", new util.Hashtable[String, String](), entityReq)

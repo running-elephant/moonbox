@@ -23,8 +23,7 @@ object DeployMessages {
 		host: String,
 		port: Int,
 		worker: ActorRef,
-		address: Address,
-		internalPort: Int) extends DeployMessages {
+		address: Address) extends DeployMessages {
 	}
 
 	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
@@ -52,8 +51,25 @@ object DeployMessages {
 	case class DriverStateChanged(
 		driverId: String,
 		state: DriverState,
+		appId: Option[String],
 		exception: Option[Exception])
 	extends DeployMessages
 
 	case class KillDriver(driverId: String) extends DeployMessages
+
+	case class RegisterExecutor(
+		id: String,
+		host: String,
+		port: Int,
+		endpoint: ActorRef,
+		address: Address,
+		dataPort: Int
+	)
+
+	sealed trait RegisterExecutorResponse
+
+	case class RegisteredExecutor(masterRef: ActorRef) extends RegisterExecutorResponse
+
+	case class RegisterExecutorFailed(message: String) extends RegisterExecutorResponse
+
 }

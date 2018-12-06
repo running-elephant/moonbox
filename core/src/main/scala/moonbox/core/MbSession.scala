@@ -26,17 +26,18 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.catalog.{CatalogColumn, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
-import moonbox.core.execution.standalone.DataTable
+import moonbox.core.datasys.{DataTable, Pushdownable}
+import moonbox.core.parser.MbParser
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
-import moonbox.core.datasys.Pushdownable
 import org.apache.spark.sql.{DataFrame, MixcalContext}
 
 import scala.collection.mutable
 
 class MbSession(conf: MbConf) extends MbLogging {
+	private val mbParser = new MbParser()
 	implicit var userContext: UserContext = _
 	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE)
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE)
@@ -99,6 +100,10 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
+	def parsedPlan(sql: String): MbCommand = {
+		mbParser.parsePlan(sql)
+	}
+
 	def analyzedPlan(sqlText: String): LogicalPlan = {
 		val preparedSql = prepareSql(sqlText)
 		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
@@ -113,19 +118,19 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
 	}
 
-	def prepareAnalyze(plan: LogicalPlan): Unit = {
+	private def prepareAnalyze(plan: LogicalPlan): Unit = {
 		val (tableIdentifiers, functionIdentifiers) = collectUnknownTablesAndFunctions(plan)
 		registerTables(tableIdentifiers)
 		registerFunctions(functionIdentifiers)
 	}
 
-	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
+	private def checkColumnPrivilege(plan: LogicalPlan): Unit = {
 		if (columnPermission) {
 			ColumnSelectPrivilegeChecker.intercept(plan, this)
 		}
 	}
 
-	def registerTables(tables: Seq[TableIdentifier]): Unit = {
+	private def registerTables(tables: Seq[TableIdentifier]): Unit = {
 		tables.foreach { table =>
 			val isView = table.database.map(db => catalog.viewExists(userContext.organizationId, db, table.table))
 				.getOrElse(catalog.viewExists(userContext.databaseId, table.table))
@@ -145,7 +150,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 		}
 	}
 
-	def registerFunctions(functions: Seq[FunctionIdentifier]): Unit = {
+	private def registerFunctions(functions: Seq[FunctionIdentifier]): Unit = {
 		functions.foreach { function =>
 			val (databaseId, databaseName) = if (function.database.isEmpty) {
 				(userContext.databaseId, userContext.databaseName)
@@ -209,20 +214,7 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 	def schema(databaseId: Long, table: String): Seq[CatalogColumn] = {
 		val catalogDatabase = catalog.getDatabase(databaseId)
-		val tableIdentifier = TableIdentifier(table, Some(catalogDatabase.name))
-		prepareAnalyze(UnresolvedRelation(tableIdentifier))
-		mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
-			CatalogColumn(
-				name = field.name,
-				dataType = field.dataType.simpleString,
-				databaseId = catalogDatabase.id.get,
-				table = table,
-				createBy = catalogDatabase.createBy,
-				createTime = catalogDatabase.createTime,
-				updateBy = catalogDatabase.updateBy,
-				updateTime = catalogDatabase.updateTime
-			)
-		}
+		schema(table, Some(catalogDatabase.name))
 	}
 
 	def schema(table: String, database: Option[String]): Seq[CatalogColumn] = {
@@ -323,8 +315,8 @@ object MbSession extends MbLogging {
 
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
 
-	def startMixcalEnv(conf: MbConf, isOnYarn: Boolean = true): Unit = {
-		MixcalContext.start(conf, isOnYarn)
+	def startMixcalEnv(conf: MbConf): Unit = {
+		MixcalContext.start(conf)
 	}
 
 }

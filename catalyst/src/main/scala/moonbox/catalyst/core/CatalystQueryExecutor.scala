@@ -21,7 +21,6 @@
 package moonbox.catalyst.core
 
 import moonbox.catalyst.jdbc.JdbcRow
-import org.apache.spark.sql.UDFRegistration
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.StructType
 
@@ -39,7 +38,7 @@ trait CatalystQueryExecutor {
 
   def execute[T](plan: LogicalPlan, convert: (Option[StructType], Seq[Any]) => T): Iterator[T] = { ??? }
 
-  def adaptorFunctionRegister(udf: UDFRegistration)
+  //def adaptorFunctionRegister(udf: UDFRegistration)
 
   def translate(plan: LogicalPlan): Seq[String] = Seq()
 }

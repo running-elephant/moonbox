@@ -25,7 +25,6 @@ import moonbox.catalog._
 import moonbox.core.command.PrivilegeType.PrivilegeType
 import moonbox.core.{MbSession, MbTableIdentifier, UserContext}
 import org.apache.spark.sql.Row
-import moonbox.core.datasys.DataSystem
 
 sealed trait DCL
 

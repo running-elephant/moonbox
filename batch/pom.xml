@@ -18,6 +18,7 @@
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
             <version>${project.version}</version>
+            <!-- TODO exclude spark -->
         </dependency>
     </dependencies>
 

@@ -29,14 +29,13 @@ import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystQueryExecutor, Strategy}
 import moonbox.catalyst.jdbc.JdbcRow
-import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Row, SaveMode, UDFRegistration}
+import org.apache.spark.sql.Row
 import scala.collection.JavaConverters._
 
 
-class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor with MbLogging{
+class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor {
 
     import EsCatalystQueryExecutor._
 
@@ -57,12 +56,12 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
     //context.nestFields = nestFieldSet
     context.version = version
 
-    override def adaptorFunctionRegister(udf: UDFRegistration) = {
+   /* override def adaptorFunctionRegister(udf: UDFRegistration) = {
         udf.register("geo_distance", geo_distance _)
         udf.register("geo_shape", geo_shape _)
         udf.register("geo_bounding_box", geo_bounding_box _)
         udf.register("geo_polygon", geo_polygon _)
-    }
+    }*/
 
     override def getPlannerRule(): Seq[Strategy] = {
         Seq(EsBaseOperator)
@@ -98,36 +97,35 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
     }
 
     /** insert to es by iterator, support four mode */
-    def execute4Insert(iter: Iterator[Row], schema: StructType, mode: SaveMode): Unit = {
+    /*def execute4Insert(iter: Iterator[Row], schema: StructType, mode: SaveMode): Unit = {
         import org.apache.spark.sql.SaveMode._
         mode match{
             case Append =>
                 //batch save data to index
                 val ret1 = batchInsert(iter, schema)
-                logInfo(s"execute4Insert ($index,$typ) Append: batchInsert ${ret1._1} ${ret1._2}")
+
             case Overwrite =>  //in moonbox, the table must exist for parsing sql pass, so check exist will return true
                 if(client.checkExist(index, typ)) { //must true, NOTE: in spark, GEO point read from es then write to es, the type will lost
                     if(client.version.head == 2) {
                         //1 delete exist index, es2 no truncate
                         val ret1 = client.deleteIndex(index)
-                        logInfo(s"execute4Insert ($index,$typ) Overwrite: deleteIndex $ret1")
                         //2 create new index with schema
                         val ret2 = client.putSchema(index, typ, schema)
-                        logInfo(s"execute4Insert ($index,$typ) Overwrite: putSchema $ret2")
+
                     }else {  //es5
                         val ret1 = client.truncateIndex(index, typ)
-                        logInfo(s"execute4Insert ($index,$typ) Overwrite: truncateIndex $ret1")
+
                     }
                 }
                 //3 batch insert data to index
                 val ret3 = batchInsert(iter, schema)
-                logInfo(s"execute4Insert ($index,$typ) Overwrite: batchInsert ${ret3._1} ${ret3._2}")
+
             case ErrorIfExists =>
                 //check is empty or not
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
                     val ret1 = batchInsert(iter, schema)
-                    logInfo(s"execute4Insert ($index,$typ) ErrorIfExists: batchInsert ${ret1._1} ${ret1._2}")
+
                 }else{
                     throw new Exception(s"SaveMode is set to ErrorIfExists and index $index $typ exists and contains data. Consider changing the SaveMode")
                 }
@@ -135,10 +133,10 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
                 if(!client.checkExist(index, typ)){
                     //batch save data to index
                     val ret1 = batchInsert(iter, schema)
-                    logInfo(s"execute4Insert ($index,$typ) Ignore: batchInsert ${ret1._1} ${ret1._2}")
+
                 }
         }
-    }
+    }*/
 
     private def batchInsert(iter: Iterator[Row], schema: StructType): (Boolean, Long) = {
         val batchNum: Long = 100l  //batch number
@@ -213,13 +211,6 @@ class EsCatalystQueryExecutor(info: Properties) extends CatalystQueryExecutor wi
                            limitSize: Int,
                            convert: (Option[StructType], Seq[Any]) => T): (Iterator[T], Map[Int, Int], Map[String, Int]) = {
 
-        if(log.isInfoEnabled()) { //print json, and schema
-            logInfo("json" + json)
-            logInfo("infer schema:" + schema.toString())
-        }else{
-            println("json" + json)
-            println("infer schema:" + schema.toString())
-        }
          /** no use iterator begin **/
 //        val response = client.performScrollRequest(index, typ, json, hasLimit)
 //        val data: Seq[Seq[Any]] = response.getResult(schema, colId2colNameMap(mapping))

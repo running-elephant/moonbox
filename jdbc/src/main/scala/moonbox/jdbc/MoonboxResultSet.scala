@@ -54,7 +54,7 @@ class MoonboxResultSet(conn: MoonboxConnection,
 
   private def fetchNextData(): InteractiveNextResultOutbound = {
     val client = stat.jdbcSession.jdbcClient
-    val message = InteractiveNextResultInbound(null, null, cursor.orNull, FETCH_SIZE).setId(client.genMessageId)
+    val message = InteractiveNextResultInbound(null, cursor.orNull).setId(client.genMessageId)
     val resp = client.sendAndReceive(message, stat.queryTimeout)
     resp match {
       case outbound: InteractiveNextResultOutbound => outbound

@@ -73,7 +73,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     val message = InteractiveQueryInbound(null, null, MoonboxJDBCUtils.splitSql(sql, ';'), getFetchSize).setId(client.genMessageId)
     val resp = client.sendAndReceive(message, getQueryTimeout)
     val outbound = resp match {
-      case interactiveQueryOutbound@InteractiveQueryOutbound(error, hasResult, resultData) =>
+      case interactiveQueryOutbound@InteractiveQueryOutbound(error, resultData) =>
         if (error.isDefined) {
           throw new SQLException(s"Execute query error: ${error.get}")
         }
@@ -87,7 +87,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
               |  "fields": []
               |}
             """.stripMargin
-          InteractiveQueryOutbound(error, hasResult, Some(ResultData(null, emptySchema, emptyData, hasNext = false)))
+          InteractiveQueryOutbound(error, Some(ResultData(null, emptySchema, emptyData, hasNext = false)))
         } else {
           isResultSet = true
           interactiveQueryOutbound

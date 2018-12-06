@@ -10,7 +10,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{ClusterDriverDescription, MbService}
+import moonbox.grid.deploy.{ClusterDriverDescription, DriverDescription, MbService}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.WorkerState
@@ -19,6 +19,7 @@ import moonbox.grid.deploy.thrift.ThriftServer
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.collection.mutable
@@ -46,11 +47,17 @@ class MoonboxMaster(
 	private val addressToWorker = new mutable.HashMap[Address, WorkerInfo]
 	private val workers = new mutable.HashSet[WorkerInfo]
 
-	// for batch
+	// for batch and interactive
 	private val drivers = new mutable.HashSet[DriverInfo]
 	private val waitingDrivers = new ArrayBuffer[DriverInfo]
 	private val completedDrivers = new ArrayBuffer[DriverInfo]
+	// for batch driver id
 	private var nextBatchDriverNumber = 0
+
+	// for interactive application
+	private val executors = new mutable.HashSet[ExecutorInfo]
+	private val addressToExecutor = new mutable.HashMap[Address, ExecutorInfo]
+	private val sessionIdToExecutor = new mutable.HashMap[String, ExecutorInfo]
 
 	private var persistenceEngine: PersistenceEngine = _
 	private var leaderElectionAgent: LeaderElectionAgent = _
@@ -218,14 +225,14 @@ class MoonboxMaster(
 			logError("Leadership has been revoked, master shutting down.")
 			gracefullyShutdown()
 
-		case RegisterWorker(id, workerHost, workerPort, workerRef, workerAddress, internalPort) =>
+		case RegisterWorker(id, workerHost, workerPort, workerRef, workerAddress) =>
 			logInfo(s"Worker try registering: $workerAddress")
 			if (state == RecoveryState.STANDBY) {
 				workerRef ! MasterInStandby
 			} else if (idToWorker.contains(id)) {
 				workerRef ! RegisterWorkerFailed("Duplicate worker ID")
 			} else {
-				val worker = new WorkerInfo(id, workerHost, workerPort, workerAddress, workerRef, internalPort)
+				val worker = new WorkerInfo(id, workerHost, workerPort, workerAddress, workerRef)
 				if (registerWorker(worker)) {
 					persistenceEngine.addWorker(worker)
 					workerRef ! RegisteredWorker(self)
@@ -320,7 +327,7 @@ class MoonboxMaster(
 					case Some(d) =>
 						if (waitingDrivers.contains(d)) {
 							waitingDrivers -= d
-							self ! DriverStateChanged(driverId, DriverState.KILLED, None)
+							self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
 						} else {
 							d.worker.foreach(_.endpoint ! KillDriver(driverId))
 						}
@@ -334,14 +341,18 @@ class MoonboxMaster(
 				}
 			}
 
-		case DriverStateChanged(driverId, driverState, exception) =>
+		case DriverStateChanged(driverId, driverState, appId, exception) =>
 			driverState match {
 				case DriverState.ERROR | DriverState.FINISHED | DriverState.KILLED | DriverState.FAILED =>
-					removeDriver(driverId, driverState, exception)
+					removeDriver(driverId, driverState, appId, exception)
 				case _ =>
-					drivers.find(_.id == driverId).foreach(_.state = driverState)
-
+					drivers.find(_.id == driverId).foreach { d =>
+						d.state = driverState
+						d.appId = appId
+					}
 			}
+
+
 		case e => println(e)
 	}
 
@@ -454,7 +465,7 @@ class MoonboxMaster(
 		appId
 	}
 
-	private def createDriver(desc: ClusterDriverDescription): DriverInfo = {
+	private def createDriver(desc: DriverDescription): DriverInfo = {
 		val now = System.currentTimeMillis()
 		val date = new Date(now)
 		new DriverInfo(now, newDriverId(date), desc, date)
@@ -468,7 +479,7 @@ class MoonboxMaster(
 		driver.state = DriverState.SUBMITTING
 	}
 
-	private def removeDriver(driverId: String, state: DriverState, exception: Option[Exception]) {
+	private def removeDriver(driverId: String, state: DriverState, appId: Option[String], exception: Option[Exception]) {
 		drivers.find(_.id == driverId) match {
 			case Some(driver) =>
 				logInfo(s"Removing driver: $driverId. Final state $state")
@@ -478,6 +489,7 @@ class MoonboxMaster(
 				persistenceEngine.removeDriver(driver)
 				driver.state = state
 				driver.exception = exception
+				driver.appId = appId
 				driver.worker.foreach(_.removeDriver(driver))
 				schedule()
 			case None =>

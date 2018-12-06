@@ -25,9 +25,18 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-grid_2.11</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_${scala.library}</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-remote_2.11</artifactId>
-            <version>${akka.version}</version>
         </dependency>
     </dependencies>
 
@@ -81,7 +90,7 @@
                 </executions>
             </plugin>
 
-            <plugin>
+            <!--<plugin>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>2.4.1</version>
                 <executions>
@@ -111,7 +120,7 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 

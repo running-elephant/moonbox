@@ -22,7 +22,6 @@ package moonbox.catalyst.adapter.elasticsearch5.util
 
 import moonbox.catalyst.adapter.elasticsearch5.client.{ActionResponse, EsRestClient}
 import moonbox.catalyst.adapter.util.SparkUtil.colId2colNameMap
-import moonbox.common.MbLogging
 import org.apache.spark.sql.types.StructType
 import org.elasticsearch.client.Response
 import org.json.JSONObject
@@ -37,7 +36,7 @@ class EsRowIter[T](index: String,
                    mapping: Seq[(String, String)],
                    convert: (Option[StructType], Seq[Any]) => T,
                    limitSize: Int,
-                   client: EsRestClient) extends java.util.Iterator[T] with MbLogging{  //T ==> ROW
+                   client: EsRestClient) extends java.util.Iterator[T] {  //T ==> ROW
 
     private val actionRsp: ActionResponse = new ActionResponse()
     private val result: ArrayBuffer[T] = new ArrayBuffer[T]()
@@ -76,7 +75,6 @@ class EsRowIter[T](index: String,
         runtime = runtime +1
         hasProcessLines += fetchSize
 
-        logInfo(s"EsRowIter: $hasProcessLines $requestLines $responseLines count: $runtime ")
 
         if(client.containsAggs(jsonRspObject)){
             continue = false

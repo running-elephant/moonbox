@@ -12,7 +12,7 @@ import moonbox.grid.deploy.master.{DriverState, MoonboxMaster}
 import moonbox.grid.deploy.master.MoonboxMaster._
 import moonbox.grid.config.WORKER_TIMEOUT
 import moonbox.grid.deploy._
-import moonbox.grid.deploy.DeployMessages._
+import moonbox.grid.deploy.DeployMessages.{LaunchDriver, _}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -39,6 +39,7 @@ class MoonboxWorker(
 	private var registered = false
 	private var connected = false
 	private var connectionAttemptCount = 0
+	private var nextInteractiveDriverNumber = 0
 
 	private val drivers = new mutable.HashMap[String, DriverRunner]
 	private val finishedDrivers = new mutable.LinkedHashMap[String, DriverRunner]
@@ -51,6 +52,9 @@ class MoonboxWorker(
 		assert(!registered)
 		logInfo(s"Running Moonbox version 0.3.0")// TODO
 		logInfo(s"Starting MoonboxWorker at ${self.path.toSerializationFormatWithAddress(address)}")
+		// TODO
+		self ! LaunchDriver(newDriverId, new LocalDriverDescription(conf))
+		self ! LaunchDriver(newDriverId, new ClientDriverDescription(conf))
 		registerWithMaster()
 	}
 
@@ -90,7 +94,7 @@ class MoonboxWorker(
 					logError(s"Asked to kill unknown driver $driverId")
 			}
 
-		case driverStateChanged @ DriverStateChanged(driverId, state, exception) =>
+		case driverStateChanged @ DriverStateChanged(driverId, state, appId, exception) =>
 			handleDriverStateChanged(driverStateChanged)
 
 		case e => println(e)
@@ -191,8 +195,7 @@ class MoonboxWorker(
 			host,
 			port,
 			self,
-			address,
-			10000 // TODO
+			address
 		), self)
 	}
 
@@ -232,6 +235,15 @@ class MoonboxWorker(
 	private def generateWorkerId(): String = {
 		"worker-%s-%s".format(createDateFormat.format(new Date), address.hostPort)
 	}
+
+	private def newDriverId: String = {
+		val now = System.currentTimeMillis()
+		val submitDate = new Date(now)
+		val driverId = "interacive-%s-%04d".format(createDateFormat.format(submitDate), nextInteractiveDriverNumber)
+		nextInteractiveDriverNumber += 1
+		driverId
+	}
+
 
 	private def gracefullyShutdown(): Unit = {
 		system.terminate()

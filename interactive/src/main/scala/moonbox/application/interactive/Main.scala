@@ -1,43 +1,49 @@
 package moonbox.application.interactive
 
-import java.net.InetAddress
-import java.util.concurrent.CountDownLatch
-import akka.actor.{Actor, ActorSystem, Props}
+
+import akka.actor.{Actor, ActorSystem, Address, Props}
 import com.typesafe.config.{Config, ConfigFactory}
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.MbSession
+import moonbox.grid.{LogMessage, MbActor}
+import moonbox.grid.deploy.DeployMessages.MasterChanged
 
 import scala.collection.JavaConverters._
 
 object Main extends MbLogging {
 
 	def main(args: Array[String]) {
-		val sparkConf = (0 until args.length / 2).map { index =>
-			val key = index * 2
-			val value = index * 2 + 1
-			(args(key), args(value))
-		}
-		val mbConf = new MbConf()
-		mbConf.set(sparkConf)
+		val conf = new MbConf()
+		val keyValues = for (i <- 0 until(args.length, 2)) yield (args(i), args(i+1))
+		keyValues.foreach { case (k, v) => conf.set(k, v) }
 
-		sparkConf.foreach{println(_)}
-
-		val akkaMap = Map("akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
+		val akkaConfig = Map("akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
 			"akka.remote.enabled-transports.0" ->"akka.remote.netty.tcp",
-			"akka.remote.netty.tcp.hostname" -> InetAddress.getLocalHost.getHostName,
+			"akka.remote.netty.tcp.hostname" -> Utils.localHostName(),
 			"akka.remote.netty.tcp.port" -> "0"
 		)
-		val akkaConf: Config = ConfigFactory.parseMap(akkaMap.asJava)
-		val system = ActorSystem("YarnAppSystem", akkaConf)
-		val latch = new CountDownLatch(1)
 
-		system.actorOf(Props(classOf[YarnAppActor], mbConf, system, latch), name = "YarnAppActor")
+		val akkaConf: Config = ConfigFactory.parseMap(akkaConfig.asJava)
+		val system = ActorSystem("Moonbox", akkaConf)
 
-		latch.await()
+		system.actorOf(Props(classOf[Main], conf), name = "interactive")
+		Thread.currentThread().join()
 	}
 }
 
-class Main() extends Actor {
-	override def receive: Receive = {
-		case e =>
+class Main(conf: MbConf) extends MbActor with LogMessage with MbLogging {
+
+	@scala.throws[Exception](classOf[Exception])
+	override def preStart(): Unit = {
+		self ! MasterChanged(self)
+	}
+
+	override def handleMessage: Receive = {
+		case MasterChanged(masterRef) =>
+	}
+
+	override def onDisconnected(remoteAddress: Address): Unit = {
+
 	}
 }

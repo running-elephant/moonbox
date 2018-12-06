@@ -167,40 +167,30 @@ object Utils extends MbLogging {
 		}
 	}
 
-
 	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
-		if ( env.contains("MOONBOX_DEBUG_LOCAL") ) {  //debug local
+		if (env.contains("MOONBOX_DEV")) {
 			val projectPath = System.getProperty("user.dir")
-			val srcDirPath = s"$projectPath" + File.separator + "assembly" +  File.separator +"target"
-			val srcDirFile = new File(srcDirPath)
-			val jarFileOpt = srcDirFile.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-assembly")).map(_.getAbsolutePath).headOption
-			if(jarFileOpt.isDefined) {
-				val jarFile = s"${jarFileOpt.get}"
-				val destDirPath = s"$srcDirPath" + File.separator + "moonbox" + File.separator + "runtime"
-				val destDirFile = new File(destDirPath)
-				Utils.delete(destDirFile)
-				val cmd = Array("tar", "-C", srcDirPath,  "-xvf", jarFile, "moonbox" + File.separator + "runtime")
-				val pro = Runtime.getRuntime.exec(cmd)
-				pro.waitFor()
-				val a = destDirFile.listFiles().map {
-					_.getAbsolutePath
-				}.filter(_.endsWith(".jar")).toList
-				a
-			}else{
-				throw new Exception("assembly jar does not exist")
+			val target = s"$projectPath${File.separator}assembly${File.separator}target"
+			val file = new File(target)
+			if (file.exists()) {
+				file.listFiles()
+					.find(f => f.isDirectory && f.getName.startsWith("moonbox-assembly")).map { f =>
+					new File(f.getPath + File.separator + "moonbox" + File.separator + "runtime").listFiles()
+						.filter(f => f.isFile && f.getName.endsWith(".jar")).map(_.getAbsolutePath).toList
+				}.getOrElse(List())
+			} else {
+				List()
 			}
 		} else {
-			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}runtime" })
-			if (pluginDir.isEmpty) {
-				//TODO: local load dep jars
+			val runtimeDirectory: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}runtime" })
+			if (runtimeDirectory.isEmpty) {
 				throw new Exception("$MOONBOX_HOME does not exist")
 			} else {
-				val lib = new File(pluginDir.get)
+				val lib = new File(runtimeDirectory.get)
 				if (lib.exists()) {
-					val confFile = lib.listFiles().filter {
-						_.isFile
-					}.map(_.getAbsolutePath)
-					confFile.toList
+					val jars = lib.listFiles().filter { f => f.isFile && f.getName.endsWith(".jar")}
+						.map(_.getAbsolutePath).toList
+					jars
 				} else {
 					List()
 				}
@@ -208,21 +198,28 @@ object Utils extends MbLogging {
 		}
 	}
 
-	def getYarnAppJar(env: Map[String, String] = sys.env): Option[String] = {
-		if ( env.contains("MOONBOX_DEBUG_LOCAL" ) ) {
+	def getAppResourceJar(appType: String, env: Map[String, String] = sys.env): Option[String] = {
+		if (env.contains("MOONBOX_DEV" )) { // for dev
 			val projectPath = System.getProperty("user.dir")
-			val depLocalDir = s"$projectPath" + File.separator + "batch" +  File.separator +"target"
-			val file = new File(depLocalDir)
-			val jarFile = file.listFiles().filter(_.isFile).filter(_.getName.startsWith("moonbox-")).map(_.getAbsolutePath).headOption
-			jarFile
+			val target = s"$projectPath${File.separator}assembly${File.separator}target"
+			val file = new File(target)
+			if (file.exists()) {
+				file.listFiles()
+					.find(f => f.isDirectory && f.getName.startsWith("moonbox-assembly")).flatMap { f =>
+					new File(f.getPath + File.separator + "moonbox" + File.separator + "apps").listFiles()
+						.find(f => f.isFile && f.getName.contains(appType)).map(_.getAbsolutePath)
+				}
+			} else {
+				None
+			}
 		} else {
-			val pluginDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}cluster" })
-			if (pluginDir.isEmpty) {
+			val appsDirectory = env.get("MOONBOX_APP_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}apps" })
+			if (appsDirectory.isEmpty) {
 				throw new Exception("$MOONBOX_HOME does not exist")
 			} else {
-				val lib = new File(pluginDir.get)
-				if (lib.exists()) {
-					lib.listFiles().filter{_.isFile}.filter(_.getName.toLowerCase.indexOf("yarnapp") != -1).map(_.getAbsolutePath).headOption
+				val file = new File(appsDirectory.get)
+				if (file.exists()) {
+					file.listFiles().find(f => f.isFile && f.getName.contains(appType)).map(_.getAbsolutePath)
 				} else {
 					None
 				}

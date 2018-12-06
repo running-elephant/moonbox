@@ -23,7 +23,6 @@ package moonbox.catalyst.adapter.util
 import java.sql.{Date, Timestamp}
 
 import moonbox.catalyst.jdbc.JdbcRow
-import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions.{Add, Alias, And, Attribute, AttributeReference, BinaryArithmetic, CaseWhenCodegen, Cast, Divide, EqualTo, Expression, GetArrayStructFields, GetStructField, GreaterThan, GreaterThanOrEqual, In, IsNotNull, IsNull, LessThan, LessThanOrEqual, Literal, Multiply, Or, Round, Substring, Subtract}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
@@ -35,7 +34,7 @@ import scala.util.matching.Regex
 
 case class FieldName(name: String, isLiteral: Boolean, inScript: Boolean=false)
 
-object SparkUtil extends MbLogging{
+object SparkUtil {
     /*
     inScript: if string should in script, use doc['value'] else use value
      */
@@ -246,7 +245,6 @@ object SparkUtil extends MbLogging{
             if(value != None) {
                 dataTypeConvert(value, field.dataType)
             }else{
-                logDebug(s"!can not find col $colName in resultlist")
                 null
             }
         }

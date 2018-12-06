@@ -11,8 +11,7 @@ class WorkerInfo(
 	val host: String,
 	val port: Int,
 	val address: Address,
-	val endpoint: ActorRef,
-	val internalPort: Int
+	val endpoint: ActorRef
 ) extends Serializable {
 
 	@transient var state: WorkerState.Value = _
@@ -49,7 +48,6 @@ class WorkerInfo(
 		   |port: $port
 		   |address: $address
 		   |endpoint: $endpoint
-		   |internalPort: $internalPort
 		   |state: $state
 		 """.stripMargin
 	}

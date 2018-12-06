@@ -21,7 +21,6 @@
 package moonbox.catalyst.core
 
 import moonbox.catalyst.core.plan.{CatalystPlan, LeafExecNode}
-import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.planning.{GenericStrategy, QueryPlanner}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -38,7 +37,7 @@ case class PlanLater(plan: LogicalPlan) extends LeafExecNode {
 	override def translate(context: CatalystContext): Seq[String] = throw new UnsupportedOperationException
 }
 
-abstract class CatalystStrategies extends QueryPlanner[CatalystPlan] with MbLogging { self: CatalystPlanner =>
+abstract class CatalystStrategies extends QueryPlanner[CatalystPlan] { self: CatalystPlanner =>
 	override protected def collectPlaceholders(plan: CatalystPlan): Seq[(CatalystPlan, LogicalPlan)] = {
 		plan.collect {
 			case placeholder @ PlanLater(logicalPlan) => placeholder -> logicalPlan
@@ -50,7 +49,6 @@ abstract class CatalystStrategies extends QueryPlanner[CatalystPlan] with MbLogg
     override def plan(plan: LogicalPlan): Iterator[CatalystPlan] = {
         // Obviously a lot to do here still...
 
-        logDebug("plan: " + plan)
         // Collect physical plan candidates.
         val candidatesPlan: Seq[CatalystPlan] = strategies.flatMap{sfunc =>
             val seq = sfunc(plan)
@@ -60,8 +58,6 @@ abstract class CatalystStrategies extends QueryPlanner[CatalystPlan] with MbLogg
 
         val plans: Iterator[CatalystPlan] = candidates.flatMap { candidate =>  //CatalystPlan
             val placeholders: Seq[(CatalystPlan, LogicalPlan)]  = collectPlaceholders(candidate)
-
-            placeholders.map(e => logDebug(e._2.toString()))
 
             if (placeholders.isEmpty) {
                 // Take the candidate as is because it does not contain placeholders.

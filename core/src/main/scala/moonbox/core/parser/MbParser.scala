@@ -28,7 +28,7 @@ import org.apache.spark.sql.catalyst.parser.{ParseErrorListener, PostProcessor}
 class MbParser extends MbLogging {
 	private lazy val astBuilder = new MbAstBuilder
 
-	def parse[T](mql: String)(toResult: MqlBaseParser => T): T = {
+	private def parse[T](mql: String)(toResult: MqlBaseParser => T): T = {
 		val lexer: MqlBaseLexer = new MqlBaseLexer(new ANTLRNoCaseStringStream(mql))
 		lexer.removeErrorListeners()
 		lexer.addErrorListener(ParseErrorListener)

@@ -20,8 +20,7 @@
 
 package org.apache.spark.sql.datasys
 
-import moonbox.core.datasys.{DataSystem, DataSystemRegister, Pushdownable}
-import moonbox.core.execution.standalone.DataTable
+import moonbox.core.datasys._
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
