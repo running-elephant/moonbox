@@ -20,13 +20,11 @@
 
 package moonbox.jdbc;
 
-import moonbox.util.MoonboxJDBCUtils;
-
 import java.sql.*;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-public class MbDriver implements java.sql.Driver {
+public class MbDriver implements Driver {
     static {
         try {
             DriverManager.registerDriver(new MbDriver());
@@ -34,8 +32,6 @@ public class MbDriver implements java.sql.Driver {
             throw new RuntimeException("Can't register MbDriver!");
         }
     }
-
-    final String URL_PREFIX = "jdbc:moonbox:";
 
     @Override
     public int getMajorVersion() {
@@ -64,7 +60,7 @@ public class MbDriver implements java.sql.Driver {
         }
 
         MoonboxConnection conn = new MoonboxConnection(url, info);
-        if (conn.userCheck()) {
+        if (conn.init()) {
             return conn;
         } else {
             throw new SQLException("User check error");
@@ -73,9 +69,8 @@ public class MbDriver implements java.sql.Driver {
 
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        if (url == null)
-            return false;
-        return url.toLowerCase().startsWith(URL_PREFIX);
+        String urlPrefix = "jdbc:moonbox:";
+        return url != null && url.toLowerCase().startsWith(urlPrefix);
     }
 
     @Override

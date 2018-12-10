@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,11 +20,10 @@
 
 package moonbox.repl
 
+import java.io.{OutputStream, OutputStreamWriter, PrintWriter}
 import java.util.Locale
 
-import moonbox.repl.connector.Connector
-import moonbox.repl.connector.jdbc.JdbcConnector
-import moonbox.repl.connector.rest.HttpConnector
+import moonbox.client.{ClientOptions, MoonboxClient}
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.impl.history.DefaultHistory
@@ -35,33 +34,38 @@ import org.jline.terminal.{Terminal, TerminalBuilder}
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.io.AnsiColor
 import scala.language.implicitConversions
 
 object Main {
 
-  var method: String = "rest"
-  var retryTimes: Int = 3
-  var timeout: Int = 300 // unit: second
-  var islocal: Boolean = true
-  var user: String = _
-  var host: String = "localhost"
-  var port: Int = 9099
-  var password: String = _
-  var fetchSize: Int = 0
-  val DELIMITER: String = ";"
-  val PARAMETER_PREFIX: String = "%SET "
-  val historyMqls: mutable.Queue[String] = new mutable.Queue[String]()
-  val lineHistory: mutable.Queue[String] = new mutable.Queue[String]()
-  val HISTORY_SIZE: Int = 100
+  private var timeout: Int = 60 * 60 // unit: second
+  private var islocal: Boolean = true
+  private var host: String = "yan"
+  private var port: Int = 10010
+  private var user: String = _
+  private var password: String = _
+  private var fetchSize: Int = 1000
+  private var truncate: Int = 50
+  private var maxRowsToFetch: Int = 1000 // TODO:
+  private var maxRowsToShow: Int = 1000
+  private var client: MoonboxClient = _
+  private var clientInited: Boolean = _
+
+  private val DEFAULT_RETRY_TIMES: Int = 3
+  private val DELIMITER: String = ";"
+  private val PARAMETER_PREFIX: String = "%SET "
   /* max number of history to maintain */
-  var connector: Connector = _
-  val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
+  private val HISTORY_SIZE: Int = 100
+  private val historyMQLs: mutable.Queue[String] = new mutable.Queue[String]()
+  private val lineHistory: mutable.Queue[String] = new mutable.Queue[String]()
+  private val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
     override def handle(signal: Signal): Unit = {
       if (signal.equals(Signal.INT)) {
         new Thread() {
           override def run() = {
-            if (connector != null) {
-              connector.cancel()
+            if (client != null) {
+              client.cancelQuery()
             }
           }
         }.start()
@@ -69,26 +73,184 @@ object Main {
     }
   }
 
-  val terminal: Terminal = TerminalBuilder.builder.signalHandler(handler).build()
-  val autoCompleter = new StringsCompleter(MQLs.MQL.map(_.toLowerCase()): _*)
-  val lineReader: LineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
-  System.setProperty("log4j.configuration", "") //close log4j print in repl
+  private val terminal: Terminal = TerminalBuilder.builder.signalHandler(handler).build()
+  private val autoCompleter = new StringsCompleter(MQLs.MQL.map(_.toLowerCase()): _*)
+  private val lineReader: LineReader = LineReaderBuilder.builder().terminal(terminal).completer(autoCompleter).parser(null).build()
+//  System.setProperty("log4j.configuration", "") //close log4j print in doReadLine
 
   def main(args: Array[String]) {
-    parse(args.toList)
-    if(fetchSize == 0) { fetchSize = if(islocal) { 200 } else { 50 } }
-    do {
-      checkParameters()
-      connector = if (method == "rest" || method == "r") {
-        //new RestConnector(timeout)
-        new HttpConnector(timeout, islocal, fetchSize)
-      } else {
-        new JdbcConnector(timeout, islocal, fetchSize)
+    try {
+      parse(args.toList)
+      initClient()
+      if (clientInited) {
+        welcome()
+        doReadLine()
       }
-      repl()
-    } while (retryTimes > 0)
+    } catch {
+      case e: Exception => Console.err.println(e.getMessage)
+    } finally {
+      System.exit(-1)
+    }
+  }
 
-    System.exit(-1)
+  private def prompter: String = s"$user> "
+  private def welcome(): Unit = {
+    import scala.util.Properties.{versionString, javaVmName, javaVersion}
+    val welcomeMsg1 =
+      """Welcome to
+      _  _                 _        __  *
+     / \/ | ___  ___  _ _ | |_  ___ \ \*
+    /  _  |/ _ \/ _ \| \ || _ \/ _ \/ *\
+   /__/ \_|\___/\___/|_|_||___/\___/_/\_\    version %s""".format(client.version)
+   
+   val welcomeMsg2 = """Using Scala %s (%s, Java %s)""".format(versionString, javaVmName, javaVersion)
+   val welcomeMsg3 = "\nType 'commands' | 'cmds' to show commands in common use.\nType 'help' for more MQLs.\n"
+    Console.print(AnsiColor.GREEN)
+    Console.println(welcomeMsg1)
+    Console.println()
+    Console.println(welcomeMsg2)
+    Console.print(AnsiColor.RESET)
+    Console.println(welcomeMsg3)
+  }
+  private def doReadLine(): Unit = {
+    while (true) {
+      try {
+        val stringBuilder = new StringBuilder
+        val sqlList: ArrayBuffer[String] = new ArrayBuffer[String]()
+        var line: String = lineReader.readLine(prompter).trim
+        var braceCount: Int = 0
+        line.length match {
+          case len if len > 0 =>
+            var endLine = false
+            while (!endLine) {
+              line.toCharArray.foreach {
+                case ';' if braceCount == 0 =>
+                  if (stringBuilder.nonEmpty) {
+                    sqlList += stringBuilder.toString()
+                    stringBuilder.clear()
+                  }
+                case other =>
+                  stringBuilder.append(other)
+                  other match {
+                    case '(' => braceCount += 1
+                    case ')' => braceCount -= 1
+                    case _ => /* no-op */
+                  }
+              }
+              if (stringBuilder.isEmpty) {
+                endLine = true
+              } else {
+                if (line.length > 0) {
+                  if (braceCount != 0) {
+                    stringBuilder.append("\n")
+                    line = lineReader.readLine(" " * (user.length - 1) + "-> ").replaceAll("\\s+$", "") // trim end
+                  } else {
+                    stringBuilder.append(" ")
+                    line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
+                  }
+                } else {
+                  line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
+                }
+              }
+            }
+          case _ => /* no-op */
+        }
+        val cleanedSqls = sqlList.map(_.trim).filterNot(_ == "")
+        if (cleanedSqls.nonEmpty) {
+          /* add line reader history */
+          enqueueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
+          setHistory(lineReader.asInstanceOf[LineReaderImpl])
+          process(cleanedSqls)
+        }
+      } catch {
+        case _: UserInterruptException =>
+          if (client != null) {
+            Console.println("Query canceling ... ")
+            client.cancelQuery()
+          }
+      }
+    }
+  }
+
+  private def initClient(): Unit = {
+    var retryTimes = DEFAULT_RETRY_TIMES
+    while (retryTimes > 0 && !clientInited) {
+      try {
+        checkParameters()
+        val clientOptions =
+          ClientOptions.builder()
+            .user(user)
+            .password(password)
+            .host(host)
+            .port(port)
+            .isLocal(islocal)
+            .fetchSize(fetchSize)
+            .timeout(timeout)
+            .maxRows(maxRowsToFetch)
+            .database("default")
+            .build()
+        client = MoonboxClient.builder(clientOptions).build()
+        clientInited = true
+      } catch {
+        case e: Exception =>
+          Console.err.println(e.getMessage)
+          if (client != null) {
+            client.close()
+          }
+          retryTimes -= 1
+          if (retryTimes > 0) {
+            Console.err.println(s"Retry ${DEFAULT_RETRY_TIMES - retryTimes} ...")
+          }
+      }
+    }
+  }
+
+  private def closeCurrentClient(): Unit = {
+    try {
+      if (client != null) {
+        client.close()
+      }
+    } finally {
+      clientInited = false
+    }
+  }
+
+  private def reConnect(): Unit = {
+    try {
+      closeCurrentClient()
+      initClient()
+    } catch {
+      case e: Exception => Console.err.println(e.getMessage)
+    }
+    if (clientInited) {
+      doReadLine()
+    }
+  }
+
+  private def shutdown(): Unit = {
+    try {
+      closeCurrentClient()
+      System.exit(0)
+    } catch {
+      case e: Exception =>
+        Console.err.println(e.getMessage)
+        System.exit(-1)
+    }
+  }
+
+  private def showConnectionState(): Unit = {
+      val rowsToAdd = Seq(
+        "established" :: clientInited :: Nil,
+        "max_rows_show" :: maxRowsToShow :: Nil,
+        "truncate_length" :: truncate :: Nil,
+        "fetch_size" :: fetchSize :: Nil,
+        "history_size" :: HISTORY_SIZE :: Nil,
+        "connection_retry_times" :: DEFAULT_RETRY_TIMES :: Nil,
+        "delimiter" :: DELIMITER :: Nil
+      )
+    val rowsToShow = client.getConnectionState.toSeq ++ rowsToAdd
+    val schema = "state_name" :: "value" :: Nil
+    print(Utils.stringToShow(rowsToShow, schema, maxRowsToShow, truncate))
   }
 
   private def setHistory(lineReader: LineReaderImpl) = {
@@ -98,78 +260,20 @@ object Main {
     lineReader.setHistory(h)
   }
 
-  def repl(): Unit = {
-    if (connector.prepare(host, port, user, password, "default")) {
-      while (true) {
-        try {
-          val stringBuilder = new StringBuilder
-          var line: String = lineReader.readLine(prompter).trim
-          val sqlList: ArrayBuffer[String] = new ArrayBuffer[String]()
-          var braceCount: Int = 0
-          line.length match {
-            case len if len > 0 =>
-              var endLine = false
-              while (!endLine) {
-                line.toCharArray.foreach {
-                  case ';' if braceCount == 0 =>
-                    if (stringBuilder.nonEmpty) {
-                      sqlList += stringBuilder.toString()
-                      stringBuilder.clear()
-                    }
-                  case other =>
-                    stringBuilder.append(other)
-                    other match {
-                      case '(' => braceCount += 1
-                      case ')' => braceCount -= 1
-                      case _ => /* no-op */
-                    }
-                }
-                if (stringBuilder.isEmpty) {
-                  endLine = true
-                } else {
-                  if (line.length > 0) {
-                    if (braceCount != 0) {
-                      stringBuilder.append("\n")
-                      line = lineReader.readLine(" " * (user.length - 1) + "-> ").replaceAll("\\s+$", "") // trim end
-                    } else {
-                      stringBuilder.append(" ")
-                      line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
-                    }
-                  } else {
-                    line = lineReader.readLine(" " * (user.length - 1) + "-> ").trim // trim start and end
-                  }
-                }
-              }
-            case _ => /* no-op */
-          }
-          val cleanedSqls = sqlList.map(_.trim).filterNot(_ == "")
-          if (cleanedSqls.nonEmpty) {
-            /* add line reader history */
-            enqueueWithLimit(lineHistory, cleanedSqls.mkString("", "; ", ";"))
-            setHistory(lineReader.asInstanceOf[LineReaderImpl])
-            process(cleanedSqls)
-          }
-        } catch {
-          case _: UserInterruptException =>
-            if (connector != null) {
-              connector.cancel()
-            }
-          case e: Exception =>
-            System.err.println(e.getMessage)
-        }
-      }
-    } else {
-      retryTimes -= 1
-      System.out.println("retry ...")
-    }
+  private def handleSqlQuery(sqlList: Seq[String]): Unit = {
+    val result = client.interactiveQuery(sqlList, fetchSize, timeout * 1000)
+    /* show result */
+    val dataToShow = result.toSeq.map(_.toSeq)
+    val schema = result.parsedSchema.map(_._1)
+    print(Utils.stringToShow(dataToShow, schema))
   }
 
   private def printSetHelp(): Unit = {
     val message =
       """
         |Use: %SET TRUNCATE=[Int]  /*Set the column length to truncate, 0 denotes unabridged*/
-        |     %SET MAX_COUNT=[Int]  /*Set max rows to show in console*/
-        |     %SET TIMEOUT=[Int]  /*Set timeout(second) of connection from moonbox server*/
+        |     %SET MAX_ROWS=[Int]  /*Set max rows to show in console*/
+        |     %SET TIMEOUT=[Int]  /*Set connection timeout(second) to moonbox server*/
         |     %SET FETCH_SIZE=[Long]  /*Set size for per data fetch*/
       """.stripMargin
     Console.err.println(message)
@@ -183,10 +287,10 @@ object Main {
         val k = kv.substring(0, idx).trim
         val v = kv.substring(idx + 1).trim
         k match {
-          case "MAX_COUNT" => connector.setMaxRowsShow(v.toInt)
-          case "TRUNCATE" => connector.setMaxColumnLength(v.toInt)
-          case "TIMEOUT" => connector.setTimeout(v.toInt)
-          case "FETCH_SIZE" => connector.setFetchSize(v.toInt)
+          case "MAX_ROWS" => maxRowsToShow = v.toInt
+          case "TRUNCATE" => truncate = v.toInt
+          case "TIMEOUT" => timeout = v.toInt
+          case "FETCH_SIZE" => fetchSize = v.toInt
           case _ =>
             Console.err.println(s"""Unknown parameter key in set statement "$setStatement".""")
             printSetHelp()
@@ -202,10 +306,10 @@ object Main {
       }
       val s = sqlList.tail
       if (s.nonEmpty) {
-        connector.process(s)
+        handleSqlQuery(s)
       }
     } else {
-      connector.process(sqlList)
+      handleSqlQuery(sqlList)
     }
   }
 
@@ -216,6 +320,28 @@ object Main {
       queue.dequeue()
     }
   }
+  
+  private def showCommands(): Unit ={
+    val schema= Seq("command", "description")
+    val data = Seq(
+      "history | H" :: "show histories" :: Nil,
+      "reconnect | R" :: "reconnect to moonbox server" :: Nil,
+      "exit | quit | Q" :: "repl logout" :: Nil,
+      "state | status" :: "show connection status" :: Nil,
+      "commands | cmds | cmd" :: "show commands in common use" :: Nil,
+      "help" :: "show all MQLs" :: Nil,
+      "%SET TRUNCATE=[Int]" :: "Set the column length to truncate, 0 denotes unabridged" :: Nil,
+      "%SET MAX_ROWS=[Int]" :: "Set max rows to show in console" :: Nil,
+      "%SET TIMEOUT=[Int]" :: "Set connection timeout(second) to moonbox server" :: Nil,
+      "%SET FETCH_SIZE=[Long]" :: "Set size for per data fetch" :: Nil
+    )
+    print(Utils.stringToShow(data, schema))
+  }
+  private def showHelp(): Unit ={
+    val schema = Seq("MQLs")
+    val data = MQLs.MQL.map(_ :: Nil)
+    print(Utils.stringToShow(data, schema))
+  }
 
   private def process(sqlList: Seq[String]): Unit = {
     val compositedSql = sqlList.mkString(";")
@@ -223,21 +349,21 @@ object Main {
     headSql.toUpperCase(Locale.ROOT) match {
       case "" =>
       case stmt if stmt.startsWith(PARAMETER_PREFIX) =>
-        enqueueWithLimit(historyMqls, compositedSql)
+        enqueueWithLimit(historyMQLs, compositedSql)
         processSetSqls(headSql, sqlList)
       case "HISTORY" | "H" =>
-        val data = historyMqls.zipWithIndex.map(u => Seq(historyMqls.length - u._2, u._1 + ";"))
-        print(Utils.showString(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
-      case "RECONNECT" | "R" => try connector.close() finally repl()
-      case "EXIT" | "QUIT" | "Q" => try connector.shutdown() finally System.exit(0)
-      case "STATE" | "STATUS" => connector.connectionState.prettyShow()
+        val data = historyMQLs.zipWithIndex.map(u => Seq(historyMQLs.length - u._2, u._1 + ";"))
+        print(Utils.stringToShow(data, Seq("ID", "HISTORY MQLs"), HISTORY_SIZE))
+      case "RECONNECT" | "R" => reConnect()
+      case "EXIT" | "QUIT" | "Q" => shutdown()
+      case "STATE" | "STATUS" => showConnectionState()
+      case "COMMANDS" | "CMDS" => showCommands()
+      case "HELP" => showHelp()
       case _ =>
-        enqueueWithLimit(historyMqls, compositedSql)
-        connector.process(sqlList)
+        enqueueWithLimit(historyMQLs, compositedSql)
+        handleSqlQuery(sqlList)
     }
   }
-
-  private def prompter: String = s"$user> "
 
   private def checkParameters(): Unit = {
     if (user == null) {
@@ -250,9 +376,6 @@ object Main {
 
   @tailrec
   private def parse(args: List[String]): Unit = args match {
-    case ("-m" | "--method") :: value :: tail =>
-      method = value
-      parse(tail)
     case ("-u" | "--user") :: value :: tail =>
       user = value
       parse(tail)
@@ -286,15 +409,12 @@ object Main {
     System.err.println(
       "Usage: moonbox [options]\n" +
         "options:\n" +
-        "   -m, --method    JDBC or REST\n" +
         "   -h, --host      Connect to host.\n" +
         "   -P, --port      Port num to ues for connecting to server.\n" +
-        "   -p, --password  Password to use when connecting to server.\n" +
-//        "	  -z, --zookeeper Zookeeper quorum to get active master address.\n" +
         "   -u, --user :    User for login.\n" +
+        "   -p, --password  Password to use when connecting to server.\n" +
         "   --help"
     )
     System.exit(exitCode)
   }
-
 }

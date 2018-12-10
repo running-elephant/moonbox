@@ -20,9 +20,6 @@
 
 package moonbox.repl
 
-import java.io.File
-
-import com.typesafe.config.ConfigFactory
 import org.json.JSONObject
 
 import scala.annotation.tailrec
@@ -122,12 +119,12 @@ object Utils {
     * @param truncate 0 denotes not truncating
     * @return
     */
-  def showString(_data: Seq[Seq[Any]],
-                 schema: Seq[String],
-                 _numRows: Int = 500,
-                 truncate: Int = 0,
-                 showPromote: Boolean = true,
-                 showSchema: Boolean = true): String = {
+  def stringToShow(_data: Seq[Seq[Any]],
+                   schema: Seq[String],
+                   _numRows: Int = 1000,
+                   truncate: Int = 0,
+                   showPromote: Boolean = true,
+                   showSchema: Boolean = true): String = {
     val numRows = _numRows.max(0)
     val data = _data.take(numRows)
     // For array values, replace Seq and Array with square brackets
@@ -192,52 +189,13 @@ object Utils {
     sb.toString()
   }
 
-  def getHttpHostAndPort: (String, Int) = {
-    val defaultFile = new File(moonbox.common.util.Utils.getDefaultPropertiesFile().get)
-    val defaultConfig = ConfigFactory.parseFile(defaultFile)
-
-    val restPortPath = "moonbox.rest.server.port"
-    val port = if ( defaultConfig.hasPathOrNull(restPortPath) ) {
-      if ( defaultConfig.getIsNull(restPortPath) ) { 8080 }
-      else {
-        defaultConfig.getInt(restPortPath)
-      }
-    } else {
-      8080
-    }
-
-    val restHostPath = "moonbox.host"
-    val host = if ( defaultConfig.hasPathOrNull(restHostPath) ) {
-      if ( defaultConfig.getIsNull(restHostPath) ) { "localhost" }
-      else {
-        defaultConfig.getString(restHostPath)
-      }
-    } else {
-      "localhost"
-    }
-
-    (host, port)
-
-  }
-
   def showDataResult(schema: Option[Seq[String]], data: Option[Seq[Seq[Any]]], error: Option[String]): Unit = {
     if(schema.isDefined && data.isDefined){
-      println(showString(data.get, schema.get))
+      println(stringToShow(data.get, schema.get))
     }
     if(error.isDefined) {
       println(s"ERROR: ${error.get}")
     }
-  }
-
-  def toJson[T <: AnyRef](obj: T): String = {
-    import org.json4s.DefaultFormats
-    import org.json4s.jackson.Serialization.writePretty
-    implicit val formats = DefaultFormats
-    writePretty[T](obj)
-  }
-
-  def showDataResultJson[T <: AnyRef](data: T): Unit = {
-    println("data:" + toJson(data))
   }
 
   def secondToMs(timeout: Int): Int = {
