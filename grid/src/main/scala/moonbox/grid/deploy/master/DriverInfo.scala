@@ -27,4 +27,19 @@ private[deploy] class DriverInfo(
 		exception = None
 		appId = None
 	}
+
+	private def readObject(in: java.io.ObjectInputStream): Unit = {
+		in.defaultReadObject()
+		init()
+	}
+
+	override def toString: String = {
+		s"""startTime: $startTime
+		   |id: $id
+		   |desc: $desc
+		   |submitDate: $submitDate
+		   |state: $state
+		   |appId: $appId
+		 """.stripMargin
+	}
 }

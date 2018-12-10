@@ -1,6 +1,8 @@
 package moonbox.grid.deploy
 
 
+import java.util.Date
+
 import akka.actor.ActorRef
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
@@ -12,12 +14,13 @@ private[deploy] class DriverRunner(
 	conf: MbConf,
 	val driverId: String,
 	val desc: DriverDescription,
-	val worker: ActorRef) extends MbLogging {
+	val worker: ActorRef,
+	val submitDate: Date) extends Serializable with MbLogging {
 
-	private var sparkAppHandle: SparkAppHandle = _
+	@transient private var sparkAppHandle: SparkAppHandle = _
 
 	def start() = {
-		new Thread("ClusterDriverRunner for " + driverId) {
+		new Thread("DriverRunner for " + driverId) {
 			override def run(): Unit = {
 				try {
 					val launcher = new SparkLauncher()
@@ -79,7 +82,12 @@ private[deploy] class DriverRunner(
 			sparkAppHandle.getAppId
 		} else "<unknown>"
 		logInfo(s"Killing application with id: $appId.")
-		sparkAppHandle.stop()
+		if (sparkAppHandle != null) {
+			sparkAppHandle.stop()
+		} else {
+			logWarning(s"SparkAppHandle is null, driver id is $driverId ")
+		}
+
 	}
 
 }

@@ -4,7 +4,7 @@ import moonbox.common.MbConf
 import moonbox.common.util.Utils
 import org.apache.spark.launcher.SparkLauncher
 
-private[deploy] trait DriverDescription {
+trait DriverDescription {
 	def master: String
 	def deployMode: Option[String]
 	def mainClass: String
@@ -13,7 +13,10 @@ private[deploy] trait DriverDescription {
 	def toConf: Map[String, String]
 }
 
-private[deploy] class LocalDriverDescription(conf: MbConf) extends DriverDescription {
+case class LocalDriverDescription(
+	driverId: String,
+	masters: Array[String],
+	conf: MbConf) extends DriverDescription {
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
 		s"local[${cores * 50}]"
@@ -27,6 +30,9 @@ private[deploy] class LocalDriverDescription(conf: MbConf) extends DriverDescrip
 
 	override def toAppArgs: Seq[String] = {
 		Map(
+			"driverId" -> driverId,
+			"masters" -> masters.mkString(";"),
+			"applicationType" -> "CENTRALIZED",
 			"moonbox.deploy.catalog.implementation" -> "mysql",
 			"moonbox.deploy.catalog.url" -> "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true",
 			"moonbox.deploy.catalog.user" -> "root",
@@ -49,7 +55,10 @@ private[deploy] class LocalDriverDescription(conf: MbConf) extends DriverDescrip
 	}
 }
 
-private[deploy] class ClientDriverDescription(conf: MbConf) extends DriverDescription {
+case class ClientDriverDescription(
+	driverId: String,
+	masters: Array[String],
+	conf: MbConf) extends DriverDescription {
 	override def master = "yarn"
 	override def deployMode = Some("client")
 	override def mainClass = "moonbox.application.interactive.Main"
@@ -60,6 +69,9 @@ private[deploy] class ClientDriverDescription(conf: MbConf) extends DriverDescri
 
 	override def toAppArgs: Seq[String] = {
 		Map(
+			"driverId" -> driverId,
+			"masters" -> masters.mkString(";"),
+			"applicationType" -> "DISTRIBUTED",
 			"moonbox.deploy.catalog.implementation" -> "mysql",
 			"moonbox.deploy.catalog.url" -> "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true",
 			"moonbox.deploy.catalog.user" -> "root",
@@ -82,7 +94,7 @@ private[deploy] class ClientDriverDescription(conf: MbConf) extends DriverDescri
 	}
 }
 
-private[deploy] case class ClusterDriverDescription(
+case class ClusterDriverDescription(
 	username: String,
 	sqls: Seq[String],
 	config: String) extends DriverDescription {

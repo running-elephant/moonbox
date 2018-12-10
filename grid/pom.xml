@@ -57,11 +57,6 @@
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-remote_${scala.library}</artifactId>
         </dependency>
-       <!-- <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.1.17.Final</version>
-        </dependency>-->
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-client</artifactId>

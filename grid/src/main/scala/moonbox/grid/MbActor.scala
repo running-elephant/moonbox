@@ -6,7 +6,11 @@ import moonbox.common.MbLogging
 
 
 trait MbActor extends Actor with MbLogging {
-	lazy val address = getAddress
+	protected val address = getAddress
+	protected val host = address.host.orNull
+	protected val port = address.port.getOrElse(0)
+
+	checkHostPort(host, port)
 
 	context.system.eventStream.subscribe(self, classOf[AssociatedEvent])
 	context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
@@ -31,5 +35,21 @@ trait MbActor extends Actor with MbLogging {
 
 	private def getAddress: Address = {
 		context.system.asInstanceOf[ExtendedActorSystem].provider.getDefaultAddress
+	}
+
+	protected def gracefullyShutdown(): Unit = {
+		context.system.terminate()
+		System.exit(1)
+	}
+
+	private def checkHostPort(host: String, port: Int): Unit = {
+		if (host == null) {
+			logError("Host is null.")
+			gracefullyShutdown()
+		}
+		if (port == 0) {
+			logError("Port is 0.")
+			gracefullyShutdown()
+		}
 	}
 }

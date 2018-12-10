@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
 import akka.actor.{ActorSystem, Address, Cancellable, Props}
+import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import moonbox.common.{MbConf, MbLogging}
@@ -25,7 +26,7 @@ import scala.concurrent.duration._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 class MoonboxMaster(
 	val system: ActorSystem,
@@ -36,8 +37,9 @@ class MoonboxMaster(
 
 	private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
 	private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT)
-	private val host = address.host.orNull
-	checkHost()
+
+	private val recoveryMode = conf.get(RECOVERY_MODE)
+	private val recoveryEnable = !recoveryMode.equalsIgnoreCase("NONE")
 
 	private var state = RecoveryState.STANDBY
 
@@ -49,15 +51,19 @@ class MoonboxMaster(
 
 	// for batch and interactive
 	private val drivers = new mutable.HashSet[DriverInfo]
-	private val waitingDrivers = new ArrayBuffer[DriverInfo]
 	private val completedDrivers = new ArrayBuffer[DriverInfo]
+	// for batch
+	private val waitingDrivers = new ArrayBuffer[DriverInfo]
+
 	// for batch driver id
 	private var nextBatchDriverNumber = 0
 
 	// for interactive application
-	private val executors = new mutable.HashSet[ExecutorInfo]
-	private val addressToExecutor = new mutable.HashMap[Address, ExecutorInfo]
-	private val sessionIdToExecutor = new mutable.HashMap[String, ExecutorInfo]
+	private val apps = new mutable.HashSet[ApplicationInfo]
+	private val idToApp = new mutable.HashMap[String, ApplicationInfo]
+	private val addressToApp = new mutable.HashMap[Address, ApplicationInfo]
+
+	private val sessionIdToApp = new mutable.HashMap[String, ApplicationInfo]
 
 	private var persistenceEngine: PersistenceEngine = _
 	private var leaderElectionAgent: LeaderElectionAgent = _
@@ -90,7 +96,7 @@ class MoonboxMaster(
 
 		// start persist engine and election agent
 		try {
-			val (persistenceEngine_, leaderElectionAgent_) = conf.get(RECOVERY_MODE).toUpperCase match {
+			val (persistenceEngine_, leaderElectionAgent_) = recoveryMode.toUpperCase match {
 				case "ZOOKEEPER" =>
 					logInfo("Persisting recovery state to Zookeeper.")
 					val zkFactory = new ZookeeperRecoveryModeFactory(conf, system)
@@ -172,7 +178,7 @@ class MoonboxMaster(
 
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 		// for debug
-		/*context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
+		context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
 			println("=========================================================================")
 			println("idToWorker")
 			println(idToWorker.map { case (_, v) => v}.mkString("\n"))
@@ -182,8 +188,19 @@ class MoonboxMaster(
 			println("--------------------------------------------------------------------------")
 			println("workers")
 			println(workers.map(_.toString).mkString("\n"))
-			println
-		}*/
+			println("--------------------------------------------------------------------------")
+			println("drivers")
+			println(drivers.map(_.toString).mkString("\n"))
+			println("--------------------------------------------------------------------------")
+			println("idToApp")
+			println(idToApp.map { case (_, v) => v}.mkString("\n") )
+			println("--------------------------------------------------------------------------")
+			println("addressToApp")
+			println(addressToApp.map { case (_, v) => v}.mkString("\n") )
+			println("--------------------------------------------------------------------------")
+			println("apps")
+			println(apps.map(_.toString).mkString("\n") )
+		}
 	}
 
 	@scala.throws[Exception](classOf[Exception])
@@ -206,15 +223,15 @@ class MoonboxMaster(
 	override def handleMessage: Receive = {
 		case ElectedLeader =>
 			logInfo("I have been elected leader!")
-			val (storedJobs, storedWorkers) = persistenceEngine.readPersistedData()
-			state = if (storedJobs.isEmpty && storedWorkers.isEmpty) {
+			val (storedDrivers, storedWorkers, storedApps) = persistenceEngine.readPersistedData()
+			state = if (storedDrivers.isEmpty && storedWorkers.isEmpty && storedApps.isEmpty) {
 				logInfo("Nothing to recovery.")
 				RecoveryState.ACTIVE
 			} else {
 				RecoveryState.RECOVERING
 			}
 			if (state == RecoveryState.RECOVERING) {
-				beginRecovery(storedJobs, storedWorkers)
+				beginRecovery(storedDrivers, storedWorkers, storedApps)
 				recoveryCompletionScheduler = system.scheduler.scheduleOnce(
 					new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS), self, CompleteRecovery)
 			} else {
@@ -261,23 +278,86 @@ class MoonboxMaster(
 					}
 			}
 
-		case WorkerStateResponse(workerId) =>
+			// master changed
+		case WorkerStateResponse(workerId, driverIdDesces) =>
 			idToWorker.get(workerId) match {
 				case Some(worker) =>
 					logInfo(s"Worker has been re-registered: " + workerId)
 					worker.state = WorkerState.ALIVE
+					driverIdDesces.foreach { case (driverId, desc, date) =>
+						drivers.find(_.id == driverId).foreach { driver =>
+							logInfo(s"Driver $driverId exists, update it.")
+							driver.worker = Some(worker)
+							driver.state = DriverState.RUNNING
+							worker.addDriver(driver)
+						}
+					}
 				case None =>
 					logWarning("Scheduler state from unknown worker: " + workerId)
 			}
 
 			if (canCompleteRecovery) { completeRecovery() }
 
+			// registered
+		case WorkerLatestState(workerId, driverIdDesces) =>
+			idToWorker.get(workerId) match {
+				case Some(worker) =>
+					driverIdDesces.foreach { case (driverId, desc, date) =>
+						val driverMatches = worker.drivers.exists { case (id, _) => id == driverId }
+						if (!driverMatches) { // not exist
+							if (recoveryEnable && desc.isInstanceOf[ClusterDriverDescription]) {
+								logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
+								worker.endpoint ! KillDriver(driverId)
+							} else {
+								logInfo(s"new driver registered $driverId")
+								val driver = createDriver(desc, Some(driverId), Some(date))
+								persistenceEngine.addDriver(driver)
+								drivers.add(driver)
+								driver.worker = Some(worker)
+								driver.state = DriverState.UNKNOWN
+								worker.addDriver(driver)
+							}
+						}
+					}
+				case None =>
+					logWarning("Worker state from unknown worker: " + workerId)
+			}
+
+		case RegisterApplication(id, appHost, appPort, appRef, appAddress, dataPort, appType) =>
+			logInfo(s"Application $id try registering: $appAddress")
+			if (state == RecoveryState.STANDBY) {
+				appRef ! MasterInStandby
+			} else if (idToApp.contains(id)) {
+				appRef ! RegisterApplicationFailed(s"Duplicate application ID $id")
+			} else {
+				val app = new ApplicationInfo(
+					System.currentTimeMillis(), id, appHost, appPort, appAddress, dataPort, appRef, appType)
+				if (registerApplication(app)) {
+					persistenceEngine.addApplication(app)
+					appRef ! RegisteredApplication(self)
+					logInfo(s"Application $id registration success: $appAddress")
+				} else {
+					logWarning(s"Application $id registration failed. Attempted to re-register " +
+						s"application at same address: $appAddress")
+					appRef ! RegisterApplicationFailed(s"Application $id registration failed. " +
+						s"Attempted to re-register application at same address: $appAddress")
+				}
+			}
+
+		case ApplicationStateResponse(driverId) =>
+			idToApp.get(driverId) match {
+				case Some(app) =>
+					logInfo(s"Application has been re-registered: " + driverId)
+					app.state = ApplicationState.RUNNING
+				case None =>
+					logWarning("Scheduler state from unknown application: " + driverId)
+			}
+			if (canCompleteRecovery) { completeRecovery() }
+
 		case CompleteRecovery => completeRecovery()
 
 		case CheckForWorkerTimeOut =>
 			timeOutDeadWorkers()
-
-		case WorkerLatestState(workerId) =>
 
 		case JobSubmit(username, sqls, config) =>
 			if(state != RecoveryState.ACTIVE) {
@@ -352,6 +432,71 @@ class MoonboxMaster(
 					}
 			}
 
+		case open @ OpenSession(_, _, centralized) =>
+			val requester = sender()
+			val candidate = selectApplication(centralized)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Try asking application ${app.id} to open session.")
+					val f = app.endpoint.ask(open).mapTo[OpenSessionResponse]
+					f.onComplete {
+						case Success(response) =>
+							if (response.sessionId.isDefined) {
+								sessionIdToApp.put(response.sessionId.get, app)
+							}
+							requester ! response
+						case Failure(e) =>
+							requester ! OpenSessionResponse(None, e.getMessage)
+					}
+				case None =>
+					val appType = if (centralized) "centralized" else "distributed"
+					val msg = s"There is no available application for $appType computation."
+					logWarning(msg)
+					sender() ! OpenSessionResponse(None, msg)
+			}
+
+		case close @ CloseSession(sessionId) =>
+			val requester = sender()
+			sessionIdToApp.get(sessionId) match {
+				case Some(app) =>
+					val f = app.endpoint.ask(close).mapTo[CloseSessionResponse]
+					f.onComplete {
+						case Success(response) =>
+							if (response.success) {
+								sessionIdToApp.remove(response.sessionId)
+							}
+							requester ! response
+						case Failure(e) =>
+							requester ! CloseSessionResponse(sessionId, success = false, e.getMessage)
+					}
+				case None =>
+					requester ! CloseSessionResponse(sessionId, success = false, s"Session $sessionId lost in master.")
+			}
+
+		case query: JobQuery =>
+			val requester = sender()
+			sessionIdToApp.get(query.sessionId) match {
+				case Some(app) =>
+					app.endpoint ! query
+				case None =>
+					requester ! JobQueryResponse(success = false, "", Seq.empty, hasNext = false,
+						s"Session ${query.sessionId} lost in master.")
+			}
+
+		case cancel @ InteractiveJobCancel(sessionId) =>
+			val requester = sender()
+			sessionIdToApp.get(sessionId) match {
+				case Some(app) =>
+					val f = app.endpoint.ask(cancel).mapTo[InteractiveJobCancelResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! InteractiveJobCancelResponse(success = false, e.getMessage)
+					}
+				case None =>
+					requester ! InteractiveJobCancelResponse(success = false, s"Session $sessionId lost in master.")
+			}
 
 		case e => println(e)
 	}
@@ -359,7 +504,18 @@ class MoonboxMaster(
 	override def onDisconnected(remoteAddress: Address): Unit = {
 		logInfo(s"$remoteAddress got disassociated, removing it.")
 		addressToWorker.get(remoteAddress).foreach(removeWorker)
+		addressToApp.get(remoteAddress).foreach(removeApplication)
 		if (state == RecoveryState.RECOVERING && canCompleteRecovery) { completeRecovery() }
+	}
+
+	private def selectApplication(centralized: Boolean): Option[ApplicationInfo] = {
+		val activeApps = apps.filter(_.state == ApplicationState.RUNNING)
+		val typedApps = if (centralized) {
+			activeApps.filter(_.appType == ApplicationType.CENTRALIZED)
+		} else {
+			activeApps.filter(_.appType == ApplicationType.DISTRIBUTED)
+		}
+		Random.shuffle(typedApps).headOption
 	}
 
 	private def schedule(): Unit = {
@@ -376,12 +532,13 @@ class MoonboxMaster(
 				numWorkersVisited += 1
 				launchDriver(worker, driver)
 				waitingDrivers -= driver
+
+				curPos = (curPos + 1) % numWorkerAlive
 			}
-			curPos = (curPos + 1) % numWorkerAlive
 		}
 	}
 
-	private def beginRecovery(storedJobs: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo]): Unit = {
+	private def beginRecovery(storedDrivers: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[ApplicationInfo]): Unit = {
 		for (worker <- storedWorkers) {
 			logInfo("Try to recovery worker: " + worker.id)
 			try {
@@ -393,21 +550,37 @@ class MoonboxMaster(
 			}
 		}
 
-		for (job <- storedJobs) {
-			drivers += job
+		for (app <- storedApps) {
+			logInfo("Try to recovery application: " + app.id)
+			try {
+				registerApplication(app)
+				app.state = ApplicationState.UNKNOWN
+				app.endpoint ! MasterChanged(self)
+			} catch {
+				case e: Exception => logInfo("Application " + app.id + " had exception on reconnect")
+			}
 		}
-		// TODO
+
+		for (driver <- storedDrivers) {
+			drivers += driver
+		}
+
 	}
 
-	private def canCompleteRecovery = workers.count(_.state == WorkerState.UNKNOWN) == 0
+	// TODO
+	private def canCompleteRecovery: Boolean = {
+		workers.count(_.state == WorkerState.UNKNOWN) == 0 &&
+		apps.count(_.state == ApplicationState.UNKNOWN) == 0
+	}
 
 	private def completeRecovery(): Unit = {
 		if (state != RecoveryState.RECOVERING) { return }
 		state = RecoveryState.COMPLETING_RECOVERY
 		// worker no response until waiting WORKER_TIMEOUT, then mark it as WorkerState.DEAD
 		workers.filter(_.state == WorkerState.UNKNOWN).foreach(removeWorker)
-		// TODO jobs
+		apps.filter(_.state == ApplicationState.UNKNOWN).foreach(removeApplication)
 
+		// TODO drivers
 		state = RecoveryState.ACTIVE
 		logInfo("Recovery complete." )
 		logInfo("Now working as " + RecoveryState.ACTIVE)
@@ -420,7 +593,21 @@ class MoonboxMaster(
 		worker.setState(WorkerState.DEAD)
 		idToWorker -= worker.id
 		addressToWorker -= worker.address
+
+		for (driver <- worker.drivers.values) {
+			logInfo(s"Remove driver ${driver.id} because it's worker disconnected.")
+			removeDriver(driver.id, DriverState.ERROR, driver.appId, None)
+		}
+
 		persistenceEngine.removeWorker(worker)
+	}
+
+	private def removeApplication(app: ApplicationInfo): Unit = {
+		logInfo("Removing application " + app.id + " on " + app.endpoint)
+		apps -= app
+		idToApp -= app.id
+		addressToApp -= app.address
+		persistenceEngine.removeApplication(app)
 	}
 
 	private def registerWorker(worker: WorkerInfo): Boolean = {
@@ -449,7 +636,7 @@ class MoonboxMaster(
 		val toRemove = workers.filter(_.lastHeartbeat < currentTime - WORKER_TIMEOUT_MS).toArray
 		for (worker <- toRemove) {
 			if (worker.state != WorkerState.DEAD) {
-				logWarning(s"Removing ${worker.id} because wt got no heartbeat in ${WORKER_TIMEOUT_MS / 1000} seconds.")
+				logWarning(s"Removing ${worker.id} because it got no heartbeat in ${WORKER_TIMEOUT_MS / 1000} seconds.")
 				removeWorker(worker)
 			} else {
 				if (worker.lastHeartbeat < currentTime - (15 * WORKER_TIMEOUT_MS)) {
@@ -459,16 +646,28 @@ class MoonboxMaster(
 		}
 	}
 
+	private def registerApplication(app: ApplicationInfo): Boolean = {
+		if (addressToApp.contains(app.address)) {
+			logInfo("Attempted to re-register application at same address: " + app.address)
+			return false
+		}
+		apps += app
+		idToApp(app.id) = app
+		addressToApp(app.address) = app
+		true
+	}
+
+
 	private def newDriverId(submitDate: Date): String = {
 		val appId = "batch-%s-%04d".format(createDateFormat.format(submitDate), nextBatchDriverNumber)
 		nextBatchDriverNumber += 1
 		appId
 	}
 
-	private def createDriver(desc: DriverDescription): DriverInfo = {
+	private def createDriver(desc: DriverDescription, driverId: Option[String] = None, submitDate: Option[Date] = None): DriverInfo = {
 		val now = System.currentTimeMillis()
 		val date = new Date(now)
-		new DriverInfo(now, newDriverId(date), desc, date)
+		new DriverInfo(now, driverId.getOrElse(newDriverId(date)), desc, submitDate.getOrElse(date))
 	}
 
 	private def launchDriver(worker: WorkerInfo, driver: DriverInfo): Unit = {
@@ -505,17 +704,6 @@ class MoonboxMaster(
 		self ! RevokedLeadership
 	}
 
-	private def gracefullyShutdown(): Unit = {
-		system.terminate()
-		System.exit(1)
-	}
-
-	private def checkHost(): Unit = {
-		if (host == null) {
-			logError("Host is null.")
-			gracefullyShutdown()
-		}
-	}
 }
 
 

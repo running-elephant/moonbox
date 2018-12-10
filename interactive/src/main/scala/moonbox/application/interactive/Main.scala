@@ -1,15 +1,24 @@
 package moonbox.application.interactive
 
 
-import akka.actor.{Actor, ActorSystem, Address, Props}
+import java.util.UUID
+import java.util.concurrent.Executors
+
+import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.{Config, ConfigFactory}
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MbSession
 import moonbox.grid.{LogMessage, MbActor}
-import moonbox.grid.deploy.DeployMessages.MasterChanged
+import moonbox.grid.deploy.DeployMessages._
+import moonbox.grid.deploy.master.ApplicationType
+import moonbox.grid.deploy.messages.Message._
+import org.apache.spark.sql.MixcalContext
 
 import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 object Main extends MbLogging {
 
@@ -17,6 +26,10 @@ object Main extends MbLogging {
 		val conf = new MbConf()
 		val keyValues = for (i <- 0 until(args.length, 2)) yield (args(i), args(i+1))
 		keyValues.foreach { case (k, v) => conf.set(k, v) }
+
+		val driverId = conf.get("driverId").getOrElse(throw new NoSuchElementException("driverId"))
+		val masters = conf.get("masters").map(_.split(";")).getOrElse(throw new NoSuchElementException("masters"))
+		val appType = conf.get("applicationType").getOrElse(throw new NoSuchElementException("applicationType"))
 
 		val akkaConfig = Map("akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
 			"akka.remote.enabled-transports.0" ->"akka.remote.netty.tcp",
@@ -27,23 +40,222 @@ object Main extends MbLogging {
 		val akkaConf: Config = ConfigFactory.parseMap(akkaConfig.asJava)
 		val system = ActorSystem("Moonbox", akkaConf)
 
-		system.actorOf(Props(classOf[Main], conf), name = "interactive")
+		try {
+			system.actorOf(Props(
+				classOf[Main], driverId, masters, conf, ApplicationType.apply(appType)
+			), name = "interactive")
+		} catch {
+			case e: Exception =>
+				logError(e.getMessage)
+				System.exit(1)
+		}
 		Thread.currentThread().join()
 	}
 }
 
-class Main(conf: MbConf) extends MbActor with LogMessage with MbLogging {
+class Main(
+	driverId: String,
+	masterAddresses: Array[String],
+	val conf: MbConf,
+	appType: ApplicationType
+) extends MbActor with LogMessage with MbLogging {
+
+	private implicit val executionContext: ExecutionContext = {
+		ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
+	}
+	private var master: Option[ActorRef] = None
+	private var masterAddressToConnect: Option[Address] = None
+	private var registered = false
+	private var connected = false
+	private var connectionAttemptCount = 0
+
+	private val sessionIdToRunner = new scala.collection.mutable.HashMap[String, Runner]
+
+	private var registerToMasterScheduler: Option[Cancellable] = None
 
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
-		self ! MasterChanged(self)
+		assert(!registered)
+		logInfo("Running Moonbox Interactive Application ")
+		logInfo(s"Starting Main at ${self.path.toSerializationFormatWithAddress(address)}")
+
+		try {
+			startComputeEnv()
+		} catch {
+			case e: Exception =>
+				logError("Error caught ", e)
+				gracefullyShutdown()
+		}
+		registerWithMaster()
 	}
 
 	override def handleMessage: Receive = {
+		case msg: RegisterApplicationResponse =>
+			handleRegisterResponse(msg)
+
 		case MasterChanged(masterRef) =>
+			logInfo(s"Master has changed. new master is at ${masterRef.path.address}")
+			changeMaster(masterRef, masterRef.path.address)
+			masterRef ! ApplicationStateResponse(driverId)
+
+		case open @ OpenSession(username, database, _) =>
+			val sessionId = newSessionId
+			val runner = new Runner(sessionId, username, database, MbSession.getMbSession(conf))
+			sessionIdToRunner.put(sessionId, runner)
+			logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
+			sender() ! OpenSessionResponse(Some(sessionId), "Open session successfully.")
+
+		case close @ CloseSession(sessionId) =>
+			sessionIdToRunner.get(sessionId) match {
+				case Some(runner) =>
+					sessionIdToRunner.remove(sessionId).foreach { r =>
+						r.cancel()
+					}
+					val msg = s"Close session successfully $sessionId"
+					logInfo(msg)
+					sender() ! CloseSessionResponse(sessionId, success = true, msg)
+				case None =>
+					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
+					logWarning(msg)
+					sender() ! CloseSessionResponse(sessionId, success = false, msg)
+			}
+
+		case query @ JobQuery(sessionId, sqls, fetchSize, maxRows) =>
+			val requester = sender()
+			sessionIdToRunner.get(sessionId) match {
+				case Some(runner) =>
+					val f = Future(runner.query(sqls, fetchSize, maxRows))
+					f.onComplete {
+						// TODO
+						case Success(result) =>
+							requester ! result
+						case Failure(e) =>
+							requester ! JobQueryResponse(
+								success = false,
+								schema = "",
+								data = Seq.empty,
+								hasNext = false,
+								message = e.getMessage
+							)
+					}
+
+				case None =>
+					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
+					logWarning(msg)
+					requester ! JobQueryResponse(
+						success = false,
+						schema = "",
+						data = Seq.empty,
+						hasNext = false,
+						message = msg
+					)
+			}
+
+		case cancel @ InteractiveJobCancel(sessionId) =>
+			sessionIdToRunner.get(sessionId) match {
+				case Some(runner) =>
+					runner.cancel()
+				case None =>
+					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
+					logWarning(msg)
+					sender() ! InteractiveJobCancelResponse(success = false, msg)
+			}
+
+		case e =>
+			logWarning(s"Unknown message received: $e")
 	}
 
-	override def onDisconnected(remoteAddress: Address): Unit = {
+	private def newSessionId: String = {
+		UUID.randomUUID().toString
+	}
 
+	private def startComputeEnv(): Unit = {
+		MixcalContext.start(conf)
+	}
+
+	private def handleRegisterResponse(msg: RegisterApplicationResponse): Unit = {
+		msg match {
+			case RegisteredApplication(masterRef) =>
+				logInfo("Successfully registered with master " + masterRef.path.address)
+				registered = true
+				changeMaster(masterRef, masterRef.path.address)
+			case RegisterApplicationFailed(message) =>
+				if (!registered) {
+					logError("Interactive Application registration failed: " + message)
+					gracefullyShutdown()
+				}
+			case MasterInStandby =>
+			// do nothing
+		}
+	}
+
+	private def changeMaster(masterRef: ActorRef, masterAddress: Address): Unit = {
+		masterAddressToConnect = Some(masterAddress)
+		master = Some(masterRef)
+		connected = true
+		cancelRegistrationScheduler()
+	}
+
+
+	private def registerWithMaster(): Unit = {
+		registerToMasterScheduler match {
+			case None =>
+				registered = false
+				connectionAttemptCount = 0
+				registerToMasterScheduler = Some {
+					context.system.scheduler.schedule(
+						new FiniteDuration(1, SECONDS),
+						new FiniteDuration(5, SECONDS))(
+						tryRegisterAllMasters()
+					)
+				}
+			case Some(_) =>
+				logInfo("Don't attempt to register with the master, since there is an attempt scheduled already.")
+		}
+	}
+
+	private def tryRegisterAllMasters(): Unit = {
+		connectionAttemptCount += 1
+		if (registered) {
+			cancelRegistrationScheduler()
+		} else if (connectionAttemptCount <= 15) {
+			masterAddresses.par.foreach(sendRegisterMessageToMaster)
+		} else {
+			logError("All masters are unresponsive! Giving up.")
+			gracefullyShutdown()
+		}
+	}
+
+	private def sendRegisterMessageToMaster(masterRpcAddress: String): Unit = {
+		logInfo(s"Try registering with master $masterRpcAddress.")
+		context.system.actorSelection(masterRpcAddress).tell(RegisterApplication(
+			driverId,
+			host,
+			port,
+			self,
+			address,
+			10000,
+			appType
+		), self)
+	}
+
+	private def cancelRegistrationScheduler(): Unit = {
+		registerToMasterScheduler.foreach(_.cancel())
+		registerToMasterScheduler = None
+	}
+
+
+	override def onDisconnected(remoteAddress: Address): Unit = {
+		if (master.exists(_.path.address == remoteAddress) ||
+			masterAddressToConnect.contains(remoteAddress)) {
+			logInfo(s"$remoteAddress Disassociated!")
+			masterDisconnected()
+		}
+	}
+
+	private def masterDisconnected(): Unit = {
+		logError("Connection to master failed! Waiting for master to reconnect ...")
+		connected = false
+		registerWithMaster()
 	}
 }

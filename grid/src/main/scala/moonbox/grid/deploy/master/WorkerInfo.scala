@@ -30,8 +30,13 @@ class WorkerInfo(
 
 	private def init(): Unit = {
 		state = WorkerState.ALIVE
-		drivers = new mutable.HashMap()
+		drivers = new mutable.HashMap[String, DriverInfo]()
 		lastHeartbeat = System.currentTimeMillis()
+	}
+
+	private def readObject(in: java.io.ObjectInputStream): Unit = {
+		in.defaultReadObject()
+		init()
 	}
 
 	def addDriver(driver: DriverInfo): Unit = {

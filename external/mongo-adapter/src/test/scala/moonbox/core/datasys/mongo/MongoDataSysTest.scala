@@ -62,7 +62,7 @@ class MongoDataSysTest extends FunSuite {
     /* get logicalPlan by sqlParser */
     val parser = new SqlParser()
     parser.registerTable(tableName, schema, "mongo")
-    executor.adaptorFunctionRegister(parser.getRegister)
+    //executor.adaptorFunctionRegister(parser.getRegister)
     val sql = "select * from book_nested limit 20"
     val logicalPlan = parser.parse(sql)
     /* buildQuery */
@@ -86,7 +86,7 @@ class MongoDataSysTest extends FunSuite {
     /* get logicalPlan by sqlParser */
     val parser = new SqlParser()
     parser.registerTable(tableName, schema, "mongo")
-    executor.adaptorFunctionRegister(parser.getRegister)
+   // executor.adaptorFunctionRegister(parser.getRegister)
     val sql = "select * from books limit 3"
     val plan = parser.parse(sql)
     /* buildQuery */

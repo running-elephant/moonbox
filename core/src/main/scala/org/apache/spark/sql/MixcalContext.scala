@@ -21,7 +21,6 @@
 package org.apache.spark.sql
 
 
-import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.catalog._
 import org.apache.spark.sql.optimizer.MbOptimizer

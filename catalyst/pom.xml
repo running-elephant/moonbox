@@ -42,7 +42,7 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-spark-20_2.11</artifactId>
-            <scope>provided</scope>
+            <!--<scope>provided</scope>-->
             <version>${esv5-spark.version}</version>
             <exclusions>
                 <exclusion>

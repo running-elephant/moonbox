@@ -1,6 +1,9 @@
 package moonbox.grid.deploy
 
+import java.util.Date
+
 import akka.actor.{ActorRef, Address}
+import moonbox.grid.deploy.master.ApplicationType
 import moonbox.grid.deploy.master.DriverState.DriverState
 
 
@@ -28,9 +31,9 @@ object DeployMessages {
 
 	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
 
-	case class WorkerStateResponse(id: String)
+	case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDescription, Date)])
 
-	case class WorkerLatestState(id: String) extends DeployMessages
+	case class WorkerLatestState(id: String,  drivers: Seq[(String, DriverDescription, Date)]) extends DeployMessages
 
 	case class Heartbeat(workerId: String, worker: ActorRef) extends DeployMessages
 
@@ -40,7 +43,7 @@ object DeployMessages {
 
 	case class RegisteredWorker(masterAddress: ActorRef) extends DeployMessages with RegisterWorkerResponse
 
-	case object MasterInStandby extends DeployMessages with RegisterWorkerResponse
+	case object MasterInStandby extends DeployMessages with RegisterWorkerResponse with RegisterApplicationResponse
 
 	case class RegisterWorkerFailed(message: String) extends DeployMessages with RegisterWorkerResponse
 
@@ -57,19 +60,22 @@ object DeployMessages {
 
 	case class KillDriver(driverId: String) extends DeployMessages
 
-	case class RegisterExecutor(
+	case class RegisterApplication(
 		id: String,
 		host: String,
 		port: Int,
 		endpoint: ActorRef,
 		address: Address,
-		dataPort: Int
+		dataPort: Int,
+		appType: ApplicationType
 	)
 
-	sealed trait RegisterExecutorResponse
+	sealed trait RegisterApplicationResponse
 
-	case class RegisteredExecutor(masterRef: ActorRef) extends RegisterExecutorResponse
+	case class RegisteredApplication(masterRef: ActorRef) extends RegisterApplicationResponse
 
-	case class RegisterExecutorFailed(message: String) extends RegisterExecutorResponse
+	case class RegisterApplicationFailed(message: String) extends RegisterApplicationResponse
+
+	case class ApplicationStateResponse(driverId: String) extends DeployMessages
 
 }

@@ -30,7 +30,7 @@ abstract class PersistenceEngine {
 	protected def read[T: ClassTag](prefix: String): Seq[T]
 
 	final def readPersistedData() = {
-		(readDrivers(), readWorkers())
+		(readDrivers(), readWorkers(), readApplication())
 	}
 	final def readDrivers(): Seq[DriverInfo] = {
 		read[DriverInfo]("drivers")
@@ -38,6 +38,10 @@ abstract class PersistenceEngine {
 
 	final def readWorkers(): Seq[WorkerInfo] = {
 		read[WorkerInfo]("workers")
+	}
+
+	final def readApplication(): Seq[ApplicationInfo] = {
+		read[ApplicationInfo]("apps")
 	}
 
 	final def addDriver(driver: DriverInfo): Unit = {
@@ -54,6 +58,14 @@ abstract class PersistenceEngine {
 
 	final def removeWorker(node: WorkerInfo): Unit = {
 		unpersist("workers/" + node.id)
+	}
+
+	final def addApplication(app: ApplicationInfo): Unit = {
+		persist("apps/" + app.id, app)
+	}
+
+	final def removeApplication(app: ApplicationInfo): Unit = {
+		unpersist("apps/" + app.id)
 	}
 
 	def exist(path: String): Boolean
