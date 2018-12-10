@@ -1,7 +1,7 @@
 package moonbox.security.strategy
 
 import moonbox.core.CatalogContext
-import moonbox.core.catalog.CatalogStrategy
+import moonbox.catalog.CatalogStrategy
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, Expression, NamedExpression}
 import org.apache.spark.sql.catalyst.plans.logical._

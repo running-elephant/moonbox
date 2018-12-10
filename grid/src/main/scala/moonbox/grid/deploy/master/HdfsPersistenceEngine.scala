@@ -20,12 +20,7 @@
 
 package moonbox.grid.deploy.master
 
-import java.net.URI
-
 import moonbox.common.MbConf
-import moonbox.grid.config._
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
 
 import scala.reflect.ClassTag
 

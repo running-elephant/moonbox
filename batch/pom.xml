@@ -11,13 +11,14 @@
 
     <artifactId>moonbox-batchapp_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Moonbox Project Yarn Cluster Application</name>
+    <name>Moonbox Project Batch Application</name>
 
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
             <version>${project.version}</version>
+            <!-- TODO exclude spark -->
         </dependency>
     </dependencies>
 

@@ -23,7 +23,7 @@ package moonbox.grid.deploy
 import akka.actor.{Actor, ActorRef, ActorSystem, Address, Props}
 import moonbox.common.MbConf
 import moonbox.grid.deploy.master.{WorkerInfo, ZookeeperPersistenceEngine}
-import moonbox.localservice.LocalZookeeper
+import moonbox.testkit.server.LocalZookeeper
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 
@@ -45,7 +45,7 @@ class ZookeeperPersistenceEngineSuite extends FunSuite with BeforeAndAfterAll {
 
 	test("serialize nodeInfo") {
 		val actorRef = akkaSystem.actorOf(Props(classOf[MockActor]))
-		val node = new WorkerInfo("node-1", "localhost", 1000, Address.apply("akka.tcp", "moonbox", "localhost", 1000), actorRef, 10000)
+		val node = new WorkerInfo("node-1", "localhost", 1000, Address.apply("akka.tcp", "moonbox", "localhost", 1000), actorRef)
 		zookeeperPersistenceEngine.addWorker(node)
 		val nodes = zookeeperPersistenceEngine.readWorkers()
 		//assert(nodes.length == 1)

@@ -20,7 +20,7 @@
 
 package moonbox.core.paser
 
-import moonbox.core.catalog.{FunctionResource}
+import moonbox.catalog.{FunctionResource}
 import moonbox.core.{MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
 import moonbox.core.parser.MbParser

@@ -26,17 +26,6 @@
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
         </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_2.11</artifactId>
-            <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>netty</artifactId>
-                    <groupId>*</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -49,9 +38,11 @@
             </exclusions>
         </dependency>
 
+
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-spark-20_2.11</artifactId>
+            <!--<scope>provided</scope>-->
             <version>${esv5-spark.version}</version>
             <exclusions>
                 <exclusion>
@@ -76,24 +67,28 @@
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>rest</artifactId>
             <version>${esv5.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20160212</version>
+            <scope>provided</scope>
         </dependency>
 
         <!--mongo-->
-        <dependency>
+        <!--<dependency>
             <groupId>org.mongodb.spark</groupId>
             <artifactId>mongo-spark-connector_2.11</artifactId>
             <version>${mongo-spark.version}</version>
-        </dependency>
+            <scope>provided</scope>
+        </dependency>-->
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
             <version>${mongo.version}</version>
+            <scope>provided</scope>
         </dependency>
 
     </dependencies>

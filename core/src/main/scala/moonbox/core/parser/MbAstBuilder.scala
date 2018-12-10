@@ -23,7 +23,7 @@ package moonbox.core.parser
 import java.util
 import java.util.Locale
 
-import moonbox.core.catalog.FunctionResource
+import moonbox.catalog.FunctionResource
 import moonbox.core.command.PrivilegeType.{PrivilegeType, _}
 import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._

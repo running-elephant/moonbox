@@ -22,6 +22,7 @@
     <id>dist</id>
     <formats>
         <format>tar.gz</format>
+        <format>dir</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
     <baseDirectory>moonbox</baseDirectory>
@@ -51,7 +52,7 @@
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
-            <outputDirectory>log</outputDirectory>
+            <outputDirectory>logs</outputDirectory>
             <excludes><exclude>**/*</exclude></excludes>
         </fileSet>
     </fileSets>
@@ -73,7 +74,8 @@
                 <exclude>io.netty:netty-buffer</exclude>
                 <exclude>org.apache.lucene:*</exclude>
                 <exclude>com.sun.jersey:*</exclude>
-                <exclude>edp.moonbox:moonbox-yarnapp_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-batchapp_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-interactiveapp_2.11</exclude>
             </excludes>
             <outputDirectory>libs</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
@@ -84,13 +86,13 @@
         <dependencySet>
             <includes>
                 <!--common-->
-                <include>edp.moonbox:moonbox-common_2.11</include>
+                <!--<include>edp.moonbox:moonbox-common_2.11</include>
                 <include>edp.moonbox:moonbox-core_2.11</include>
-                <include>redis.clients:jedis</include>
-                <!--mysql-->
+                <include>edp.moonbox:moonbox-catalog_2.11</include>-->
                 <include>mysql:mysql-connector-java</include>
-                <include>edp.moonbox:moonbox-mysql-adapter</include>
-                <!--hbase-->
+                <!--mysql-->
+                <!--<include>edp.moonbox:moonbox-mysql-adapter</include>-->
+                <!--&lt;!&ndash;hbase&ndash;&gt;
                 <include>org.apache.hbase:hbase-client</include>
                 <include>org.apache.hbase:hbase-common</include>
                 <include>org.apache.hbase:hbase-hadoop2-compat</include>
@@ -101,18 +103,18 @@
                 <include>org.apache.hbase:hbase-server</include>
                 <include>edp.moonbox:spark-hbase-connector</include>
                 <include>edp.moonbox:moonbox-hbase-adapter</include>
-                <!--presto-->
+                &lt;!&ndash;presto&ndash;&gt;
                 <include>edp.moonbox:spark-presto-connector</include>
                 <include>com.lihaoyi:fastparse_2.11</include>
                 <include>com.lihaoyi:fastparse-utils_2.11</include>
                 <include>com.lihaoyi:sourcecode_2.11</include>
                 <include>com.facebook.presto:presto-jdbc</include>
                 <include>edp.moonbox:moonbox-presto-adapter</include>
-                <!-- mongo -->
+                &lt;!&ndash; mongo &ndash;&gt;
                 <include>org.mongodb:mongo-java-driver</include>
                 <include>org.mongodb.spark:mongo-spark-connector_2.11</include>
                 <include>edp.moonbox:moonbox-mongo-adapter</include>
-                <!-- elasticsearch  -->
+                &lt;!&ndash; elasticsearch  &ndash;&gt;
                 <include>edp.moonbox:moonbox-catalyst_2.11</include>
                 <include>org.elasticsearch:elasticsearch-spark-20_2.11</include>
                 <include>org.elasticsearch.client:rest</include>
@@ -123,25 +125,25 @@
                 <include>commons-codec:commons-codec</include>
                 <include>org.json:json</include>
                 <include>edp.moonbox:moonbox-elasticsearch-adapter</include>
-                <!-- kafka -->
+                &lt;!&ndash; kafka &ndash;&gt;
                 <include>org.apache.spark:spark-sql-kafka-0-10_2.11</include>
                 <include>org.apache.kafka:kafka-clients</include>
-                <!--kudu-->
+                &lt;!&ndash;kudu&ndash;&gt;
                 <include>org.apache.kudu:kudu-client</include>
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
                 <include>edp.moonbox:moonbox-kudu-adapter</include>
-                <!--oracle-->
+                &lt;!&ndash;oracle&ndash;&gt;
                 <include>com.oracle:ojdbc6</include>
                 <include>edp.moonbox:moonbox-oracle-adapter</include>
-                <!--sqlserver-->
+                &lt;!&ndash;sqlserver&ndash;&gt;
                 <include>com.microsoft.sqlserver:sqljdbc4</include>
                 <include>edp.moonbox:moonbox-sqlserver-adapter</include>
-                <!--cassandra-->
+                &lt;!&ndash;cassandra&ndash;&gt;
                 <include>com.datastax.spark:spark-cassandra-connector_2.11</include>
                 <include>edp.moonbox:moonbox-cassandra-adapter</include>
-                <!--clickhouse-->
+                &lt;!&ndash;clickhouse&ndash;&gt;
                 <include>ru.yandex.clickhouse:clickhouse-jdbc</include>
-                <include>edp.moonbox:moonbox-clickhouse-adapter</include>
+                <include>edp.moonbox:moonbox-clickhouse-adapter</include>-->
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
@@ -151,9 +153,10 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>edp.moonbox:moonbox-yarnapp_2.11</include>
+                <include>edp.moonbox:moonbox-batchapp_2.11</include>
+                <include>edp.moonbox:moonbox-interactiveapp_2.11</include>
             </includes>
-            <outputDirectory>cluster</outputDirectory>
+            <outputDirectory>apps</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <unpack>false</unpack>
             <scope>runtime</scope>

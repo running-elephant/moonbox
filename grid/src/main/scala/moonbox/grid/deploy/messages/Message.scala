@@ -1,9 +1,9 @@
 package moonbox.grid.deploy.messages
 
 
-private[deploy] sealed trait Message extends Serializable
+sealed trait Message extends Serializable
 
-private[deploy] object Message {
+object Message {
 
 	// control
 	sealed trait JobMessage extends Message
@@ -23,6 +23,7 @@ private[deploy] object Message {
 
 	// for interactive
 	case class JobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long) extends JobMessage
+
 	case class JobQueryResponse(
 		success: Boolean,
 		schema: String,

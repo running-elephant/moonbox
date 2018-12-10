@@ -20,19 +20,15 @@
 
 package org.apache.spark.sql
 
-import java.util.Locale
 
-import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.catalog._
-import moonbox.core.config._
+import moonbox.catalog._
 import org.apache.spark.sql.optimizer.MbOptimizer
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import moonbox.core.datasys.DataSystem
-import moonbox.core.resource.ResourceMonitor
 import moonbox.core.udf.UdfUtils
+import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
@@ -44,6 +40,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 	import MixcalContext._
 	val sparkSession = {
 		SparkSession.clearDefaultSession()
+		SparkSession.clearActiveSession()
 		SparkSession.builder().sparkContext(getSparkContext(conf))
 			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScans(sparkSession)))
 			.getOrCreate()
@@ -174,7 +171,7 @@ object MixcalContext extends MbLogging {
 		resourceMonitor
 	}
 
-	def start(conf: MbConf, isOnYarn: Boolean): Unit = {
+	def start(conf: MbConf): Unit = {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
@@ -186,13 +183,9 @@ object MixcalContext extends MbLogging {
 				val sparkListener = new SparkResourceListener(sparkContext.getConf)
 				sparkContext.addSparkListener(sparkListener)
 				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
-
-				if (!isOnYarn) {
-					//val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
-					//val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
-					//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
-					Utils.getRuntimeJars().foreach(sparkContext.addJar)
-				}
+				//val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
+				//val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
+				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
 				logInfo("New a sparkContext instance.")
 			} else {
 				logInfo("Using an exists sparkContext.")

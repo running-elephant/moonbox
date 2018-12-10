@@ -21,8 +21,8 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.catalog._
-import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, TablePrivilegeManager}
+import moonbox.catalog._
+import moonbox.core._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}

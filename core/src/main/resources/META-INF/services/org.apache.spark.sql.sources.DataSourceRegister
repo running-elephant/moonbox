@@ -1,3 +1,2 @@
-org.apache.spark.sql.execution.datasources.redis.DefaultSource
 org.apache.spark.sql.execution.datasources.ums.JsonFileFormat
 

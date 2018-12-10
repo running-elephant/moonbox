@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-catalog_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-core_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -47,13 +52,23 @@
             <artifactId>moonbox-catalyst_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
-       <!-- <dependency>
+        <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-dataadapter_2.11</artifactId>
+            <artifactId>moonbox-batchapp_2.11</artifactId>
             <version>${project.version}</version>
-        </dependency>-->
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-interactiveapp_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
-
+        <!-- for test -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.38</version>
+        </dependency>
     </dependencies>
 
     <build>

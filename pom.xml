@@ -20,29 +20,35 @@
 
     <modules>
         <module>common</module>
+        <module>testkit</module>
         <module>protocol</module>
-        <module>localservice</module>
+        <module>catalog</module>
+        <module>service</module>
         <module>catalyst</module>
         <module>core</module>
         <module>grid</module>
         <module>client</module>
         <module>repl</module>
         <module>jdbc</module>
-        <module>testkit</module>
+
         <module>external/spark-hbase-connector</module>
         <module>external/spark-presto-connector</module>
-        <module>dataadapter/elasticsearch-adapter</module>
-        <module>dataadapter/mongo-adapter</module>
-        <module>dataadapter/kudu-adapter</module>
-        <module>dataadapter/mysql-adapter</module>
-        <module>dataadapter/presto-adapter</module>
-        <module>dataadapter/oracle-adapter</module>
-        <module>dataadapter/sqlserver-adapter</module>
-        <module>dataadapter/hbase-adapter</module>
-        <module>dataadapter/cassandra-adapter</module>
-        <module>dataadapter/clickhouse-adapter</module>
+
+        <module>external/elasticsearch-adapter</module>
+        <module>external/mongo-adapter</module>
+        <module>external/kudu-adapter</module>
+        <module>external/mysql-adapter</module>
+        <module>external/presto-adapter</module>
+        <module>external/oracle-adapter</module>
+        <module>external/sqlserver-adapter</module>
+        <module>external/hbase-adapter</module>
+        <module>external/cassandra-adapter</module>
+        <module>external/clickhouse-adapter</module>
+        <module>external/redis-adapter</module>
+
         <module>batch</module>
         <module>interactive</module>
+
         <module>assembly</module>
 
     </modules>
@@ -90,6 +96,16 @@
             <dependency>
                 <groupId>org.apache.spark</groupId>
                 <artifactId>spark-core_2.11</artifactId>
+                <version>${spark.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-launcher_2.11</artifactId>
+                <version>${spark.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.spark</groupId>
+                <artifactId>spark-catalyst_2.11</artifactId>
                 <version>${spark.version}</version>
             </dependency>
             <dependency>
@@ -158,6 +174,11 @@
             <dependency>
                 <groupId>org.apache.curator</groupId>
                 <artifactId>curator-framework</artifactId>
+                <version>${curator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-recipes</artifactId>
                 <version>${curator.version}</version>
             </dependency>
             <dependency>

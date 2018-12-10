@@ -11,8 +11,7 @@ class WorkerInfo(
 	val host: String,
 	val port: Int,
 	val address: Address,
-	val endpoint: ActorRef,
-	val internalPort: Int
+	val endpoint: ActorRef
 ) extends Serializable {
 
 	@transient var state: WorkerState.Value = _
@@ -31,8 +30,13 @@ class WorkerInfo(
 
 	private def init(): Unit = {
 		state = WorkerState.ALIVE
-		drivers = new mutable.HashMap()
+		drivers = new mutable.HashMap[String, DriverInfo]()
 		lastHeartbeat = System.currentTimeMillis()
+	}
+
+	private def readObject(in: java.io.ObjectInputStream): Unit = {
+		in.defaultReadObject()
+		init()
 	}
 
 	def addDriver(driver: DriverInfo): Unit = {
@@ -49,7 +53,6 @@ class WorkerInfo(
 		   |port: $port
 		   |address: $address
 		   |endpoint: $endpoint
-		   |internalPort: $internalPort
 		   |state: $state
 		 """.stripMargin
 	}

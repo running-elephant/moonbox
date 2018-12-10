@@ -20,7 +20,6 @@
 
 package moonbox.catalyst.core.parser
 
-import java.util.Properties
 
 import moonbox.catalyst.core.parser.udf.udfParser.ParserUtil
 import moonbox.catalyst.core.{CatalystAnalyzer, CatalystOptimizer}
@@ -50,10 +49,10 @@ class SqlParser {
     ignoreIfExists = true
   )
 
-  def getRegister: UDFRegistration = {
+ /* def getRegister: UDFRegistration = {
     val register = UdfUtil.selfFunctionRegister() //call common udf
     UdfUtil.buildUdfRegister(register)
-  }
+  }*/
 
   def registerTable(tableName: String, schema: StructType, provider: String): Unit = {
     val catalogTable = CatalogTable(

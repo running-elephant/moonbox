@@ -21,11 +21,10 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.catalog._
+import moonbox.catalog._
 import moonbox.core.command.PrivilegeType.PrivilegeType
-import moonbox.core.{MbSession, MbTableIdentifier}
+import moonbox.core.{MbSession, MbTableIdentifier, UserContext}
 import org.apache.spark.sql.Row
-import moonbox.core.datasys.DataSystem
 
 sealed trait DCL
 

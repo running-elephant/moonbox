@@ -21,12 +21,11 @@
 package moonbox.catalyst.core.parser.udf
 
 import moonbox.catalyst.adapter.util.SparkUtil
-import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.udf.JaninoCodeGen
 
-object FunctionUtil extends MbLogging{
+object FunctionUtil {
 
     private def getDataType(expression: Expression) = {
         expression.dataType match {
@@ -53,7 +52,6 @@ object FunctionUtil extends MbLogging{
                     val data = current.toArray.asInstanceOf[Array[AnyRef]]
                     val leftName = SparkUtil.parseLeafExpression(left)
                     //TODO: find the proper index, if it not in project list, add filter array name to the project list before send to ES
-                    logWarning("name2colId " + colName2colIdMap)
                     var contains = true
                     if(colName2colIdMap.contains(leftName.name)) {
                         val fIndex = colName2colIdMap(leftName.name) // exist occur on col id

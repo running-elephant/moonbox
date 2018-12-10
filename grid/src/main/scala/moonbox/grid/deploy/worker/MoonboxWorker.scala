@@ -12,7 +12,7 @@ import moonbox.grid.deploy.master.{DriverState, MoonboxMaster}
 import moonbox.grid.deploy.master.MoonboxMaster._
 import moonbox.grid.config.WORKER_TIMEOUT
 import moonbox.grid.deploy._
-import moonbox.grid.deploy.DeployMessages._
+import moonbox.grid.deploy.DeployMessages.{LaunchDriver, _}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -25,11 +25,6 @@ class MoonboxWorker(
 	masterAddresses: Array[String],
 	val conf: MbConf) extends MbActor with LogMessage with MbLogging {
 
-	private val host = address.host.orNull
-	private val port = address.port.getOrElse(0)
-
-	checkHostPort(host, port)
-
 	private val HEARTBEAT_MILLIS = conf.get(WORKER_TIMEOUT) / 4
 
 	private val workerId = generateWorkerId()
@@ -39,6 +34,7 @@ class MoonboxWorker(
 	private var registered = false
 	private var connected = false
 	private var connectionAttemptCount = 0
+	private var nextInteractiveDriverNumber = 0
 
 	private val drivers = new mutable.HashMap[String, DriverRunner]
 	private val finishedDrivers = new mutable.LinkedHashMap[String, DriverRunner]
@@ -51,12 +47,23 @@ class MoonboxWorker(
 		assert(!registered)
 		logInfo(s"Running Moonbox version 0.3.0")// TODO
 		logInfo(s"Starting MoonboxWorker at ${self.path.toSerializationFormatWithAddress(address)}")
+		// TODO
+		val driverId = newDriverId
+		self ! LaunchDriver(driverId, new LocalDriverDescription(driverId, masterAddresses, conf))
+//		val driverId2 = newDriverId
+//		self ! LaunchDriver(driverId2, new ClientDriverDescription(driverId2, masterAddresses, conf))
 		registerWithMaster()
 	}
 
 	@scala.throws[Exception](classOf[Exception])
 	override def postStop(): Unit = {
-
+		drivers.values.foreach { driver =>
+			if (driver.desc.isInstanceOf[LocalDriverDescription] ||
+				driver.desc.isInstanceOf[ClientDriverDescription]
+			) {
+				driver.kill()
+			}
+		}
 	}
 
 	override def handleMessage: Receive = {
@@ -69,15 +76,16 @@ class MoonboxWorker(
 		case MasterChanged(masterRef) =>
 			logInfo(s"Master has changed, new master is at ${masterRef.path.address}")
 			changeMaster(masterRef, masterRef.path.address)
-			masterRef ! WorkerStateResponse(workerId)
+			val driverDesces = drivers.map { case (k, v) => v }.toSeq.map(r => (r.driverId, r.desc, r.submitDate))
+			masterRef ! WorkerStateResponse(workerId, driverDesces)
 
 		case ReconnectWorker(masterRef) =>
 			logInfo(s"Master with ${masterRef.path.address} requested this worker to reconnect.")
 			registerWithMaster()
 
 		case LaunchDriver(driverId, driverDesc) =>
-			logInfo(s"Ask to launch cluster driver $driverId")
-			val driver = new DriverRunner(conf, driverId, driverDesc, self)
+			logInfo(s"Ask to launch driver $driverId")
+			val driver = new DriverRunner(conf, driverId, driverDesc, self, new Date())
 			drivers(driverId) = driver
 			driver.start()
 
@@ -90,7 +98,7 @@ class MoonboxWorker(
 					logError(s"Asked to kill unknown driver $driverId")
 			}
 
-		case driverStateChanged @ DriverStateChanged(driverId, state, exception) =>
+		case driverStateChanged @ DriverStateChanged(driverId, state, appId, exception) =>
 			handleDriverStateChanged(driverStateChanged)
 
 		case e => println(e)
@@ -191,8 +199,7 @@ class MoonboxWorker(
 			host,
 			port,
 			self,
-			address,
-			10000 // TODO
+			address
 		), self)
 	}
 
@@ -206,8 +213,9 @@ class MoonboxWorker(
 				system.scheduler.schedule(new FiniteDuration(0, SECONDS),
 					new FiniteDuration(HEARTBEAT_MILLIS, MILLISECONDS), self, SendHeartbeat)
 
-				// TODO report worker last state
-				masterRef ! WorkerLatestState(workerId)
+				val driverDesces = drivers.map { case (k, v) => v }.toSeq.map(r => (r.driverId, r.desc, r.submitDate))
+				masterRef ! WorkerLatestState(workerId, driverDesces)
+
 			case RegisterWorkerFailed(message) =>
 				if (!registered) {
 					logError("Worker registration failed: " + message)
@@ -233,20 +241,12 @@ class MoonboxWorker(
 		"worker-%s-%s".format(createDateFormat.format(new Date), address.hostPort)
 	}
 
-	private def gracefullyShutdown(): Unit = {
-		system.terminate()
-		System.exit(1)
-	}
-
-	private def checkHostPort(host: String, port: Int): Unit = {
-		if (host == null) {
-			logError("Host is null.")
-			gracefullyShutdown()
-		}
-		if (port == 0) {
-			logError("Port is 0.")
-			gracefullyShutdown()
-		}
+	private def newDriverId: String = {
+		val now = System.currentTimeMillis()
+		val submitDate = new Date(now)
+		val driverId = "interacive-%s-%04d".format(createDateFormat.format(submitDate), nextInteractiveDriverNumber)
+		nextInteractiveDriverNumber += 1
+		driverId
 	}
 }
 
