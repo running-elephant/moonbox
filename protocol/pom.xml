@@ -13,11 +13,6 @@
     <packaging>jar</packaging>
     <name>Moonbox Project Protocol</name>
 
-    <properties>
-        <protobuf.input.dir>src/main/proto</protobuf.input.dir>
-        <protobuf.output.dir>src/main/gen-java</protobuf.output.dir>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -34,61 +29,22 @@
     <build>
         <plugins>
             <plugin>
-                <artifactId>maven-clean-plugin</artifactId>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.5.1</version>
+                <extensions>true</extensions>
                 <configuration>
-                    <verbose>true</verbose>
-                    <filesets>
-                        <fileset>
-                            <directory>${protobuf.output.dir}</directory>
-                        </fileset>
-                    </filesets>
+                    <protoSourceRoot>src/main/proto</protoSourceRoot>
+                    <outputDirectory>src/main/generate</outputDirectory>
+                    <clearOutputDirectory>true</clearOutputDirectory>
+                    <protocExecutable>protoc</protocExecutable>
                 </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>compile-protoc</id>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <tasks>
-                                <mkdir dir="${protobuf.output.dir}" />
-                                <path id="proto.path">
-                                    <fileset dir="${protobuf.input.dir}">
-                                        <include name="**/*.proto" />
-                                    </fileset>
-                                </path>
-                                <pathconvert pathsep=" " property="proto.files" refid="proto.path"/>
-                                <exec executable="protoc">
-                                    <arg value="--java_out=${protobuf.output.dir}" />
-                                    <arg value="-I${project.basedir}/${protobuf.input.dir}" />
-                                    <arg line="${proto.files}" />
-                                </exec>
-                            </tasks>
-                            <sourceRoot>${protobuf.output.dir}</sourceRoot>
-                        </configuration>
                         <goals>
-                            <goal>run</goal>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <id>add-source</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${protobuf.output.dir}</source>
-                            </sources>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

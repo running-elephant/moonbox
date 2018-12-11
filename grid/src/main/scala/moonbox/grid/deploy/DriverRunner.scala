@@ -28,22 +28,25 @@ private[deploy] class DriverRunner(
 					launcher
 						.setAppName(driverId)
 						.setMaster(desc.master)
-						if (desc.deployMode.isDefined) {
-							launcher.setDeployMode(desc.deployMode.get)
-						}
+					if (desc.deployMode.isDefined) {
+						launcher.setDeployMode(desc.deployMode.get)
+					}
+					if (sys.env.get("SPARK_HOME").isDefined) {
+						launcher.setSparkHome(sys.env("SPARK_HOME"))
+					}
 					launcher
 						.setMainClass(desc.mainClass)
 						.addAppArgs(desc.toAppArgs:_*)
 						.setVerbose(false)
-						.setSparkHome("/Users/wanghao/Downloads/spark-2.2.0-bin-hadoop2.7")
 						.setAppResource(desc.appResource)
 					desc.toConf.foreach { case (k, v) =>
 						launcher.setConf(k, v)
 					}
 
-					Utils.getRuntimeJars().foreach{ launcher.addJar }
+					Utils.getRuntimeJars().foreach { launcher.addJar }
 
 					sparkAppHandle = launcher.startApplication(new SparkAppHandle.Listener {
+
 						override def infoChanged(handle: SparkAppHandle): Unit = {
 						}
 
@@ -78,7 +81,7 @@ private[deploy] class DriverRunner(
 	}
 
 	def kill() = {
-		val appId = if (sparkAppHandle != null) {
+		val appId = if (sparkAppHandle != null && sparkAppHandle.getAppId != null) {
 			sparkAppHandle.getAppId
 		} else "<unknown>"
 		logInfo(s"Killing application with id: $appId.")
@@ -87,7 +90,6 @@ private[deploy] class DriverRunner(
 		} else {
 			logWarning(s"SparkAppHandle is null, driver id is $driverId ")
 		}
-
 	}
 
 }
