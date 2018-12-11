@@ -17,7 +17,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.5.1</version>
+            <version>3.6.1</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -31,13 +31,16 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.5.1</version>
+                <version>0.6.1</version>
                 <extensions>true</extensions>
                 <configuration>
                     <protoSourceRoot>src/main/proto</protoSourceRoot>
                     <outputDirectory>src/main/generate</outputDirectory>
                     <clearOutputDirectory>true</clearOutputDirectory>
                     <protocExecutable>protoc</protocExecutable>
+                    <javaNanoOptions>
+
+                    </javaNanoOptions>
                 </configuration>
                 <executions>
                     <execution>
