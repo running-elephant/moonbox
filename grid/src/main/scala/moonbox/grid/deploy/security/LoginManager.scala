@@ -46,7 +46,7 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 		override def run(): Unit = {
 			tokenToLastActiveTime.foreach { case (u, t) =>
 				if ((Utils.now - t) >= LOGIN_TIMEOUT_MS) {
-					logInfo(s"Token timeout, closing according session: Token=$u")
+					logInfo(s"Token timeout, closing according session: Token = $u")
 					Option(tokenToSessionId.get(u)).map(sessionId =>
 						mbService.closeSession(u, sessionId)(ConnectionInfo(
 							"system", // TODO

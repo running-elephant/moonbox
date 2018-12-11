@@ -2,9 +2,10 @@ package moonbox.application.interactive
 
 import moonbox.common.MbLogging
 import moonbox.core._
-import moonbox.core.command.{CreateTempView, InsertInto, MbRunnableCommand}
+import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbRunnableCommand}
 import moonbox.core.datasys.DataSystem
-import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.{Row, SaveMode}
+import org.apache.spark.sql.optimizer.WholePushdown
 
 class Runner(
 	sessionId: String,
@@ -12,9 +13,16 @@ class Runner(
 	database: Option[String],
 	mbSession: MbSession) extends MbLogging {
 
+	private var fetchSize: Long = _
+	private var maxRows: Long = _
+	private var currentData: Iterator[Row] = _
+
 	init()
 
 	def query(sqls: Seq[String], fetchSize: Long, maxRows: Long): Unit = {
+		this.fetchSize = fetchSize
+		this.maxRows = maxRows
+
 		sqls.map(mbSession.parsedPlan).map {
 			case runnable: MbRunnableCommand =>
 				runnable.run(mbSession)(mbSession.userContext)
@@ -25,6 +33,8 @@ class Runner(
 			case insert @ InsertInto(MbTableIdentifier(table, db), query, overwrite) =>
 				doInsert(table, db, query, overwrite)
 
+			case query @ MQLQuery(sql) =>
+				doMqlQuery(sql)
 			case other =>
 				throw new Exception(s"Unsupport command $other")
 
@@ -36,16 +46,24 @@ class Runner(
 		mbSession.mixcal.cancelJobGroup(sessionId)
 	}
 
-	private def doCreateTempView(table: String, query: String, isCache: Boolean, replaceIfExists: Boolean): Unit = {
-		val optimized = mbSession.optimizedPlan(query)
-		val df = mbSession.toDF(optimized)
-		if (isCache) {
-			df.cache()
-		}
-		if (replaceIfExists) {
-			df.createOrReplaceTempView(table)
-		} else {
-			df.createTempView(table)
+	private def doMqlQuery(sql: String): Unit = {
+		val optimized = mbSession.optimizedPlan(sql)
+		try {
+			mbSession.pushdownPlan(optimized) match {
+				case WholePushdown(child, queryable) =>
+					mbSession.toDT(child, queryable)
+				case plan =>
+					mbSession.toDF(plan)
+			}
+		} catch {
+			case e: ColumnSelectPrivilegeException =>
+				throw e
+			case e: Throwable if e.getMessage.contains("cancelled job") =>
+				throw e
+			case e: Throwable =>
+				logWarning(s"Execute push down failed: ${e.getMessage}. Retry with out pushdown.")
+				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
+				mbSession.toDF(plan)
 		}
 	}
 
@@ -56,22 +74,22 @@ class Runner(
 		val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(query)
 		try {
-			run(pushdown = true)
+			run(pushdownEnable = true)
 		} catch {
 			case e: TableInsertPrivilegeException =>
 				throw e
 			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
-				run(pushdown = false)
+				run(pushdownEnable = false)
 		}
 
-		def run(pushdown: Boolean): Unit = {
+		def run(pushdownEnable: Boolean): Unit = {
 			val pushdownPlan = {
-				if (pushdown) {
+				if (pushdownEnable) {
 					mbSession.pushdownPlan(optimized)
 				} else {
-					mbSession.pushdownPlan(optimized, pushdown = false)
+					mbSession.pushdownPlan(optimized, pushdown = pushdownEnable)
 				}
 			}
 			val dataFrame = mbSession.toDF(pushdownPlan)
@@ -87,6 +105,21 @@ class Runner(
 			dataFrameWriter.save()
 		}
 	}
+
+	private def doCreateTempView(table: String, query: String, isCache: Boolean, replaceIfExists: Boolean): Unit = {
+		val optimized = mbSession.optimizedPlan(query)
+		val df = mbSession.toDF(optimized)
+		if (isCache) {
+			df.cache()
+		}
+		if (replaceIfExists) {
+			df.createOrReplaceTempView(table)
+		} else {
+			df.createTempView(table)
+		}
+	}
+
+
 
 
 	private def init(): Unit = {
