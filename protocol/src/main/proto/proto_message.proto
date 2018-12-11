@@ -91,9 +91,10 @@ message ResultData {
 }
 /* next result */
 message InteractiveNextResultInbound {
-    string session_id = 1;
-//    string cursor = 2;
-    int32 fetch_size = 3;
+    string token = 1;
+    string session_id = 2;
+//    string cursor = 3;
+//    int32 fetch_size = 4;
 }
 message InteractiveNextResultOutbound {
     string error = 1;

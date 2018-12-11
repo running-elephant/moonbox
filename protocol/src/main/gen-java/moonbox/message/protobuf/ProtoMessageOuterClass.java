@@ -199,31 +199,31 @@ public final class ProtoMessageOuterClass {
       "und\022\r\n\005error\030\001 \001(\t\022)\n\013result_data\030\003 \001(\0132" +
       "\024.protobuf.ResultData\"\\\n\nResultData\022\016\n\006c" +
       "ursor\030\001 \001(\t\022\016\n\006schema\030\002 \001(\t\022\034\n\004data\030\003 \001(" +
-      "\0132\016.protobuf.Data\022\020\n\010has_next\030\004 \001(\010\"F\n\034I" +
-      "nteractiveNextResultInbound\022\022\n\nsession_i" +
-      "d\030\001 \001(\t\022\022\n\nfetch_size\030\003 \001(\005\"R\n\035Interacti" +
-      "veNextResultOutbound\022\r\n\005error\030\001 \001(\t\022\"\n\004d" +
-      "ata\030\002 \001(\0132\024.protobuf.ResultData\"?\n\021Batch" +
-      "QueryInbound\022\r\n\005token\030\001 \001(\t\022\013\n\003sql\030\002 \003(\t" +
-      "\022\016\n\006config\030\003 \001(\t\"3\n\022BatchQueryOutbound\022\016" +
-      "\n\006job_id\030\001 \001(\t\022\r\n\005error\030\002 \001(\t\":\n\031BatchQu" +
-      "eryProgressInbound\022\r\n\005token\030\001 \001(\t\022\016\n\006job" +
-      "_id\030\002 \001(\t\"<\n\032BatchQueryProgressOutbound\022" +
-      "\017\n\007message\030\001 \001(\t\022\r\n\005state\030\002 \001(\t\"]\n\022Cance" +
-      "lQueryInbound\022\r\n\005token\030\001 \001(\t\022\020\n\006job_id\030\002" +
-      " \001(\tH\000\022\024\n\nsession_id\030\003 \001(\tH\000B\020\n\016jobOrSes" +
-      "sionId\"$\n\023CancelQueryOutbound\022\r\n\005error\030\001" +
-      " \001(\t\"\"\n\004Data\022\032\n\003row\030\001 \003(\0132\r.protobuf.Row" +
-      "\"#\n\003Row\022\034\n\004cell\030\001 \003(\0132\016.protobuf.Cell\"\335\001" +
-      "\n\004Cell\022\026\n\014string_value\030\001 \001(\tH\000\022\024\n\nlong_v" +
-      "alue\030\002 \001(\003H\000\022\023\n\tint_value\030\003 \001(\005H\000\022\027\n\rboo" +
-      "lean_value\030\004 \001(\010H\000\022)\n\013big_decimal\030\005 \001(\0132" +
-      "\022.protobuf.BDecimalH\000\022\024\n\nbyte_array\030\006 \001(" +
-      "\014H\000\022\026\n\014double_value\030\007 \001(\001H\000\022\025\n\013float_val" +
-      "ue\030\010 \001(\002H\000B\t\n\007objects\">\n\010BDecimal\022\r\n\005sca" +
-      "le\030\001 \001(\005\022#\n\007int_val\030\002 \001(\0132\022.protobuf.BIn" +
-      "teger\"\031\n\010BInteger\022\r\n\005value\030\001 \001(\014B\034\n\030moon" +
-      "box.message.protobufP\001b\006proto3"
+      "\0132\016.protobuf.Data\022\020\n\010has_next\030\004 \001(\010\"A\n\034I" +
+      "nteractiveNextResultInbound\022\r\n\005token\030\001 \001" +
+      "(\t\022\022\n\nsession_id\030\002 \001(\t\"R\n\035InteractiveNex" +
+      "tResultOutbound\022\r\n\005error\030\001 \001(\t\022\"\n\004data\030\002" +
+      " \001(\0132\024.protobuf.ResultData\"?\n\021BatchQuery" +
+      "Inbound\022\r\n\005token\030\001 \001(\t\022\013\n\003sql\030\002 \003(\t\022\016\n\006c" +
+      "onfig\030\003 \001(\t\"3\n\022BatchQueryOutbound\022\016\n\006job" +
+      "_id\030\001 \001(\t\022\r\n\005error\030\002 \001(\t\":\n\031BatchQueryPr" +
+      "ogressInbound\022\r\n\005token\030\001 \001(\t\022\016\n\006job_id\030\002" +
+      " \001(\t\"<\n\032BatchQueryProgressOutbound\022\017\n\007me" +
+      "ssage\030\001 \001(\t\022\r\n\005state\030\002 \001(\t\"]\n\022CancelQuer" +
+      "yInbound\022\r\n\005token\030\001 \001(\t\022\020\n\006job_id\030\002 \001(\tH" +
+      "\000\022\024\n\nsession_id\030\003 \001(\tH\000B\020\n\016jobOrSessionI" +
+      "d\"$\n\023CancelQueryOutbound\022\r\n\005error\030\001 \001(\t\"" +
+      "\"\n\004Data\022\032\n\003row\030\001 \003(\0132\r.protobuf.Row\"#\n\003R" +
+      "ow\022\034\n\004cell\030\001 \003(\0132\016.protobuf.Cell\"\335\001\n\004Cel" +
+      "l\022\026\n\014string_value\030\001 \001(\tH\000\022\024\n\nlong_value\030" +
+      "\002 \001(\003H\000\022\023\n\tint_value\030\003 \001(\005H\000\022\027\n\rboolean_" +
+      "value\030\004 \001(\010H\000\022)\n\013big_decimal\030\005 \001(\0132\022.pro" +
+      "tobuf.BDecimalH\000\022\024\n\nbyte_array\030\006 \001(\014H\000\022\026" +
+      "\n\014double_value\030\007 \001(\001H\000\022\025\n\013float_value\030\010 " +
+      "\001(\002H\000B\t\n\007objects\">\n\010BDecimal\022\r\n\005scale\030\001 " +
+      "\001(\005\022#\n\007int_val\030\002 \001(\0132\022.protobuf.BInteger" +
+      "\"\031\n\010BInteger\022\r\n\005value\030\001 \001(\014B\034\n\030moonbox.m" +
+      "essage.protobufP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -315,7 +315,7 @@ public final class ProtoMessageOuterClass {
     internal_static_protobuf_InteractiveNextResultInbound_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_protobuf_InteractiveNextResultInbound_descriptor,
-        new java.lang.String[] { "SessionId", "FetchSize", });
+        new java.lang.String[] { "Token", "SessionId", });
     internal_static_protobuf_InteractiveNextResultOutbound_descriptor =
       getDescriptor().getMessageTypes().get(13);
     internal_static_protobuf_InteractiveNextResultOutbound_fieldAccessorTable = new

@@ -45,11 +45,11 @@ object ProtoInboundMessageBuilder {
     builder.build()
   }
 
-  def interactiveNextResultInbound(sessionId: String, fetchSize: Int): InteractiveNextResultInbound = {
-    InteractiveNextResultInbound.newBuilder()
-      .setSessionId(sessionId)
-      .setFetchSize(fetchSize)
-      .build()
+  def interactiveNextResultInbound(token: String, sessionId: String): InteractiveNextResultInbound = {
+    val builder = InteractiveNextResultInbound.newBuilder()
+    Option(token).foreach(builder.setToken)
+    Option(sessionId).foreach(builder.setSessionId)
+    builder.build()
   }
 
   def batchQueryInbound(token: String, sqls: util.List[String], config: String): BatchQueryInbound = {

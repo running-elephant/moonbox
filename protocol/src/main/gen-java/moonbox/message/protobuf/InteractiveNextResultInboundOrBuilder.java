@@ -8,21 +8,32 @@ public interface InteractiveNextResultInboundOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
-   * <code>string session_id = 1;</code>
+   * <code>string token = 1;</code>
    */
-  java.lang.String getSessionId();
+  java.lang.String getToken();
   /**
-   * <code>string session_id = 1;</code>
+   * <code>string token = 1;</code>
    */
   com.google.protobuf.ByteString
-      getSessionIdBytes();
+      getTokenBytes();
 
   /**
    * <pre>
-   *    string cursor = 2;
+   *    string cursor = 3;
+   *    int32 fetch_size = 4;
    * </pre>
    *
-   * <code>int32 fetch_size = 3;</code>
+   * <code>string session_id = 2;</code>
    */
-  int getFetchSize();
+  java.lang.String getSessionId();
+  /**
+   * <pre>
+   *    string cursor = 3;
+   *    int32 fetch_size = 4;
+   * </pre>
+   *
+   * <code>string session_id = 2;</code>
+   */
+  com.google.protobuf.ByteString
+      getSessionIdBytes();
 }

@@ -69,11 +69,11 @@ private[deploy] class MbService(
 		isLogin(token) match {
 			case Some(username) =>
 				askSync[OpenSessionResponse](OpenSession(username, database, isLocal))(SHORT_TIMEOUT) match {
-					case Left(OpenSessionResponse(Some(sessionId), message)) =>
+					case Left(OpenSessionResponse(Some(sessionId), workerHost, workerPort, message)) =>
 						loginManager.putSession(token, sessionId)
-						OpenSessionOutbound(Some(sessionId), None)
-					case Left(OpenSessionResponse(None, message)) =>
-						OpenSessionOutbound(error = Some(message))
+						OpenSessionOutbound(Some(sessionId), workerHost, workerPort, None)
+					case Left(OpenSessionResponse(None, workerHost, workerPort, message)) =>
+						OpenSessionOutbound(workerHost = workerHost, workerPort = workerPort, error = Some(message))
 					case Right(message) =>
 						OpenSessionOutbound(error = Some(message))
 				}

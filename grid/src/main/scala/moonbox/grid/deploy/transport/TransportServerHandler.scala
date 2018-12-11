@@ -20,6 +20,7 @@
 
 package moonbox.grid.deploy.transport
 
+import java.io.{PrintWriter, StringWriter}
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
@@ -29,10 +30,10 @@ import moonbox.common.MbLogging
 import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
 import moonbox.protocol.client._
 
-class TransportServerHandler(
-	channelToToken: ConcurrentHashMap[Channel, String],
-	channelToSessionId: ConcurrentHashMap[Channel, String],
-	mbService: MbService) extends ChannelInboundHandlerAdapter with MbLogging {
+class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
+														 channelToSessionId: ConcurrentHashMap[Channel, String],
+														 mbService: MbService)
+	extends ChannelInboundHandlerAdapter with MbLogging {
 
 	override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
 		try {
@@ -43,7 +44,10 @@ class TransportServerHandler(
 	}
 
 	override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) = {
-		logInfo("Error caught: ", cause)
+		val sw = new StringWriter()
+		cause.printStackTrace(new PrintWriter(sw))
+		logError(sw.toString)
+		super.exceptionCaught(ctx, cause)
 		ctx.close
 	}
 
@@ -52,12 +56,15 @@ class TransportServerHandler(
 		if (channelToToken.containsKey(channel)) {
 			implicit val connection = getConnectionInfo(ctx)
 			val token = channelToToken.remove(channel)
-			if (channelToSessionId.containsKey(channel)) {
-				val sessionId = channelToSessionId.remove(channel)
-				logInfo(s"Closing session with sessionId: $sessionId")
-				mbService.closeSession(token, sessionId)
+			try {
+				if (channelToSessionId.containsKey(channel)) {
+					val sessionId = channelToSessionId.remove(channel)
+					logInfo(s"Closing session with sessionId: $sessionId")
+					mbService.closeSession(token, sessionId)
+				}
+			} finally {
+				mbService.logout(token)
 			}
-			mbService.logout(token)
 		}
 		super.channelInactive(ctx)
 	}
@@ -69,20 +76,16 @@ class TransportServerHandler(
 		}
 	}
 
-	private def getConnectionInfo(ctx: ChannelHandlerContext): ConnectionInfo = {
-		val local = ctx.channel().localAddress() match {
-			case inet: InetSocketAddress =>
-				inet.getHostName + ":" + inet.getPort
-			case _ =>
-				"unknown"
-		}
+	private def getConnectionInfo(ctx: ChannelHandlerContext) : ConnectionInfo = {
 		val remote = ctx.channel().remoteAddress() match {
-			case inet: InetSocketAddress =>
-				inet.getHostName + ":" + inet.getPort
-			case _ =>
-				"unknown"
+			case i:InetSocketAddress => i.toString
+			case _ => "Unknown"
 		}
-		ConnectionInfo(local, remote, ConnectionType.JDBC)
+		val local = ctx.channel().localAddress() match {
+			case i:InetSocketAddress => i.toString
+			case _ => "Unknown"
+		}
+		ConnectionInfo(local, remote, ConnectionType.CLIENT)
 	}
 
 	private def handleMessage(ctx: ChannelHandlerContext, message: Any): Unit = {
@@ -103,12 +106,6 @@ class TransportServerHandler(
 				val outbound = mbService.logout(token)
 				logInfo(s"User($username), Token($token) logout completed: " + prettyError(outbound.error))
 				outbound.setId(logout.getId)
-			/*case r: RequestAccessInbound =>
-				val token = if (channelToToken.containsKey(channel)) {
-					channelToToken.get(channel)
-				} else null
-				val outbound = mbService.requestAccess(token, r.isLocal, ConnectionType.JDBC)
-				outbound.setId(r.getId)*/
 			case openSession@OpenSessionInbound(_, database, isLocal) =>
 				val token = channelToToken.get(channel)
 				val username = mbService.decodeToken(token)
@@ -134,20 +131,21 @@ class TransportServerHandler(
 				val token = channelToToken.get(channel)
 				val sessionId = channelToSessionId.get(channel)
 				val outbound = mbService.interactiveNextResult(token, sessionId)
-				logInfo(s"NextResult_query(sessionId=$sessionId, fetchSize=$fetchSize) completed: " + prettyError(outbound.error))
+				logInfo(s"NextResult_query(SessionId=$sessionId) completed: " + prettyError(outbound.error))
 				outbound.setId(next.getId)
-			case cancel@ CancelQueryInbound(token, None, Some(sessionId)) =>
+			case query@BatchQueryInbound(token, sqls, config) =>
+			// TODO:  batch query
+			case progress@BatchQueryProgressInbound(token, jobId) =>
+			// TODO: batch query progress
+			case cancel: CancelQueryInbound =>
 				val token = channelToToken.get(channel)
 				val username = mbService.decodeToken(token)
 				val sessionId = channelToSessionId.get(channel)
-				val outbound = mbService.interactiveQueryCancel(token, sessionId)
+				val outbound = mbService.interactiveQueryCancel(token, sessionId=sessionId)
 				logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(outbound.error))
 				outbound.setId(cancel.getId)
-			case _ =>
-				logWarning("Received unsupported message, do noting!")
-				// TODO
+			case _ => logWarning("Received unsupported message, do noting!")
 		}
 		ctx.writeAndFlush(result)
 	}
-
 }

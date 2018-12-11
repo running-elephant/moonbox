@@ -20,8 +20,8 @@ private static final long serialVersionUID = 0L;
     super(builder);
   }
   private InteractiveNextResultInbound() {
+    token_ = "";
     sessionId_ = "";
-    fetchSize_ = 0;
   }
 
   @java.lang.Override
@@ -58,12 +58,13 @@ private static final long serialVersionUID = 0L;
           case 10: {
             java.lang.String s = input.readStringRequireUtf8();
 
-            sessionId_ = s;
+            token_ = s;
             break;
           }
-          case 24: {
+          case 18: {
+            java.lang.String s = input.readStringRequireUtf8();
 
-            fetchSize_ = input.readInt32();
+            sessionId_ = s;
             break;
           }
         }
@@ -90,10 +91,49 @@ private static final long serialVersionUID = 0L;
             moonbox.message.protobuf.InteractiveNextResultInbound.class, moonbox.message.protobuf.InteractiveNextResultInbound.Builder.class);
   }
 
-  public static final int SESSION_ID_FIELD_NUMBER = 1;
+  public static final int TOKEN_FIELD_NUMBER = 1;
+  private volatile java.lang.Object token_;
+  /**
+   * <code>string token = 1;</code>
+   */
+  public java.lang.String getToken() {
+    java.lang.Object ref = token_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      token_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string token = 1;</code>
+   */
+  public com.google.protobuf.ByteString
+      getTokenBytes() {
+    java.lang.Object ref = token_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      token_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int SESSION_ID_FIELD_NUMBER = 2;
   private volatile java.lang.Object sessionId_;
   /**
-   * <code>string session_id = 1;</code>
+   * <pre>
+   *    string cursor = 3;
+   *    int32 fetch_size = 4;
+   * </pre>
+   *
+   * <code>string session_id = 2;</code>
    */
   public java.lang.String getSessionId() {
     java.lang.Object ref = sessionId_;
@@ -108,7 +148,12 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
-   * <code>string session_id = 1;</code>
+   * <pre>
+   *    string cursor = 3;
+   *    int32 fetch_size = 4;
+   * </pre>
+   *
+   * <code>string session_id = 2;</code>
    */
   public com.google.protobuf.ByteString
       getSessionIdBytes() {
@@ -124,19 +169,6 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int FETCH_SIZE_FIELD_NUMBER = 3;
-  private int fetchSize_;
-  /**
-   * <pre>
-   *    string cursor = 2;
-   * </pre>
-   *
-   * <code>int32 fetch_size = 3;</code>
-   */
-  public int getFetchSize() {
-    return fetchSize_;
-  }
-
   private byte memoizedIsInitialized = -1;
   public final boolean isInitialized() {
     byte isInitialized = memoizedIsInitialized;
@@ -149,11 +181,11 @@ private static final long serialVersionUID = 0L;
 
   public void writeTo(com.google.protobuf.CodedOutputStream output)
                       throws java.io.IOException {
-    if (!getSessionIdBytes().isEmpty()) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, sessionId_);
+    if (!getTokenBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 1, token_);
     }
-    if (fetchSize_ != 0) {
-      output.writeInt32(3, fetchSize_);
+    if (!getSessionIdBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, sessionId_);
     }
     unknownFields.writeTo(output);
   }
@@ -163,12 +195,11 @@ private static final long serialVersionUID = 0L;
     if (size != -1) return size;
 
     size = 0;
-    if (!getSessionIdBytes().isEmpty()) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, sessionId_);
+    if (!getTokenBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, token_);
     }
-    if (fetchSize_ != 0) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(3, fetchSize_);
+    if (!getSessionIdBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, sessionId_);
     }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
@@ -186,10 +217,10 @@ private static final long serialVersionUID = 0L;
     moonbox.message.protobuf.InteractiveNextResultInbound other = (moonbox.message.protobuf.InteractiveNextResultInbound) obj;
 
     boolean result = true;
+    result = result && getToken()
+        .equals(other.getToken());
     result = result && getSessionId()
         .equals(other.getSessionId());
-    result = result && (getFetchSize()
-        == other.getFetchSize());
     result = result && unknownFields.equals(other.unknownFields);
     return result;
   }
@@ -201,10 +232,10 @@ private static final long serialVersionUID = 0L;
     }
     int hash = 41;
     hash = (19 * hash) + getDescriptor().hashCode();
+    hash = (37 * hash) + TOKEN_FIELD_NUMBER;
+    hash = (53 * hash) + getToken().hashCode();
     hash = (37 * hash) + SESSION_ID_FIELD_NUMBER;
     hash = (53 * hash) + getSessionId().hashCode();
-    hash = (37 * hash) + FETCH_SIZE_FIELD_NUMBER;
-    hash = (53 * hash) + getFetchSize();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -338,9 +369,9 @@ private static final long serialVersionUID = 0L;
     }
     public Builder clear() {
       super.clear();
-      sessionId_ = "";
+      token_ = "";
 
-      fetchSize_ = 0;
+      sessionId_ = "";
 
       return this;
     }
@@ -364,8 +395,8 @@ private static final long serialVersionUID = 0L;
 
     public moonbox.message.protobuf.InteractiveNextResultInbound buildPartial() {
       moonbox.message.protobuf.InteractiveNextResultInbound result = new moonbox.message.protobuf.InteractiveNextResultInbound(this);
+      result.token_ = token_;
       result.sessionId_ = sessionId_;
-      result.fetchSize_ = fetchSize_;
       onBuilt();
       return result;
     }
@@ -407,12 +438,13 @@ private static final long serialVersionUID = 0L;
 
     public Builder mergeFrom(moonbox.message.protobuf.InteractiveNextResultInbound other) {
       if (other == moonbox.message.protobuf.InteractiveNextResultInbound.getDefaultInstance()) return this;
+      if (!other.getToken().isEmpty()) {
+        token_ = other.token_;
+        onChanged();
+      }
       if (!other.getSessionId().isEmpty()) {
         sessionId_ = other.sessionId_;
         onChanged();
-      }
-      if (other.getFetchSize() != 0) {
-        setFetchSize(other.getFetchSize());
       }
       this.mergeUnknownFields(other.unknownFields);
       onChanged();
@@ -441,9 +473,83 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
+    private java.lang.Object token_ = "";
+    /**
+     * <code>string token = 1;</code>
+     */
+    public java.lang.String getToken() {
+      java.lang.Object ref = token_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        token_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string token = 1;</code>
+     */
+    public com.google.protobuf.ByteString
+        getTokenBytes() {
+      java.lang.Object ref = token_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        token_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string token = 1;</code>
+     */
+    public Builder setToken(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      token_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string token = 1;</code>
+     */
+    public Builder clearToken() {
+      
+      token_ = getDefaultInstance().getToken();
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string token = 1;</code>
+     */
+    public Builder setTokenBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      token_ = value;
+      onChanged();
+      return this;
+    }
+
     private java.lang.Object sessionId_ = "";
     /**
-     * <code>string session_id = 1;</code>
+     * <pre>
+     *    string cursor = 3;
+     *    int32 fetch_size = 4;
+     * </pre>
+     *
+     * <code>string session_id = 2;</code>
      */
     public java.lang.String getSessionId() {
       java.lang.Object ref = sessionId_;
@@ -458,7 +564,12 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string session_id = 1;</code>
+     * <pre>
+     *    string cursor = 3;
+     *    int32 fetch_size = 4;
+     * </pre>
+     *
+     * <code>string session_id = 2;</code>
      */
     public com.google.protobuf.ByteString
         getSessionIdBytes() {
@@ -474,7 +585,12 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string session_id = 1;</code>
+     * <pre>
+     *    string cursor = 3;
+     *    int32 fetch_size = 4;
+     * </pre>
+     *
+     * <code>string session_id = 2;</code>
      */
     public Builder setSessionId(
         java.lang.String value) {
@@ -487,7 +603,12 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>string session_id = 1;</code>
+     * <pre>
+     *    string cursor = 3;
+     *    int32 fetch_size = 4;
+     * </pre>
+     *
+     * <code>string session_id = 2;</code>
      */
     public Builder clearSessionId() {
       
@@ -496,7 +617,12 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>string session_id = 1;</code>
+     * <pre>
+     *    string cursor = 3;
+     *    int32 fetch_size = 4;
+     * </pre>
+     *
+     * <code>string session_id = 2;</code>
      */
     public Builder setSessionIdBytes(
         com.google.protobuf.ByteString value) {
@@ -506,44 +632,6 @@ private static final long serialVersionUID = 0L;
   checkByteStringIsUtf8(value);
       
       sessionId_ = value;
-      onChanged();
-      return this;
-    }
-
-    private int fetchSize_ ;
-    /**
-     * <pre>
-     *    string cursor = 2;
-     * </pre>
-     *
-     * <code>int32 fetch_size = 3;</code>
-     */
-    public int getFetchSize() {
-      return fetchSize_;
-    }
-    /**
-     * <pre>
-     *    string cursor = 2;
-     * </pre>
-     *
-     * <code>int32 fetch_size = 3;</code>
-     */
-    public Builder setFetchSize(int value) {
-      
-      fetchSize_ = value;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     *    string cursor = 2;
-     * </pre>
-     *
-     * <code>int32 fetch_size = 3;</code>
-     */
-    public Builder clearFetchSize() {
-      
-      fetchSize_ = 0;
       onChanged();
       return this;
     }

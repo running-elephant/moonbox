@@ -16,6 +16,7 @@ private[client] trait ClientInterface {
   def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int)
   def closeSession(token: String, sessionId: String): Boolean
   def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, timeout: Int): MoonboxRowSet
+  def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long, timeout: Int): MoonboxRowSet
   def setDataFetchClient(client: ClientInterface): Unit
   /**
     * @return jobId

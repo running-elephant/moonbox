@@ -39,7 +39,6 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     _sessionId = resp._1
     val workerHost: String = resp._2
     val workerPort: Int = resp._3
-    new InetSocketAddress(workerHost, workerPort)
     val dataFetchClient = initDataFetchClient(workerHost, workerPort)
     if (dataFetchClient != null && !dataFetchClient.isConnected){
       dataFetchClient.connect()

@@ -203,8 +203,13 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   }
 
   override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, timeout: Int): MoonboxRowSet = {
-    val outbound = query(token, sessionId, sqls, fetchSize, timeout)
-    toMoonboxRowSet(sessionId, fetchSize, outbound, timeout)
+    val outbound = query(token, sessionId, sqls, fetchSize, timeout = timeout)
+    toMoonboxRowSet(token, sessionId, fetchSize, outbound, timeout)
+  }
+
+  override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long, timeout: Int): MoonboxRowSet = {
+    val outbound = query(token, sessionId, sqls, fetchSize, maxRows, timeout)
+    toMoonboxRowSet(token, sessionId, fetchSize, outbound, timeout)
   }
 
   override def batchQuery(token: String, sqls: Seq[String], config: String): String = {
@@ -252,11 +257,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   }
 
   /* for interactive query */
-  private def query(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, timeout: Int): InteractiveQueryOutbound = {
+  private def query(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long = Long.MaxValue, timeout: Int): InteractiveQueryOutbound = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setInteractiveQueryInbound(ProtoInboundMessageBuilder.interactiveQueryInbound(token, sessionId, sqls.asJava, Some(fetchSize), None))
+      .setInteractiveQueryInbound(ProtoInboundMessageBuilder.interactiveQueryInbound(token, sessionId, sqls.asJava, Some(fetchSize), Some(maxRows)))
       .build()
     val resp = sendMessageSync(msg, timeout)
     if (resp.hasInteractiveQueryOutbound) {
@@ -268,11 +273,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     } else throw new Exception(s"Unknown message: $resp")
   }
 
-  private def interactiveNextResult(sessionId: String, fetchSize: Int, timeout: Int): ResultData = {
+  private def interactiveNextResult(token: String, sessionId: String, timeout: Int): ResultData = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setInteractiveNextResultInbound(ProtoInboundMessageBuilder.interactiveNextResultInbound(sessionId, fetchSize))
+      .setInteractiveNextResultInbound(ProtoInboundMessageBuilder.interactiveNextResultInbound(token, sessionId))
       .build()
     val resp = dataFetchClient.sendMessageSync(msg, timeout)
     if (resp.hasInteractiveNextResultOutbound){
@@ -284,11 +289,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     } else throw new Exception(s"Unknown message: $resp")
   }
 
-  private def toMoonboxRowSet(sessionId: String, fetchSize: Int, outbound: InteractiveQueryOutbound, timeout: Int): MoonboxRowSet = {
+  private def toMoonboxRowSet(token: String, sessionId: String, fetchSize: Int, outbound: InteractiveQueryOutbound, timeout: Int): MoonboxRowSet = {
     var resultData: ResultData = {
       if (outbound.hasResultData) {
         outbound.getResultData  /* for direct data */
-      } else interactiveNextResult(sessionId, fetchSize, timeout) /* for query sqls */
+      } else interactiveNextResult(token, sessionId, timeout) /* for query sqls */
     }
     val schema = resultData.getSchema
     val dataTypeSchema = schemaToDataType(schema)
@@ -299,7 +304,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
         if (internalIter.hasNext) {
           new MoonboxRow(internalIter.next().toArray)
         } else if (resultData.getHasNext) {
-          resultData = interactiveNextResult(sessionId, fetchSize, timeout)
+          resultData = interactiveNextResult(token, sessionId, timeout)
           internalIter = rowsInData(resultData.getData, dataTypeSchema).toIterator
           next()
         } else throw new Exception("No more iterable MoonboxRow.")
