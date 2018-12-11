@@ -33,7 +33,7 @@ case class RequestAccessInbound(token: Option[String] = None, isLocal: Boolean) 
 case class RequestAccessOutbound(address: Option[String] = None, error: Option[String] = None) extends Outbound
 
 case class OpenSessionInbound(token: String, database: Option[String], isLocal: Boolean = false) extends Inbound
-case class OpenSessionOutbound(sessionId: Option[String] = None, error: Option[String] = None) extends Outbound
+case class OpenSessionOutbound(sessionId: Option[String] = None, workerHost: Option[String] = None, workerPort: Option[Int] = None, error: Option[String] = None) extends Outbound
 
 case class CloseSessionInbound(token: String, sessionId: String) extends Inbound
 case class CloseSessionOutbound(error: Option[String]) extends Outbound
@@ -50,10 +50,7 @@ case class InteractiveQueryOutbound(
 	error: Option[String] = None,
 	data: Option[ResultData] = None) extends Outbound
 
-case class InteractiveNextResultInbound(
-	token: String,
-	sessionId: String
-) extends Inbound
+case class InteractiveNextResultInbound(token: Option[String] = None, sessionId: String) extends Inbound
 
 case class InteractiveNextResultOutbound(
 	error: Option[String] = None,

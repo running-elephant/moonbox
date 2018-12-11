@@ -12,7 +12,7 @@ object Message {
 		database: Option[String], centralized: Boolean = false) extends JobMessage
 
 	case class OpenSessionResponse(
-		sessionId: Option[String], message: String) extends JobMessage
+		sessionId: Option[String], workerHost: Option[String] = None, workerPort: Option[Int] = None, message: String) extends JobMessage
 
 	case class CloseSession(sessionId: String) extends JobMessage
 

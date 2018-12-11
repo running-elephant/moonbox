@@ -21,14 +21,13 @@
 package moonbox.jdbc
 
 import java.sql.{SQLException, SQLFeatureNotSupportedException, Types}
-import java.util
 
 class JdbcArray(elementTypeName: String, elementType: Int, values: Array[Any]) extends java.sql.Array {
 
   def this(values: Array[Any]) = this("NULL", Types.NULL, values)
 
   override def getArray = values.clone()
-  override def getArray(map: util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
+  override def getArray(map: java.util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
   override def getArray(index: Long, count: Int) = {
     if (index < 1 || index > values.length)
       throw new SQLException(s"Index out of bounds.")
@@ -36,12 +35,12 @@ class JdbcArray(elementTypeName: String, elementType: Int, values: Array[Any]) e
     values.copyToArray(newArray, index.toInt, count)
     newArray
   }
-  override def getArray(index: Long, count: Int, map: util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
+  override def getArray(index: Long, count: Int, map: java.util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
   override def getBaseType = elementType
   override def getBaseTypeName = elementTypeName
   override def getResultSet = throw new SQLFeatureNotSupportedException("Unsupported")
-  override def getResultSet(map: util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
+  override def getResultSet(map: java.util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
   override def getResultSet(index: Long, count: Int) = throw new SQLFeatureNotSupportedException("Unsupported")
-  override def getResultSet(index: Long, count: Int, map: util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
+  override def getResultSet(index: Long, count: Int, map: java.util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
   override def free() = {}
 }

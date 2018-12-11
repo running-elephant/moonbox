@@ -20,10 +20,10 @@
 
 package moonbox.jdbc
 
+import java.sql
 import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, SQLException, SQLWarning, SQLXML, Savepoint, Statement, Struct}
 import java.util.Properties
 import java.util.concurrent.Executor
-import java.{sql, util}
 
 import moonbox.client.{ClientOptions, MoonboxClient}
 
@@ -31,18 +31,18 @@ import scala.collection.JavaConverters._
 
 class MoonboxConnection(url: String, props: Properties) extends java.sql.Connection {
 
-  import moonbox.util.MoonboxJDBCUtils._
+  import MoonboxJDBCUtils._
 
   private var jdbcSession: JdbcSession = _
   private var statement: MoonboxStatement = _
-  private var runMode: String = "local"
+  private var isLocal: Boolean = _
   private var _readOnly: Boolean = _
 
   def init(): Boolean = {
     val newProps = parseURL(url, props)
     val username = newProps.getProperty(USER_KEY)
     val pwd = newProps.getProperty(PASSWORD_KEY)
-    runMode = Option(newProps.getProperty(MODE_KEY)).getOrElse("local")
+    isLocal = Option(newProps.getProperty(IS_LOCAL_KEY)).exists(_.toBoolean)
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
     val clientOptions = ClientOptions.builder()
       .options(newProps.asScala.toMap)
@@ -50,7 +50,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
       .port(port)
       .user(username)
       .password(pwd)
-      .isLocal(runMode.equalsIgnoreCase("local"))
+      .isLocal(isLocal)
       .database(newProps.getProperty(DB_NAME, "default"))
       .build()
     val moonboxClient = try {
@@ -146,7 +146,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def rollback(): Unit = {}
   override def rollback(savepoint: Savepoint): Unit = {}
   override def setNetworkTimeout(executor: Executor, milliseconds: Int): Unit = jdbcSession.setReadTimeout(milliseconds)
-  override def setTypeMap(map: util.Map[String, Class[_]]): Unit = {}
+  override def setTypeMap(map: java.util.Map[String, Class[_]]): Unit = {}
   override def isValid(timeout: Int): Boolean = !isClosed()
   override def getAutoCommit: Boolean = false
   override def clearWarnings(): Unit = {}
@@ -157,7 +157,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def createStruct(typeName: String, attributes: Array[AnyRef]): Struct = throw new SQLException("Unsupported")
   override def getClientInfo(name: String): String = throw new SQLException("Unsupported")
   override def getClientInfo: Properties = throw new SQLException("Unsupported")
-  override def getTypeMap: util.Map[String, Class[_]] = throw new SQLException("Unsupported")
+  override def getTypeMap: java.util.Map[String, Class[_]] = throw new SQLException("Unsupported")
   override def unwrap[T](iface: Class[T]): T = {
     if (isWrapperFor(iface)) this.asInstanceOf[T]
     else throw new SQLException("unwrap exception")
