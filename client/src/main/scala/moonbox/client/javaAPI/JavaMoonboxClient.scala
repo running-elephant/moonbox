@@ -20,6 +20,8 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def newClient: JavaMoonboxClient = new JavaMoonboxClient(moonboxClient.newClient)
 
   /** connection related */
+  def token: String = moonboxClient.token
+  def sessionId: String = moonboxClient.sessionId
   def version: String = moonboxClient.version
   def isActive: Boolean = moonboxClient.isActive
   def close(): Unit = moonboxClient.close()
@@ -27,6 +29,8 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def setReadTimeout(milliseconds: Int): Unit = moonboxClient.setReadTimeout(milliseconds)
   def getFetchSize: Int = moonboxClient.getFetchSize
   def setFetchSize(size: Int): Unit = moonboxClient.setFetchSize(size)
+  def getMaxRows: Long = moonboxClient.getMaxRows
+  def setMaxRows(size: Long): Unit = moonboxClient.setMaxRows(size)
   def getServers: util.List[InetSocketAddress] = moonboxClient.getServers.asJava
   def getConf(key: String): String = moonboxClient.getConf(key).orNull
   def getAllConf: JMap[String, String] = moonboxClient.getAllConf
@@ -51,6 +55,16 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def getCurrentDatabase: String = moonboxClient.getCurrentDatabase
   def setCurrentDatabase(databaseName: String): Unit = moonboxClient.setCurrentDatabase(databaseName)
   def interactiveQuery(interactiveSql: util.List[String]): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala)
+  def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize)
+  def interactiveQueryWithTimeout(interactiveSql: util.List[String], milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, milliseconds)
+  /**
+    * @param fetchSize note: ZERO means query with default fetchSize
+    * @param milliseconds note: ZERO means synchronized query without timeout
+    * @return
+    */
+  def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, milliseconds)
+  def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, maxRows: Long, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, maxRows, milliseconds)
+  def cancelInteractiveQuery(): Boolean = moonboxClient.cancelInteractiveQuery()
 
   /** batch query related */
   def submitJob(jobSql: util.List[String], config: JMap[String, String]): String = moonboxClient.submitJob(jobSql.asScala, config)

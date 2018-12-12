@@ -16,14 +16,8 @@ class ClientOptions(val options: CaseInsensitiveMap[String]) {
   val password = options.get(PASSWORD)
   val timeout = options.get(READ_TIMEOUT).map(_.toInt).getOrElse(3600) /* time_unit: second */
   val fetchSize = options.get(FETCH_SIZE).map(_.toInt).getOrElse(1000)
-  val maxRows = options.get(MAX_ROWS).map(_.toInt).getOrElse(1000)
+  val maxRows = options.get(MAX_ROWS).map(_.toLong).getOrElse(10000L)
   val isLocal = options.get(IS_LOCAL).forall(_.toBoolean)
-//  val isLocal = {
-//    options.getOrElse(IS_LOCAL, "local").toLowerCase(Locale.ROOT) match {
-//      case "local" => true
-//      case _ => false
-//    }
-//  }
   val serializer = options.getOrElse(SERIALIZER, "protobuf")
 }
 
@@ -77,7 +71,7 @@ object ClientOptions {
       _options += (FETCH_SIZE -> value.toString)
       this
     }
-    def maxRows(value: Int) = {
+    def maxRows(value: Long) = {
       _options += (MAX_ROWS -> value.toString)
       this
     }

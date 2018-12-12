@@ -37,6 +37,7 @@ class DataFetchServerProtoHandler(sessionIdToJobRunner: mutable.Map[String, Runn
     if (message.hasInteractiveNextResultInbound) {
       val in = message.getInteractiveNextResultInbound
       val sessionId = in.getSessionId
+      logInfo(s"Received InteractiveNextResultInbound(SessionId=$sessionId)")
       // TODO: fetch data from runner
       sessionIdToJobRunner.get(sessionId) match {
         case Some(runner) =>
@@ -53,7 +54,7 @@ class DataFetchServerProtoHandler(sessionIdToJobRunner: mutable.Map[String, Runn
     }
   }
 
-  private def buildProtoMessage(messageId: Long, outbound: InteractiveNextResultOutbound): Unit = {
+  private def buildProtoMessage(messageId: Long, outbound: InteractiveNextResultOutbound): ProtoMessage = {
     ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveNextResultOutbound(outbound).build()
   }
 }

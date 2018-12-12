@@ -1,13 +1,12 @@
 package moonbox.grid.deploy.transport
 
 import java.io.{PrintWriter, StringWriter}
-import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
+import moonbox.grid.deploy.MbService
 import moonbox.message.protobuf.ProtoMessage
 import moonbox.protocol.util.ProtoOutboundMessageBuilder
 
@@ -40,7 +39,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   override def channelInactive(ctx: ChannelHandlerContext) = {
     val channel = ctx.channel()
     if (channelToToken.containsKey(channel)) {
-      implicit val connection = getConnectionInfo(ctx)
       val token = channelToToken.remove(channel)
       try {
         if (channelToSessionId.containsKey(channel)) {
@@ -55,18 +53,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     super.channelInactive(ctx)
   }
 
-  private def getConnectionInfo(ctx: ChannelHandlerContext) : ConnectionInfo = {
-    val remote = ctx.channel().remoteAddress() match {
-      case i:InetSocketAddress => i.toString
-      case _ => "Unknown"
-    }
-    val local = ctx.channel().localAddress() match {
-      case i:InetSocketAddress => i.toString
-      case _ => "Unknown"
-    }
-    ConnectionInfo(local, remote, ConnectionType.CLIENT)
-  }
-
   private def prettyError(error: Option[String]): String = {
     error match {
       case Some(_) => s"ERROR=$error"
@@ -75,7 +61,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   }
 
   private def handleProtoMessage(ctx: ChannelHandlerContext, message: ProtoMessage): Unit = {
-    implicit val connection:ConnectionInfo = getConnectionInfo(ctx)
     val channel = ctx.channel()
     val messageId = message.getMessageId
     val result: ProtoMessage = {
@@ -133,7 +118,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
         } else {
           mbService.interactiveQuery(token, sessionId, sqls)
         }
-        logInfo(s"Query(sqls=$sqls) completed: " + prettyError(outbound.error))
         val protoResultData = {
           outbound.data match {
             case None => null

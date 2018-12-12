@@ -25,7 +25,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   private var _sessionId: String = _
   private var _currentDatabase: String = clientOptions.database
   private var fetchSize: Int = clientOptions.fetchSize
-  private var maxRows: Int = clientOptions.maxRows
+  private var maxRows: Long = clientOptions.maxRows
 
   def this(options: Map[String, String]) = this(CaseInsensitiveMap(options))
 
@@ -67,7 +67,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   }
 
   override def getMaxRows = maxRows
-  override def setMaxRows(size: Int) = {
+  override def setMaxRows(size: Long) = {
     maxRows = size
   }
 
@@ -139,10 +139,15 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   override def interactiveQuery(interactiveSql: Seq[String]) = interactiveQuery(interactiveSql, getFetchSize, getReadTimeout)
   override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int) = interactiveQuery(interactiveSql, fetchSize, getReadTimeout)
   override def interactiveQueryWithTimeout(interactiveSql: Seq[String], milliseconds: Int) = interactiveQuery(interactiveSql, getFetchSize, milliseconds)
-  override def interactiveQuery(interactiveSqls: Seq[String], fetchSize: Int, milliseconds: Int) = {
+  override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int) = {
     checkActive(_client)
     checkActive(_dataFetchClient)
-    _client.interactiveQuery(_token, _sessionId, interactiveSqls, fetchSize, milliseconds)
+    _client.interactiveQuery(_token, _sessionId, interactiveSql, fetchSize, milliseconds)
+  }
+  override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, maxRows: Long, milliseconds: Int) = {
+    checkActive(_client)
+    checkActive(_dataFetchClient)
+    _client.interactiveQuery(_token, _sessionId, interactiveSql, fetchSize, maxRows, milliseconds)
   }
   override def cancelInteractiveQuery() = {
     checkActive(_client)

@@ -48,7 +48,6 @@ object Main {
   private var password: String = _
   private var fetchSize: Int = 1000
   private var truncate: Int = 50
-  private var maxRowsToFetch: Int = 1000 // TODO:
   private var maxRowsToShow: Int = 1000
   private var client: MoonboxClient = _
   private var clientInited: Boolean = _
@@ -188,7 +187,7 @@ object Main {
             .isLocal(islocal)
             .fetchSize(fetchSize)
             .timeout(timeout)
-            .maxRows(maxRowsToFetch)
+            .maxRows(maxRowsToShow)
             .database("default")
             .build()
         client = MoonboxClient.builder(clientOptions).build()
@@ -264,7 +263,7 @@ object Main {
 
   private def handleSqlQuery(sqlList: Seq[String]): Unit = {
     try {
-      val result = client.interactiveQuery(sqlList, fetchSize, timeout * 1000)
+      val result = client.interactiveQuery(sqlList, fetchSize, maxRowsToShow, timeout * 1000)
       /* show result */
       val dataToShow = result.toSeq.map(_.toSeq)
       val schema = result.parsedSchema.map(_._1)
@@ -416,10 +415,13 @@ object Main {
     System.err.println(
       "Usage: moonbox [options]\n" +
         "options:\n" +
-        "   -h, --host      Connect to host.\n" +
-        "   -P, --port      Port num to ues for connecting to server.\n" +
-        "   -u, --user :    User for login.\n" +
-        "   -p, --password  Password to use when connecting to server.\n" +
+        "   -h, --host         Connect to host.\n" +
+        "   -P, --port         Port num to ues for connecting to server.\n" +
+        "   -u, --user :       User for login.\n" +
+        "   -p, --password     Password to use when connecting to server.\n" +
+        "   -r, --runtime      Run in local or in cluster.\n" +
+        "   -t, --timeout      The query timeout: seconds.\n" +
+        "   -f, --fetchsize    The fetch size.\n" +
         "   --help"
     )
     System.exit(exitCode)

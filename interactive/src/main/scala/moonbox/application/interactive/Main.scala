@@ -14,6 +14,7 @@ import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.ApplicationType
 import moonbox.grid.deploy.messages.Message._
+import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.MixcalContext
 
 import scala.collection.JavaConverters._
@@ -141,13 +142,12 @@ class Main(
 				case Some(runner) =>
 					val f = Future(runner.query(sqls, fetchSize, maxRows))
 					f.onComplete {
-						// TODO
 						case Success(result) =>
 							result match  {
-								case DirectResult(schema, data) =>
-									requester ! JobQueryResponse(success = true, schema = schema, data = data, hasNext = false, message = "")
+								case DirectResult(schema, data, hasMore) =>
+									requester ! JobQueryResponse(success = true, schema = schema, data = data, hasNext = hasMore, message = "")
 								case IndirectResult() =>
-									requester ! JobQueryResponse(success = true, schema = "", data = Seq.empty, hasNext = true, message = "")
+									requester ! JobQueryResponse(success = true, schema = SchemaUtil.emptyJsonSchema, data = Seq.empty, hasNext = false, message = "")
 							}
 						case Failure(e) =>
 							requester ! JobQueryResponse(
@@ -164,7 +164,7 @@ class Main(
 					logWarning(msg)
 					requester ! JobQueryResponse(
 						success = false,
-						schema = "",
+						schema = SchemaUtil.emptyJsonSchema,
 						data = Seq.empty,
 						hasNext = false,
 						message = msg
@@ -175,6 +175,7 @@ class Main(
 			sessionIdToRunner.get(sessionId) match {
 				case Some(runner) =>
 					runner.cancel()
+					sender() ! InteractiveJobCancelResponse(success = true, "")
 				case None =>
 					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
 					logWarning(msg)

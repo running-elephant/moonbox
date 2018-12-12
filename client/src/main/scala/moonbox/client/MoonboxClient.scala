@@ -46,13 +46,11 @@ trait MoonboxClient {
   def setReadTimeout(milliseconds: Int): Unit
   def getFetchSize: Int
   def setFetchSize(size: Int): Unit
-  def getMaxRows: Int
-  def setMaxRows(size: Int): Unit
+  def getMaxRows: Long
+  def setMaxRows(size: Long): Unit
   def getServers: Seq[InetSocketAddress]
   def getConf(key: String): Option[String]
   def getAllConf: java.util.Map[String, String]
-//  def setConf(key: String, value: String): Unit
-//  def setConf(kv: Map[String, String]): Unit
 
   /** userSys related */
   def userInfo: AnyRef
@@ -82,8 +80,8 @@ trait MoonboxClient {
     * @return
     */
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet
+  def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, maxRows: Long, milliseconds: Int): MoonboxRowSet
   def cancelInteractiveQuery(): Boolean
-//  def interactiveNextResult(): MoonboxRowSet
 
   /** batch query related */
   def submitJob(jobSql: Seq[String], config: java.util.Map[String, String]): String  /* return jobId */

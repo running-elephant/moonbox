@@ -3,11 +3,10 @@ package moonbox.application.interactive
 import moonbox.common.MbLogging
 import moonbox.core._
 import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbRunnableCommand}
-import moonbox.core.datasys.DataSystem
+import moonbox.core.datasys.{DataSystem, DataTable}
 import moonbox.protocol.client.ResultData
-import org.apache.spark.sql.{Row, SaveMode}
 import org.apache.spark.sql.optimizer.WholePushdown
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode}
 
 class Runner(
 	sessionId: String,
@@ -26,24 +25,20 @@ class Runner(
 	def query(sqls: Seq[String], fetchSize: Long, maxRows: Long): QueryResult = {
 		this.fetchSize = fetchSize
 		this.maxRows = maxRows
-
 		sqls.map(mbSession.parsedPlan).map {
 			case runnable: MbRunnableCommand =>
 				val result = runnable.run(mbSession)(mbSession.userContext)
 				DirectResult(runnable.outputSchema, result.map(_.toSeq))
-
-			case createTempView @ CreateTempView(table, query, isCache, replaceIfExists) =>
+			case createTempView@CreateTempView(table, query, isCache, replaceIfExists) =>
 				doCreateTempView(table, query, isCache, replaceIfExists)
 				IndirectResult()
-
-			case insert @ InsertInto(MbTableIdentifier(table, db), query, overwrite) =>
+			case insert@InsertInto(MbTableIdentifier(table, db), query, overwrite) =>
 				doInsert(table, db, query, overwrite)
 				IndirectResult()
-			case query @ MQLQuery(sql) =>
+			case query@MQLQuery(sql) =>
 				doMqlQuery(sql)
 			case other =>
 				throw new Exception(s"Unsupport command $other")
-
 		}.last
 	}
 
@@ -58,13 +53,12 @@ class Runner(
 			mbSession.pushdownPlan(optimized) match {
 				case WholePushdown(child, queryable) =>
 					val dataTable = mbSession.toDT(child, queryable)
-					// TODO
-					DirectResult(dataTable.schema.prettyJson, dataTable.iter.map(_.toSeq).toSeq)
-
+					initCurrentData(dataTable)
+					DirectResult(dataTable.schema.json, Seq.empty, hasMore = true)
 				case plan =>
-					// TODO
 					val dataFrame = mbSession.toDF(plan)
-					DirectResult(dataFrame.schema.prettyJson, dataFrame.collect().map(_.toSeq))
+					initCurrentData(dataFrame)
+					DirectResult(dataFrame.schema.json, Seq.empty, hasMore = true)
 			}
 		} catch {
 			case e: ColumnSelectPrivilegeException =>
@@ -75,7 +69,8 @@ class Runner(
 				logWarning(s"Execute push down failed: ${e.getMessage}. Retry with out pushdown.")
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
 				val dataFrame = mbSession.toDF(plan)
-				DirectResult(dataFrame.schema.prettyJson, dataFrame.collect().map(_.toSeq))
+				initCurrentData(dataFrame)
+				DirectResult(dataFrame.schema.json, Seq.empty, hasMore = true)
 		}
 	}
 
@@ -132,12 +127,12 @@ class Runner(
 	}
 
 	def fetchData(): Seq[Seq[Any]] = {
-		// TODO:
-
+		// TODO: useless
 		Seq.empty[Row].map(_.toSeq)
 	}
 
 	def fetchResultData(): ResultData = {
+		logInfo(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
 		var data: Seq[Seq[Any]] = Seq.empty[Seq[Any]]
 		var rowCount = 0
 		while (currentData.hasNext && currentRowId < maxRows && rowCount < fetchSize) {
@@ -146,11 +141,20 @@ class Runner(
 			rowCount += 1
 		}
 		ResultData(sessionId, currentSchema, data, hasNext)
+	}
 
-		/* for test */
-		val testSchema = StructType(Seq(StructField("column_0", StringType))).json
-		val testData = Seq("aaa" :: Nil, "bbb" :: Nil)
-		ResultData(sessionId, testSchema, testData, hasNext = false)
+	private def initCurrentData(dataTable: DataTable): Unit = {
+		currentRowId = 0
+		currentData = dataTable.iter
+		currentSchema = dataTable.schema.json
+		logInfo(s"Initialize current data: schema=$currentSchema")
+	}
+
+	private def initCurrentData(dataFrame: DataFrame): Unit = {
+		currentRowId = 0
+		currentData = dataFrame.collect().toIterator
+		currentSchema = dataFrame.schema.json
+		logInfo(s"Initialize current data: schema=$currentSchema")
 	}
 
 	private def hasNext: Boolean = currentData.hasNext && currentRowId < maxRows
