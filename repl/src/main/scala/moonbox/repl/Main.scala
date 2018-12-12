@@ -23,6 +23,7 @@ package moonbox.repl
 import java.io.{OutputStream, OutputStreamWriter, PrintWriter}
 import java.util.Locale
 
+import moonbox.client.exception.BackendException
 import moonbox.client.{ClientOptions, MoonboxClient}
 import org.jline.reader.impl.LineReaderImpl
 import org.jline.reader.impl.completer.StringsCompleter
@@ -65,7 +66,7 @@ object Main {
         new Thread() {
           override def run() = {
             if (client != null) {
-              client.cancelQuery()
+              client.cancelInteractiveQuery()
             }
           }
         }.start()
@@ -166,8 +167,9 @@ object Main {
         case _: UserInterruptException =>
           if (client != null) {
             Console.println("Query canceling ... ")
-            client.cancelQuery()
+            client.cancelInteractiveQuery()
           }
+        case e: Exception => Console.err.println(s"MQL process error: ${e.getMessage}")
       }
     }
   }
@@ -261,11 +263,16 @@ object Main {
   }
 
   private def handleSqlQuery(sqlList: Seq[String]): Unit = {
-    val result = client.interactiveQuery(sqlList, fetchSize, timeout * 1000)
-    /* show result */
-    val dataToShow = result.toSeq.map(_.toSeq)
-    val schema = result.parsedSchema.map(_._1)
-    print(Utils.stringToShow(dataToShow, schema))
+    try {
+      val result = client.interactiveQuery(sqlList, fetchSize, timeout * 1000)
+      /* show result */
+      val dataToShow = result.toSeq.map(_.toSeq)
+      val schema = result.parsedSchema.map(_._1)
+      print(Utils.stringToShow(dataToShow, schema))
+    } catch {
+      case e: BackendException =>
+        Console.err.println(s"Sql query error: ${e.message}")
+    }
   }
 
   private def printSetHelp(): Unit = {
@@ -324,9 +331,9 @@ object Main {
   private def showCommands(): Unit ={
     val schema= Seq("command", "description")
     val data = Seq(
-      "history | H" :: "show histories" :: Nil,
+      "history | H" :: "show history MQLs" :: Nil,
       "reconnect | R" :: "reconnect to moonbox server" :: Nil,
-      "exit | quit | Q" :: "repl logout" :: Nil,
+      "exit | quit | Q" :: "repl shutdown" :: Nil,
       "state | status" :: "show connection status" :: Nil,
       "commands | cmds | cmd" :: "show commands in common use" :: Nil,
       "help" :: "show all MQLs" :: Nil,

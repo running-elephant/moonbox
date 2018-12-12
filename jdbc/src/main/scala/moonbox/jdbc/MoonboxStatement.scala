@@ -84,7 +84,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   }
   override def cancel() = {
     // TODO: cancel query and avoid to effect other statements
-    canceled = client.cancelQuery()
+    canceled = client.cancelInteractiveQuery()
   }
   override def getWarnings = null
   override def clearWarnings() = {}

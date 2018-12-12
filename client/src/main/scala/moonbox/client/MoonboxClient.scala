@@ -40,7 +40,7 @@ trait MoonboxClient {
   def token: String
   def sessionId: String
   def version: String
-  def isConnected: Boolean
+  def isActive: Boolean
   def close(): Unit
   def getReadTimeout: Int  /* time unit: ms */
   def setReadTimeout(milliseconds: Int): Unit
@@ -82,7 +82,7 @@ trait MoonboxClient {
     * @return
     */
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet
-  def cancelQuery(): Boolean
+  def cancelInteractiveQuery(): Boolean
 //  def interactiveNextResult(): MoonboxRowSet
 
   /** batch query related */

@@ -38,9 +38,6 @@
                     <outputDirectory>src/main/generate</outputDirectory>
                     <clearOutputDirectory>true</clearOutputDirectory>
                     <protocExecutable>protoc</protocExecutable>
-                    <javaNanoOptions>
-
-                    </javaNanoOptions>
                 </configuration>
                 <executions>
                     <execution>

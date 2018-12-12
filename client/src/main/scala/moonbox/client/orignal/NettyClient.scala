@@ -12,6 +12,7 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.client.entity.{JobState, MoonboxRow, MoonboxRowSet}
+import moonbox.client.exception.BackendException
 import moonbox.client.{ClientInterface, ClientOptions}
 import moonbox.protocol.client._
 import moonbox.protocol.util.SchemaUtil
@@ -114,9 +115,13 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
       case other => throw new Exception(s"Unsupported message: $other")
     }
   }
-  @throws(classOf[Exception]) def sendMessage(message: Any): ChannelFuture = channel.writeAndFlush(message)
+  @throws(classOf[Exception]) def sendMessage(message: Any): ChannelFuture = {
+    if (isActive()) {
+      channel.writeAndFlush(message)
+    } else throw new Exception("Channel is not active.")
+  }
   def isConnected(): Boolean = this.connected
-  def isActive(): Boolean = channel.isActive
+  def isActive(): Boolean = channel != null && channel.isActive
   def close(): Unit = {
     /* EventLoopGroup should not be shutdown */
     if (channel != null) channel.close()
@@ -209,7 +214,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
     checkConnected()
     sendMessageSync(wrapMessage(InteractiveQueryInbound(token,sessionId, sqls, fetchSize, maxRows)), timeout) match {
       case out@InteractiveQueryOutbound(None, _) => out
-      case InteractiveQueryOutbound(Some(error), _) => throw new Exception(s"Interactive query error: ERROR=$error, SQLs=$sqls")
+      case InteractiveQueryOutbound(Some(error), _) => throw BackendException(error)
       case other => throw new Exception(s"Unknown message: $other")
     }
   }

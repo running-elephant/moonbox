@@ -21,7 +21,7 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
 
   /** connection related */
   def version: String = moonboxClient.version
-  def isConnected: Boolean = moonboxClient.isConnected
+  def isActive: Boolean = moonboxClient.isActive
   def close(): Unit = moonboxClient.close()
   def getReadTimeout: Int = moonboxClient.getReadTimeout
   def setReadTimeout(milliseconds: Int): Unit = moonboxClient.setReadTimeout(milliseconds)

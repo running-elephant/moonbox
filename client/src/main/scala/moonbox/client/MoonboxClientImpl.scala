@@ -52,7 +52,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   override def token = _token
   override def sessionId = _sessionId
   override def version = "0.3.0"
-  override def isConnected = _client != null && _client.isActive() && _token != null && _sessionId != null && _dataFetchClient != null && _dataFetchClient.isActive()
+  override def isActive = _client != null && _client.isActive() && _token != null && _sessionId != null && _dataFetchClient != null && _dataFetchClient.isActive()
   override def close() = {
     closeDataFetchClient()
     closeClient()
@@ -71,14 +71,19 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     maxRows = size
   }
 
-  override def getServers = {
+  override def getServers: Seq[InetSocketAddress] = {
     val masterAddress = _client.getRemoteAddress() match {
       case address: InetSocketAddress => address
       case other => throw new Exception(s"Unknown remote address type: ${other.getClass.getTypeName}")
     }
-    val workerAddress = _dataFetchClient.getRemoteAddress() match {
-      case address: InetSocketAddress => address
-      case other => throw new Exception(s"Unknown remote address type: ${other.getClass.getTypeName}")
+    if (_dataFetchClient == null || !_dataFetchClient.isActive()) {
+      return masterAddress :: Nil
+    }
+    val workerAddress = {
+      _dataFetchClient.getRemoteAddress() match {
+        case address: InetSocketAddress => address
+        case other => throw new Exception(s"Unknown remote address type: ${other.getClass.getTypeName}")
+      }
     }
     masterAddress :: workerAddress :: Nil
   }
@@ -86,7 +91,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   override def getConf(key: String) = config.get(key)
   override def getAllConf = config.asJava
 
-  override def userInfo = ???
+  override def userInfo = throw new Exception("Unsupported temporarily.")
   override def listDatabases = {
     val rowSet = interactiveQuery("show databases" :: Nil)
     val databases = ArrayBuffer.empty[String]
@@ -119,7 +124,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     }
     functions
   }
-  override def listVariables(username: String) = ???
+  override def listVariables(username: String) = throw new Exception("Unsupported temporarily.")
   override def getConnectionState = {
     val servers = getServers
     ConnectionState(servers.head, clientOptions.user.get, getReadTimeout, Some(_token), Some(_sessionId), servers.last, isLocal)
@@ -134,19 +139,30 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   override def interactiveQuery(interactiveSql: Seq[String]) = interactiveQuery(interactiveSql, getFetchSize, getReadTimeout)
   override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int) = interactiveQuery(interactiveSql, fetchSize, getReadTimeout)
   override def interactiveQueryWithTimeout(interactiveSql: Seq[String], milliseconds: Int) = interactiveQuery(interactiveSql, getFetchSize, milliseconds)
-  override def interactiveQuery(interactiveSqls: Seq[String], fetchSize: Int, milliseconds: Int) = _client.interactiveQuery(_token, _sessionId, interactiveSqls, fetchSize, milliseconds)
-  override def cancelQuery() = _client.cancelQuery(_token, null, _sessionId)
+  override def interactiveQuery(interactiveSqls: Seq[String], fetchSize: Int, milliseconds: Int) = {
+    checkActive(_client)
+    checkActive(_dataFetchClient)
+    _client.interactiveQuery(_token, _sessionId, interactiveSqls, fetchSize, milliseconds)
+  }
+  override def cancelInteractiveQuery() = {
+    checkActive(_client)
+    checkActive(_dataFetchClient)
+    _client.cancelQuery(_token, null, _sessionId)
+  }
 
   /* batch query */
   override def submitJob(jobSql: Seq[String], config: java.util.Map[String, String]): String = {
     val configJson = new JSONObject(config)
-    _client.batchQuery(_token, jobSql, configJson.toString())
+    submitJob(jobSql, configJson.toString)
   }
-  override def submitJob(jobSql: Seq[String], config: String) = _client.batchQuery(_token, jobSql, config)
-  override def runningJobs = ???
-  override def waitingJobs = ???
-  override def failedJobs = ???
-  override def jobHistory = ???
+  override def submitJob(jobSql: Seq[String], config: String) = {
+    checkActive(_client)
+    _client.batchQuery(_token, jobSql, config)
+  }
+  override def runningJobs = throw new Exception("Unsupported temporarily.")
+  override def waitingJobs = throw new Exception("Unsupported temporarily.")
+  override def failedJobs = throw new Exception("Unsupported temporarily.")
+  override def jobHistory = throw new Exception("Unsupported temporarily.")
   private def isLocal: Boolean = clientOptions.isLocal
 
   /**
@@ -159,6 +175,12 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     }
     dClient.setReadTimeout(getReadTimeout)
     dClient
+  }
+
+  private def checkActive(client: ClientInterface): Unit = {
+    if (client == null || !client.isActive()) {
+      throw new Exception("Moonbox client is not active, please reconnect.")
+    }
   }
 
   private def closeClient(): Unit = {

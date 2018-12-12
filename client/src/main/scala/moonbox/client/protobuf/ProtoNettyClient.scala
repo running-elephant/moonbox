@@ -13,6 +13,7 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.protobuf.{ProtobufDecoder, ProtobufEncoder, ProtobufVarint32FrameDecoder, ProtobufVarint32LengthFieldPrepender}
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.client.entity.{JobState, MoonboxRow, MoonboxRowSet}
+import moonbox.client.exception.BackendException
 import moonbox.client.{ClientInterface, ClientOptions}
 import moonbox.message.protobuf._
 import moonbox.protocol.DataType
@@ -125,9 +126,13 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       case other => throw new Exception(s"Unsupported message: $other")
     }
   }
-  @throws(classOf[Exception]) def sendMessage(message: Any): ChannelFuture = channel.writeAndFlush(message)
+  @throws(classOf[Exception]) def sendMessage(message: Any): ChannelFuture = {
+    if (isActive()) {
+      channel.writeAndFlush(message)
+    } else throw new Exception("Channel is not active.")
+  }
   def isConnected(): Boolean = this.connected
-  def isActive(): Boolean = channel.isActive
+  def isActive(): Boolean = channel != null && channel.isActive
   def close(): Unit = {
     /* EventLoopGroup should not be shutdown */
     if (channel != null) channel.close()
@@ -268,7 +273,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       val out = resp.getInteractiveQueryOutbound
       out.getError match {
         case "" | null => out
-        case error => throw new Exception(s"Interactive query error: ERROR=$error, SQLs=$sqls")
+        case error => throw BackendException(error)
       }
     } else throw new Exception(s"Unknown message: $resp")
   }
@@ -355,7 +360,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
 
   private def checkConnected(): Unit = {
     if (!isActive) {
-      throw new Exception("Connection unestablished.")
+      throw new Exception("Connection is not active.")
     }
   }
 }

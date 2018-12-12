@@ -39,7 +39,7 @@ case class JdbcSession(moonboxClient: MoonboxClient,
 
   def setReadTimeout(milliseconds: Int) = moonboxClient.setReadTimeout(milliseconds)
   def getReadTimeout = moonboxClient.getReadTimeout
-  def isClosed: Boolean = if (moonboxClient.isConnected) false else true
+  def isClosed: Boolean = !moonboxClient.isActive
   def close(): Unit = {
     if (moonboxClient != null) moonboxClient.close()
   }
