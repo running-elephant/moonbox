@@ -6,6 +6,7 @@ import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.{Config, ConfigFactory}
+import moonbox.application.interactive.netty.DataFetchServer
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MbSession
@@ -73,6 +74,9 @@ class Main(
 
 	private var registerToMasterScheduler: Option[Cancellable] = None
 
+	private var dataFetchServer: Option[DataFetchServer] = None
+	private var dataFetchPort: Int = _
+
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
 		assert(!registered)
@@ -86,6 +90,16 @@ class Main(
 				logError("Error caught ", e)
 				gracefullyShutdown()
 		}
+
+		try {
+			dataFetchServer = Some(new DataFetchServer(host, 0, conf, sessionIdToRunner))
+			dataFetchPort = dataFetchServer.map(_.start()).get
+		} catch {
+			case e: Exception =>
+				logError("Could not start data fetch server.", e)
+				gracefullyShutdown()
+		}
+
 		registerWithMaster()
 	}
 
@@ -103,7 +117,8 @@ class Main(
 			val runner = new Runner(sessionId, username, database, MbSession.getMbSession(conf))
 			sessionIdToRunner.put(sessionId, runner)
 			logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
-			sender() ! OpenSessionResponse(Some(sessionId), "Open session successfully.")
+			// TODO data server port
+			sender() ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
 
 		case close @ CloseSession(sessionId) =>
 			sessionIdToRunner.get(sessionId) match {
@@ -128,7 +143,12 @@ class Main(
 					f.onComplete {
 						// TODO
 						case Success(result) =>
-							requester ! result
+							result match  {
+								case DirectResult(schema, data) =>
+									requester ! JobQueryResponse(success = true, schema = schema, data = data, hasNext = false, message = "")
+								case IndirectResult() =>
+									requester ! JobQueryResponse(success = true, schema = "", data = Seq.empty, hasNext = true, message = "")
+							}
 						case Failure(e) =>
 							requester ! JobQueryResponse(
 								success = false,
@@ -234,7 +254,7 @@ class Main(
 			port,
 			self,
 			address,
-			10000,
+			dataFetchPort,
 			appType
 		), self)
 	}

@@ -446,13 +446,13 @@ class MoonboxMaster(
 							}
 							requester ! response
 						case Failure(e) =>
-							requester ! OpenSessionResponse(None, e.getMessage)
+							requester ! OpenSessionResponse(None, message = e.getMessage)
 					}
 				case None =>
 					val appType = if (centralized) "centralized" else "distributed"
 					val msg = s"There is no available application for $appType computation."
 					logWarning(msg)
-					sender() ! OpenSessionResponse(None, msg)
+					sender() ! OpenSessionResponse(None, message = msg)
 			}
 
 		case close @ CloseSession(sessionId) =>
@@ -477,7 +477,7 @@ class MoonboxMaster(
 			val requester = sender()
 			sessionIdToApp.get(query.sessionId) match {
 				case Some(app) =>
-					app.endpoint ! query
+					app.endpoint forward query
 				case None =>
 					requester ! JobQueryResponse(success = false, "", Seq.empty, hasNext = false,
 						s"Session ${query.sessionId} lost in master.")
