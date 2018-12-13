@@ -1,7 +1,7 @@
 package moonbox.grid.deploy
 
 import moonbox.common.MbConf
-import moonbox.common.util.Utils
+import moonbox.grid.deploy.worker.LaunchUtils
 import org.apache.spark.launcher.SparkLauncher
 
 trait DriverDescription {
@@ -16,7 +16,8 @@ trait DriverDescription {
 case class LocalDriverDescription(
 	driverId: String,
 	masters: Array[String],
-	conf: MbConf) extends DriverDescription {
+	config: Map[String, String]) extends DriverDescription {
+
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
 		s"local[${cores * 50}]"
@@ -29,27 +30,22 @@ case class LocalDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		Map(
+		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
-			"applicationType" -> "CENTRALIZED",
-			"moonbox.deploy.catalog.implementation" -> "mysql",
-			"moonbox.deploy.catalog.url" -> "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true",
-			"moonbox.deploy.catalog.user" -> "root",
-			"moonbox.deploy.catalog.password" -> "123456",
-			"moonbox.deploy.catalog.driver" -> "com.mysql.jdbc.Driver"
-		).toSeq.flatMap { case (k, v) => Seq(k, v)}
+			"applicationType" -> "CENTRALIZED"
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
-		Map(SparkLauncher.DRIVER_EXTRA_CLASSPATH ->
-			"/Users/wanghao/IdeaProjects/moonbox-0.2.0/assembly/target/moonbox-assembly_2.11-0.3.0-SNAPSHOT-dist/moonbox/libs/*",
+		config.filterKeys(_.startsWith("spark.")) ++ Map(
+			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath(),
 			SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS -> "-Dlog4j.debug=true -Dlog4j.configuration=\"\""
 		)
 	}
 
 	override def appResource: String = {
-		Utils.getAppResourceJar("interactive").getOrElse(
+		LaunchUtils.getAppResourceJar("interactive").getOrElse(
 			throw new Exception("Interactive app jar does not found in env.")
 		)
 	}
@@ -58,7 +54,8 @@ case class LocalDriverDescription(
 case class ClientDriverDescription(
 	driverId: String,
 	masters: Array[String],
-	conf: MbConf) extends DriverDescription {
+	config: Map[String, String]) extends DriverDescription {
+
 	override def master = "yarn"
 	override def deployMode = Some("client")
 	override def mainClass = "moonbox.application.interactive.Main"
@@ -68,27 +65,22 @@ case class ClientDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		Map(
+		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
-			"applicationType" -> "DISTRIBUTED",
-			"moonbox.deploy.catalog.implementation" -> "mysql",
-			"moonbox.deploy.catalog.url" -> "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true",
-			"moonbox.deploy.catalog.user" -> "root",
-			"moonbox.deploy.catalog.password" -> "123456",
-			"moonbox.deploy.catalog.driver" -> "com.mysql.jdbc.Driver"
-		).toSeq.flatMap { case (k, v) => Seq(k, v)}
+			"applicationType" -> "DISTRIBUTED"
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
-		Map(SparkLauncher.DRIVER_EXTRA_CLASSPATH ->
-			"/Users/wanghao/IdeaProjects/moonbox-0.2.0/assembly/target/moonbox-assembly_2.11-0.3.0-SNAPSHOT-dist/moonbox/libs/*",
+		config.filterKeys(_.startsWith("spark.")) ++ Map(
+			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath(),
 			SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS -> "-Dlog4j.debug=true -Dlog4j.configuration=\"\""
 		)
 	}
 
 	override def appResource: String = {
-		Utils.getAppResourceJar("interactive").getOrElse(
+		LaunchUtils.getAppResourceJar("interactive").getOrElse(
 			throw new Exception("Interactive app jar does not found in env.")
 		)
 	}
@@ -97,7 +89,9 @@ case class ClientDriverDescription(
 case class ClusterDriverDescription(
 	username: String,
 	sqls: Seq[String],
-	config: String) extends DriverDescription {
+	userConfig: String,
+	conf: MbConf
+) extends DriverDescription {
 
 	override def master = "yarn"
 	override def deployMode = Some("cluster")
@@ -108,19 +102,14 @@ case class ClusterDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		Map(
+		(conf.getAll.filterKeys(_.startsWith("moonbox.deploy")) ++
+			Map(
 			"username" -> username,
-			"sqls" -> sqls.mkString(";"),
-			"moonbox.deploy.catalog.implementation" -> "mysql",
-			"moonbox.deploy.catalog.url" -> "jdbc:mysql://10.143.131.38:3306/moonbox7?createDatabaseIfNotExist=true",
-			"moonbox.deploy.catalog.user" -> "root",
-			"moonbox.deploy.catalog.password" -> "123456",
-			"moonbox.deploy.catalog.driver" -> "com.mysql.jdbc.Driver"
-		).toSeq.flatMap { case (k, v) => Seq(k, v)}
+			"sqls" -> sqls.mkString(";")
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
-		/*.setConf(SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS, "-XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:-UseGCOverheadLimit -Dlog4j.configuration=sparkx.log4j.properties -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/moonbox/gc/,spark.executor.extraJavaOptions=-XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:-UseGCOverheadLimit -Dlog4j.configuration=sparkx.log4j.properties -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/moonbox/gc")*/
 		Map("spark.hadoop.yarn.resourcemanager.address" -> "172.16.231.133:8032",
 			"spark.yarn.access.namenodes" -> "hdfs://172.16.231.133:8020",
 			"spark.yarn.am.memory" -> "512m"
@@ -128,7 +117,7 @@ case class ClusterDriverDescription(
 	}
 
 	override def appResource: String = {
-		Utils.getAppResourceJar("batch").getOrElse(
+		LaunchUtils.getAppResourceJar("batch").getOrElse(
 			throw new Exception("batch app jar does not found in env.")
 		)
 	}

@@ -25,7 +25,7 @@ import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
-class SparkDataSystem extends DataSystem(Map()) with Pushdownable with DataSystemRegister {
+class SparkDataSystem extends DataSystem(Map()) with Pushdownable {
 
 	override def isSupportAll: Boolean = true
 
@@ -56,7 +56,4 @@ class SparkDataSystem extends DataSystem(Map()) with Pushdownable with DataSyste
 		throw new UnsupportedOperationException(s"unsupport call method buildQuery in spark datasystem")
 	}
 
-	override def shortName(): String = "spark"
-
-	override def dataSource(): String = ""
 }

@@ -8,6 +8,7 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy.DeployMessages.DriverStateChanged
 import moonbox.grid.deploy.master.DriverState
+import moonbox.grid.deploy.worker.LaunchUtils
 import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 
 private[deploy] class DriverRunner(
@@ -43,7 +44,7 @@ private[deploy] class DriverRunner(
 						launcher.setConf(k, v)
 					}
 
-					Utils.getRuntimeJars().foreach { launcher.addJar }
+					LaunchUtils.getRuntimeJars().foreach { launcher.addJar }
 
 					sparkAppHandle = launcher.startApplication(new SparkAppHandle.Listener {
 
