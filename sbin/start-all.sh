@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-# Start all server daemons
-
-# Set moonbox home
-
-
-moonbox_home_dir="$(cd "`dirname "$0"`/.."; pwd)"
-if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
-  . "${moonbox_home_dir}/conf/moonbox-env.sh"
+if [ -z "${MOONBOX_HOME}" ]; then
+  export MOONBOX_HOME="$(cd "`dirname "$0"`/.."; pwd)"
 fi
 
-# Start all nodes
-"${MOONBOX_HOME}/sbin/start-nodes.sh"
+if [ -f "${MOONBOX_HOME}/conf/moonbox-env.sh" ]; then
+  . "${MOONBOX_HOME}/conf/moonbox-env.sh"
+fi
+
+# Start MoonboxMaster
+"${MOONBOX_HOME}/sbin"/start-master.sh
+
+# Start MoonboxWorker
+"${MOONBOX_HOME}/sbin"/start-slaves.sh
 
