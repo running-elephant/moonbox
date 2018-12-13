@@ -47,20 +47,16 @@ class MoonboxWorker(
 		assert(!registered)
 		logInfo(s"Running Moonbox version 0.3.0")// TODO
 		logInfo(s"Starting MoonboxWorker at ${self.path.toSerializationFormatWithAddress(address)}")
-		// TODO
-		val driverId = newDriverId
-		self ! LaunchDriver(driverId, new LocalDriverDescription(driverId, masterAddresses, conf))
-//		val driverId2 = newDriverId
-//		self ! LaunchDriver(driverId2, new ClientDriverDescription(driverId2, masterAddresses, conf))
+
+		// launch interactive drivers
+		launchDrivers()
 		registerWithMaster()
 	}
 
 	@scala.throws[Exception](classOf[Exception])
 	override def postStop(): Unit = {
 		drivers.values.foreach { driver =>
-			if (driver.desc.isInstanceOf[LocalDriverDescription] ||
-				driver.desc.isInstanceOf[ClientDriverDescription]
-			) {
+			if (!driver.desc.isInstanceOf[ClusterDriverDescription]) {
 				driver.kill()
 			}
 		}
@@ -111,16 +107,12 @@ class MoonboxWorker(
 		state match {
 			case DriverState.ERROR =>
 				logWarning(s"Driver $driverId failed with exception: ${exception.get}")
-				finishDriver()
 			case DriverState.FAILED =>
 				logWarning(s"Driver $driverId exited with failure.")
-				finishDriver()
 			case DriverState.FINISHED =>
 				logInfo(s"Driver $driverId exited with successfully.")
-				finishDriver()
 			case DriverState.KILLED =>
 				logInfo(s"Driver $driverId was killed by user.")
-				finishDriver()
 			case DriverState.SUBMITTED =>
 				logInfo(s"Driver $driverId has submitted to yarn.")
 			case DriverState.RUNNING =>
@@ -128,10 +120,14 @@ class MoonboxWorker(
 			case _ =>
 				logDebug(s"Driver $driverId changed state to $state")
 		}
+		if (DriverState.isFinished(state)) {
+			finishDriver(driverId)
+		}
 		sendToMaster(driverStateChanged)
+	}
 
-		def finishDriver(): Unit = {
-			val driver = drivers.remove(driverId).get
+	private def finishDriver(driverId: String): Unit = {
+		drivers.remove(driverId).foreach { driver =>
 			finishedDrivers(driverId) = driver
 		}
 	}
@@ -247,6 +243,24 @@ class MoonboxWorker(
 		val driverId = "interacive-%s-%04d".format(createDateFormat.format(submitDate), nextInteractiveDriverNumber)
 		nextInteractiveDriverNumber += 1
 		driverId
+	}
+
+	private def launchDrivers(): Unit = {
+		try {
+			val (local, cluster) = LaunchUtils.getDriverConfigs(conf)
+			local.foreach { config =>
+				val driverId = newDriverId
+				self ! LaunchDriver(driverId, new LocalDriverDescription(driverId, masterAddresses, config))
+			}
+			cluster.foreach { config =>
+				val driverId = newDriverId
+				self ! LaunchDriver(driverId, new ClientDriverDescription(driverId, masterAddresses, config))
+			}
+		} catch {
+			case e: Throwable =>
+				logError("Launch Driver Error: ", e)
+				gracefullyShutdown()
+		}
 	}
 }
 

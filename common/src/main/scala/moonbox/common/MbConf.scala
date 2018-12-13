@@ -21,8 +21,11 @@
 package moonbox.common
 
 import java.util.concurrent.ConcurrentHashMap
+
+import com.typesafe.config.Config
 import moonbox.common.config._
 import moonbox.common.util.Utils
+
 import scala.collection.JavaConverters._
 
 class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLogging {
@@ -30,6 +33,8 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 	def this() = this(true)
 
 	private var settings = new ConcurrentHashMap[String, String]()
+
+	private var configs: Config = _
 
 	@transient private lazy val reader: ConfigReader = {
 		val _reader = new ConfigReader(new MbConfigProvider(settings))
@@ -46,7 +51,8 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 
 	private val configFromFile = Utils.getDefaultPropertiesFile() match {
 		case Some(file) =>
-			Utils.typesafeConfig2Map(Utils.getConfigFromFile(file))
+			configs = Utils.getConfigFromFile(file)
+			Utils.typesafeConfig2Map(configs)
 		case None => Map[String, String]()
 	}
 
@@ -79,7 +85,7 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 
 	def get(key: String): Option[String] = getOption(key)
 
-	def get(key: String, defaultValue: String): String ={
+	def get(key: String, defaultValue: String): String = {
 		settings.getOrDefault(key, defaultValue)
 	}
 
@@ -105,6 +111,10 @@ class MbConf(loadDefault: Boolean) extends Cloneable with Serializable with MbLo
 
 	def get[T](entry: ConfigEntry[T]): T = {
 		entry.readFrom(reader)
+	}
+
+	def getConfig(key: String): Config = {
+		configs.getConfig(key)
 	}
 
 	private def loadFromSystemProperties(): Unit = {

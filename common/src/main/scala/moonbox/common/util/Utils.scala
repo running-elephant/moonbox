@@ -167,65 +167,6 @@ object Utils extends MbLogging {
 		}
 	}
 
-	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
-		if (env.contains("MOONBOX_DEV")) {
-			val projectPath = System.getProperty("user.dir")
-			val target = s"$projectPath${File.separator}assembly${File.separator}target"
-			val file = new File(target)
-			if (file.exists()) {
-				file.listFiles()
-					.find(f => f.isDirectory && f.getName.startsWith("moonbox-assembly")).map { f =>
-					new File(f.getPath + File.separator + "moonbox" + File.separator + "runtime").listFiles()
-						.filter(f => f.isFile && f.getName.endsWith(".jar")).map(_.getAbsolutePath).toList
-				}.getOrElse(List())
-			} else {
-				List()
-			}
-		} else {
-			val runtimeDirectory: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}runtime" })
-			if (runtimeDirectory.isEmpty) {
-				throw new Exception("$MOONBOX_HOME does not exist")
-			} else {
-				val lib = new File(runtimeDirectory.get)
-				if (lib.exists()) {
-					val jars = lib.listFiles().filter { f => f.isFile && f.getName.endsWith(".jar")}
-						.map(_.getAbsolutePath).toList
-					jars
-				} else {
-					List()
-				}
-			}
-		}
-	}
-
-	def getAppResourceJar(appType: String, env: Map[String, String] = sys.env): Option[String] = {
-		if (env.contains("MOONBOX_DEV" )) { // for dev
-			val projectPath = System.getProperty("user.dir")
-			val target = s"$projectPath${File.separator}assembly${File.separator}target"
-			val file = new File(target)
-			if (file.exists()) {
-				file.listFiles()
-					.find(f => f.isDirectory && f.getName.startsWith("moonbox-assembly")).flatMap { f =>
-					new File(f.getPath + File.separator + "moonbox" + File.separator + "apps").listFiles()
-						.find(f => f.isFile && f.getName.contains(appType)).map(_.getAbsolutePath)
-				}
-			} else {
-				None
-			}
-		} else {
-			val appsDirectory = env.get("MOONBOX_APP_DIR").orElse(env.get("MOONBOX_HOME").map { t => s"$t${File.separator}apps" })
-			if (appsDirectory.isEmpty) {
-				throw new Exception("$MOONBOX_HOME does not exist")
-			} else {
-				val file = new File(appsDirectory.get)
-				if (file.exists()) {
-					file.listFiles().find(f => f.isFile && f.getName.contains(appType)).map(_.getAbsolutePath)
-				} else {
-					None
-				}
-			}
-		}
-	}
 
 	def delete (file: File) {
 		if (file == null) {
