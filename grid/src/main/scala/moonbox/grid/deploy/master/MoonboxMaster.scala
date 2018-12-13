@@ -365,7 +365,7 @@ class MoonboxMaster(
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				val driver = createDriver(ClusterDriverDescription(username, sqls, config))
+				val driver = createDriver(ClusterDriverDescription(username, sqls, config, conf))
 				persistenceEngine.addDriver(driver)
 				waitingDrivers += driver
 				drivers.add(driver)
