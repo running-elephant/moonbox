@@ -1,36 +1,15 @@
 #!/usr/bin/env bash
 
-#import env firstly
-moonbox_home_dir="$(cd "`dirname "$0"`/.."; pwd)"
-if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
-  . "${moonbox_home_dir}/conf/moonbox-env.sh"
+if [ -z "${MOONBOX_HOME}" ]; then
+  export MOONBOX_HOME="$(cd "`dirname "$0"`/.."; pwd)"
 fi
 
+if [ -f "${MOONBOX_HOME}/conf/moonbox-env.sh" ]; then
+  . "${MOONBOX_HOME}/conf/moonbox-env.sh"
+fi
 
-cat "${MOONBOX_HOME}/conf/nodes" | grep -v '#' | sed '/^$/d' | sed 's/[[:space:]]//g'| while read line
-do
-    hostname=`echo ${line}  |cut -d ':' -f 1`
-    ssh_options="$MOONBOX_SSH_OPTIONS"
-    if [ -z "$ssh_options" ]; then
-        ssh_options="-p 22"
-    fi
+"${MOONBOX_HOME}/sbin/slaves.sh" cd "${MOONBOX_HOME}" \; "${MOONBOX_HOME}"/sbin/stop-slave.sh
 
-    echo "SSH ${hostname} ${ssh_options} ..."
 
-    ssh -T ${ssh_options} ${hostname}  << EEOF
-        echo "remote moonbox_home is empty \${MOONBOX_HOME}, use moonbox_home ${MOONBOX_HOME}"
-        ${MOONBOX_HOME}/sbin/kill-yarn-application.sh
-        ${MOONBOX_HOME}/sbin/stop-node.sh
-
-EEOF
-    if [ $? -ne 0 ] ;then
-        echo "ERROR: ssh ${hostname} and run command failed, please check parameter"
-        echo ""
-    else
-        echo "all done in ${hostname}, bye."
-        echo ""
-    fi
-
-done
 
 
