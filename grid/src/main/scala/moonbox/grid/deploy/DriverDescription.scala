@@ -30,11 +30,11 @@ case class LocalDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		Map(
+		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "CENTRALIZED"
-		).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
@@ -65,11 +65,11 @@ case class ClientDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		Map(
+		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "DISTRIBUTED"
-		).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
