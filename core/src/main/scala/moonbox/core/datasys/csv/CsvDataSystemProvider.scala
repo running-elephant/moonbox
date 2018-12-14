@@ -29,5 +29,5 @@ class CsvDataSystemProvider extends DataSystemProvider with DataSystemRegister {
 
 	override def shortName(): String = "csv"
 
-	override def dataSource(): String = "csv"
+	override def dataSource(): String = "com.databricks.spark.csv"
 }
