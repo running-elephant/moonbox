@@ -25,8 +25,14 @@ import org.apache.spark.sql.hive.HiveClientUtils
 
 class HiveDataSystem(props: Map[String, String])
 	extends DataSystem(props) {
-	require(contains("metastore.url", "metastore.driver", "metastore.user",
-		"metastore.password", "hivedb"))
+
+	if (contains("metastore.uris")) {
+		require(contains("metastore.uris", "hivedb"))
+	} else {
+		require(contains("metastore.url", "metastore.driver", "metastore.user",
+			"metastore.password", "hivedb"))
+	}
+
 
 	override def tableNames(): Seq[String] = {
 		val client = HiveClientUtils.getHiveClient(props)
