@@ -24,7 +24,7 @@ object LaunchUtils extends MbLogging {
 
 	private def getConfigs(key: String, config: Config, common: Map[String, String]): Seq[Map[String, String]] = {
 		try {
-			config.getObjectList(key).map(obj => entrySetToMap(obj.entrySet()))
+			config.getConfigList(key).map(obj => entrySetToMap(obj.entrySet()))
 				.map(_.filterKeys(filterKeys)).map(_ ++ common)
 		} catch {
 			case e: Missing =>
