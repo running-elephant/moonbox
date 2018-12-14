@@ -48,7 +48,7 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 						df.createTempView(createTempView.name)
 					}
 
-				case insert @ InsertInto(MbTableIdentifier(table, database), query, overwrite) =>
+				case insert @ InsertInto(MbTableIdentifier(table, database), query, colNames, overwrite) =>
 					val sinkCatalogTable = mbSession.getCatalogTable(table, database)
 					val options = sinkCatalogTable.properties
 					val format = DataSystem.lookupDataSource(options("type"))
@@ -60,6 +60,7 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 						.write
 						.format(format)
 						.options(options)
+						.partitionBy(colNames:_*)
 						.mode(saveMode)
 					if (options.contains("partitionColumnNames")) {
 						dataFrameWriter.partitionBy(options("partitionColumnNames").split(","): _*)

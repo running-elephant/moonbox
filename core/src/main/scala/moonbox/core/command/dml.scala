@@ -499,4 +499,5 @@ case class DropTempFunction(
 case class InsertInto(
 	table: MbTableIdentifier,
 	query: String,
+	colNames: Seq[String],
 	overwrite: Boolean) extends MbCommand with DML

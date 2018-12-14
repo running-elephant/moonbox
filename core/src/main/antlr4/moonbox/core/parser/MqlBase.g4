@@ -123,7 +123,7 @@ mql
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
     | SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                      # setVariable
 
-    | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier AS? query                                # insertInto
+    | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
     | query                                                                                     # mqlQuery
     ;
@@ -143,6 +143,9 @@ ctes
     : WITH namedQuery (',' namedQuery)*
     ;
 
+partitionSpec
+    : PARTITION '(' identifier (',' identifier)* ')'
+    ;
 
 dataType
     : complex=ARRAY '<' dataType '>'                            #complexDataType
@@ -330,6 +333,7 @@ ORG: 'ORG';
 ORGANIZATION: 'ORGANIZATION';
 OVERWRITE: 'OVERWRITE';
 PLAN: 'PLAN';
+PARTITION: 'PARTITION';
 PROC: 'PROC';
 PROCEDURE: 'PROCEDURE';
 PROCEDURES: 'PROCEDURES';

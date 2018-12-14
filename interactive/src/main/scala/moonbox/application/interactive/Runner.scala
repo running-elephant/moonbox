@@ -32,8 +32,8 @@ class Runner(
 			case createTempView@CreateTempView(table, query, isCache, replaceIfExists) =>
 				doCreateTempView(table, query, isCache, replaceIfExists)
 				IndirectResult()
-			case insert@InsertInto(MbTableIdentifier(table, db), query, overwrite) =>
-				doInsert(table, db, query, overwrite)
+			case insert@InsertInto(MbTableIdentifier(table, db), query, colNames, overwrite) =>
+				doInsert(table, db, query, colNames, overwrite)
 				IndirectResult()
 			case query@MQLQuery(sql) =>
 				doMqlQuery(sql)
@@ -74,7 +74,7 @@ class Runner(
 		}
 	}
 
-	private def doInsert(table: String, db: Option[String], query: String, overwrite: Boolean): Unit = {
+	private def doInsert(table: String, db: Option[String], query: String, colNames: Seq[String], overwrite: Boolean): Unit = {
 		val sinkCatalogTable = mbSession.getCatalogTable(table, db)
 		val options = sinkCatalogTable.properties
 		val format = DataSystem.lookupDataSource(options("type"))
@@ -105,7 +105,9 @@ class Runner(
 				.write
 				.format(format)
 				.options(options)
+				.partitionBy(colNames:_*)
 				.mode(saveMode)
+			// TODO remove
 			if (options.contains("partitionColumnNames")) {
 				dataFrameWriter.partitionBy(options("partitionColumnNames").split(","): _*)
 			}
