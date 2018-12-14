@@ -229,6 +229,14 @@ object Utils extends MbLogging {
 		assert(host != null && host.indexOf(':') == -1, s"Expected hostname but get $host")
 	}
 
+	def checkPort(address: String): Unit = {
+		assert(address != null && address.indexOf(":") != -1, s"Expected host:port but get $address")
+	}
+
+	def getIpByName(host: String): String = {
+		InetAddress.getByName(host).getHostAddress
+	}
+
 	def localHostName(): String = {
 		customHostname.getOrElse(localIpAddress.getHostAddress)
 	}

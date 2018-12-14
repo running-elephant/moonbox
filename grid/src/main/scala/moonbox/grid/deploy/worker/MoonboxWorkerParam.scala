@@ -35,7 +35,11 @@ class MoonboxWorkerParam(args: Array[String], val conf: MbConf) extends MbLoggin
 			if (masters != null) {
 				printUsageAndExit(1)
 			}
-			masters = value.stripPrefix("moonbox://").split(",").map("moonbox://" + _)
+			masters = value.stripPrefix("moonbox://").split(",").map { address =>
+				Utils.checkPort(address)
+				val hostPort = address.split(":")
+				"moonbox://" + Utils.getIpByName(hostPort(0)) + ":" + hostPort(1)
+			}
 			parse(tail)
 		case Nil =>
 			if (masters == null) {
