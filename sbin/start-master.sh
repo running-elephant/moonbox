@@ -12,7 +12,19 @@ fi
 HOST=`hostname`
 LOGFILE=${MOONBOX_HOME}/logs/"moonbox-$USER-master-$HOST.log"
 
-java -cp "${MOONBOX_HOME}/libs/*" moonbox.grid.deploy.master.MoonboxMaster $@ 1>${LOGFILE} 2>&1 &
+# Find the java binary
+if [ -n "${JAVA_HOME}" ]; then
+  RUNNER="${JAVA_HOME}/bin/java"
+else
+  if [ "$(command -v java)" ]; then
+    RUNNER="java"
+  else
+    echo "JAVA_HOME is not set" >&2
+    exit 1
+  fi
+fi
+
+$RUNNER -cp "${MOONBOX_HOME}/libs/*" moonbox.grid.deploy.master.MoonboxMaster $@ 1>${LOGFILE} 2>&1 &
 
 if [ $? -eq 0 ]; then
    echo "${HOST}: starting moonbox master, logging to ${LOGFILE} "
