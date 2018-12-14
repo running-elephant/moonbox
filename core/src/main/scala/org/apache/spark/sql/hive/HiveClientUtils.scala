@@ -36,7 +36,7 @@ object HiveClientUtils {
 				.set("spark.hadoop.javax.jdo.option.ConnectionDriverName", props("metastore.driver"))
 				.set("spark.hadoop.javax.jdo.option.ConnectionUserName", props("metastore.user"))
 				.set("spark.hadoop.javax.jdo.option.ConnectionPassword", props("metastore.password"))
-			    .setAll(props)
+			    .setAll(props.filterKeys(key => key.startsWith("spark.hadoop.") || key.startsWith("spark.sql")))
 			val client = HiveUtils.newClientForMetadata(sparkConf, SparkHadoopUtil.get.newConfiguration(sparkConf))
 			clients.put(props("metastore.url"), client)
 			client

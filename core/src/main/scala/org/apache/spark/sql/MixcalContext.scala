@@ -95,12 +95,20 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
 		val typ = props("type")
 		val catalog = sparkSession.sessionState.catalog
-		if (catalog.tableExists(tableIdentifier)) {
-			catalog.dropTable(tableIdentifier, ignoreIfNotExists = true, purge = false)
-		}
+
 		if (typ == "hive") {
-			val catalogTable = HiveClientUtils.getHiveClient(props).getTable(props("hivedb"), props("hivetable"))
-			catalog.createTable(catalogTable.copy(identifier = tableIdentifier, tableType = CatalogTableType.EXTERNAL), ignoreIfExists = true)
+			val hiveClient = HiveClientUtils.getHiveClient(props)
+			val hiveCatalogTable = hiveClient.getTable(props("hivedb"), props("hivetable"))
+			catalog.createTable(hiveCatalogTable.copy(
+				identifier = tableIdentifier,
+				tableType = CatalogTableType.EXTERNAL,
+				properties = hiveCatalogTable.properties ++ props
+			), ignoreIfExists = true)
+			catalog.createPartitions(
+				tableIdentifier,
+				hiveClient.getPartitions(hiveCatalogTable),
+				ignoreIfExists = true
+			)
 		} else {
 			val createTableSql =
 				s"""
