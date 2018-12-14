@@ -237,10 +237,10 @@ class MoonboxWorker(
 		"worker-%s-%s".format(createDateFormat.format(new Date), address.hostPort)
 	}
 
-	private def newDriverId: String = {
+	private def newDriverId(driverType: String): String = {
 		val now = System.currentTimeMillis()
 		val submitDate = new Date(now)
-		val driverId = "interacive-%s-%04d".format(createDateFormat.format(submitDate), nextInteractiveDriverNumber)
+		val driverId = "%s-%s-%s-%04d".format(driverType, host, createDateFormat.format(submitDate), nextInteractiveDriverNumber)
 		nextInteractiveDriverNumber += 1
 		driverId
 	}
@@ -249,11 +249,11 @@ class MoonboxWorker(
 		try {
 			val (local, cluster) = LaunchUtils.getDriverConfigs(conf)
 			local.foreach { config =>
-				val driverId = newDriverId
+				val driverId = newDriverId("local")
 				self ! LaunchDriver(driverId, new LocalDriverDescription(driverId, masterAddresses, config))
 			}
 			cluster.foreach { config =>
-				val driverId = newDriverId
+				val driverId = newDriverId("cluster")
 				self ! LaunchDriver(driverId, new ClientDriverDescription(driverId, masterAddresses, config))
 			}
 		} catch {
