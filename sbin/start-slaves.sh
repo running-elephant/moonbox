@@ -25,4 +25,3 @@ if [ "$MOONBOX_MASTER_HOST" == "" ]; then
 fi
 
 "${MOONBOX_HOME}/sbin/slaves.sh" cd "${MOONBOX_HOME}" \; "${MOONBOX_HOME}/sbin/start-slave.sh" "moonbox://$MOONBOX_MASTER_HOST:$MOONBOX_MASTER_PORT"
-
