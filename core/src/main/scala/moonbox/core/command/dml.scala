@@ -290,7 +290,8 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
 		val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
-		val columns = privilegeManager.getColumns()
+
+		val columns = mbSession.schema(catalogTable.databaseId, catalogTable.name)
 		val select = privilegeManager.selectable()
 		val update = privilegeManager.updatable()
 
