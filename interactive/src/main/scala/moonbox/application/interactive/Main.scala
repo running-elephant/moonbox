@@ -144,10 +144,10 @@ class Main(
 					f.onComplete {
 						case Success(result) =>
 							result match  {
-								case DirectResult(schema, data, hasMore) =>
-									requester ! JobQueryResponse(success = true, schema = schema, data = data, hasNext = hasMore, message = "")
-								case IndirectResult() =>
-									requester ! JobQueryResponse(success = true, schema = SchemaUtil.emptyJsonSchema, data = Seq.empty, hasNext = false, message = "")
+								case DirectResult(schema, data) =>
+									requester ! JobQueryResponse(success = true, schema = schema, data = data, hasNext = false, message = "")
+								case IndirectResult(schema) =>
+									requester ! JobQueryResponse(success = true, schema = schema, data = Seq.empty, hasNext = true, message = "")
 							}
 						case Failure(e) =>
 							val errorMessage = Option(e.getMessage).getOrElse(e.getStackTrace.mkString("\n"))

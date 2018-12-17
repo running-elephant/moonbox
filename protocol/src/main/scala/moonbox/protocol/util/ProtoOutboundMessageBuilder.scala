@@ -111,11 +111,15 @@ object ProtoOutboundMessageBuilder {
     builder.build()
   }
 
-  def cancelQueryOutbound(error: String): CancelQueryOutbound = {
-    val builder = CancelQueryOutbound.newBuilder()
-    if (error != null) {
-      builder.setError(error)
-    }
+  def interactiveQueryCancelOutbound(error: String): InteractiveQueryCancelOutbound = {
+    val builder = InteractiveQueryCancelOutbound.newBuilder()
+    Option(error).foreach(builder.setError)
+    builder.build()
+  }
+
+  def batchQueryCancelOutbound(error: String): BatchQueryCancelOutbound = {
+    val builder = BatchQueryCancelOutbound.newBuilder()
+    Option(error).foreach(builder.setError)
     builder.build()
   }
 

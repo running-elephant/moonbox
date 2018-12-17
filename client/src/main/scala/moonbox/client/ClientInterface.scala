@@ -26,7 +26,8 @@ private[client] trait ClientInterface {
     * @return JobState consists of error and\or job state
     */
   def batchQueryProgress(token: String, jobId: String): JobState
-  def cancelQuery(token: String, jobId: String, sessionId: String): Boolean
+  def cancelInteractiveQuery(token: String, sessionId: String): Boolean
+  def cancelBatchQuery(token: String, jobId: String): Boolean
 
   /* ---------------------------- client related -------------------------- */
   def connect(): ClientInterface

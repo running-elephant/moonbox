@@ -65,6 +65,7 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, milliseconds)
   def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, maxRows: Long, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, maxRows, milliseconds)
   def cancelInteractiveQuery(): Boolean = moonboxClient.cancelInteractiveQuery()
+  def cancelBatchQuery(jobId: String): Boolean = moonboxClient.cancelBatchQuery(jobId)
 
   /** batch query related */
   def submitJob(jobSql: util.List[String], config: JMap[String, String]): String = moonboxClient.submitJob(jobSql.asScala, config)

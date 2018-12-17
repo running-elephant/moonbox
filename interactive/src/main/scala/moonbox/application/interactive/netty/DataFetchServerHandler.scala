@@ -1,9 +1,7 @@
 package moonbox.application.interactive.netty
 
 import java.io.{PrintWriter, StringWriter}
-import java.util.concurrent.TimeUnit
 
-import akka.util.Timeout
 import io.netty.channel.{ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.application.interactive.Runner
@@ -35,13 +33,13 @@ class DataFetchServerHandler(sessionIdToJobRunner: mutable.Map[String, Runner]) 
 
   private def handleProtoMessage(ctx: ChannelHandlerContext, inbound: Inbound): Unit = {
     // TODO:  fetch data from runner
-    implicit val timeout: Timeout = Timeout(60, TimeUnit.SECONDS)
     inbound match {
       case InteractiveNextResultInbound(token, sessionId) =>
+        logInfo(s"Received InteractiveNextResultInbound(SessionId=$sessionId)")
         sessionIdToJobRunner.get(sessionId) match {
           case Some(runner) =>
             val resultData = runner.fetchResultData()
-            ctx.writeAndFlush(InteractiveNextResultOutbound(None, Some(resultData)))
+            ctx.writeAndFlush(InteractiveNextResultOutbound(None, Some(resultData)).setId(inbound.getId))
           case None =>
             val errorMsg = s"DataFetch ERROR: Invalid sessionId or session lost, SessionId=$sessionId"
             ctx.writeAndFlush(InteractiveNextResultOutbound(Some(errorMsg), None))

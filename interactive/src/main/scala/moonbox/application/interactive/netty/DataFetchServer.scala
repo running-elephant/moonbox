@@ -4,7 +4,6 @@ import java.lang.{Boolean => JBoolean, Integer => JInt}
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorRef
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup

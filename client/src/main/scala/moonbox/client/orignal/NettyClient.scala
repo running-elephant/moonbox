@@ -108,8 +108,14 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
           val promise = channel.newPromise()
           promises.put(messageId, promise)
           sendMessage(in)
-          if (!promise.await(timeout)) throw new Exception(s"No response within $timeout ms")
-          if (!promise.isSuccess) throw promise.cause()
+          if (timeout == 0) {
+            promise.await()
+          } else if (!promise.await(timeout)) {
+            throw new Exception(s"No response within $timeout ms")
+          }
+          if (!promise.isSuccess) {
+            throw promise.cause()
+          }
           responses.get(messageId)
         } finally release(messageId)
       case other => throw new Exception(s"Unsupported message: $other")
@@ -166,12 +172,12 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
 
   override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, timeout: Int): MoonboxRowSet = {
     val outbound = query(token, sessionId, sqls, fetchSize, timeout = timeout)
-    toMoonboxRowSet(token, sessionId, outbound, fetchSize, timeout)
+    toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
   override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long, timeout: Int): MoonboxRowSet = {
     val outbound = query(token, sessionId, sqls, fetchSize, maxRows, timeout)
-    toMoonboxRowSet(token, sessionId, outbound, fetchSize, timeout)
+    toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
   override def batchQuery(token: String, sqls: Seq[String], config: String): String = {
@@ -190,14 +196,18 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
-  override def cancelQuery(token: String, jobId: String, sessionId: String): Boolean = {
+  override def cancelInteractiveQuery(token: String, sessionId: String): Boolean = cancelQuery(token, None, Some(sessionId))
+  override def cancelBatchQuery(token: String, jobId: String): Boolean = cancelQuery(token, Some(jobId), None)
+
+  private def cancelQuery(token: String, jobId: Option[String], sessionId: Option[String]): Boolean = {
     checkConnected()
-    sendMessageSync(wrapMessage(CancelQueryInbound(token, Some(jobId), Some(sessionId)))) match {
+    sendMessageSync(wrapMessage(CancelQueryInbound(token, jobId, sessionId))) match {
       case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, JobId=$jobId, SessionId=$sessionId")
       case CancelQueryOutbound(None) => true
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
+
   override def setReadTimeout(milliseconds: Int): Unit = {
     readTimeout = milliseconds
   }
@@ -219,16 +229,19 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
     }
   }
 
-  private def interactiveNextResult(token: String, sessionId: String, fetchSize: Int, timeout: Int): ResultData = {
-    sendMessageSync(wrapMessage(InteractiveNextResultInbound(Some(token), sessionId))) match {
+  private def interactiveNextResult(token: String, sessionId: String, timeout: Int): ResultData = {
+    dataFetchClient.sendMessageSync(wrapMessage(InteractiveNextResultInbound(Some(token), sessionId)), timeout) match {
       case InteractiveNextResultOutbound(Some(error), _) => throw new Exception(s"Fetch next result error: ERROR=$error")
       case InteractiveNextResultOutbound(_, Some(resultData)) => resultData
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
 
-  private def toMoonboxRowSet(token: String, sessionId: String, outbound: InteractiveQueryOutbound, fetchSize: Int, timeout: Int): MoonboxRowSet = {
-    var resultData: ResultData = outbound.data.getOrElse(interactiveNextResult(token, sessionId, fetchSize, timeout))
+  private def toMoonboxRowSet(token: String, sessionId: String, outbound: InteractiveQueryOutbound, timeout: Int): MoonboxRowSet = {
+    if (outbound.data.isEmpty) {
+      return new MoonboxRowSet()
+    }
+    var resultData: ResultData = outbound.data.get
     val rowIterator = new Iterator[MoonboxRow] {
       var internalIter = resultData.data.toIterator
       override def hasNext: Boolean = internalIter.hasNext || resultData.hasNext
@@ -236,7 +249,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
         if (internalIter.hasNext) {
           new MoonboxRow(internalIter.next().toArray)
         } else if (resultData.hasNext) {
-          resultData = interactiveNextResult(token, sessionId, fetchSize, timeout)
+          resultData = interactiveNextResult(token, sessionId, timeout)
           internalIter = resultData.data.toIterator
           next()
         } else throw new Exception("No more iterable MoonboxRow.")

@@ -29,8 +29,11 @@ message ProtoMessage {
         BatchQueryOutbound batch_query_outbound = 15;
         BatchQueryProgressInbound batch_query_progress_inbound = 16;
         BatchQueryProgressOutbound batch_query_progress_outbound = 17;
-        CancelQueryInbound cancel_query_inbound = 18;
-        CancelQueryOutbound cancel_query_outbound = 19;
+        InteractiveQueryCancelInbound interactive_query_cancel_inbound = 18;
+        InteractiveQueryCancelOutbound interactive_query_cancel_outbound = 19;
+        BatchQueryCancelInbound batch_query_cancel_inbound = 20;
+        BatchQueryCancelOutbound batch_query_cancel_outbound = 21;
+        InternalError internal_error = 22;
     }
 }
 
@@ -119,15 +122,24 @@ message BatchQueryProgressOutbound {
     string message = 1;
     string state = 2;
 }
-/* query cancel */
-message CancelQueryInbound {
+/* interactive query cancel */
+message InteractiveQueryCancelInbound {
     string token = 1;
-    oneof jobOrSessionId {
-        string job_id = 2;
-        string session_id = 3;
-    }
+    string session_id = 2;
 }
-message CancelQueryOutbound {
+message InteractiveQueryCancelOutbound {
+    string error = 1;
+}
+/* batch query cancel */
+message BatchQueryCancelInbound {
+    string token = 1;
+    string job_id = 2;
+}
+message BatchQueryCancelOutbound {
+    string error = 1;
+}
+
+message InternalError {
     string error = 1;
 }
 

@@ -152,7 +152,12 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   override def cancelInteractiveQuery() = {
     checkActive(_client)
     checkActive(_dataFetchClient)
-    _client.cancelQuery(_token, null, _sessionId)
+    _client.cancelInteractiveQuery(_token, _sessionId)
+  }
+
+  override def cancelBatchQuery(jobId: String) = {
+    checkActive(_client)
+    _client.cancelBatchQuery(_token, jobId)
   }
 
   /* batch query */
@@ -174,9 +179,10 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     * @return generate a new netty client as the data fetch client
     */
   private def initDataFetchClient(host: String, port: Int): ClientInterface = {
-    val dClient = clientOptions.serializer match {
-      case "java" => new NettyClient(ClientOptions.builder(clientOptions).host(host).port(port).build())
-      case "protobuf" | _ => new ProtoNettyClient(ClientOptions.builder(clientOptions).host(host).port(port).build())
+    val dClientOptions = ClientOptions.builder(clientOptions).host(host).port(port).build()
+    val dClient: ClientInterface = NettyMessageType.getMessageType(clientOptions.serializer) match {
+      case NettyMessageType.JAVA_MESSAGE => new NettyClient(dClientOptions)
+      case NettyMessageType.PROTOBUF_MESSAGE | _ => new ProtoNettyClient(dClientOptions)
     }
     dClient.setReadTimeout(getReadTimeout)
     dClient

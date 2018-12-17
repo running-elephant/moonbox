@@ -8,10 +8,15 @@ import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAd
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
+import moonbox.protocol.client._
+import moonbox.message.protobuf
 import moonbox.message.protobuf.ProtoMessage
 import moonbox.protocol.util.ProtoOutboundMessageBuilder
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, String],
                                   channelToSessionId: ConcurrentHashMap[Channel, String],
@@ -29,7 +34,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
     try {
       msg match {
-        case m: ProtoMessage => handleProtoMessage(ctx, m)
+        case m: protobuf.ProtoMessage => handleProtoMessage(ctx, m)
         case other => logWarning(s"Unknown message type $other")
       }
     } finally {
@@ -74,132 +79,247 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
   }
 
-  private def handleProtoMessage(ctx: ChannelHandlerContext, message: ProtoMessage): Unit = {
-    implicit val connection:ConnectionInfo = getConnectionInfo(ctx)
-    val channel = ctx.channel()
+  private def handleProtoMessage(ctx: ChannelHandlerContext, message: protobuf.ProtoMessage): Unit = {
     val messageId = message.getMessageId
-    val result: ProtoMessage = {
-      if (message.hasLoginInbound){
-        val username = message.getLoginInbound.getUesername
-        val password = message.getLoginInbound.getPassword
-        val outbound = mbService.login(username, password)
-        logInfo(s"User($username) login completed: " + prettyError(outbound.error))
-        if (outbound.token.isDefined) {
-          channelToToken.put(channel, outbound.token.get)
-        }
-        val toResp = ProtoOutboundMessageBuilder.loginOutbound(outbound.token.orNull, outbound.error.orNull)
-        ProtoMessage.newBuilder().setMessageId(messageId).setLoginOutbound(toResp).build()
-      } else if (message.hasLogoutInbound) {
-        val token = Option(channelToToken.get(channel)).getOrElse(message.getLogoutInbound.getToken)
-        val username = mbService.decodeToken(token)
-        val outbound = mbService.logout(token)
-        logInfo(s"User($username), Token($token) logout completed: " + prettyError(outbound.error))
-        val toResp = ProtoOutboundMessageBuilder.logoutOutbound(outbound.error.orNull)
-        ProtoMessage.newBuilder().setMessageId(messageId).setLogoutOutbound(toResp).build()
-      } else if (message.hasOpenSessionInbound){
-        val database = message.getOpenSessionInbound.getDatabase
-        val isLocal = message.getOpenSessionInbound.getIsLocal
-        val token = Option(channelToToken.get(channel)).getOrElse(message.getOpenSessionInbound.getToken)
-        val username = mbService.decodeToken(token)
-        val outbound = mbService.openSession(token, Some(database), isLocal)
-        logInfo(s"User($username), Token($token) open session completed: " + prettyError(outbound.error))
-        if (outbound.sessionId.isDefined) {
-          channelToSessionId.put(channel, outbound.sessionId.get)
-        }
-        val toResp = ProtoOutboundMessageBuilder.openSessionOutbound(outbound.sessionId.orNull, outbound.workerHost, outbound.workerPort, outbound.error.orNull)
-        ProtoMessage.newBuilder().setMessageId(messageId).setOpenSessionOutbound(toResp).build()
-      } else if (message.hasCloseSessionInbound) {
-        val token = Option(channelToToken.get(channel)).getOrElse(message.getCloseSessionInbound.getToken)
-        val sessionId = Option(channelToSessionId.get(channel)).getOrElse(message.getCloseSessionInbound.getSessionId)
-        val outbound = mbService.closeSession(token, sessionId)
-        logInfo(s"Token($token), SessionId($sessionId) close session completed: " + prettyError(outbound.error))
-        val toResp = ProtoOutboundMessageBuilder.closeSessionOutbound(outbound.error.orNull)
-        ProtoMessage.newBuilder().setMessageId(messageId).setCloseSessionOutbound(toResp).build()
-      } else if (message.hasInteractiveQueryInbound) {
-        val in = message.getInteractiveQueryInbound
-        val token = Option(channelToToken.get(channel)).getOrElse(in.getToken)
-        val sessionId = Option(channelToSessionId.get(channel)).getOrElse(in.getSessionId)
-        val sqls = in.getSqlList.asScala.toList
-        val outbound = if (in.hasFetchSize && in.hasMaxRows) {
-          val fetchSize = in.getFetchSize.getValue
-          val maxRows = in.getMaxRows.getValue
-          mbService.interactiveQuery(token, sessionId, sqls, fetchSize, maxRows)
-        } else if (in.hasFetchSize && !in.hasMaxRows) {
-          val fetchSize = in.getFetchSize.getValue
-          mbService.interactiveQuery(token, sessionId, sqls, fetchSize = fetchSize)
-        } else if (!in.hasFetchSize && in.hasMaxRows) {
-          val maxRows = in.getMaxRows.getValue
-          mbService.interactiveQuery(token, sessionId, sqls, maxRows = maxRows)
-        } else {
-          mbService.interactiveQuery(token, sessionId, sqls)
-        }
-        val protoResultData = {
-          outbound.data match {
-            case None => null
-            case Some(resultData) =>
-              val protoData = ProtoOutboundMessageBuilder.protoData(resultData.data, resultData.schema)
-              ProtoOutboundMessageBuilder.resultData(resultData.cursor, resultData.schema, protoData, resultData.hasNext)
-          }
-        }
-        val toResp = ProtoOutboundMessageBuilder.interactiveQueryOutbound(outbound.error.orNull, protoResultData)
-        ProtoMessage.newBuilder().setMessageId(message.getMessageId).setInteractiveQueryOutbound(toResp).build()
-      }
-      else if (message.hasInteractiveNextResultInbound) {
-        val in = message.getInteractiveNextResultInbound
-        val token = channelToToken.get(channel)
-        val sessionId = Option(channelToSessionId.get(channel)).getOrElse(in.getSessionId)
-        val outbound = mbService.interactiveNextResult(token, sessionId)
-        logInfo(s"NextResult_query(SessionId=$sessionId) completed: " + prettyError(outbound.error))
-        val protoResultData = {
-          outbound.data match {
-            case None => null
-            case Some(resultData) =>
-              val protoData = ProtoOutboundMessageBuilder.protoData(resultData.data, resultData.schema)
-              ProtoOutboundMessageBuilder.resultData(resultData.cursor, resultData.schema, protoData, resultData.hasNext)
-          }
-        }
-        val toResp = ProtoOutboundMessageBuilder.interactiveNextResultOutbound(outbound.error.orNull, protoResultData)
-        ProtoMessage.newBuilder().setMessageId(message.getMessageId).setInteractiveNextResultOutbound(toResp).build()
-      }
-      else if (message.hasBatchQueryInbound) {
-        val in = message.getBatchQueryInbound
-        val token = Option(channelToToken.get(channel)).getOrElse(in.getToken)
-        val username = mbService.decodeToken(token)
-        val sqls = in.getSqlList
-        val config = in.getConfig
-        val outbound = mbService.batchQuery(token, sqls.asScala, config)
-        logInfo(s"User($username, token=$token) batch query completed: " + prettyError(outbound.error))
-        val toResp = ProtoOutboundMessageBuilder.batchQueryOutbound(outbound.jobId.orNull, outbound.error.orNull)
-        ProtoMessage.newBuilder().setBatchQueryOutbound(toResp).build()
-      } else if (message.hasBatchQueryProgressInbound){
-        val in = message.getBatchQueryProgressInbound
-        val token = Option(channelToToken.get(channel)).getOrElse(in.getToken)
-        val username = mbService.decodeToken(token)
-        val jobId = in.getJobId
-        val outbound = mbService.batchQueryProgress(token, jobId)
-        logInfo(s"User($username, jobId=$jobId, token=$token) batch query progress request completed: message=${outbound.message}, state=${outbound.state.orNull}")
-        val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(outbound.message, outbound.state.orNull)
-        ProtoMessage.newBuilder().setBatchQueryProgressOutbound(toResp).build()
-      } else if (message.hasCancelQueryInbound) {
-        val in = message.getCancelQueryInbound
-        val token = Option(channelToToken.get(channel)).getOrElse(in.getToken)
-        val sessionId = Option(channelToSessionId.get(channel)).getOrElse(in.getSessionId)
-        val username = mbService.decodeToken(token)
-        val error = (in.getJobId, in.getSessionId) match {
-          case (jId: String, _) if jId != "" => mbService.batchQueryCancel(token, jId).error
-          case (_, sId: String) if sId != "" => mbService.interactiveQueryCancel(token, sId).error
-          case (jId, sId) =>
-            logWarning(s"Received invalid cancel query message: JobId=$jId, SessionId=$sId")
-            Some("Invalid cancel query message, do nothing.")
-        }
-        logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(error))
-        val toResp = ProtoOutboundMessageBuilder.cancelQueryOutbound(error.orNull)
-        ProtoMessage.newBuilder().setMessageId(messageId).setCancelQueryOutbound(toResp).build()
-      } else {
-        logWarning(s"Received unsupported message type: $message, do noting!")
-        ProtoMessage.newBuilder().setMessageId(messageId).build()
-      }
+    if (message.hasLoginInbound) {
+      handleLogin(ctx, message.getLoginInbound, messageId)
+    } else if (message.hasLogoutInbound) {
+      handleLogout(ctx, message.getLogoutInbound, messageId)
+    } else if (message.hasOpenSessionInbound) {
+      handleOpenSession(ctx, message.getOpenSessionInbound, messageId)
+    } else if (message.hasCloseSessionInbound) {
+      handleCloseSession(ctx, message.getCloseSessionInbound, messageId)
+    } else if (message.hasInteractiveQueryInbound) {
+      handleInteractiveQuery(ctx, message.getInteractiveQueryInbound, messageId)
+    } else if (message.hasInteractiveNextResultInbound) {
+      handleNextResult(ctx, message.getInteractiveNextResultInbound, messageId)
+    } else if (message.hasBatchQueryInbound) {
+      handleBatchQuery(ctx, message.getBatchQueryInbound, messageId)
+    } else if (message.hasBatchQueryProgressInbound) {
+      handleBatchProgress(ctx, message.getBatchQueryProgressInbound, messageId)
+    } else if (message.hasInteractiveQueryCancelInbound) {
+      handleInteractiveCancel(ctx, message.getInteractiveQueryCancelInbound, messageId)
+    } else if (message.hasBatchQueryCancelInbound) {
+      handleBatchCancel(ctx, message.getBatchQueryCancelInbound, messageId)
+    } else {
+      val errorMessage = s"Received unsupported message: $message, drop it!"
+      logWarning(errorMessage)
+      val message1: ProtoMessage =
+        protobuf.ProtoMessage.newBuilder()
+          .setMessageId(messageId)
+          .setInternalError(protobuf.InternalError.newBuilder().setError(errorMessage))
+          .build()
+      ctx.writeAndFlush(message1)
     }
-    ctx.writeAndFlush(result)
+  }
+
+  private def handleLogin(ctx: ChannelHandlerContext, inbound: protobuf.LoginInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val username = inbound.getUesername
+    val password = inbound.getPassword
+
+    Future(mbService.login(username, password)) onComplete {
+      case Success(LoginOutbound(token, error)) => loginResponse(token, error)
+      case Failure(e) => loginResponse(None, Some(e.getMessage))
+    }
+
+    def loginResponse(token: Option[String], error: Option[String]): Unit = {
+      logInfo(s"User($username) login completed: " + prettyError(error))
+      token.foreach(t => channelToToken.put(ctx.channel(), t))
+      val toResp = ProtoOutboundMessageBuilder.loginOutbound(token.orNull, error.orNull)
+      val resp = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setLoginOutbound(toResp).build()
+      ctx.writeAndFlush(resp)
+    }
+  }
+  
+  private def handleLogout(ctx: ChannelHandlerContext, inbound: protobuf.LogoutInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
+    val username = mbService.decodeToken(token)
+
+    Future(mbService.logout(token)) onComplete {
+      case Success(LogoutOutbound(error)) => logoutResponse(error)
+      case Failure(e) => logoutResponse(Some(e.getMessage))
+    }
+
+    def logoutResponse(error: Option[String]): Unit = {
+      logInfo(s"User($username), Token($token) logout completed: " + prettyError(error))
+      val toResp = ProtoOutboundMessageBuilder.logoutOutbound(error.orNull)
+      val resp = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setLogoutOutbound(toResp).build()
+      ctx.writeAndFlush(resp)
+    }
+  }
+
+  private def handleOpenSession(ctx: ChannelHandlerContext, inbound: protobuf.OpenSessionInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val database = inbound.getDatabase
+    val isLocal = inbound.getIsLocal
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
+    val username = mbService.decodeToken(token)
+
+    Future(mbService.openSession(token, Some(database), isLocal)) onComplete {
+      case Success(OpenSessionOutbound(sessionId, workerHost, workerPort, error)) => openSessionResponse(sessionId, workerHost, workerPort, error)
+      case Failure(e) => openSessionResponse(None, None, None, Some(e.getMessage))
+    }
+
+    def openSessionResponse(sessionId: Option[String], workerHost: Option[String], workerPort: Option[Int], error: Option[String]): Unit = {
+      logInfo(s"User($username), Token($token) open session completed: " + prettyError(error))
+      sessionId.foreach(s => channelToSessionId.put(ctx.channel(), s))
+      val toResp = ProtoOutboundMessageBuilder.openSessionOutbound(sessionId.orNull, workerHost, workerPort, error.orNull)
+      val resp: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setOpenSessionOutbound(toResp).build()
+      ctx.writeAndFlush(resp)
+    }
+  }
+  
+  private def handleCloseSession(ctx: ChannelHandlerContext, inbound: protobuf.CloseSessionInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
+    val sessionId = Option(channelToSessionId.get(ctx.channel())).getOrElse(inbound.getSessionId)
+    
+    Future(mbService.closeSession(token, sessionId)) onComplete {
+      case Success(CloseSessionOutbound(error)) => closeSessionResponse(error)
+      case Failure(e) => closeSessionResponse(Some(e.getMessage))
+    }
+    
+    def closeSessionResponse(error: Option[String]): Unit = {
+      logInfo(s"Token($token), SessionId($sessionId) close session completed: " + prettyError(error))
+      val toResp = ProtoOutboundMessageBuilder.closeSessionOutbound(error.orNull)
+      val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setCloseSessionOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
+  }
+  
+  private def handleInteractiveQuery(ctx: ChannelHandlerContext, in: protobuf.InteractiveQueryInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val sessionId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getSessionId)
+    val sqls = in.getSqlList.asScala.toList
+
+    Future(
+      if (in.hasFetchSize && in.hasMaxRows) {
+        val fetchSize = in.getFetchSize.getValue
+        val maxRows = in.getMaxRows.getValue
+        mbService.interactiveQuery(token, sessionId, sqls, fetchSize, maxRows)
+      } else if (in.hasFetchSize && !in.hasMaxRows) {
+        val fetchSize = in.getFetchSize.getValue
+        mbService.interactiveQuery(token, sessionId, sqls, fetchSize = fetchSize)
+      } else if (!in.hasFetchSize && in.hasMaxRows) {
+        val maxRows = in.getMaxRows.getValue
+        mbService.interactiveQuery(token, sessionId, sqls, maxRows = maxRows)
+      } else {
+        mbService.interactiveQuery(token, sessionId, sqls)
+      }) onComplete {
+      case Success(InteractiveQueryOutbound(error, data)) => interactiveResponse(error, data)
+      case Failure(e) => interactiveResponse(Some(e.getMessage), None)
+    }
+    
+    def interactiveResponse(error: Option[String], data: Option[ResultData]): Unit = {
+      val protoResultData: Option[protobuf.ResultData] = data.map { resultData =>
+        val protoData = ProtoOutboundMessageBuilder.protoData(resultData.data, resultData.schema)
+        ProtoOutboundMessageBuilder.resultData(resultData.cursor, resultData.schema, protoData, resultData.hasNext)
+      }
+      val toResp = ProtoOutboundMessageBuilder.interactiveQueryOutbound(error.orNull, protoResultData.orNull)
+      val message = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveQueryOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
+  }
+
+  private def handleNextResult(ctx: ChannelHandlerContext, in: protobuf.InteractiveNextResultInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = channelToToken.get(ctx.channel())
+    val sessionId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getSessionId)
+
+    Future(mbService.interactiveNextResult(token, sessionId)) onComplete {
+      case Success(InteractiveNextResultOutbound(error, data)) => nextResultResponse(error, data)
+      case Failure(e) => nextResultResponse(Some(e.getMessage), None)
+    }
+
+    def nextResultResponse(error: Option[String], data: Option[ResultData]): Unit = {
+      logInfo(s"NextResult_query(SessionId=$sessionId) completed: " + prettyError(error))
+      val protoResultData: Option[protobuf.ResultData] = data.map { resultData =>
+        val protoData = ProtoOutboundMessageBuilder.protoData(resultData.data, resultData.schema)
+        ProtoOutboundMessageBuilder.resultData(resultData.cursor, resultData.schema, protoData, resultData.hasNext)
+      }
+      val toResp = ProtoOutboundMessageBuilder.interactiveNextResultOutbound(error.orNull, protoResultData.orNull)
+      val message = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveNextResultOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
+  }
+
+  private def handleBatchQuery(ctx: ChannelHandlerContext, in: protobuf.BatchQueryInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val username = mbService.decodeToken(token)
+    val sqls = in.getSqlList
+    val config = in.getConfig
+
+    Future(mbService.batchQuery(token, sqls.asScala, config)) onComplete {
+      case Success(BatchQueryOutbound(jobId, error)) => batchQueryResponse(jobId, error)
+      case Failure(e) => batchQueryResponse(None, Some(e.getMessage))
+    }
+
+    def batchQueryResponse(jobId: Option[String], error: Option[String]): Unit = {
+      logInfo(s"User($username, token=$token) batch query completed: " + prettyError(error))
+      val toResp = ProtoOutboundMessageBuilder.batchQueryOutbound(jobId.orNull, error.orNull)
+      val message = protobuf.ProtoMessage.newBuilder().setBatchQueryOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
+  }
+
+  private def handleBatchProgress(ctx: ChannelHandlerContext, in: protobuf.BatchQueryProgressInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val username = mbService.decodeToken(token)
+    val jobId = in.getJobId
+
+    Future(mbService.batchQueryProgress(token, jobId)) onComplete {
+      case Success(BatchQueryProgressOutbound(message, state)) => batchProgressResponse(message, state)
+      case Failure(exception) => batchProgressResponse(exception.getMessage, None)
+    }
+
+    def batchProgressResponse(message: String, state: Option[String]): Unit = {
+      logInfo(s"User($username, jobId=$jobId, token=$token) batch query progress request completed: message=$message, state=${state.orNull}")
+      val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(message, state.orNull)
+      val message1: ProtoMessage = protobuf.ProtoMessage.newBuilder().setBatchQueryProgressOutbound(toResp).build()
+      ctx.writeAndFlush(message1)
+    }
+  }
+
+  private def handleInteractiveCancel(ctx: ChannelHandlerContext, in: protobuf.InteractiveQueryCancelInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val sessionId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getSessionId)
+    val username = mbService.decodeToken(token)
+
+    Future(mbService.interactiveQueryCancel(token, sessionId)) onComplete {
+      case Success(CancelQueryOutbound(error)) => interactiveCancelResponse(error)
+      case Failure(exception) => interactiveCancelResponse(Some(exception.getMessage))
+    }
+
+    def interactiveCancelResponse(error: Option[String]): Unit = {
+      logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(error))
+      val toResp = ProtoOutboundMessageBuilder.interactiveQueryCancelOutbound(error.orNull)
+      val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveQueryCancelOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
+  }
+
+  private def handleBatchCancel(ctx: ChannelHandlerContext, in: protobuf.BatchQueryCancelInbound, messageId: Long): Unit = {
+    implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
+    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val jobId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getJobId)
+    val username = mbService.decodeToken(token)
+
+    Future(mbService.batchQueryCancel(token, jobId)) onComplete {
+      case Success(CancelQueryOutbound(error)) => batchCancelResponse(error)
+      case Failure(exception) => batchCancelResponse(Some(exception.getMessage))
+    }
+
+    def batchCancelResponse(error: Option[String]): Unit = {
+      logInfo(s"User($username, token=$token, JobId=$jobId) query cancel completed: " + prettyError(error))
+      val toResp = ProtoOutboundMessageBuilder.batchQueryCancelOutbound(error.orNull)
+      val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setBatchQueryCancelOutbound(toResp).build()
+      ctx.writeAndFlush(message)
+    }
   }
 }

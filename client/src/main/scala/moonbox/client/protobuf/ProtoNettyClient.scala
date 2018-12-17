@@ -209,12 +209,12 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
 
   override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, timeout: Int): MoonboxRowSet = {
     val outbound = query(token, sessionId, sqls, fetchSize, timeout = timeout)
-    toMoonboxRowSet(token, sessionId, fetchSize, outbound, timeout)
+    toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
   override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long, timeout: Int): MoonboxRowSet = {
     val outbound = query(token, sessionId, sqls, fetchSize, maxRows, timeout)
-    toMoonboxRowSet(token, sessionId, fetchSize, outbound, timeout)
+    toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
   override def batchQuery(token: String, sqls: Seq[String], config: String): String = {
@@ -245,18 +245,35 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       JobState(out.getMessage, out.getState)
     } else throw new Exception(s"Unknown message: $resp")
   }
-  override def cancelQuery(token: String, jobId: String, sessionId: String): Boolean = {
+
+  override def cancelInteractiveQuery(token: String, sessionId: String): Boolean = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setCancelQueryInbound(ProtoInboundMessageBuilder.cancelQueryInbound(token, jobId, sessionId))
+      .setInteractiveQueryCancelInbound(ProtoInboundMessageBuilder.interactiveQueryCancelInbound(token, sessionId))
       .build()
     val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
-    if (resp.hasCancelQueryOutbound) {
-      val out = resp.getCancelQueryOutbound
+    if (resp.hasInteractiveQueryCancelOutbound) {
+      val out = resp.getInteractiveQueryCancelOutbound
       out.getError match {
         case "" | null => true
-        case error => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, JobId=$jobId, SessionId=$sessionId")
+        case error => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
+      }
+    } else throw new Exception(s"Unknown message: $resp")
+  }
+
+  override def cancelBatchQuery(token: String, jobId: String): Boolean = {
+    checkConnected()
+    val msg = ProtoMessage.newBuilder()
+      .setMessageId(genMessageId)
+      .setBatchQueryCancelInbound(ProtoInboundMessageBuilder.batchQueryCancelInbound(token, jobId))
+      .build()
+    val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
+    if (resp.hasBatchQueryCancelOutbound) {
+      val out = resp.getBatchQueryCancelOutbound
+      out.getError match {
+        case "" | null => true
+        case error => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, SessionId=$jobId")
       }
     } else throw new Exception(s"Unknown message: $resp")
   }
@@ -294,12 +311,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     } else throw new Exception(s"Unknown message: $resp")
   }
 
-  private def toMoonboxRowSet(token: String, sessionId: String, fetchSize: Int, outbound: InteractiveQueryOutbound, timeout: Int): MoonboxRowSet = {
-    var resultData: ResultData = {
-      if (outbound.hasResultData) {
-        outbound.getResultData  /* for direct data */
-      } else interactiveNextResult(token, sessionId, timeout) /* for query sqls */
+  private def toMoonboxRowSet(token: String, sessionId: String, outbound: InteractiveQueryOutbound, timeout: Int): MoonboxRowSet = {
+    if (!outbound.hasResultData) {
+      return new MoonboxRowSet()
     }
+    var resultData: ResultData = outbound.getResultData
     val schema = resultData.getSchema
     val dataTypeSchema = schemaToDataType(schema)
     val rowIterator = new Iterator[MoonboxRow] {

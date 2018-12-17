@@ -82,6 +82,7 @@ trait MoonboxClient {
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, maxRows: Long, milliseconds: Int): MoonboxRowSet
   def cancelInteractiveQuery(): Boolean
+  def cancelBatchQuery(jobId: String): Boolean
 
   /** batch query related */
   def submitJob(jobSql: Seq[String], config: java.util.Map[String, String]): String  /* return jobId */

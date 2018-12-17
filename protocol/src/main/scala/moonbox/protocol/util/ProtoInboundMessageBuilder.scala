@@ -67,15 +67,18 @@ object ProtoInboundMessageBuilder {
       .build()
   }
 
-  def cancelQueryInbound(token: String, jobId: String, sessionId: String): CancelQueryInbound = {
-    val builder = CancelQueryInbound.newBuilder()
+  def interactiveQueryCancelInbound(token: String, sessionId: String): InteractiveQueryCancelInbound = {
+    InteractiveQueryCancelInbound.newBuilder()
       .setToken(token)
-    if (sessionId != null) {
-      builder.setSessionId(sessionId)
-    } else if (jobId != null) {
-      builder.setJobId(jobId)
-    }
-    builder.build()
+      .setSessionId(sessionId)
+      .build()
+  }
+
+  def batchQueryCancelInbound(token: String, jobId: String): BatchQueryCancelInbound = {
+    BatchQueryCancelInbound.newBuilder()
+      .setToken(token)
+      .setJobId(jobId)
+      .build()
   }
 
 }

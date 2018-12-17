@@ -20,7 +20,6 @@
 
 package moonbox.repl
 
-import java.io.{OutputStream, OutputStreamWriter, PrintWriter}
 import java.util.Locale
 
 import moonbox.client.exception.BackendException
@@ -166,7 +165,11 @@ object Main {
         case _: UserInterruptException =>
           if (client != null) {
             Console.println("Query canceling ... ")
-            client.cancelInteractiveQuery()
+            try {
+              client.cancelInteractiveQuery()
+            } catch {
+              case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
+            }
           }
         case e: Exception => Console.err.println(s"MQL process error: ${e.getMessage}")
       }
@@ -267,7 +270,7 @@ object Main {
       /* show result */
       val dataToShow = result.toSeq.map(_.toSeq)
       val schema = result.parsedSchema.map(_._1)
-      print(Utils.stringToShow(dataToShow, schema))
+      print(Utils.stringToShow(dataToShow, schema, maxRowsToShow))
     } catch {
       case e: BackendException =>
         Console.err.println(s"Sql query error: ${e.message}")

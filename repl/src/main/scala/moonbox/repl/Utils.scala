@@ -115,7 +115,7 @@ object Utils {
     *
     * @param _data    rows of table
     * @param schema   a sequence of column names
-    * @param _numRows default is 500, denotes the max number of rows to show
+    * @param _numRows default is 1000, denotes the max number of rows to show
     * @param truncate 0 denotes not truncating
     * @return
     */

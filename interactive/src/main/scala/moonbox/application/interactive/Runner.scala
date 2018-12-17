@@ -5,8 +5,11 @@ import moonbox.core._
 import moonbox.core.command.{CreateTempView, InsertInto, MQLQuery, MbRunnableCommand}
 import moonbox.core.datasys.{DataSystem, DataTable}
 import moonbox.protocol.client.ResultData
+import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.optimizer.WholePushdown
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
+
+import scala.collection.mutable.ArrayBuffer
 
 class Runner(
 	sessionId: String,
@@ -31,10 +34,10 @@ class Runner(
 				DirectResult(runnable.outputSchema, result.map(_.toSeq))
 			case createTempView@CreateTempView(table, query, isCache, replaceIfExists) =>
 				doCreateTempView(table, query, isCache, replaceIfExists)
-				IndirectResult()
+				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case insert@InsertInto(MbTableIdentifier(table, db), query, colNames, overwrite) =>
 				doInsert(table, db, query, colNames, overwrite)
-				IndirectResult()
+				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case query@MQLQuery(sql) =>
 				doMqlQuery(sql)
 			case other =>
@@ -54,11 +57,9 @@ class Runner(
 				case WholePushdown(child, queryable) =>
 					val dataTable = mbSession.toDT(child, queryable)
 					initCurrentData(dataTable)
-					DirectResult(dataTable.schema.json, Seq.empty, hasMore = true)
 				case plan =>
 					val dataFrame = mbSession.toDF(plan)
 					initCurrentData(dataFrame)
-					DirectResult(dataFrame.schema.json, Seq.empty, hasMore = true)
 			}
 		} catch {
 			case e: ColumnSelectPrivilegeException =>
@@ -70,7 +71,6 @@ class Runner(
 				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
 				val dataFrame = mbSession.toDF(plan)
 				initCurrentData(dataFrame)
-				DirectResult(dataFrame.schema.json, Seq.empty, hasMore = true)
 		}
 	}
 
@@ -128,35 +128,43 @@ class Runner(
 		}
 	}
 
-	def fetchData(): Seq[Seq[Any]] = {
-		// TODO: useless
-		Seq.empty[Row].map(_.toSeq)
-	}
-
 	def fetchResultData(): ResultData = {
 		logInfo(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
-		var data: Seq[Seq[Any]] = Seq.empty[Seq[Any]]
+		var data: ArrayBuffer[Seq[Any]] = new ArrayBuffer[Seq[Any]]
 		var rowCount = 0
 		while (currentData.hasNext && currentRowId < maxRows && rowCount < fetchSize) {
-			data :+= currentData.next().toSeq
+			data += currentData.next().toSeq
 			currentRowId += 1
 			rowCount += 1
 		}
 		ResultData(sessionId, currentSchema, data, hasNext)
 	}
 
-	private def initCurrentData(dataTable: DataTable): Unit = {
+	private def initCurrentData(dataTable: DataTable): QueryResult = {
 		currentRowId = 0
 		currentData = dataTable.iter
 		currentSchema = dataTable.schema.json
 		logInfo(s"Initialize current data: schema=$currentSchema")
+
+		if (hasNext) {
+			// TODO:
+			IndirectResult(currentSchema)
+		} else {
+			DirectResult(currentSchema, Seq.empty)
+		}
 	}
 
-	private def initCurrentData(dataFrame: DataFrame): Unit = {
+	private def initCurrentData(dataFrame: DataFrame): QueryResult = {
 		currentRowId = 0
 		currentData = dataFrame.collect().toIterator
 		currentSchema = dataFrame.schema.json
 		logInfo(s"Initialize current data: schema=$currentSchema")
+
+		if (hasNext) {
+			IndirectResult(currentSchema)
+		} else {
+			DirectResult(currentSchema, Seq.empty)
+		}
 	}
 
 	private def hasNext: Boolean = currentData.hasNext && currentRowId < maxRows
