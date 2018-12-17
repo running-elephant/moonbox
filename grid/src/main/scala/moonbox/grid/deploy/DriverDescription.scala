@@ -40,7 +40,7 @@ case class LocalDriverDescription(
 	override def toConf: Map[String, String] = {
 		config.filterKeys(_.startsWith("spark.")) ++ Map(
 			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath(),
-			SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS -> "-Dlog4j.debug=true -Dlog4j.configuration=\"\" -Xdebug -Xrunjdwp:transport=dt_socket,address=8888,server=y,suspend=y"
+			SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS -> "-Dlog4j.debug=true -Dlog4j.configuration=\"\" -Xdebug -Xrunjdwp:transport=dt_socket,address=8888,server=y,suspend=n"
 		)
 	}
 
