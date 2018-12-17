@@ -274,9 +274,11 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunnableCommand with DML {
 
   override def output = {
-    AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
-      AttributeReference("VALUE", StringType, nullable = false)() ::
-      Nil
+	  AttributeReference("Field", StringType, nullable = false)() ::
+	  AttributeReference("Type", StringType, nullable = false)() ::
+	  AttributeReference("Select", StringType, nullable = false)() ::
+	  AttributeReference("Update", StringType, nullable = false)() ::
+	  Nil
   }
 
 	// TODO view
@@ -287,7 +289,16 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 			.getOrElse(ctx.databaseId)
 
 		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
+		val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
+		val columns = privilegeManager.getColumns()
+		val select = privilegeManager.selectable()
+		val update = privilegeManager.updatable()
 
+		val rows = columns.map { col =>
+			Row(col.name, col.dataType, select.contains(col), update.contains(col))
+		}
+		result.append(rows:_*)
+		/*
 		result.append(Row("Table Name", catalogTable.name))
 		result.append(Row("Description", catalogTable.description.getOrElse("No Description.")))
 		//result.append(Row("IsStream", catalogTable.isStream))
@@ -317,7 +328,7 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 		result.append(Row("Delete", deletePrivilege))
 		result.append(Row("Truncate", truncatePrivilege))
 		result.append(Row("Select", selectPrivileges.map(col => (col.name, col.dataType)).mkString(", ")))
-		result.append(Row("Update", updatePrivileges.map(col => (col.name, col.dataType)).mkString(", ")))
+		result.append(Row("Update", updatePrivileges.map(col => (col.name, col.dataType)).mkString(", ")))*/
 		result
 	}
 }
