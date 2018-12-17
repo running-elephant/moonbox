@@ -21,6 +21,7 @@
 package moonbox.grid.timer
 
 import moonbox.common.MbLogging
+import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 import org.quartz.{Job, JobExecutionContext}
 
 class EventJob extends Job with MbLogging {
@@ -28,8 +29,9 @@ class EventJob extends Job with MbLogging {
 		val dataMap = ctx.getMergedJobDataMap
 		val definer = dataMap.getString(EventEntity.DEFINER)
 		val sqls = dataMap.get(EventEntity.SQLS).asInstanceOf[Seq[String]]
-		val func = dataMap.get(EventEntity.FUNC).asInstanceOf[() => Unit]
+		val config = dataMap.getString(EventEntity.CONFIG)
+		val func = dataMap.get(EventEntity.HANDLER).asInstanceOf[EventHandler]
 		logInfo(s"""Timed event fire as user '$definer' run sqls (${sqls.mkString(", ")})""")
-		func()
+		func(definer, sqls, config)
 	}
 }

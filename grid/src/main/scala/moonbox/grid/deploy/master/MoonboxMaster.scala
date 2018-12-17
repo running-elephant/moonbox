@@ -19,6 +19,7 @@ import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.thrift.ThriftServer
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
+import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
 
 import scala.collection.JavaConverters._
@@ -26,6 +27,7 @@ import scala.concurrent.duration._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.{Failure, Random, Success}
 
 class MoonboxMaster(
@@ -124,7 +126,11 @@ class MoonboxMaster(
 		// start timer
 		try {
 			if (conf.get(TIMER_SERVICE_ENABLE)) {
-				timedEventService = new TimedEventServiceImpl(conf)
+				timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
+					override def apply(user: String, sqls: Seq[String], config: String): Unit = {
+						self ! JobSubmit(user, sqls, config)
+					}
+				})
 			}
 		} catch {
 			case e: Exception =>
@@ -498,6 +504,50 @@ class MoonboxMaster(
 					requester ! InteractiveJobCancelResponse(success = false, s"Session $sessionId lost in master.")
 			}
 
+		case RegisterTimedEvent(event) =>
+			val requester = sender()
+			Future {
+				if (checkTimedService()) {
+					if (!timedEventService.timedEventExists(event.group, event.name)) {
+						timedEventService.addTimedEvent(event)
+						logInfo(s"Register time event: ${event.name}, ${event.cronExpr}, ${event.sqls}.")
+						RegisteredTimedEvent(self)
+					} else {
+						val message = s"Timed event ${event.name} already exists."
+						logWarning(message)
+						RegisterTimedEventFailed(message)
+					}
+				} else {
+					val message = s"Timer is out of service."
+					logWarning(s"Try to register timed event ${event.name}," + message)
+					RegisterTimedEventFailed(message)
+				}
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! RegisterTimedEventFailed(e.getMessage)
+			}
+
+		case UnregisterTimedEvent(group, name) =>
+			val requester = sender()
+			Future {
+				if (checkTimedService()) {
+					timedEventService.deleteTimedEvent(group, name)
+					logInfo(s"Unregistered timed event $name.")
+					UnregisteredTimedEvent(self)
+				} else {
+					val message = s"Timer is out of service."
+					logWarning(s"Try to disable timed event $name," + message)
+					UnregisterTimedEventFailed(message)
+				}
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! UnregisterTimedEventFailed(e.getMessage)
+			}
+
 		case e => println(e)
 	}
 
@@ -694,6 +744,12 @@ class MoonboxMaster(
 			case None =>
 				logWarning(s"Asked to remove unknown driver: $driverId")
 		}
+	}
+
+	private def checkTimedService(): Boolean = {
+		if (conf.get(TIMER_SERVICE_ENABLE) && timedEventService != null) {
+			true
+		} else false
 	}
 
 	override def electedLeader(): Unit = {

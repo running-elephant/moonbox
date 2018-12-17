@@ -115,7 +115,7 @@ class Main(
 
 		case open @ OpenSession(username, database, _) =>
 			val sessionId = newSessionId
-			val runner = new Runner(sessionId, username, database, MbSession.getMbSession(conf))
+			val runner = new Runner(sessionId, username, database, MbSession.getMbSession(conf), self)
 			sessionIdToRunner.put(sessionId, runner)
 			logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
 			// TODO data server port
@@ -183,6 +183,22 @@ class Main(
 					sender() ! InteractiveJobCancelResponse(success = false, msg)
 			}
 
+		case event: RegisterTimedEvent =>
+			if (master.isDefined) {
+				master.foreach(_ forward event)
+			} else {
+				val message = s"Enable TimedEvent ${event.event.name} failed. Don't know master's address."
+				logWarning(message)
+				sender() ! RegisterTimedEventFailed(message)
+			}
+		case event: UnregisterTimedEvent =>
+			if (master.isDefined) {
+				master.foreach(_ forward event)
+			} else {
+				val message = s"Disable TimedEvent ${event.name} failed. Don't know master's address."
+				logWarning(message)
+				sender() ! UnregisterTimedEventFailed(message)
+			}
 		case e =>
 			logWarning(s"Unknown message received: $e")
 	}

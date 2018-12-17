@@ -21,6 +21,7 @@
 package moonbox.grid.timer
 
 import moonbox.common.MbConf
+import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
@@ -41,7 +42,13 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.user", "root")
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.password", "123456")
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.maxConnections", "10")
-		timedEventService = new TimedEventServiceImpl(conf)
+		timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
+			override def apply(v1: String, v2: Seq[String], v3: String): Unit = {
+				println(v1)
+				println(v2)
+				println(v3)
+			}
+		})
 		timedEventService.start()
 	}
 
@@ -57,10 +64,7 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			definer = "sally",
 			start = None,
 			end = None,
-			desc = None,
-			function = () => {
-				println()
-			}
+			desc = None
 		)
 		)
 		timedEventService.addTimedEvent(EventEntity(
@@ -74,9 +78,7 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			definer = "lee",
 			start = None,
 			end = None,
-			desc = None,
-			function = () => {})
-
+			desc = None)
 		)
 		Thread.sleep(10000)
 		timedEventService.getTimedEvents("group_test").foreach(println)

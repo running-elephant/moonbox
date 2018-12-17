@@ -32,20 +32,22 @@ import org.quartz.Trigger.TriggerState
 import org.quartz._
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.matchers.GroupMatcher
+
 import scala.collection.JavaConversions._
 import moonbox.grid.config._
+import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 
 object TimedEventServiceImpl {
-
+	type EventHandler = Function3[String, Seq[String], String, Unit]
 }
 
-class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLogging {
+class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEventService with MbLogging {
 
 	private val timedScheduler = {
 		val props = new Properties()
-		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.deploy.timer.")))
+		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")))
 		.foreach {
-			case (key, value) => props.put(key.stripPrefix("moonbox.deploy.timer."), value)
+			case (key, value) => props.put(key.stripPrefix("moonbox.timer."), value)
 		}
 		new StdSchedulerFactory(props).getScheduler
 	}
@@ -75,7 +77,7 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 		val jobDataMap = new JobDataMap()
 		jobDataMap.put(EventEntity.DEFINER, event.definer)
 		jobDataMap.put(EventEntity.SQLS, event.sqls)
-		jobDataMap.put(EventEntity.FUNC, event.function)
+		jobDataMap.put(EventEntity.HANDLER, handle)
 		val jobBuilder = JobBuilder.newJob(classOf[EventJob])
 		if (event.desc.isDefined) {
 			jobBuilder.withDescription(event.desc.get)

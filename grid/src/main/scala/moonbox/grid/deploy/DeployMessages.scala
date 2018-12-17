@@ -5,6 +5,7 @@ import java.util.Date
 import akka.actor.{ActorRef, Address}
 import moonbox.grid.deploy.master.ApplicationType
 import moonbox.grid.deploy.master.DriverState.DriverState
+import moonbox.grid.timer.EventEntity
 
 
 sealed trait DeployMessages extends Serializable
@@ -77,5 +78,21 @@ object DeployMessages {
 	case class RegisterApplicationFailed(message: String) extends RegisterApplicationResponse
 
 	case class ApplicationStateResponse(driverId: String) extends DeployMessages
+
+	case class RegisterTimedEvent(event: EventEntity)
+
+	sealed trait RegisterTimedEventResponse
+
+	case class RegisteredTimedEvent(masterRef: ActorRef) extends RegisterTimedEventResponse
+
+	case class RegisterTimedEventFailed(message: String) extends RegisterTimedEventResponse
+
+	case class UnregisterTimedEvent(group: String, name: String)
+
+	sealed trait UnregisterTimedEventResponse
+
+	case class UnregisteredTimedEvent(masterRef: ActorRef) extends UnregisterTimedEventResponse
+
+	case class UnregisterTimedEventFailed(message: String) extends UnregisterTimedEventResponse
 
 }

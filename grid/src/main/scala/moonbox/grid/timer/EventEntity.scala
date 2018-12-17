@@ -23,9 +23,10 @@ package moonbox.grid.timer
 import java.util.Date
 
 object EventEntity {
-	val FUNC = "function"
+	val HANDLER = "handler"
 	val DEFINER = "definer"
 	val SQLS = "sqls"
+	val CONFIG = "config"
 }
 
 case class EventEntity(
@@ -37,6 +38,5 @@ case class EventEntity(
 	definer: String,
 	start: Option[Date],
 	end: Option[Date],
-	desc: Option[String],
-	function: Function0[Unit]
+	desc: Option[String]
 )
