@@ -37,6 +37,7 @@ class TablePrivilegeManager {
 	private var catalogTable: CatalogTable = _
 	private var dbPrivileges: Seq[CatalogDatabasePrivilege] = _
 	private var tablePrivileges: Seq[CatalogTablePrivilege] = _
+	private var columns: Seq[CatalogColumn] = _
 	private var isView: Boolean = _
 
 	def this(mbSession: MbSession, catalogView: CatalogView) = {
@@ -48,6 +49,7 @@ class TablePrivilegeManager {
 			mbSession.userContext.userId, catalogView.databaseId)
 		this.tablePrivileges = mbSession.catalog.getTablePrivilege(
 			mbSession.userContext.userId, catalogView.databaseId, catalogView.name)
+		this.columns = mbSession.schema(catalogView.id.get, catalogView.name, catalogView.cmd)
 	}
 
 	def this(mbSession: MbSession, catalogTable: CatalogTable) = {
@@ -59,8 +61,13 @@ class TablePrivilegeManager {
 			mbSession.userContext.userId, catalogTable.databaseId)
 		this.tablePrivileges = mbSession.catalog.getTablePrivilege(
 			mbSession.userContext.userId, catalogTable.databaseId, catalogTable.name)
+		this.columns = mbSession.schema(catalogTable.databaseId, catalogTable.name)
 	}
 	//val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
+
+	def getColumns() = {
+		this.columns
+	}
 
 	def insertable(): Boolean = {
 		tableLevelPrivilege(InsertPrivilege.NAME)
@@ -160,6 +167,8 @@ object TableInsertPrivilegeChecker {
 	}
 }
 
+
+// TODO
 object ColumnSelectPrivilegeChecker {
 	def intercept(plan: LogicalPlan, mbSession: MbSession): Unit = {
 		val catalogSession = mbSession.userContext
