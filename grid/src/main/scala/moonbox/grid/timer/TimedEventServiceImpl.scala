@@ -43,9 +43,9 @@ class TimedEventServiceImpl(conf: MbConf) extends TimedEventService with MbLoggi
 
 	private val timedScheduler = {
 		val props = new Properties()
-		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")))
+		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.deploy.timer.")))
 		.foreach {
-			case (key, value) => props.put(key.stripPrefix("moonbox.timer."), value)
+			case (key, value) => props.put(key.stripPrefix("moonbox.deploy.timer."), value)
 		}
 		new StdSchedulerFactory(props).getScheduler
 	}

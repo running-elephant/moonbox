@@ -82,22 +82,22 @@ package object config {
 	    .intConf
 	    .createWithDefault(16)
 
-	val TIMER_SERVICE_ENABLE = ConfigBuilder("moonbox.timer.enable")
+	val TIMER_SERVICE_ENABLE = ConfigBuilder("moonbox.deploy.timer.enable")
 	    .booleanConf
 	    .createWithDefault(false)
-	val TIMER_SERVICE_QUARTZ_INSTANCE_NAME = ConfigBuilder("moonbox.timer.org.quartz.scheduler.instanceName")
+	val TIMER_SERVICE_QUARTZ_INSTANCE_NAME = ConfigBuilder("moonbox.deploy.timer.org.quartz.scheduler.instanceName")
 	    .stringConf
 	    .createWithDefault("TimedEventScheduler")
-	val TIMER_SERVICE_QUARTZ_THREAD_COUNT = ConfigBuilder("moonbox.timer.org.quartz.threadPool.threadCount")
+	val TIMER_SERVICE_QUARTZ_THREAD_COUNT = ConfigBuilder("moonbox.deploy.timer.org.quartz.threadPool.threadCount")
 	    .intConf
 	    .createWithDefault(3)
-	val TIMER_SERVICE_QUARTZ_SKIP_UPDATE_CHECK = ConfigBuilder("moonbox.timer.org.quartz.scheduler.skipUpdateCheck")
+	val TIMER_SERVICE_QUARTZ_SKIP_UPDATE_CHECK = ConfigBuilder("moonbox.deploy.timer.org.quartz.scheduler.skipUpdateCheck")
 	    .booleanConf
 	    .createWithDefault(true)
-	val TIMER_SERVICE_QUARTZ_MISFIRE_THRESHOLD = ConfigBuilder("moonbox.timer.org.quartz.jobStore.misfireThreshold")
+	val TIMER_SERVICE_QUARTZ_MISFIRE_THRESHOLD = ConfigBuilder("moonbox.deploy.timer.org.quartz.jobStore.misfireThreshold")
 	    .intConf
 	    .createWithDefault(3000)
-	val TIMER_SERVICE_QUARTZ_JOBSTORE_CLASS = ConfigBuilder("moonbox.timer.org.quartz.jobStore.class")
+	val TIMER_SERVICE_QUARTZ_JOBSTORE_CLASS = ConfigBuilder("moonbox.deploy.timer.org.quartz.jobStore.class")
 	    .stringConf
 	    .createWithDefault("org.quartz.simpl.RAMJobStore")
 
