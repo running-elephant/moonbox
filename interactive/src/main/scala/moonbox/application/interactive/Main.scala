@@ -150,12 +150,13 @@ class Main(
 									requester ! JobQueryResponse(success = true, schema = SchemaUtil.emptyJsonSchema, data = Seq.empty, hasNext = false, message = "")
 							}
 						case Failure(e) =>
+							val errorMessage = Option(e.getMessage).getOrElse(e.getStackTrace.mkString("\n"))
 							requester ! JobQueryResponse(
 								success = false,
 								schema = "",
 								data = Seq.empty,
 								hasNext = false,
-								message = e.getMessage
+								message = errorMessage
 							)
 					}
 
