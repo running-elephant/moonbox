@@ -26,10 +26,10 @@ import moonbox.client.entity.MoonboxRowSet
 
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
-  private var fetchSize = 0  /* zero means no limitation */
+  private var fetchSize = 1000  /* zero means no limitation */
   private var queryTimeout = 0  /* time unit: ms */
   private var maxFieldSize: Int = 0
-  private var maxRows: Int = 0
+  private var maxRows: Int = Int.MaxValue
   private var closed: Boolean = false
   private var isResultSet: Boolean = true
   private var canceled: Boolean = false
@@ -46,7 +46,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   private def client: MoonboxClient = connection.getSession.moonboxClient
   private def interactiveQuery(sqls: Seq[String]): MoonboxRowSet = {
     checkClosed()
-    client.interactiveQuery(sqls, getFetchSize, queryTimeout)
+    client.interactiveQuery(sqls, getFetchSize, getMaxRows, queryTimeout)
   }
   override def executeQuery(sql: String): ResultSet = {
     canceled = false
@@ -56,7 +56,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
       resultSet = new MoonboxResultSet(getConnection, this, rowSet)
       resultSet
     } catch {
-      case e: Exception => throw new SQLException(s"Execute query failed: ${e.getCause}")
+      case e: Exception => throw new SQLException(s"Execute query failed: ${e.getMessage}")
     }
   }
   override def executeUpdate(sql: String) = throw new SQLException("Unsupported")
@@ -75,7 +75,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def getMaxRows = maxRows
   override def setMaxRows(max: Int) = {
     if (max < 0) throw new SQLException("maxRows may not less than zero.")
-    maxRows = max
+    if (max != 0) {
+      maxRows = max
+    }
   }
   override def setEscapeProcessing(enable: Boolean) = {}
   override def getQueryTimeout = queryTimeout / 1000
@@ -103,7 +105,8 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     rows match {
       case v: Int if v < 0 => throw new SQLException("FetchSize may not less than zero")
       case v: Int if getMaxRows > 0 && v > getMaxRows => throw new SQLException("fetchSize may not larger than maxRows")
-      case other: Int => fetchSize = other
+      case v: Int if v == 0 => /* no-op */
+      case other => fetchSize = other
     }
   }
   override def getFetchSize = fetchSize
