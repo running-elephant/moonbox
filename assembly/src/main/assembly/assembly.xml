@@ -25,7 +25,7 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
-    <baseDirectory>moonbox</baseDirectory>
+    <baseDirectory>moonbox-${project.version}</baseDirectory>
 
     <fileSets>
         <fileSet>
