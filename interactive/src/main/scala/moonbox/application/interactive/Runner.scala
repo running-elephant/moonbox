@@ -11,7 +11,10 @@ import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.timer.EventEntity
 import moonbox.protocol.client.ResultData
 import moonbox.protocol.util.SchemaUtil
+import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit}
 import org.apache.spark.sql.optimizer.WholePushdown
+import org.apache.spark.sql.types.{IntegerType, LongType}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
 
 import scala.collection.mutable.ArrayBuffer
@@ -135,8 +138,11 @@ class Runner(
 		DirectResult(schema, data)
 	}
 
+	// TODO maxRows
 	private def doMqlQuery(sql: String): QueryResult = {
-		val optimized = mbSession.optimizedPlan(sql)
+		val analyzedPlan = mbSession.analyzedPlan(sql)
+		val limitedPlan = GlobalLimit(Literal(maxRows.toInt, IntegerType), LocalLimit(Literal(maxRows.toInt, IntegerType), analyzedPlan))
+		val optimized = mbSession.optimizedPlan(limitedPlan)
 		try {
 			mbSession.pushdownPlan(optimized) match {
 				case WholePushdown(child, queryable) =>
