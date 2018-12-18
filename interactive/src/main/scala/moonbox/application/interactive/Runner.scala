@@ -38,6 +38,7 @@ class Runner(
 	private var currentData: Iterator[Row] = _
 	private var currentSchema: String = _
 	private var currentRowId: Long = _
+	private var resultData: ArrayBuffer[Seq[Any]] = _
 
 	private implicit var userContext: UserContext = _
 
@@ -46,6 +47,7 @@ class Runner(
 	def query(sqls: Seq[String], fetchSize: Long, maxRows: Long): QueryResult = {
 		this.fetchSize = fetchSize
 		this.maxRows = maxRows
+		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
 		sqls.map(mbSession.parsedPlan).map {
 			case event: CreateTimedEvent =>
 				createTimedEvent(event, manager)
@@ -220,15 +222,17 @@ class Runner(
 	}
 
 	def fetchResultData(): ResultData = {
-		logInfo(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
-		var data: ArrayBuffer[Seq[Any]] = new ArrayBuffer[Seq[Any]]
+		logDebug(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
+		// var data: ArrayBuffer[Seq[Any]] = new ArrayBuffer[Seq[Any]]()
+		resultData.clear()
 		var rowCount = 0
 		while (currentData.hasNext && currentRowId < maxRows && rowCount < fetchSize) {
-			data += currentData.next().toSeq
+			resultData.append(currentData.next().toSeq)
+			// data += currentData.next().toSeq
 			currentRowId += 1
 			rowCount += 1
 		}
-		ResultData(sessionId, currentSchema, data, hasNext)
+		ResultData(sessionId, currentSchema, resultData, hasNext)
 	}
 
 	private def initCurrentData(dataTable: DataTable): QueryResult = {
