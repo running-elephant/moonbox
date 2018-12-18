@@ -41,12 +41,12 @@ object Main {
 
   private var timeout: Int = 60 * 60 // unit: second
   private var islocal: Boolean = true
-  private var host: String = "yan"
+  private var host: String = "localhost"
   private var port: Int = 10010
   private var user: String = _
   private var password: String = _
   private var fetchSize: Int = 1000
-  private var truncate: Int = 50
+  private var truncate: Int = 0
   private var maxRowsToShow: Int = 1000
   private var client: MoonboxClient = _
   private var clientInited: Boolean = _
@@ -58,14 +58,13 @@ object Main {
   private val HISTORY_SIZE: Int = 100
   private val historyMQLs: mutable.Queue[String] = new mutable.Queue[String]()
   private val lineHistory: mutable.Queue[String] = new mutable.Queue[String]()
+  private val mainThread = Thread.currentThread()
   private val handler = new SignalHandler() { //create Ctrl+C handler, NOTE: sun misc handler dose not work
     override def handle(signal: Signal): Unit = {
       if (signal.equals(Signal.INT)) {
         new Thread() {
           override def run() = {
-            if (client != null) {
-              client.cancelInteractiveQuery()
-            }
+            mainThread.interrupt()
           }
         }.start()
       }
@@ -163,15 +162,21 @@ object Main {
         }
       } catch {
         case _: UserInterruptException =>
-          if (client != null) {
-            Console.println("Query canceling ... ")
-            try {
-              client.cancelInteractiveQuery()
-            } catch {
-              case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
-            }
-          }
+          doCancelInteractiveQuery()
+        case _: InterruptedException =>
+          doCancelInteractiveQuery()
         case e: Exception => Console.err.println(s"MQL process error: ${e.getMessage}")
+      }
+    }
+  }
+
+  private def doCancelInteractiveQuery(): Unit = {
+    if (client != null && client.isActive) {
+      Console.println("Query canceling ... ")
+      try {
+        client.cancelInteractiveQuery()
+      } catch {
+        case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
       }
     }
   }
