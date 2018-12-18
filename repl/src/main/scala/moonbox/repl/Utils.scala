@@ -183,8 +183,12 @@ object Utils {
     }
     // For Data that has more than "numRows" records
     if (showPromote){
-      val rowsString = if (numRows == 1) "row" else "rows"
-      sb.append(s"Showing at most top $numRows $rowsString\n")
+      val message = if (data.size < numRows) {
+        s"${data.size} row(s) in set\n"
+      } else {
+        s"showing at most $numRows row(s)\n"
+      }
+      sb.append(message)
     }
     sb.toString()
   }
