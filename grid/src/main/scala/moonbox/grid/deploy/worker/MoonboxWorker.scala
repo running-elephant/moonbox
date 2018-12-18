@@ -48,6 +48,16 @@ class MoonboxWorker(
 		logInfo(s"Running Moonbox version 0.3.0")// TODO
 		logInfo(s"Starting MoonboxWorker at ${self.path.toSerializationFormatWithAddress(address)}")
 
+		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+			override def run(): Unit = {
+				drivers.values.foreach { driver =>
+					if (!driver.desc.isInstanceOf[ClusterDriverDescription]) {
+						driver.kill()
+					}
+				}
+			}
+		}))
+
 		// launch interactive drivers
 		launchDrivers()
 		registerWithMaster()
@@ -55,11 +65,7 @@ class MoonboxWorker(
 
 	@scala.throws[Exception](classOf[Exception])
 	override def postStop(): Unit = {
-		drivers.values.foreach { driver =>
-			if (!driver.desc.isInstanceOf[ClusterDriverDescription]) {
-				driver.kill()
-			}
-		}
+
 	}
 
 	override def handleMessage: Receive = {
