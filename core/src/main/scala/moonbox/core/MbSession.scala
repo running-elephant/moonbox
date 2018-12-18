@@ -112,6 +112,11 @@ class MbSession(conf: MbConf) extends MbLogging {
 		mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
 	}
 
+	def optimizedPlan(plan: LogicalPlan): LogicalPlan = {
+		checkColumnPrivilege(plan)
+		mixcal.optimizedLogicalPlan(plan)
+	}
+
 	def optimizedPlan(sqlText: String): LogicalPlan = {
 		val analyzedLogicalPlan = analyzedPlan(sqlText)
 		checkColumnPrivilege(analyzedLogicalPlan)
