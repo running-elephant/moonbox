@@ -172,9 +172,11 @@ object Main {
 
   private def doCancelInteractiveQuery(): Unit = {
     if (client != null && client.isActive) {
-      Console.println("Query canceling ... ")
+//      Console.println("Query canceling ... ")
       try {
-        client.cancelInteractiveQuery()
+        if (client.cancelInteractiveQuery()) {
+          println("Cancel successfully.")
+        }
       } catch {
         case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
       }
