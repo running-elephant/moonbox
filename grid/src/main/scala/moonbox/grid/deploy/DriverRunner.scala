@@ -1,6 +1,7 @@
 package moonbox.grid.deploy
 
 
+import java.io.File
 import java.util.Date
 
 import akka.actor.ActorRef
@@ -25,7 +26,10 @@ private[deploy] class DriverRunner(
 			override def run(): Unit = {
 				try {
 					val launcher = new SparkLauncher()
-					//launcher.redirectOutput(new File(System.getProperty("user.dir") + File.separator + driverId + ".log"))
+					// redirect log
+					LaunchUtils.getLogsDirectory.foreach { dir =>
+						launcher.redirectOutput(new File(dir + File.separator + driverId + ".log"))
+					}
 					launcher
 						.setAppName(driverId)
 						.setMaster(desc.master)

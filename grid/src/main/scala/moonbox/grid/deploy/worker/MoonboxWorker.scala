@@ -141,7 +141,7 @@ class MoonboxWorker(
 	}
 
 	private def masterDisconnected(): Unit = {
-		logError("Connection to master failed! Waiting for master to reconnect...")
+		logWarning("Connection to master failed! Waiting for master to reconnect...")
 		connected = false
 		registerWithMaster()
 	}

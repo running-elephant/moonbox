@@ -184,7 +184,7 @@ class MoonboxMaster(
 
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 		// for debug
-		context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
+		/*context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
 			println("=========================================================================")
 			println("idToWorker")
 			println(idToWorker.map { case (_, v) => v}.mkString("\n"))
@@ -206,7 +206,7 @@ class MoonboxMaster(
 			println("--------------------------------------------------------------------------")
 			println("apps")
 			println(apps.map(_.toString).mkString("\n") )
-		}
+		}*/
 	}
 
 	@scala.throws[Exception](classOf[Exception])
@@ -371,13 +371,20 @@ class MoonboxMaster(
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				val driver = createDriver(ClusterDriverDescription(username, sqls, config, conf))
-				persistenceEngine.addDriver(driver)
-				waitingDrivers += driver
-				drivers.add(driver)
-				schedule()
-				sender() ! JobSubmitResponse(Some(driver.id),
-					s"Batch job successfully submitted as ${driver.id}")
+				if (validateUserConfig(config)) {
+					val systemConfig = conf.getAll.filterKeys(_.startsWith("moonbox.deploy")).toSeq.flatMap { case (k, v) => Seq(k, v) }
+					val driver = createDriver(ClusterDriverDescription(username, sqls, config, systemConfig))
+					persistenceEngine.addDriver(driver)
+					waitingDrivers += driver
+					drivers.add(driver)
+					schedule()
+					val msg = s"Batch job successfully submitted as ${driver.id}"
+					logInfo(msg)
+					sender() ! JobSubmitResponse(Some(driver.id), msg)
+				} else {
+					sender() ! JobSubmitResponse(None,
+						s"Batch job submit failed, please check your config.")
+				}
 			}
 
 		case JobProgress(driverId) =>
@@ -707,6 +714,15 @@ class MoonboxMaster(
 		true
 	}
 
+	private def validateUserConfig(config: String): Boolean = {
+		try {
+			ConfigFactory.parseString(config)
+			true
+		} catch {
+			case e: Exception =>
+				false
+		}
+	}
 
 	private def newDriverId(submitDate: Date): String = {
 		val appId = "batch-%s-%04d".format(createDateFormat.format(submitDate), nextBatchDriverNumber)

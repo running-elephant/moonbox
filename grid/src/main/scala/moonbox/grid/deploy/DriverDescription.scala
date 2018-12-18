@@ -1,6 +1,8 @@
 package moonbox.grid.deploy
 
+import com.typesafe.config.ConfigFactory
 import moonbox.common.MbConf
+import moonbox.common.util.Utils
 import moonbox.grid.deploy.worker.LaunchUtils
 import org.apache.spark.launcher.SparkLauncher
 
@@ -90,7 +92,7 @@ case class ClusterDriverDescription(
 	username: String,
 	sqls: Seq[String],
 	userConfig: String,
-	conf: MbConf
+	conf: Seq[String]
 ) extends DriverDescription {
 
 	override def master = "yarn"
@@ -102,18 +104,14 @@ case class ClusterDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(conf.getAll.filterKeys(_.startsWith("moonbox.deploy")) ++
-			Map(
+		conf ++ Map(
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
-		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		).toSeq.flatMap { case (k, v) => Seq(k, v) }
 	}
 
 	override def toConf: Map[String, String] = {
-		Map("spark.hadoop.yarn.resourcemanager.address" -> "172.16.231.133:8032",
-			"spark.yarn.access.namenodes" -> "hdfs://172.16.231.133:8020",
-			"spark.yarn.am.memory" -> "512m"
-		)
+		Utils.typesafeConfig2Map(ConfigFactory.parseString(userConfig))
 	}
 
 	override def appResource: String = {

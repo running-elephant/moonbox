@@ -59,6 +59,16 @@ object LaunchUtils extends MbLogging {
 		}
 	}
 
+	def getLogsDirectory: Option[String] = {
+		val path = getMoonboxHome() + File.separator + "logs"
+		val file = new File(path)
+		if (file.exists()) {
+			Some(file.getAbsolutePath)
+		} else {
+			None
+		}
+	}
+
 	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
 		val path = getMoonboxHome() + File.separator + "runtime"
 		val file = new File(path)
