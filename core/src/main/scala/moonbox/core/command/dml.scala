@@ -281,55 +281,32 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 	  Nil
   }
 
-	// TODO view
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		import mbSession.catalog._
 		val result = new ArrayBuffer[Row]()
 
-		val databaseId = table.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
+		val databaseId = table.database.map(db => getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 
-		val catalogTable = mbSession.catalog.getTable(databaseId, table.table)
-		val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
+		val (columns, manager) = if (viewExists(databaseId, table.table)) {
+			val catalogView = getView(databaseId, table.table)
+			val columns = mbSession.schema(databaseId, catalogView.name, catalogView.cmd)
+			val privilegeManager = new TablePrivilegeManager(mbSession, catalogView)
+			(columns, privilegeManager)
+		} else {
+			val catalogTable = getTable(databaseId, table.table)
+			val columns = mbSession.schema(catalogTable.databaseId, catalogTable.name)
+			val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
+			(columns, privilegeManager)
+		}
 
-		val columns = mbSession.schema(catalogTable.databaseId, catalogTable.name)
-		val select = privilegeManager.selectable()
-		val update = privilegeManager.updatable()
+		val select = manager.selectable()
+		val update = manager.updatable()
 
 		val rows = columns.map { col =>
 			Row(col.name, col.dataType, select.contains(col), update.contains(col))
 		}
 		result.append(rows:_*)
-		/*
-		result.append(Row("Table Name", catalogTable.name))
-		result.append(Row("Description", catalogTable.description.getOrElse("No Description.")))
-		//result.append(Row("IsStream", catalogTable.isStream))
-
-		if (extended) {
-			val properties = if (catalogTable.properties.isEmpty) {
-				""
-			} else {
-				catalogTable.properties.filterNot { case (key, value) =>
-					key.toLowerCase.contains("user") ||
-						key.toLowerCase.contains("username") ||
-						key.toLowerCase.contains("password")
-				}.toSeq.mkString("(", ", ", ")")
-			}
-			result.append(Row("Properties", properties))
-		}
-		val privilegeManager = new TablePrivilegeManager(mbSession, catalogTable)
-
-		val insertPrivilege = privilegeManager.insertable()
-		val deletePrivilege = privilegeManager.deletable()
-		val truncatePrivilege = privilegeManager.truncatable()
-
-		val selectPrivileges = privilegeManager.selectable()
-		val updatePrivileges = privilegeManager.updatable()
-
-		result.append(Row("Insert", insertPrivilege))
-		result.append(Row("Delete", deletePrivilege))
-		result.append(Row("Truncate", truncatePrivilege))
-		result.append(Row("Select", selectPrivileges.map(col => (col.name, col.dataType)).mkString(", ")))
-		result.append(Row("Update", updatePrivileges.map(col => (col.name, col.dataType)).mkString(", ")))*/
 		result
 	}
 }
