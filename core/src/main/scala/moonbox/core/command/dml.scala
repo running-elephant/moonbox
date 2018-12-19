@@ -247,6 +247,28 @@ case class ShowGrants(user: String) extends MbRunnableCommand with DML {
 	}
 }
 
+case class ShowCreateTable(table: MbTableIdentifier) extends MbRunnableCommand with DML {
+
+	override def output: Seq[Attribute] = {
+		AttributeReference("Table", StringType, nullable = false)() ::
+		AttributeReference("Create Table", StringType, nullable = false)() :: Nil
+	}
+
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		import mbSession.catalog._
+		val databaseId = table.database.map(db => getDatabase(ctx.organizationId, db).id.get)
+			.getOrElse(ctx.databaseId)
+		val createTable = if (viewExists(databaseId, table.table)) {
+			val catalogView = getView(databaseId, table.table)
+			catalogView.cmd
+		} else {
+			val catalogTable = getTable(databaseId, table.table)
+			catalogTable.properties.filterKeys(key => !key.contains("password")).mkString("; ")
+		}
+		Seq(Row(table.table, createTable))
+	}
+}
+
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
   override def output = {

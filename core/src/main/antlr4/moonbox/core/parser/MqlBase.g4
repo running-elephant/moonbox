@@ -111,6 +111,7 @@ mql
     | SHOW PROCEDURES (LIKE pattern=STRING)?                                                    # showProcedures
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
     | SHOW GRANTS FOR user=identifier                                                           # showGrants
+    | SHOW CREATE TABLE name=tableIdentifier                                                    # showCreateTable
 
     | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
