@@ -45,9 +45,13 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-launcher_2.11</artifactId>
         </dependency>
-        <dependency>
+        <!--<dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-catalyst_2.11</artifactId>
+        </dependency>-->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
