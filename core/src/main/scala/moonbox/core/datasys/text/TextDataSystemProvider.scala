@@ -18,16 +18,16 @@
  * >>
  */
 
-package moonbox.core.datasys.csv
+package moonbox.core.datasys.text
 
 import moonbox.core.datasys.{DataSystem, DataSystemProvider, DataSystemRegister}
 
-class CsvDataSystemProvider extends DataSystemProvider with DataSystemRegister {
+class TextDataSystemProvider extends DataSystemProvider with DataSystemRegister {
 	override def createDataSystem(parameters: Map[String, String]): DataSystem = {
-		new CsvDataSystem(parameters)
+		new TextDataSystem(parameters)
 	}
 
-	override def shortName(): String = "csv"
+	override def shortName(): String = "text"
 
-	override def dataSource(): String = "csv"
+	override def dataSource(): String = "text"
 }
