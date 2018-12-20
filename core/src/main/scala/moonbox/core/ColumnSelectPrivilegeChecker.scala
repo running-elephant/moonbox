@@ -106,7 +106,7 @@ class TablePrivilegeManager {
 
 	private def columnLevelPrivileges(privilegeType: String): Seq[CatalogColumn] = {
 		if (isView) {
-			val catalogColumns = mbSession.schema(catalogView.id.get, catalogView.name, catalogView.cmd)
+			val catalogColumns = mbSession.schema(catalogView.databaseId, catalogView.name, catalogView.cmd)
 			if (catalogView.createBy == mbSession.userContext.userId || !mbSession.columnPermission) {
 				catalogColumns
 			} else {
