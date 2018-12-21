@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+HOST=`hostname`
 
 function kill_process()
 {
@@ -13,10 +14,10 @@ function kill_process()
         else # 0, 1, 2, 3
             kill ${pre_pid}
         fi
-        echo "stopping $PROCESS_NAME"
+        echo "$HOST: stopping $PROCESS_NAME"
         return 1
     else
-        echo "no $PROCESS_NAME to stop"
+        echo "$HOST: no $PROCESS_NAME to stop"
         return 0
     fi
 }
