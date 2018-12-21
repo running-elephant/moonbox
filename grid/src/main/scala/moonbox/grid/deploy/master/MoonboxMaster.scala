@@ -16,7 +16,6 @@ import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.WorkerState
 import moonbox.grid.deploy.messages.Message._
-import moonbox.grid.deploy.thrift.ThriftServer
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
 import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
@@ -80,9 +79,6 @@ class MoonboxMaster(
 
 	private var tcpServer: Option[TransportServer] = None
 	private var tcpServerBoundPort: Option[Int] = None
-
-	private var odbcServer: Option[ThriftServer] = None
-	private var odbcServerBoundPort: Option[Int] = None
 
 
 	@scala.throws[Exception](classOf[Exception])
@@ -164,24 +160,6 @@ class MoonboxMaster(
 				gracefullyShutdown()
 		}
 
-		// start odbc server if it is enabled
-		try {
-			if (conf.get(ODBC_SERVER_ENABLE)) {
-				val port = conf.get(ODBC_SERVER_PORT)
-				odbcServer = Some(
-					// TODO
-					Class.forName(conf.get(ODBC_SERVER_CLASS))
-						.getDeclaredConstructor(classOf[String], classOf[Int], classOf[MbConf], classOf[MbService])
-						.newInstance(host, new Integer(port), conf, mbService).asInstanceOf[ThriftServer]
-				)
-				odbcServerBoundPort = odbcServer.map(_.start())
-			}
-		} catch {
-			case e: Exception =>
-				logError("Could not start odbc server.", e)
-				gracefullyShutdown()
-		}
-
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 		// for debug
 		/*context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
@@ -213,7 +191,6 @@ class MoonboxMaster(
 	override def postStop(): Unit = {
 		restServer.foreach(_.stop())
 		tcpServer.foreach(_.stop())
-		odbcServer.foreach(_.stop())
 
 		if (timedEventService != null) {
 			timedEventService.stop()
