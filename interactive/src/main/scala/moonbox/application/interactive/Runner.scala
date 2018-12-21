@@ -14,7 +14,7 @@ import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.catalyst.expressions.Literal
 import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit}
 import org.apache.spark.sql.optimizer.WholePushdown
-import org.apache.spark.sql.types.{IntegerType, LongType}
+import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
 
 import scala.collection.mutable.ArrayBuffer
@@ -56,14 +56,14 @@ class Runner(
 			case runnable: MbRunnableCommand =>
 				val result = runnable.run(mbSession)
 				DirectResult(runnable.outputSchema, result.map(_.toSeq))
-			case createTempView@CreateTempView(table, query, isCache, replaceIfExists) =>
-				doCreateTempView(table, query, isCache, replaceIfExists)
+			case CreateTempView(table, query, isCache, replaceIfExists) =>
+				createTempView(table, query, isCache, replaceIfExists)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
-			case insert@InsertInto(MbTableIdentifier(table, db), query, colNames, overwrite) =>
-				doInsert(table, db, query, colNames, overwrite)
+			case InsertInto(MbTableIdentifier(table, db), query, colNames, overwrite) =>
+				insert(table, db, query, colNames, overwrite)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
-			case query@MQLQuery(sql) =>
-				doMqlQuery(sql)
+			case MQLQuery(sql) =>
+				query(sql)
 			case other =>
 				throw new Exception(s"Unsupport command $other")
 		}.last
@@ -141,7 +141,7 @@ class Runner(
 	}
 
 	// TODO maxRows
-	private def doMqlQuery(sql: String): QueryResult = {
+	private def query(sql: String): QueryResult = {
 		val analyzedPlan = mbSession.analyzedPlan(sql)
 		val limitedPlan = GlobalLimit(Literal(maxRows.toInt, IntegerType), LocalLimit(Literal(maxRows.toInt, IntegerType), analyzedPlan))
 		val optimized = mbSession.optimizedPlan(limitedPlan)
@@ -167,24 +167,24 @@ class Runner(
 		}
 	}
 
-	private def doInsert(table: String, db: Option[String], query: String, colNames: Seq[String], overwrite: Boolean): Unit = {
+	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], overwrite: Boolean): Unit = {
 		val sinkCatalogTable = mbSession.getCatalogTable(table, db)
 		val options = sinkCatalogTable.properties
 		val format = DataSystem.lookupDataSource(options("type"))
 		val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(query)
 		try {
-			run(pushdownEnable = true)
+			doInsert(pushdownEnable = true)
 		} catch {
 			case e: TableInsertPrivilegeException =>
 				throw e
 			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
-				run(pushdownEnable = false)
+				doInsert(pushdownEnable = false)
 		}
 
-		def run(pushdownEnable: Boolean): Unit = {
+		def doInsert(pushdownEnable: Boolean): Unit = {
 			val pushdownPlan = {
 				if (pushdownEnable) {
 					mbSession.pushdownPlan(optimized)
@@ -208,7 +208,7 @@ class Runner(
 		}
 	}
 
-	private def doCreateTempView(table: String, query: String, isCache: Boolean, replaceIfExists: Boolean): Unit = {
+	private def createTempView(table: String, query: String, isCache: Boolean, replaceIfExists: Boolean): Unit = {
 		val optimized = mbSession.optimizedPlan(query)
 		val df = mbSession.toDF(optimized)
 		if (isCache) {
