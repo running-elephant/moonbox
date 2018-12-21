@@ -18,7 +18,6 @@
 package org.apache.spark.sql.hive
 
 import scala.collection.JavaConverters._
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.ql.metadata.{Partition => HivePartition}
 import org.apache.hadoop.hive.ql.plan.TableDesc
@@ -26,16 +25,14 @@ import org.apache.hadoop.hive.serde.serdeConstants
 import org.apache.hadoop.hive.serde2.objectinspector._
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils.ObjectInspectorCopyOption
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils
-
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SparkSession, hive}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.metric.SQLMetrics
-import org.apache.spark.sql.hive._
 import org.apache.spark.sql.hive.client.HiveClientImpl
 import org.apache.spark.sql.types.{BooleanType, DataType}
 import org.apache.spark.util.Utils
@@ -91,13 +88,11 @@ case class HiveTableScanExec(
 	// other queries
 	@transient private lazy val hadoopConf = {
 		val c = sparkSession.sessionState.newHadoopConf()
-
 		// add hdfs ha config to hadoopConf
 		relation.tableMeta.properties.filterKeys(key => key.startsWith("spark.hadoop."))
 			.foreach { case (k, v) =>
 				c.set(k, v)
 				c.set(k.stripPrefix("spark.hadoop."), v) }
-
 		// append columns ids and names before broadcast
 		addColumnMetadataToConf(c)
 		c
@@ -210,7 +205,7 @@ case class HiveTableScanExec(
 
 	override lazy val canonicalized: HiveTableScanExec = {
 		val input: AttributeSeq = relation.output
-		HiveTableScanExec(
+		hive.HiveTableScanExec(
 			requestedAttributes.map(QueryPlan.normalizeExprId(_, input)),
 			relation.canonicalized.asInstanceOf[CatalogRelation],
 			QueryPlan.normalizePredicates(partitionPruningPred, input))(sparkSession)

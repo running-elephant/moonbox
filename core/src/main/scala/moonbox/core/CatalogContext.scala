@@ -254,6 +254,7 @@ class CatalogContext(val conf: MbConf) extends MbLogging {
 		if (database.isLogical) {
 			catalog.getTable(databaseId, table)
 		} else {
+			// TODO table exists
 			val datasys = DataSystem.lookupDataSystem(database.properties)
 			CatalogTable(
 				name = table,
