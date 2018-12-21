@@ -30,6 +30,7 @@
         <module>client</module>
         <module>repl</module>
         <module>jdbc</module>
+        <module>thriftserver</module>
 
         <module>external/spark-hbase-connector</module>
         <module>external/spark-presto-connector</module>
@@ -50,6 +51,7 @@
         <module>interactive</module>
 
         <module>assembly</module>
+
 
     </modules>
 
