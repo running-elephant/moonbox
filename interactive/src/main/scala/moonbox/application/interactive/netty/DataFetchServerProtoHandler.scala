@@ -41,9 +41,19 @@ class DataFetchServerProtoHandler(sessionIdToJobRunner: mutable.Map[String, Runn
       // TODO: fetch data from runner
       sessionIdToJobRunner.get(sessionId) match {
         case Some(runner) =>
-          val resultData = runner.fetchResultData()
-          val toResp = ProtoOutboundMessageBuilder.interactiveNextResultOutbound(null, sessionId, resultData.schema, resultData.data, resultData.hasNext)
-          ctx.writeAndFlush(buildProtoMessage(msgId, toResp))
+			val response = try {
+				val resultData = runner.fetchResultData()
+				ProtoOutboundMessageBuilder.interactiveNextResultOutbound(null, sessionId, resultData.schema, resultData.data, resultData.hasNext)
+			} catch {
+				case e: Exception =>
+					val msg = if (e.getMessage != null) {
+						e.getMessage
+					} else {
+						e.getStackTrace.map(_.toString).mkString("\n")
+					}
+					ProtoOutboundMessageBuilder.interactiveNextResultOutbound(msg, null)
+			}
+          ctx.writeAndFlush(buildProtoMessage(msgId, response))
         case None =>
           val errorMsg = s"DataFetch ERROR: Invalid sessionId or session lost, SessionId=$sessionId"
           val toResp = ProtoOutboundMessageBuilder.interactiveNextResultOutbound(errorMsg, null)
