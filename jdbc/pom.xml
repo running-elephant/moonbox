@@ -37,9 +37,9 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <transformers>
+                            <!--<transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
+                            </transformers>-->
                             <artifactSet>
                                 <excludes>
                                     <exclude>org.scalatest:scalatest_2.11</exclude>
