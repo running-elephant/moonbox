@@ -33,8 +33,8 @@ class Runner(
 	private implicit val askTimeout = Timeout(new FiniteDuration(10, SECONDS))
 	private val awaitTimeout = new FiniteDuration(10, SECONDS)
 
-	private var fetchSize: Long = _
-	private var maxRows: Long = _
+	private var fetchSize: Int = _
+	private var maxRows: Int = _
 	private var currentData: Iterator[Row] = _
 	private var currentSchema: String = _
 	private var currentRowId: Long = _
@@ -44,9 +44,9 @@ class Runner(
 
 	init()
 
-	def query(sqls: Seq[String], fetchSize: Long, maxRows: Long): QueryResult = {
+	def query(sqls: Seq[String], fetchSize: Int, maxRows: Int): QueryResult = {
 		this.fetchSize = fetchSize
-		this.maxRows = maxRows
+		this.maxRows = if (maxRows == Int.MinValue) { 10000 } else maxRows
 		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
 		sqls.map(mbSession.parsedPlan).map {
 			case event: CreateTimedEvent =>
@@ -143,7 +143,7 @@ class Runner(
 	// TODO maxRows
 	private def query(sql: String): QueryResult = {
 		val analyzedPlan = mbSession.analyzedPlan(sql)
-		val limitedPlan = GlobalLimit(Literal(maxRows.toInt, IntegerType), LocalLimit(Literal(maxRows.toInt, IntegerType), analyzedPlan))
+		val limitedPlan = GlobalLimit(Literal(maxRows, IntegerType), LocalLimit(Literal(maxRows, IntegerType), analyzedPlan))
 		val optimized = mbSession.optimizedPlan(limitedPlan)
 		try {
 			mbSession.pushdownPlan(optimized) match {
