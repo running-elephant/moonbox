@@ -103,12 +103,12 @@ object Main {
    
    val welcomeMsg2 = """Using Scala %s (%s, Java %s)""".format(versionString, javaVmName, javaVersion)
    val welcomeMsg3 = "\nType 'commands' | 'cmds' to show commands in common use.\nType 'help' for more MQLs.\n"
-    Console.print(AnsiColor.GREEN)
-    Console.println(welcomeMsg1)
-    Console.println()
-    Console.println(welcomeMsg2)
-    Console.print(AnsiColor.RESET)
-    Console.println(welcomeMsg3)
+    print(AnsiColor.GREEN)
+    println(welcomeMsg1)
+    println()
+    println(welcomeMsg2)
+    print(AnsiColor.RESET)
+    println(welcomeMsg3)
   }
   private def doReadLine(): Unit = {
     while (true) {
@@ -161,10 +161,8 @@ object Main {
           process(cleanedSqls)
         }
       } catch {
-        case _: UserInterruptException =>
-          doCancelInteractiveQuery()
-        case _: InterruptedException =>
-          doCancelInteractiveQuery()
+        case _: UserInterruptException => /* no-op */
+        case _: InterruptedException => doCancelInteractiveQuery()
         case e: Exception => Console.err.println(s"MQL process error: ${e.getMessage}")
       }
     }
@@ -172,10 +170,12 @@ object Main {
 
   private def doCancelInteractiveQuery(): Unit = {
     if (client != null && client.isActive) {
-//      Console.println("Query canceling ... ")
       try {
+        println("Query cancelling ...")
         if (client.cancelInteractiveQuery()) {
-          println("Cancel successfully.")
+          println("Query canceled.")
+        } else {
+          println("Query cancel failed.")
         }
       } catch {
         case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
