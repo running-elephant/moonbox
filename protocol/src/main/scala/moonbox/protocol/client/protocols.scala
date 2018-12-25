@@ -45,7 +45,7 @@ case class InteractiveQueryInbound(
 	sessionId: String,
 	sqls: Seq[String],
 	fetchSize: Int = 1000,
-	maxRows: Long = 10000) extends Inbound
+	maxRows: Int = 10000) extends Inbound
 case class InteractiveQueryOutbound(
 	error: Option[String] = None,
 	data: Option[ResultData] = None) extends Outbound

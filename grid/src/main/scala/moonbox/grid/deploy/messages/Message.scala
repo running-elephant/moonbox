@@ -22,7 +22,7 @@ object Message {
 		message: String) extends JobMessage
 
 	// for interactive
-	case class JobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long) extends JobMessage
+	case class JobQuery(sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Int) extends JobMessage
 
 	case class JobQueryResponse(
 		success: Boolean,

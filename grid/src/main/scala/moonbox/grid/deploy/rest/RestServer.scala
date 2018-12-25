@@ -111,7 +111,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 				post {
 					entity(as[InteractiveQueryInbound]) { in =>
 						complete {
-							service.interactiveQuery(in.token, in.sessionId, in.sqls)
+							service.interactiveQuery(in.token, in.sessionId, in.sqls, in.fetchSize, in.maxRows)
 						}
 					}
 				}

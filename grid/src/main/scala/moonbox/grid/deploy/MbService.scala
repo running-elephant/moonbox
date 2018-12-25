@@ -100,7 +100,7 @@ private[deploy] class MbService(
 		}
 	}
 
-	def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int = 200, maxRows: Long = 10000)(implicit connection: ConnectionInfo): InteractiveQueryOutbound = {
+	def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int = 200, maxRows: Int = 10000)(implicit connection: ConnectionInfo): InteractiveQueryOutbound = {
 		auditLogger.log(decodeToken(token), "interactiveQuery", Map("sessionId" -> sessionId, "sqls" -> sqls.mkString(";")))
 		isLogin(token) match {
 			case Some(username) =>
