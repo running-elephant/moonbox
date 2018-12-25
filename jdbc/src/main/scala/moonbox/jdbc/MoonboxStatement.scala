@@ -29,7 +29,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   private var fetchSize = 1000  /* zero means no limitation */
   private var queryTimeout = 0  /* time unit: ms */
   private var maxFieldSize: Int = 0
-  private var maxRows: Int = Int.MaxValue
+  private var maxRows: Int = Int.MinValue
   private var closed: Boolean = false
   private var isResultSet: Boolean = true
   private var canceled: Boolean = false
