@@ -50,7 +50,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
       try {
         if (channelToSessionId.containsKey(channel)) {
           val sessionId = channelToSessionId.remove(channel)
-          logInfo(s"Closing session with sessionId: $sessionId")
           mbService.closeSession(token, sessionId)
         }
       } finally {
@@ -70,13 +69,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
       case _ => "Unknown"
     }
     ConnectionInfo(local, remote, ConnectionType.CLIENT)
-  }
-
-  private def prettyError(error: Option[String]): String = {
-    error match {
-      case Some(_) => s"ERROR=$error"
-      case None => "SUCCESSFULLY"
-    }
   }
 
   private def handleProtoMessage(ctx: ChannelHandlerContext, message: protobuf.ProtoMessage): Unit = {
@@ -124,7 +116,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def loginResponse(token: Option[String], error: Option[String]): Unit = {
-      logInfo(s"User($username) login completed: " + prettyError(error))
       token.foreach(t => channelToToken.put(ctx.channel(), t))
       val toResp = ProtoOutboundMessageBuilder.loginOutbound(token.orNull, error.orNull)
       val resp = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setLoginOutbound(toResp).build()
@@ -135,7 +126,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   private def handleLogout(ctx: ChannelHandlerContext, inbound: protobuf.LogoutInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
-    val username = mbService.decodeToken(token)
 
     Future(mbService.logout(token)) onComplete {
       case Success(LogoutOutbound(error)) => logoutResponse(error)
@@ -143,7 +133,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def logoutResponse(error: Option[String]): Unit = {
-      logInfo(s"User($username), Token($token) logout completed: " + prettyError(error))
       val toResp = ProtoOutboundMessageBuilder.logoutOutbound(error.orNull)
       val resp = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setLogoutOutbound(toResp).build()
       ctx.writeAndFlush(resp)
@@ -155,7 +144,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     val database = inbound.getDatabase
     val isLocal = inbound.getIsLocal
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
-    val username = mbService.decodeToken(token)
 
     Future(mbService.openSession(token, Some(database), isLocal)) onComplete {
       case Success(OpenSessionOutbound(sessionId, workerHost, workerPort, error)) => openSessionResponse(sessionId, workerHost, workerPort, error)
@@ -163,7 +151,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def openSessionResponse(sessionId: Option[String], workerHost: Option[String], workerPort: Option[Int], error: Option[String]): Unit = {
-      logInfo(s"User($username), Token($token) open session completed: " + prettyError(error))
       sessionId.foreach(s => channelToSessionId.put(ctx.channel(), s))
       val toResp = ProtoOutboundMessageBuilder.openSessionOutbound(sessionId.orNull, workerHost, workerPort, error.orNull)
       val resp: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setOpenSessionOutbound(toResp).build()
@@ -182,7 +169,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
     
     def closeSessionResponse(error: Option[String]): Unit = {
-      logInfo(s"Token($token), SessionId($sessionId) close session completed: " + prettyError(error))
       val toResp = ProtoOutboundMessageBuilder.closeSessionOutbound(error.orNull)
       val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setCloseSessionOutbound(toResp).build()
       ctx.writeAndFlush(message)
@@ -235,7 +221,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def nextResultResponse(error: Option[String], data: Option[ResultData]): Unit = {
-      logInfo(s"NextResult_query(SessionId=$sessionId) completed: " + prettyError(error))
       val protoResultData: Option[protobuf.ResultData] = data.map { resultData =>
         val protoData = ProtoOutboundMessageBuilder.protoData(resultData.data, resultData.schema)
         ProtoOutboundMessageBuilder.resultData(resultData.cursor, resultData.schema, protoData, resultData.hasNext)
@@ -249,7 +234,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   private def handleBatchQuery(ctx: ChannelHandlerContext, in: protobuf.BatchQueryInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
-    val username = mbService.decodeToken(token)
     val sqls = in.getSqlList
     val config = in.getConfig
 
@@ -259,7 +243,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def batchQueryResponse(jobId: Option[String], error: Option[String]): Unit = {
-      logInfo(s"User($username, token=$token) batch query completed: " + prettyError(error))
       val toResp = ProtoOutboundMessageBuilder.batchQueryOutbound(jobId.orNull, error.orNull)
       val message = protobuf.ProtoMessage.newBuilder().setBatchQueryOutbound(toResp).build()
       ctx.writeAndFlush(message)
@@ -269,7 +252,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   private def handleBatchProgress(ctx: ChannelHandlerContext, in: protobuf.BatchQueryProgressInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
-    val username = mbService.decodeToken(token)
     val jobId = in.getJobId
 
     Future(mbService.batchQueryProgress(token, jobId)) onComplete {
@@ -278,7 +260,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def batchProgressResponse(message: String, state: Option[String]): Unit = {
-      logInfo(s"User($username, jobId=$jobId, token=$token) batch query progress request completed: message=$message, state=${state.orNull}")
       val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(message, state.orNull)
       val message1: ProtoMessage = protobuf.ProtoMessage.newBuilder().setBatchQueryProgressOutbound(toResp).build()
       ctx.writeAndFlush(message1)
@@ -289,7 +270,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
     val sessionId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getSessionId)
-    val username = mbService.decodeToken(token)
 
     Future(mbService.interactiveQueryCancel(token, sessionId)) onComplete {
       case Success(CancelQueryOutbound(error)) => interactiveCancelResponse(error)
@@ -297,7 +277,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def interactiveCancelResponse(error: Option[String]): Unit = {
-      logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(error))
       val toResp = ProtoOutboundMessageBuilder.interactiveQueryCancelOutbound(error.orNull)
       val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveQueryCancelOutbound(toResp).build()
       ctx.writeAndFlush(message)
@@ -308,7 +287,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
     val jobId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getJobId)
-    val username = mbService.decodeToken(token)
 
     Future(mbService.batchQueryCancel(token, jobId)) onComplete {
       case Success(CancelQueryOutbound(error)) => batchCancelResponse(error)
@@ -316,7 +294,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     }
 
     def batchCancelResponse(error: Option[String]): Unit = {
-      logInfo(s"User($username, token=$token, JobId=$jobId) query cancel completed: " + prettyError(error))
       val toResp = ProtoOutboundMessageBuilder.batchQueryCancelOutbound(error.orNull)
       val message: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setBatchQueryCancelOutbound(toResp).build()
       ctx.writeAndFlush(message)

@@ -79,7 +79,7 @@ message InteractiveQueryInbound {
     string session_id = 2;
     repeated string sql = 3; //Seq[String]
     google.protobuf.Int32Value fetch_size = 4;
-    google.protobuf.Int64Value max_rows = 5;
+    google.protobuf.Int32Value max_rows = 5;
 }
 message InteractiveQueryOutbound {
     string error = 1;

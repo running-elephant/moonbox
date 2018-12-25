@@ -105,7 +105,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     }
   }
   @throws(classOf[Exception])
-  def sendMessageSync(message: Any, timeout: Long = readTimeout): ProtoMessage = {
+  def sendMessageSync(message: Any, timeout: Int = readTimeout): ProtoMessage = {
     message match {
       case in: ProtoMessage =>
         val messageId = in.getMessageId
@@ -212,7 +212,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
-  override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long, timeout: Int): MoonboxRowSet = {
+  override def interactiveQuery(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Int, timeout: Int): MoonboxRowSet = {
     val outbound = query(token, sessionId, sqls, fetchSize, maxRows, timeout)
     toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
@@ -279,7 +279,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   }
 
   /* for interactive query */
-  private def query(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Long = Long.MaxValue, timeout: Int): InteractiveQueryOutbound = {
+  private def query(token: String, sessionId: String, sqls: Seq[String], fetchSize: Int, maxRows: Int = Int.MinValue, timeout: Int): InteractiveQueryOutbound = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)

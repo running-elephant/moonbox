@@ -35,13 +35,13 @@ object ProtoInboundMessageBuilder {
     builder.build()
   }
 
-  def interactiveQueryInbound(token: String, sessionId: String, sqls: util.List[String], fetchSize: Option[Int], maxRows: Option[Long]): InteractiveQueryInbound = {
+  def interactiveQueryInbound(token: String, sessionId: String, sqls: util.List[String], fetchSize: Option[Int], maxRows: Option[Int]): InteractiveQueryInbound = {
     val builder = InteractiveQueryInbound.newBuilder()
       .setToken(token)
       .setSessionId(sessionId)
       .addAllSql(sqls)
     fetchSize.foreach(value => builder.setFetchSize(Int32Value.newBuilder().setValue(value).build()))
-    maxRows.foreach(value => builder.setMaxRows(Int64Value.newBuilder().setValue(value).build()))
+    maxRows.foreach(value => builder.setMaxRows(Int32Value.newBuilder().setValue(value).build()))
     builder.build()
   }
 

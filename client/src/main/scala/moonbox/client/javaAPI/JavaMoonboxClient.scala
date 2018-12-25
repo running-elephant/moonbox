@@ -29,8 +29,8 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def setReadTimeout(milliseconds: Int): Unit = moonboxClient.setReadTimeout(milliseconds)
   def getFetchSize: Int = moonboxClient.getFetchSize
   def setFetchSize(size: Int): Unit = moonboxClient.setFetchSize(size)
-  def getMaxRows: Long = moonboxClient.getMaxRows
-  def setMaxRows(size: Long): Unit = moonboxClient.setMaxRows(size)
+  def getMaxRows: Int = moonboxClient.getMaxRows
+  def setMaxRows(size: Int): Unit = moonboxClient.setMaxRows(size)
   def getServers: util.List[InetSocketAddress] = moonboxClient.getServers.asJava
   def getConf(key: String): String = moonboxClient.getConf(key).orNull
   def getAllConf: JMap[String, String] = moonboxClient.getAllConf
@@ -63,7 +63,7 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
     * @return
     */
   def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, milliseconds)
-  def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, maxRows: Long, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, maxRows, milliseconds)
+  def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, maxRows: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, maxRows, milliseconds)
   def cancelInteractiveQuery(): Boolean = moonboxClient.cancelInteractiveQuery()
   def cancelBatchQuery(jobId: String): Boolean = moonboxClient.cancelBatchQuery(jobId)
 

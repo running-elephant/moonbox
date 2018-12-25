@@ -9,16 +9,16 @@ class ClientOptions(val options: CaseInsensitiveMap[String]) {
   def this(ops: Map[String, String]) = this(CaseInsensitiveMap(ops))
   def this() = this(Map.empty[String, String])
 
-  val host = options.getOrElse(HOST, "localhost")
-  val port = options.get(PORT).map(_.toInt).getOrElse(10010)
-  val database = options.getOrElse(DATABASE, "default")
-  val user = options.get(USER)
-  val password = options.get(PASSWORD)
-  val timeout = options.get(READ_TIMEOUT).map(_.toInt).getOrElse(3600) /* time_unit: second */
-  val fetchSize = options.get(FETCH_SIZE).map(_.toInt).getOrElse(1000)
-  val maxRows = options.get(MAX_ROWS).map(_.toLong).getOrElse(10000L)
-  val isLocal = options.get(IS_LOCAL).forall(_.toBoolean)
-  val serializer = options.getOrElse(SERIALIZER, "protobuf")
+  val host: String = options.getOrElse(HOST, "localhost")
+  val port: Int = options.get(PORT).map(_.toInt).getOrElse(10010)
+  val database: String = options.getOrElse(DATABASE, "default")
+  val user: Option[String] = options.get(USER)
+  val password: Option[String] = options.get(PASSWORD)
+  val timeout: Int = options.get(READ_TIMEOUT).map(_.toInt).getOrElse(3600) /* time_unit: second */
+  val fetchSize: Int = options.get(FETCH_SIZE).map(_.toInt).getOrElse(1000)
+  val maxRows: Int = options.get(MAX_ROWS).map(_.toInt).getOrElse(Int.MinValue)
+  val isLocal: Boolean = options.get(IS_LOCAL).exists(_.toBoolean)
+  val serializer: String = options.getOrElse(SERIALIZER, "protobuf")
 }
 
 object ClientOptions {
