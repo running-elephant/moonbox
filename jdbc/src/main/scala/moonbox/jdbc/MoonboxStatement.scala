@@ -24,7 +24,12 @@ import java.sql._
 import moonbox.client.MoonboxClient
 import moonbox.client.entity.MoonboxRowSet
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 class MoonboxStatement(connection: MoonboxConnection) extends Statement {
+
+  private val sqlDelimiter = ';'
 
   private var fetchSize = 1000  /* zero means no limitation */
   private var queryTimeout = 0  /* time unit: ms */
@@ -48,10 +53,31 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     checkClosed()
     client.interactiveQuery(sqls, getFetchSize, getMaxRows, queryTimeout)
   }
+
+  private def splitSql(sql: String, splitter: Char): Seq[String] = {
+    val stack = new mutable.Stack[Char]()
+    val splitIndex = new ArrayBuffer[Int]()
+    for ((char, idx) <- sql.toCharArray.zipWithIndex) {
+      if (char == splitter) {
+        if (stack.isEmpty) splitIndex += idx
+      }
+      if (char == '(') stack.push('(')
+      if (char == ')') stack.pop()
+    }
+    splits(sql, splitIndex.toArray, 0).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
+  }
+  private def splits(sql: String, idxs: scala.Array[Int], offset: Int): Seq[String] = {
+    if (idxs.nonEmpty) {
+      val head = idxs.head
+      val (h, t) = sql.splitAt(head - offset)
+      h +: splits(t, idxs.tail, head)
+    } else sql :: Nil
+  }
+
   override def executeQuery(sql: String): ResultSet = {
     canceled = false
     try {
-      val rowSet = interactiveQuery(sql :: Nil)
+      val rowSet = interactiveQuery(splitSql(sql, sqlDelimiter))
       isResultSet = !rowSet.isEmptySchema
       resultSet = new MoonboxResultSet(getConnection, this, rowSet)
       resultSet
