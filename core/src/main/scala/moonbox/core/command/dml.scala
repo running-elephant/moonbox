@@ -263,7 +263,9 @@ case class ShowCreateTable(table: MbTableIdentifier) extends MbRunnableCommand w
 			catalogView.cmd
 		} else {
 			val catalogTable = getTable(databaseId, table.table)
-			catalogTable.properties.filterKeys(key => !key.contains("password")).mkString("; ")
+			catalogTable.properties.filterKeys(key => !key.contains("password")).map {
+				case (key, value) => s"$key '$value'"
+			}.mkString(", ")
 		}
 		Seq(Row(table.table, createTable))
 	}
