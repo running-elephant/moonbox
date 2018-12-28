@@ -53,7 +53,7 @@ object Test {
 		), ignoreIfExists = true)
 
 
-		val parsedPlan = parser.parsePlan("select * from test")
+		val parsedPlan = parser.parsePlan("select default.test.name from test")
 		val analyzedPlan = analyzer.execute(parsedPlan)
 		println()
 	}
