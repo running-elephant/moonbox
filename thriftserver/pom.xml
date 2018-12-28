@@ -128,7 +128,7 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>src/main/generate</source>
+                                <source>src/main/generated</source>
                             </sources>
                         </configuration>
                     </execution>
