@@ -145,45 +145,6 @@ class MysqlDataSystem(props: Map[String, String])
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")
-		/*val iter = new MbIterator[Row] {
-			val conn = getConnection()
-			val statement = conn.createStatement()
-			val resultSet = statement.executeQuery(sql)
-
-			override def close(): Unit = {
-				try {
-					if (null != resultSet) {
-						resultSet.close()
-					}
-				} catch {
-					case e: Exception => logWarning("Exception closing resultset", e)
-				}
-				try {
-					if (null != statement) {
-						statement.isClosed
-					}
-				} catch {
-					case e: Exception => logWarning("Exception closing statement", e)
-				}
-				try {
-					if (null != conn) {
-						conn.close()
-					}
-					logInfo("closed connection")
-				} catch {
-					case e: Exception => logWarning("Exception closing connection", e)
-				}
-			}
-
-			override def getNext(): Row = {
-				if (resultSet != null && resultSet.next()) {
-					Row(MbJdbcRDD.resultSetToObjectArray(resultSet):_*)
-				} else {
-					finished = true
-					null.asInstanceOf[Row]
-				}
-			}
-		}*/
 		val conn = getConnection()
 		val statement = conn.createStatement()
 		val resultSet = statement.executeQuery(sql)
