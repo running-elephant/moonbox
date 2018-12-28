@@ -271,6 +271,22 @@ case class ShowCreateTable(table: MbTableIdentifier) extends MbRunnableCommand w
 	}
 }
 
+case class ShowSchema(sql: String) extends MbRunnableCommand with DML {
+
+	override def output: Seq[Attribute] = {
+		AttributeReference("name", StringType, nullable = false)() ::
+			AttributeReference("dataType", StringType, nullable = false)() ::
+			AttributeReference("nullable", StringType, nullable = false)() ::
+			AttributeReference("metadata", StringType, nullable = false)() :: Nil
+	}
+
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		mbSession.analyzedPlan(sql).schema.map { field =>
+			Row(field.name, field.dataType.simpleString, field.nullable.toString, field.metadata.json)
+		}
+	}
+}
+
 case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 
   override def output = {

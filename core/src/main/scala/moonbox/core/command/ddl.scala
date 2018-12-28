@@ -116,7 +116,10 @@ case class AlterDatabaseSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		mbSession.catalog.renameDatabase(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
-		ctx.databaseName = newName
+		// alter current database's name
+		if (name.equalsIgnoreCase(ctx.databaseName)) {
+			ctx.databaseName = newName
+		}
 		Seq.empty[Row]
 	}
 }

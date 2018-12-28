@@ -112,6 +112,7 @@ mql
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
     | SHOW GRANTS FOR user=identifier                                                           # showGrants
     | SHOW CREATE TABLE name=tableIdentifier                                                    # showCreateTable
+    | SHOW SCHEMA FOR query                                                                     # showSchema
 
     | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
@@ -344,6 +345,7 @@ REPLACE: 'REPLACE';
 REVOKE: 'REVOKE';
 RUNNING: 'RUNNING';
 SA: 'SA';
+SCHEMA: 'SCHEMA';
 SCHEDULE: 'SCHEDULE';
 SELECT: 'SELECT';
 SESSION: 'SESSION';

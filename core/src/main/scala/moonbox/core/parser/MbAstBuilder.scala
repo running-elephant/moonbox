@@ -762,6 +762,11 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowCreateTable(table)
 	}
 
+	override def visitShowSchema(ctx: ShowSchemaContext): MbCommand = {
+		val query = visitQuery(ctx.query()).query
+		ShowSchema(query)
+	}
+
 	override def visitDescDatabase(ctx: DescDatabaseContext): MbCommand = {
 		val database = ctx.name.getText
 		DescDatabase(database)
