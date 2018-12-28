@@ -128,7 +128,7 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>src/main/generate</source>
+                                <source>src/main/generated</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -147,9 +147,10 @@
                             <artifactSet>
                                 <excludes>
                                     <exclude>org.scalatest:scalatest_2.11</exclude>
+                                    <exclude>org.log4j:slf4j-api</exclude>
+                                    <exclude>org.slf4j:slf4j-log4j12</exclude>
                                 </excludes>
                             </artifactSet>
-
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
