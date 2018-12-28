@@ -31,6 +31,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
@@ -144,7 +145,7 @@ class MysqlDataSystem(props: Map[String, String])
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")
-		val iter = new MbIterator[Row] {
+		/*val iter = new MbIterator[Row] {
 			val conn = getConnection()
 			val statement = conn.createStatement()
 			val resultSet = statement.executeQuery(sql)
@@ -182,8 +183,38 @@ class MysqlDataSystem(props: Map[String, String])
 					null.asInstanceOf[Row]
 				}
 			}
+		}*/
+		val conn = getConnection()
+		val statement = conn.createStatement()
+		val resultSet = statement.executeQuery(sql)
+
+		def close(): Unit = {
+			try {
+				if (null != resultSet) {
+					resultSet.close()
+				}
+			} catch {
+				case e: Exception => logWarning("Exception closing resultset", e)
+			}
+			try {
+				if (null != statement) {
+					statement.isClosed
+				}
+			} catch {
+				case e: Exception => logWarning("Exception closing statement", e)
+			}
+			try {
+				if (null != conn) {
+					conn.close()
+				}
+				logInfo("closed connection")
+			} catch {
+				case e: Exception => logWarning("Exception closing connection", e)
+			}
 		}
-		new DataTable(iter, schema, () => iter.closeIfNeeded())
+
+		val iter = JdbcUtils.resultSetToRows(resultSet, schema)
+		new DataTable(iter, schema, close _)
 	}
 
     override def tableNames(): Seq[String] = {
