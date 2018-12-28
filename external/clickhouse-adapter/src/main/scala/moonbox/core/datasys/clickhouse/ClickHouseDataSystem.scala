@@ -11,6 +11,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.expressions.{Abs, Acos, Add, Alias, And, Asin, Atan, AttributeReference, BitwiseAnd, BitwiseNot, BitwiseOr, BitwiseXor, CaseWhen, CaseWhenBase, CaseWhenCodegen, Cast, Cbrt, Ceil, Concat, Cos, CurrentDatabase, CurrentDate, CurrentTimestamp, DayOfMonth, Divide, EqualTo, EulerNumber, Exp, Floor, GreaterThan, GreaterThanOrEqual, Hex, Hour, If, In, IsNotNull, IsNull, Length, LessThan, LessThanOrEqual, Literal, Log, Log10, Log2, Lower, Minute, Month, Multiply, Not, Or, Pi, Pow, RLike, Rand, RegExpExtract, RegExpReplace, Remainder, Round, Second, ShiftLeft, ShiftRight, Sin, SortOrder, Sqrt, StringLocate, StringReverse, Subtract, Tan, ToDate, UnaryMinus, Unhex, Upper, Year}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbClickHouseDialect, MbSqlBuilder}
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
@@ -139,46 +140,37 @@ class ClickHouseDataSystem(props: Map[String, String])
     val sql = sqlBuilder.toSQL
     val schema = sqlBuilder.finalLogicalPlan.schema
     logInfo(s"query sql: $sql")
-    val iter = new MbIterator[Row] {
-      val conn = getConnection()
-      val statement = conn.createStatement()
-      val resultSet = statement.executeQuery(sql)
+	  val conn = getConnection()
+	  val statement = conn.createStatement()
+	  val resultSet = statement.executeQuery(sql)
 
-      override def close(): Unit = {
-        try {
-          if (null != resultSet) {
-            resultSet.close()
-          }
-        } catch {
-          case e: Exception => logWarning("Exception closing resultset", e)
-        }
-        try {
-          if (null != statement) {
-            statement.isClosed
-          }
-        } catch {
-          case e: Exception => logWarning("Exception closing statement", e)
-        }
-        try {
-          if (null != conn) {
-            conn.close()
-          }
-          logInfo("closed connection")
-        } catch {
-          case e: Exception => logWarning("Exception closing connection", e)
-        }
-      }
+	  def close(): Unit = {
+		  try {
+			  if (null != resultSet) {
+				  resultSet.close()
+			  }
+		  } catch {
+			  case e: Exception => logWarning("Exception closing resultset", e)
+		  }
+		  try {
+			  if (null != statement) {
+				  statement.isClosed
+			  }
+		  } catch {
+			  case e: Exception => logWarning("Exception closing statement", e)
+		  }
+		  try {
+			  if (null != conn) {
+				  conn.close()
+			  }
+			  logInfo("closed connection")
+		  } catch {
+			  case e: Exception => logWarning("Exception closing connection", e)
+		  }
+	  }
 
-      override def getNext(): Row = {
-        if (resultSet != null && resultSet.next()) {
-          Row(MbJdbcRDD.resultSetToObjectArray(resultSet): _*)
-        } else {
-          finished = true
-          null.asInstanceOf[Row]
-        }
-      }
-    }
-    new DataTable(iter, schema, () => iter.closeIfNeeded())
+	  val iter = JdbcUtils.resultSetToRows(resultSet, schema)
+	  new DataTable(iter, schema, close _)
   }
 
 
