@@ -2,8 +2,8 @@ package moonbox.client.protobuf
 
 import java.io.IOException
 import java.net.{InetSocketAddress, SocketAddress}
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel._
@@ -40,7 +40,6 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   private val host = clientOptions.host
   private val port = clientOptions.port
   private val CONNECTION_TIMEOUT_MILLIS = 1000 * 60 // ms
-  private val messageId = new AtomicLong(0L)
   private val promises = new ConcurrentHashMap[Long, ChannelPromise]
   private val responses = new ConcurrentHashMap[Long, ProtoMessage]
   private val callbacks = new ConcurrentHashMap[Long, ProtoMessage => Any]
@@ -94,7 +93,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     else throw new ChannelException("Channel unestablished")
   }
 
-  def genMessageId: Long = messageId.getAndIncrement()
+  def genMessageId: Long = math.abs(UUID.randomUUID.getLeastSignificantBits)
   def sendWithCallback(msg: Any, callback: Any => Any) = {
     msg match {
       case in: ProtoMessage =>

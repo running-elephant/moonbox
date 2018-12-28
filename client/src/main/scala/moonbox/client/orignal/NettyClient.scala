@@ -1,8 +1,8 @@
 package moonbox.client.orignal
 
 import java.io.IOException
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel._
@@ -17,7 +17,7 @@ import moonbox.client.{ClientInterface, ClientOptions}
 import moonbox.protocol.client._
 import moonbox.protocol.util.SchemaUtil
 
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 
 private[client] object NettyClient {
   val daemonNioEventLoopGroup = new NioEventLoopGroup(0, new DefaultThreadFactory(this.getClass, true))
@@ -37,7 +37,6 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   private val host = clientOptions.host
   private val port = clientOptions.port
   private val CONNECTION_TIMEOUT_MILLIS = 1000 * 120 // ms
-  private val messageId = new AtomicLong(0L)
   private val promises = new ConcurrentHashMap[Long, ChannelPromise]
   private val responses = new ConcurrentHashMap[Long, Outbound]
   private val callbacks = new ConcurrentHashMap[Long, Outbound => Any]
@@ -89,7 +88,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
     else throw new ChannelException("Channel unestablished")
   }
 
-  def genMessageId: Long = messageId.getAndIncrement()
+  def genMessageId: Long = math.abs(UUID.randomUUID.getLeastSignificantBits)
   def sendWithCallback(msg: Any, callback: Any => Any) = {
     msg match {
       case in: Inbound =>
