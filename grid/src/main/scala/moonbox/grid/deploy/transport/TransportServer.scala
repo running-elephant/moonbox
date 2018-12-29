@@ -45,7 +45,7 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 	private val channelToSessionId = new ConcurrentHashMap[Channel, String]()
 	private var channelFuture: ChannelFuture = _
 	private var bootstrap: ServerBootstrap = _
-	private val protocol = conf.getOption("moonbox.message.protocol").getOrElse("protobuf")
+	private val protocol = conf.getOption("moonbox.deploy.tcp.protocol").getOrElse("protobuf")
 
 	def start(): Int = {
 		val channelHandler = getMasterHandler(protocol, channelToToken, channelToSessionId, mbService)
@@ -67,7 +67,7 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 			try {
 				channelFuture = bootstrap.bind(host, tryPort)
 				channelFuture.syncUninterruptibly()
-				logInfo(s"Master Transport server is listening on $host:$tryPort.")
+				logInfo(s"Master Transport server is listening on $host:$tryPort. message protocol: $protocol")
 				return tryPort
 			} catch {
 				case e: Exception =>

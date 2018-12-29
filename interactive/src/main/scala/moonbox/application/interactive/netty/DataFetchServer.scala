@@ -21,7 +21,7 @@ import scala.collection.mutable
 
 class DataFetchServer(host: String, port: Int, conf: MbConf, sessionIdToJobRunner: mutable.Map[String, Runner]) extends MbLogging {
 
-  private val protocol = conf.getOption("moonbox.message.protocol").getOrElse("protobuf")
+  private val protocol = conf.getOption("moonbox.deploy.tcp.protocol").getOrElse("protobuf")
   private var channelFuture: ChannelFuture = _
   private var bootstrap: ServerBootstrap = _
 
@@ -45,7 +45,7 @@ class DataFetchServer(host: String, port: Int, conf: MbConf, sessionIdToJobRunne
     channelFuture = bootstrap.bind(host, port)
     channelFuture.syncUninterruptibly()
     val bindPort = localAddress.getPort
-    logInfo(s"Data fetch server is listening on $host:$bindPort.")
+    logInfo(s"Data fetch server is listening on $host:$bindPort. message protocol: $protocol")
     channelFuture.channel.closeFuture.addListener(
       new ChannelFutureListener {
         override def operationComplete(future: ChannelFuture) = stop()

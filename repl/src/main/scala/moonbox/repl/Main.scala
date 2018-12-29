@@ -451,7 +451,7 @@ object Main {
         "   -r, --runtime         Run in local or in cluster.\n" +
         "   -t, --timeout         The query timeout: seconds.\n" +
         "   -f, --fetchsize       The fetch size.\n" +
-        "   -e, --extraoptions    The extra options.\n" +
+        "   -e, --extraoptions    The extra options: like \"k1=v1&k2=v2...\"\n" +
         "   --help"
     )
     System.exit(exitCode)

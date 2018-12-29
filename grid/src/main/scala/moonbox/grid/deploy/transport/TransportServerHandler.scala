@@ -109,10 +109,10 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 				val outbound = mbService.logout(token)
 				logInfo(s"User($username), Token($token) logout completed: " + prettyError(outbound.error))
 				outbound.setId(logout.getId)
-			case openSession@OpenSessionInbound(_, database, isLocal, extraArguments) =>
+			case openSession@OpenSessionInbound(_, database, config) =>
 				val token = channelToToken.get(channel)
 				val username = mbService.decodeToken(token)
-				val outbound = mbService.openSession(token, database, isLocal, extraArguments)
+				val outbound = mbService.openSession(token, database, config)
 				logInfo(s"User($username), Token($token) open session completed: " + prettyError(outbound.error))
 				if (outbound.sessionId.isDefined) {
 					channelToSessionId.put(channel, outbound.sessionId.get)

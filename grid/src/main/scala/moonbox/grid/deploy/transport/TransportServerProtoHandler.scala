@@ -143,11 +143,10 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   private def handleOpenSession(ctx: ChannelHandlerContext, inbound: protobuf.OpenSessionInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
     val database = inbound.getDatabase
-    val isLocal = inbound.getIsLocal
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
-    val extraOptions = inbound.getExtraOptions
+    val config = inbound.getConfigMap
 
-    Future(mbService.openSession(token, Some(database), isLocal, extraOptions)) onComplete {
+    Future(mbService.openSession(token, Some(database), config.asScala.toMap)) onComplete {
       case Success(OpenSessionOutbound(sessionId, workerHost, workerPort, error)) => openSessionResponse(sessionId, workerHost, workerPort, error)
       case Failure(e) => openSessionResponse(None, None, None, Some(e.getMessage))
     }

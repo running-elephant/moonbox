@@ -32,7 +32,7 @@ case class LogoutOutbound(error: Option[String]) extends Outbound
 case class RequestAccessInbound(token: Option[String] = None, isLocal: Boolean) extends Inbound
 case class RequestAccessOutbound(address: Option[String] = None, error: Option[String] = None) extends Outbound
 
-case class OpenSessionInbound(token: String, database: Option[String], isLocal: Boolean = false, extraArguments: String) extends Inbound
+case class OpenSessionInbound(token: String, database: Option[String], config: Map[String, String]) extends Inbound
 case class OpenSessionOutbound(sessionId: Option[String] = None, workerHost: Option[String] = None, workerPort: Option[Int] = None, error: Option[String] = None) extends Outbound
 
 case class CloseSessionInbound(token: String, sessionId: String) extends Inbound
