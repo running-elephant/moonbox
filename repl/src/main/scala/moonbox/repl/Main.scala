@@ -444,13 +444,14 @@ object Main {
     System.err.println(
       "Usage: moonbox [options]\n" +
         "options:\n" +
-        "   -h, --host         Connect to host.\n" +
-        "   -P, --port         Port num to ues for connecting to server.\n" +
-        "   -u, --user :       User for login.\n" +
-        "   -p, --password     Password to use when connecting to server.\n" +
-        "   -r, --runtime      Run in local or in cluster.\n" +
-        "   -t, --timeout      The query timeout: seconds.\n" +
-        "   -f, --fetchsize    The fetch size.\n" +
+        "   -h, --host            Connect to host.\n" +
+        "   -P, --port            Port num to ues for connecting to server.\n" +
+        "   -u, --user :          User for login.\n" +
+        "   -p, --password        Password to use when connecting to server.\n" +
+        "   -r, --runtime         Run in local or in cluster.\n" +
+        "   -t, --timeout         The query timeout: seconds.\n" +
+        "   -f, --fetchsize       The fetch size.\n" +
+        "   -e, --extraoptions    The extra options.\n" +
         "   --help"
     )
     System.exit(exitCode)
