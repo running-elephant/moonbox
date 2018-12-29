@@ -89,8 +89,10 @@
                 <!--<include>edp.moonbox:moonbox-common_2.11</include>
                 <include>edp.moonbox:moonbox-catalog_2.11</include>-->
                 <include>edp.moonbox:moonbox-core_2.11</include>
-                <include>mysql:mysql-connector-java</include>
                 <!--mysql-->
+                <include>mysql:mysql-connector-java</include>
+                <!--kudu-->
+                <include>org.apache.kudu:kudu-spark2_2.11</include>
                 <!--<include>edp.moonbox:moonbox-mysql-adapter</include>-->
                 <!--&lt;!&ndash;hbase&ndash;&gt;
                 <include>org.apache.hbase:hbase-client</include>
