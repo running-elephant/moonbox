@@ -505,6 +505,14 @@ case class Explain(query: String, extended: Boolean = false) extends MbRunnableC
 	}
 }
 
+case class RefreshTable(table: MbTableIdentifier) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		val tableName = table.database.map(db => s"$db.${table.table}").getOrElse(table.table)
+		mbSession.mixcal.sparkSession.catalog.refreshTable(tableName)
+		Seq.empty[Row]
+	}
+}
+
 case class MQLQuery(query: String) extends MbCommand with DML
 
 case class CreateTempView(

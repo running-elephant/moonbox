@@ -124,6 +124,7 @@ mql
 
     | EXPLAIN EXTENDED? PLAN? query                                                             # explain
     | SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                      # setVariable
+    | REFRESH TABLE tableIdentifier                                                             # refreshTable
 
     | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
@@ -341,6 +342,7 @@ PROCEDURE: 'PROCEDURE';
 PROCEDURES: 'PROCEDURES';
 REMOVE: 'REMOVE';
 RENAME: 'RENAME';
+REFRESH: 'REFRESH';
 REPLACE: 'REPLACE';
 REVOKE: 'REVOKE';
 RUNNING: 'RUNNING';

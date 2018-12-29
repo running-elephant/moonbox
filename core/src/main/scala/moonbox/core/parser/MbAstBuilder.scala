@@ -826,4 +826,9 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 			Explain(query.query)
 		}
 	}
+
+	override def visitRefreshTable(ctx: RefreshTableContext): MbCommand = {
+		val table = visitTableIdentifier(ctx.tableIdentifier())
+		RefreshTable(table)
+	}
 }
