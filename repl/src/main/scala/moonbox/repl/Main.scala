@@ -48,6 +48,7 @@ object Main {
   private var fetchSize: Int = 1000
   private var truncate: Int = 0
   private var maxRowsToShow: Int = 1000
+  private var extraOptions: String = ""
   private var client: MoonboxClient = _
   private var clientInited: Boolean = _
 
@@ -190,6 +191,7 @@ object Main {
         checkParameters()
         val clientOptions =
           ClientOptions.builder()
+            .options(handleExtraOptions(extraOptions))
             .user(user)
             .password(password)
             .host(host)
@@ -213,6 +215,20 @@ object Main {
             Console.err.println(s"Retry ${DEFAULT_RETRY_TIMES - retryTimes} ...")
           }
       }
+    }
+  }
+
+  private def handleExtraOptions(ops: String): Map[String, String] = {
+    ops match {
+      case "" => Map.empty
+      case s =>
+        s.split("&").map { kv =>
+        val pair = kv.split("=")
+          pair.length match {
+            case 2 => pair(0).trim -> pair(1).trim
+            case _ => throw new Exception("Invalid options.")
+          }
+      }.toMap
     }
   }
 
@@ -412,6 +428,9 @@ object Main {
       parse(tail)
     case ("-f" | "--fetchsize") :: IntParam(value) :: tail =>
       fetchSize = value
+      parse(tail)
+    case ("-e" | "--extraoptions") :: value :: tail =>
+      extraOptions = value
       parse(tail)
     case ("--help") :: tail =>
       printUsageAndExit(0)

@@ -30,6 +30,9 @@ import moonbox.common.MbLogging
 import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
 import moonbox.protocol.client._
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+
 class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 														 channelToSessionId: ConcurrentHashMap[Channel, String],
 														 mbService: MbService)
@@ -37,7 +40,7 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 
 	override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
 		try {
-			handleMessage(ctx, msg)
+			Future(handleMessage(ctx, msg))
 		} finally {
 			ReferenceCountUtil.release(msg)
 		}
@@ -106,10 +109,10 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 				val outbound = mbService.logout(token)
 				logInfo(s"User($username), Token($token) logout completed: " + prettyError(outbound.error))
 				outbound.setId(logout.getId)
-			case openSession@OpenSessionInbound(_, database, isLocal) =>
+			case openSession@OpenSessionInbound(_, database, isLocal, extraArguments) =>
 				val token = channelToToken.get(channel)
 				val username = mbService.decodeToken(token)
-				val outbound = mbService.openSession(token, database, isLocal)
+				val outbound = mbService.openSession(token, database, isLocal, extraArguments)
 				logInfo(s"User($username), Token($token) open session completed: " + prettyError(outbound.error))
 				if (outbound.sessionId.isDefined) {
 					channelToSessionId.put(channel, outbound.sessionId.get)

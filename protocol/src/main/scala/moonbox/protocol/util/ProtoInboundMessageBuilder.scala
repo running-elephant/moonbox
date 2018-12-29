@@ -18,11 +18,12 @@ object ProtoInboundMessageBuilder {
       .setToken(token)
       .build()
   }
-  def openSessionInbound(token: String, database: String, isLocal: Boolean): OpenSessionInbound = {
+  def openSessionInbound(token: String, database: String, isLocal: Boolean, extraOptions: String): OpenSessionInbound = {
     OpenSessionInbound.newBuilder()
       .setToken(token)
       .setDatabase(database)
       .setIsLocal(isLocal)
+      .setExtraOptions(extraOptions)
       .build()
   }
   def closeSessionInbound(token: String, sessionId: String): CloseSessionInbound = {

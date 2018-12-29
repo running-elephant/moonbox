@@ -154,7 +154,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int) = {
-    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), isLocal))) match {
+    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), isLocal, clientOptions.extraOptions))) match {
       case OpenSessionOutbound(Some(sessionId), Some(workerHost), Some(workerPort), None) => (sessionId, workerHost, workerPort)
       case OpenSessionOutbound(sessionId, _, _, error) => throw new Exception(s"Open session failed: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
       case other => throw new Exception(s"Unknown message: $other")

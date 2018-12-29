@@ -93,7 +93,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 				post {
 					entity(as[OpenSessionInbound]) { in =>
 						complete {
-							service.openSession(in.token, in.database, in.isLocal)
+							service.openSession(in.token, in.database, in.isLocal, in.extraArguments)
 						}
 					}
 				}

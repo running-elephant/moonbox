@@ -64,8 +64,9 @@ private[deploy] class MbService(
 		LogoutOutbound(None)
 	}
 
-	def openSession(token: String, database: Option[String], isLocal: Boolean)(implicit connection: ConnectionInfo): OpenSessionOutbound = {
+	def openSession(token: String, database: Option[String], isLocal: Boolean, extraOptions: String)(implicit connection: ConnectionInfo): OpenSessionOutbound = {
 		auditLogger.log(decodeToken(token), "openSession")
+		println(extraOptions)
 		isLogin(token) match {
 			case Some(username) =>
 				askSync[OpenSessionResponse](OpenSession(username, database, isLocal))(SHORT_TIMEOUT) match {

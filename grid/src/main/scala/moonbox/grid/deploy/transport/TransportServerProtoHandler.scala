@@ -32,6 +32,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   }
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
+    println(Thread.currentThread().getId)
     try {
       msg match {
         case m: protobuf.ProtoMessage => handleProtoMessage(ctx, m)
@@ -144,8 +145,9 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     val database = inbound.getDatabase
     val isLocal = inbound.getIsLocal
     val token = Option(channelToToken.get(ctx.channel())).getOrElse(inbound.getToken)
+    val extraOptions = inbound.getExtraOptions
 
-    Future(mbService.openSession(token, Some(database), isLocal)) onComplete {
+    Future(mbService.openSession(token, Some(database), isLocal, extraOptions)) onComplete {
       case Success(OpenSessionOutbound(sessionId, workerHost, workerPort, error)) => openSessionResponse(sessionId, workerHost, workerPort, error)
       case Failure(e) => openSessionResponse(None, None, None, Some(e.getMessage))
     }

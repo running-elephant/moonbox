@@ -1,6 +1,6 @@
 package moonbox.client
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 class ClientOptions(val options: CaseInsensitiveMap[String]) {
 
@@ -8,6 +8,8 @@ class ClientOptions(val options: CaseInsensitiveMap[String]) {
 
   def this(ops: Map[String, String]) = this(CaseInsensitiveMap(ops))
   def this() = this(Map.empty[String, String])
+
+  private val clientKeys: immutable.Seq[String] = HOST :: PORT :: USER :: PASSWORD :: DATABASE :: READ_TIMEOUT :: FETCH_SIZE :: MAX_ROWS :: IS_LOCAL :: SERIALIZER :: Nil
 
   val host: String = options.getOrElse(HOST, "localhost")
   val port: Int = options.get(PORT).map(_.toInt).getOrElse(10010)
@@ -19,6 +21,11 @@ class ClientOptions(val options: CaseInsensitiveMap[String]) {
   val maxRows: Int = options.get(MAX_ROWS).map(_.toInt).getOrElse(Int.MinValue)
   val isLocal: Boolean = options.get(IS_LOCAL).exists(_.toBoolean)
   val serializer: String = options.getOrElse(SERIALIZER, "protobuf")
+  val extraOptions: String = extra
+
+  private def extra: String = {
+    options.filterKeys(key => !clientKeys.contains(key)).map { case (k, v) => s"$k=$v"}.mkString("&")
+  }
 }
 
 object ClientOptions {

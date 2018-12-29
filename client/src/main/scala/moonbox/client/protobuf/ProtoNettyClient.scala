@@ -179,7 +179,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   override def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int) = {
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setOpenSessionInbound(ProtoInboundMessageBuilder.openSessionInbound(token, database, isLocal))
+      .setOpenSessionInbound(ProtoInboundMessageBuilder.openSessionInbound(token, database, isLocal, clientOptions.extraOptions))
       .build()
     val resp = sendMessageSync(msg)
     if (resp.hasOpenSessionOutbound) {
@@ -378,4 +378,5 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       throw new Exception("Connection is not active.")
     }
   }
+
 }

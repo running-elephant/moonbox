@@ -58,6 +58,7 @@ message OpenSessionInbound {
     string token = 1;
     string database = 2;
     bool isLocal = 3;
+    string extra_options = 4;
 }
 message OpenSessionOutbound {
     string session_id = 1;
