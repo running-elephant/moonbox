@@ -32,7 +32,6 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
   }
 
   override def channelRead(ctx: ChannelHandlerContext, msg: Any) = {
-    println(Thread.currentThread().getId)
     try {
       msg match {
         case m: protobuf.ProtoMessage => handleProtoMessage(ctx, m)
