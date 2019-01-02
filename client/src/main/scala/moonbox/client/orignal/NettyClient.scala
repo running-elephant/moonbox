@@ -140,7 +140,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   override def login(username: String, password: String): String = {
     sendMessageSync(wrapMessage(LoginInbound(username, password))) match {
       case LoginOutbound(Some(token), _) => token
-      case LoginOutbound(token, error) => throw new Exception(s"USER($username) login failed: ERROR=$error, TOKEN=$token")
+      case LoginOutbound(_, Some(error)) => throw BackendException(error)
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
@@ -156,7 +156,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   override def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int) = {
     sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), clientOptions.extraOptions.toSeq.toMap))) match {
       case OpenSessionOutbound(Some(sessionId), Some(workerHost), Some(workerPort), None) => (sessionId, workerHost, workerPort)
-      case OpenSessionOutbound(sessionId, _, _, error) => throw new Exception(s"Open session failed: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
+      case OpenSessionOutbound(_, _, _, Some(error)) => throw BackendException(error)
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
@@ -237,7 +237,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
 
   private def interactiveNextResult(token: String, sessionId: String, timeout: Int): ResultData = {
     dataFetchClient.sendMessageSync(wrapMessage(InteractiveNextResultInbound(Some(token), sessionId)), timeout) match {
-      case InteractiveNextResultOutbound(Some(error), _) => throw new Exception(s"Fetch next result error: ERROR=$error")
+      case InteractiveNextResultOutbound(Some(error), _) => throw BackendException(error)
       case InteractiveNextResultOutbound(_, Some(resultData)) => resultData
       case other => throw new Exception(s"Unknown message: $other")
     }

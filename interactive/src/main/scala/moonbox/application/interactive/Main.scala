@@ -125,7 +125,7 @@ class Main(
 					logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
 					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
 				case Failure(e) =>
-					requester ! OpenSessionResponse(None, None, None, s"Open session failed: ${e.getMessage}")
+					requester ! OpenSessionResponse(None, None, None, e.getMessage)
 			}
 
 		case close @ CloseSession(sessionId) =>

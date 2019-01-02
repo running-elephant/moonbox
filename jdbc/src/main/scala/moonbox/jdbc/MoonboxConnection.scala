@@ -56,7 +56,8 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     val moonboxClient = try {
       MoonboxClient.builder(clientOptions).build()
     } catch {
-      case e: Exception => throw new SQLException(e.getCause)
+      case e: Exception =>
+        throw new SQLException(e.getMessage)
     }
     initSession(moonboxClient, clientOptions, newProps)
     true

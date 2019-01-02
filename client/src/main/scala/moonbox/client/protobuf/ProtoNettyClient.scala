@@ -157,7 +157,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       val out = resp.getLoginOutbound
       out.getError match {
         case "" | null => out.getToken
-        case error => throw new Exception(s"USER($username) login failed: ERROR=$error, TOKEN=${out.getToken}")
+        case error => throw BackendException(error)
       }
     } else throw new Exception(s"Invalid message format: $resp")
   }
@@ -186,7 +186,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       val out = resp.getOpenSessionOutbound
       out.getError match {
         case "" | null => (out.getSessionId, out.getWorkerHost, out.getWorkerPort)
-        case error => throw new Exception(s"Open session failed: ERROR=$error, TOKEN=$token, SessionId=${out.getSessionId}")
+        case error => throw BackendException(error)
       }
     } else throw new Exception(s"Invalid message format: $resp")
   }
@@ -305,7 +305,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       val out = resp.getInteractiveNextResultOutbound
       out.getError match {
         case "" | null => out.getData
-        case error => throw new Exception(s"Fetch next result error: ERROR=$error")
+        case error => throw BackendException(error)
       }
     } else throw new Exception(s"Unknown message: $resp")
   }
