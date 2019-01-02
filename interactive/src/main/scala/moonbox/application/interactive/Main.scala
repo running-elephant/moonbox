@@ -116,12 +116,17 @@ class Main(
 			masterRef ! ApplicationStateResponse(driverId)
 
 		case open @ OpenSession(username, database, _) =>
+			val requester = sender()
 			val sessionId = newSessionId
-			val runner = new Runner(sessionId, username, database, MbSession.getMbSession(conf), self)
-			sessionIdToRunner.put(sessionId, runner)
-			logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
-			// TODO data server port
-			sender() ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
+			val f = Future(new Runner(sessionId, username, database, MbSession.getMbSession(conf), self))
+			f.onComplete {
+				case Success(runner) =>
+					sessionIdToRunner.put(sessionId, runner)
+					logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
+					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
+				case Failure(e) =>
+					requester ! OpenSessionResponse(None, None, None, s"Open session failed: ${e.getMessage}")
+			}
 
 		case close @ CloseSession(sessionId) =>
 			sessionIdToRunner.get(sessionId) match {
