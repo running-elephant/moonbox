@@ -36,10 +36,16 @@ import org.apache.spark.sql.{DataFrame, MixcalContext}
 
 import scala.collection.mutable
 
-class MbSession(conf: MbConf) extends MbLogging {
+class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogging {
+
+	def this(conf: MbConf) = {
+		this(conf, Map())
+	}
+
 	private val mbParser = new MbParser()
 	implicit var userContext: UserContext = _
-	private val pushdown = conf.get(MIXCAL_PUSHDOWN_ENABLE)
+
+	val pushdown = sessionConfig.get(MbSession.PUSHDOWN).map(_.toBoolean).getOrElse(conf.get(MIXCAL_PUSHDOWN_ENABLE))
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE)
 
 	private val userVariable = new mutable.HashMap[String, String]()
@@ -318,7 +324,11 @@ class MbSession(conf: MbConf) extends MbLogging {
 
 object MbSession extends MbLogging {
 
+	val PUSHDOWN = "pushdown"
+
 	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
+
+	def getMbSession(conf: MbConf, sessionConfig: Map[String, String]) = new MbSession(conf, sessionConfig)
 
 	def startMixcalEnv(conf: MbConf): Unit = {
 		MixcalContext.start(conf)

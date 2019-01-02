@@ -68,7 +68,7 @@ private[deploy] class MbService(
 		auditLogger.log(decodeToken(token), "openSession")
 		isLogin(token) match {
 			case Some(username) =>
-				askSync[OpenSessionResponse](OpenSession(username, database, true))(SHORT_TIMEOUT) match {
+				askSync[OpenSessionResponse](OpenSession(username, database, config))(SHORT_TIMEOUT) match {
 					case Left(OpenSessionResponse(Some(sessionId), workerHost, workerPort, message)) =>
 						loginManager.putSession(token, sessionId)
 						OpenSessionOutbound(Some(sessionId), workerHost, workerPort, None)

@@ -422,8 +422,9 @@ class MoonboxMaster(
 					}
 			}
 
-		case open @ OpenSession(_, _, centralized) =>
+		case open @ OpenSession(_, _, config) =>
 			val requester = sender()
+			val centralized = config.get("islocal").exists(_.equalsIgnoreCase("true"))
 			val candidate = selectApplication(centralized)
 			candidate match {
 				case Some(app) =>
