@@ -140,7 +140,6 @@ class Runner(
 		DirectResult(schema, data)
 	}
 
-	// TODO maxRows
 	private def query(sql: String): QueryResult = {
 		val analyzedPlan = mbSession.analyzedPlan(sql)
 		val limitedPlan = GlobalLimit(Literal(maxRows, IntegerType), LocalLimit(Literal(maxRows, IntegerType), analyzedPlan))
@@ -160,10 +159,14 @@ class Runner(
 			case e: Throwable if e.getMessage.contains("cancelled job") =>
 				throw e
 			case e: Throwable =>
-				logWarning(s"Execute push down failed: ${e.getMessage}. Retry with out pushdown.")
-				val plan = mbSession.pushdownPlan(optimized, pushdown = false)
-				val dataFrame = mbSession.toDF(plan)
-				initCurrentData(dataFrame)
+				if (mbSession.pushdown) {
+					logWarning(s"Execute push down failed: ${e.getMessage}. Retry with out pushdown.")
+					val plan = mbSession.pushdownPlan(optimized, pushdown = false)
+					val dataFrame = mbSession.toDF(plan)
+					initCurrentData(dataFrame)
+				} else {
+					throw e
+				}
 		}
 	}
 
@@ -181,7 +184,11 @@ class Runner(
 			case e: ColumnSelectPrivilegeException =>
 				throw e
 			case e: Throwable =>
-				doInsert(pushdownEnable = false)
+				if (mbSession.pushdown) {
+					doInsert(pushdownEnable = false)
+				} else {
+					throw e
+				}
 		}
 
 		def doInsert(pushdownEnable: Boolean): Unit = {

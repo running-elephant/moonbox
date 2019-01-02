@@ -115,10 +115,10 @@ class Main(
 			changeMaster(masterRef, masterRef.path.address)
 			masterRef ! ApplicationStateResponse(driverId)
 
-		case open @ OpenSession(username, database, _) =>
+		case open @ OpenSession(username, database, sessionConfig) =>
 			val requester = sender()
 			val sessionId = newSessionId
-			val f = Future(new Runner(sessionId, username, database, MbSession.getMbSession(conf), self))
+			val f = Future(new Runner(sessionId, username, database, MbSession.getMbSession(conf, sessionConfig), self))
 			f.onComplete {
 				case Success(runner) =>
 					sessionIdToRunner.put(sessionId, runner)

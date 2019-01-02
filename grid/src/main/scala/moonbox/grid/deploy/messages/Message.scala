@@ -9,7 +9,7 @@ object Message {
 	sealed trait JobMessage extends Message
 
 	case class OpenSession(username: String,
-		database: Option[String], centralized: Boolean = false) extends JobMessage
+		database: Option[String], config: Map[String, String]) extends JobMessage
 
 	case class OpenSessionResponse(
 		sessionId: Option[String], workerHost: Option[String] = None, workerPort: Option[Int] = None, message: String) extends JobMessage
