@@ -105,9 +105,10 @@ message InteractiveNextResultOutbound {
 }
 /* batch query */
 message BatchQueryInbound {
-    string token = 1;
-    repeated string sql = 2; //Seq[String]
-    string config = 3; // or Map[String, String]
+    string username = 1;
+    string password = 2;
+    repeated string sql = 3; //Seq[String]
+    map<string, string> config = 4; // or Map[String, String]
 }
 message BatchQueryOutbound {
     string job_id = 1;
@@ -115,8 +116,9 @@ message BatchQueryOutbound {
 }
 /* batch query progress */
 message BatchQueryProgressInbound {
-    string token = 1;
-    string job_id = 2;
+    string username = 1;
+    string password = 2;
+    string job_id = 3;
 }
 message BatchQueryProgressOutbound {
     string message = 1;
@@ -132,8 +134,9 @@ message InteractiveQueryCancelOutbound {
 }
 /* batch query cancel */
 message BatchQueryCancelInbound {
-    string token = 1;
-    string job_id = 2;
+    string username = 1;
+    string password = 2;
+    string job_id = 3;
 }
 message BatchQueryCancelOutbound {
     string error = 1;

@@ -6,7 +6,7 @@ import java.util
 import java.util.{Map => JMap}
 
 import moonbox.client.MoonboxClient
-import moonbox.client.entity.{ConnectionState, MoonboxRowSet}
+import moonbox.client.entity.{ConnectionState, JobState, MoonboxRowSet}
 
 import scala.collection.JavaConverters._
 
@@ -14,7 +14,7 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
 
   def this() = this(MoonboxClient.builder().build())
   def this(key: String, value: String) = this(MoonboxClient.builder().setConf(key, value).build())
-  def this(kv: JMap[String, String]) = this(MoonboxClient.builder().setConf(kv.asScala).build())
+  def this(kv: JMap[String, String]) = this(MoonboxClient.builder().setConf(kv.asScala.toMap).build())
 
   /** constructors */
   def newClient: JavaMoonboxClient = new JavaMoonboxClient(moonboxClient.newClient)
@@ -33,7 +33,7 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def setMaxRows(size: Int): Unit = moonboxClient.setMaxRows(size)
   def getServers: util.List[InetSocketAddress] = moonboxClient.getServers.asJava
   def getConf(key: String): String = moonboxClient.getConf(key).orNull
-  def getAllConf: JMap[String, String] = moonboxClient.getAllConf
+  def getAllConf: JMap[String, String] = moonboxClient.getAllConf.asJava
 
   /** userSys related */
   def userInfo: Object = moonboxClient.userInfo
@@ -65,10 +65,11 @@ class JavaMoonboxClient private (moonboxClient: MoonboxClient) {
   def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, milliseconds)
   def interactiveQuery(interactiveSql: util.List[String], fetchSize: Int, maxRows: Int, milliseconds: Int): MoonboxRowSet = moonboxClient.interactiveQuery(interactiveSql.asScala, fetchSize, maxRows, milliseconds)
   def cancelInteractiveQuery(): Boolean = moonboxClient.cancelInteractiveQuery()
-  def cancelBatchQuery(jobId: String): Boolean = moonboxClient.cancelBatchQuery(jobId)
 
   /** batch query related */
-  def submitJob(jobSql: util.List[String], config: JMap[String, String]): String = moonboxClient.submitJob(jobSql.asScala, config)
+  def batchQuery(jobSql: util.List[String], config: JMap[String, String]): String = moonboxClient.batchQuery(jobSql.asScala, config.asScala.toMap)
+  def batchQueryProgress(jobId: String): JobState = moonboxClient.batchQueryProgress(jobId)
+  def cancelBatchQuery(jobId: String): Boolean = moonboxClient.cancelBatchQuery(jobId)
   /* return jobId */
   def runningJobs: util.List[String] = moonboxClient.runningJobs.asJava
   def waitingJobs: util.List[String] = moonboxClient.waitingJobs.asJava

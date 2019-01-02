@@ -2,9 +2,9 @@ package moonbox.client
 
 import java.net.InetSocketAddress
 
-import moonbox.client.entity.{ConnectionState, MoonboxRowSet}
+import moonbox.client.entity.{ConnectionState, JobState, MoonboxRowSet}
 
-import scala.collection.{Map, mutable}
+import scala.collection.mutable
 
 object MoonboxClient{
 
@@ -50,7 +50,7 @@ trait MoonboxClient {
   def setMaxRows(size: Int): Unit
   def getServers: Seq[InetSocketAddress]
   def getConf(key: String): Option[String]
-  def getAllConf: java.util.Map[String, String]
+  def getAllConf: Map[String, String]
 
   /** userSys related */
   def userInfo: AnyRef
@@ -82,11 +82,12 @@ trait MoonboxClient {
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int): MoonboxRowSet
   def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, maxRows: Int, milliseconds: Int): MoonboxRowSet
   def cancelInteractiveQuery(): Boolean
-  def cancelBatchQuery(jobId: String): Boolean
 
   /** batch query related */
-  def submitJob(jobSql: Seq[String], config: java.util.Map[String, String]): String  /* return jobId */
-  def submitJob(jobSql: Seq[String], config: String): String  /* return jobId */
+  def batchQuery(jobSql: Seq[String], config: Map[String, String]): String  /* return jobId */
+  def batchQueryProgress(jobId: String): JobState
+  def cancelBatchQuery(jobId: String): Boolean
+  //  def batchQuery(jobSql: Seq[String], config: String): String  /* return jobId */
   def runningJobs: Seq[String]
   def waitingJobs: Seq[String]
   def failedJobs: Seq[String]

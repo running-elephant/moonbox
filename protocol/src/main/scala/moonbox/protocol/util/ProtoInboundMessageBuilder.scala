@@ -2,7 +2,7 @@ package moonbox.protocol.util
 
 import java.util
 
-import com.google.protobuf.{Int32Value, Int64Value}
+import com.google.protobuf.Int32Value
 import moonbox.message.protobuf._
 
 object ProtoInboundMessageBuilder {
@@ -13,11 +13,13 @@ object ProtoInboundMessageBuilder {
       .setPassword(password)
       .build()
   }
+
   def logoutInbound(token: String): LogoutInbound = {
     LogoutInbound.newBuilder()
       .setToken(token)
       .build()
   }
+
   def openSessionInbound(token: String, database: String, isLocal: Boolean, config: util.Map[String, String]): OpenSessionInbound = {
     OpenSessionInbound.newBuilder()
       .setToken(token)
@@ -25,6 +27,7 @@ object ProtoInboundMessageBuilder {
       .putAllConfig(config)
       .build()
   }
+
   def closeSessionInbound(token: String, sessionId: String): CloseSessionInbound = {
     val builder = CloseSessionInbound.newBuilder()
     if (sessionId != null) {
@@ -52,17 +55,19 @@ object ProtoInboundMessageBuilder {
     builder.build()
   }
 
-  def batchQueryInbound(token: String, sqls: util.List[String], config: String): BatchQueryInbound = {
+  def batchQueryInbound(username: String, password: String, sqls: util.List[String], config: util.Map[String, String]): BatchQueryInbound = {
     BatchQueryInbound.newBuilder()
-      .setToken(token)
+      .setUsername(username)
+      .setPassword(password)
       .addAllSql(sqls)
-      .setConfig(config)
+      .putAllConfig(config)
       .build()
   }
 
-  def batchQueryProgressInbound(token: String, jobId: String): BatchQueryProgressInbound = {
+  def batchQueryProgressInbound(username: String, password: String, jobId: String): BatchQueryProgressInbound = {
     BatchQueryProgressInbound.newBuilder()
-      .setToken(token)
+      .setUsername(username)
+      .setPassword(password)
       .setJobId(jobId)
       .build()
   }
@@ -74,9 +79,10 @@ object ProtoInboundMessageBuilder {
       .build()
   }
 
-  def batchQueryCancelInbound(token: String, jobId: String): BatchQueryCancelInbound = {
+  def batchQueryCancelInbound(username: String, password: String, jobId: String): BatchQueryCancelInbound = {
     BatchQueryCancelInbound.newBuilder()
-      .setToken(token)
+      .setUsername(username)
+      .setPassword(password)
       .setJobId(jobId)
       .build()
   }

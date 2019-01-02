@@ -216,11 +216,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
-  override def batchQuery(token: String, sqls: Seq[String], config: String): String = {
+  override def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String]): String = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setBatchQueryInbound(ProtoInboundMessageBuilder.batchQueryInbound(token, sqls.asJava, config))
+      .setBatchQueryInbound(ProtoInboundMessageBuilder.batchQueryInbound(username, password, sqls.asJava, config.asJava))
       .build()
     val resp = sendMessageSync(msg)
     if (resp.hasBatchQueryOutbound) {
@@ -232,11 +232,11 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     } else throw new Exception(s"Unknown message: $resp")
   }
 
-  override def batchQueryProgress(token: String, jobId: String): JobState = {
+  override def batchQueryProgress(username: String, password: String, jobId: String): JobState = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setBatchQueryProgressInbound(BatchQueryProgressInbound.newBuilder().setToken(token).setJobId(jobId).build())
+      .setBatchQueryProgressInbound(ProtoInboundMessageBuilder.batchQueryProgressInbound(username, password, jobId))
       .build()
     val resp = sendMessageSync(msg)
     if (resp.hasBatchQueryProgressOutbound){
@@ -261,18 +261,18 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     } else throw new Exception(s"Unknown message: $resp")
   }
 
-  override def cancelBatchQuery(token: String, jobId: String): Boolean = {
+  override def cancelBatchQuery(username: String, password: String, jobId: String): Boolean = {
     checkConnected()
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
-      .setBatchQueryCancelInbound(ProtoInboundMessageBuilder.batchQueryCancelInbound(token, jobId))
+      .setBatchQueryCancelInbound(ProtoInboundMessageBuilder.batchQueryCancelInbound(username, password, jobId))
       .build()
     val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
     if (resp.hasBatchQueryCancelOutbound) {
       val out = resp.getBatchQueryCancelOutbound
       out.getError match {
         case "" | null => true
-        case error => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, SessionId=$jobId")
+        case error => throw new Exception(s"Cancel query error: ERROR=$error, USER=$username, JobId=$jobId")
       }
     } else throw new Exception(s"Unknown message: $resp")
   }

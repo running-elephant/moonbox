@@ -9,7 +9,7 @@ import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
+import io.netty.handler.codec.serialization.{ClassResolvers, CompatibleObjectEncoder, ObjectDecoder, ObjectEncoder}
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.client.entity.{JobState, MoonboxRow, MoonboxRowSet}
 import moonbox.client.exception.BackendException
@@ -61,9 +61,9 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
       .handler(new ChannelInitializer[SocketChannel]() {
         override def initChannel(ch: SocketChannel) = {
           ch.pipeline
-            .addLast(new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)),
-            new ObjectEncoder,
-            new MessageHandler(promises, responses, callbacks))
+            .addLast(new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))  /* inbound */
+            .addLast(new MessageHandler(promises, responses, callbacks))  /* inbound */
+            .addLast(new ObjectEncoder())  /* outbound */
         }
       })
     val channelFuture = bootstrap.connect(host, port)
@@ -154,7 +154,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int) = {
-    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), clientOptions.extraOptions))) match {
+    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), clientOptions.extraOptions.toSeq.toMap))) match {
       case OpenSessionOutbound(Some(sessionId), Some(workerHost), Some(workerPort), None) => (sessionId, workerHost, workerPort)
       case OpenSessionOutbound(sessionId, _, _, error) => throw new Exception(s"Open session failed: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
       case other => throw new Exception(s"Unknown message: $other")
@@ -179,29 +179,36 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
     toMoonboxRowSet(token, sessionId, outbound, timeout)
   }
 
-  override def batchQuery(token: String, sqls: Seq[String], config: String): String = {
+  override def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String]): String = {
     checkConnected()
-    sendMessageSync(wrapMessage(BatchQueryInbound(token, sqls, config)), getReadTimeout()) match {
+    sendMessageSync(wrapMessage(BatchQueryInbound(username, password, sqls, config)), getReadTimeout()) match {
       case BatchQueryOutbound(_, Some(error)) => throw new Exception(s"Batch query error: ERROR=$error")
       case BatchQueryOutbound(Some(jobId), _) => jobId
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
 
-  override def batchQueryProgress(token: String, jobId: String): JobState = {
+  override def batchQueryProgress(username: String, password: String, jobId: String): JobState = {
     checkConnected()
-    sendMessageSync(wrapMessage(BatchQueryProgressInbound(token, jobId))) match {
+    sendMessageSync(wrapMessage(BatchQueryProgressInbound(username, password, jobId))) match {
       case BatchQueryProgressOutbound(message, state) => JobState(message, state.getOrElse(""))
       case other => throw new Exception(s"Unknown message: $other")
     }
   }
-  override def cancelInteractiveQuery(token: String, sessionId: String): Boolean = cancelQuery(token, None, Some(sessionId))
-  override def cancelBatchQuery(token: String, jobId: String): Boolean = cancelQuery(token, Some(jobId), None)
 
-  private def cancelQuery(token: String, jobId: Option[String], sessionId: Option[String]): Boolean = {
+  override def cancelInteractiveQuery(token: String, sessionId: String): Boolean = {
     checkConnected()
-    sendMessageSync(wrapMessage(CancelQueryInbound(token, jobId, sessionId))) match {
-      case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, JobId=$jobId, SessionId=$sessionId")
+    sendMessageSync(wrapMessage(InteractiveQueryCancelInbound(token, sessionId))) match {
+      case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
+      case CancelQueryOutbound(None) => true
+      case other => throw new Exception(s"Unknown message: $other")
+    }
+  }
+
+  override def cancelBatchQuery(username: String, password: String, jobId: String): Boolean = {
+    checkConnected()
+    sendMessageSync(wrapMessage(BatchQueryCancelInbound(username, password, jobId))) match {
+      case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, USER=$username, JobId=$jobId")
       case CancelQueryOutbound(None) => true
       case other => throw new Exception(s"Unknown message: $other")
     }

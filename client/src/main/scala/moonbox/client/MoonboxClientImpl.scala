@@ -2,14 +2,12 @@ package moonbox.client
 
 import java.net.InetSocketAddress
 
-import moonbox.client.entity.ConnectionState
+import moonbox.client.entity.{ConnectionState, JobState}
 import moonbox.client.orignal.NettyClient
 import moonbox.client.protobuf.ProtoNettyClient
 import moonbox.protocol.NettyMessageType
-import org.json.JSONObject
 
 import scala.collection.mutable.ArrayBuffer
-import collection.JavaConverters._
 
 private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) extends MoonboxClient {
 
@@ -89,7 +87,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
   }
 
   override def getConf(key: String) = config.get(key)
-  override def getAllConf = config.asJava
+  override def getAllConf = config
 
   override def userInfo = throw new Exception("Unsupported temporarily.")
   override def listDatabases = {
@@ -157,18 +155,23 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
 
   override def cancelBatchQuery(jobId: String) = {
     checkActive(_client)
-    _client.cancelBatchQuery(_token, jobId)
+    checkUserNameAndPassword()
+    _client.cancelBatchQuery(clientOptions.user.get, clientOptions.password.get, jobId)
   }
 
   /* batch query */
-  override def submitJob(jobSql: Seq[String], config: java.util.Map[String, String]): String = {
-    val configJson = new JSONObject(config)
-    submitJob(jobSql, configJson.toString)
-  }
-  override def submitJob(jobSql: Seq[String], config: String) = {
+  override def batchQuery(jobSql: Seq[String], config: Map[String, String]): String = {
     checkActive(_client)
-    _client.batchQuery(_token, jobSql, config)
+    checkUserNameAndPassword()
+    _client.batchQuery(clientOptions.user.get, clientOptions.password.get, jobSql, config)
   }
+
+  override def batchQueryProgress(jobId: String): JobState = {
+    checkActive(_client)
+    checkUserNameAndPassword()
+    _client.batchQueryProgress(clientOptions.user.get, clientOptions.password.get, jobId)
+  }
+
   override def runningJobs = throw new Exception("Unsupported temporarily.")
   override def waitingJobs = throw new Exception("Unsupported temporarily.")
   override def failedJobs = throw new Exception("Unsupported temporarily.")
@@ -192,6 +195,10 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
     if (client == null || !client.isActive()) {
       throw new Exception("Moonbox client is not active, please reconnect.")
     }
+  }
+
+  private def checkUserNameAndPassword(): Unit = {
+    require(clientOptions.user.isDefined && clientOptions.password.isDefined, "Username or password invalid.")
   }
 
   private def closeClient(): Unit = {

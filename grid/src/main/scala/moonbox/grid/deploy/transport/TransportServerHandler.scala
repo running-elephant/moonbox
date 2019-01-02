@@ -57,7 +57,7 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 	override def channelInactive(ctx: ChannelHandlerContext) = {
 		val channel = ctx.channel()
 		if (channelToToken.containsKey(channel)) {
-			implicit val connection = getConnectionInfo(ctx)
+			implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
 			val token = channelToToken.remove(channel)
 			try {
 				if (channelToSessionId.containsKey(channel)) {
@@ -70,13 +70,6 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 			}
 		}
 		super.channelInactive(ctx)
-	}
-
-	private def prettyError(error: Option[String]): String = {
-		error match {
-			case Some(_) => s"ERROR=$error"
-			case None => "SUCCESSFULLY"
-		}
 	}
 
 	private def getConnectionInfo(ctx: ChannelHandlerContext) : ConnectionInfo = {
@@ -96,56 +89,46 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 		val channel = ctx.channel()
 		val result = message match {
 			case login: LoginInbound =>
-				logInfo(s"User ${login.username} try login.")
 				val outbound = mbService.login(login.username, login.password)
-				logInfo(s"User(${login.username}) login completed: " + prettyError(outbound.error))
-				if (outbound.token.isDefined) {
-					channelToToken.put(channel, outbound.token.get)
-				}
+				outbound.token.foreach(token => channelToToken.put(channel, token))
 				outbound.setId(login.getId)
 			case logout: LogoutInbound =>
-				val token = channelToToken.remove(channel)
-				val username = mbService.decodeToken(token)
+				val token = Option(channelToToken.remove(channel)).getOrElse(logout.token)
 				val outbound = mbService.logout(token)
-				logInfo(s"User($username), Token($token) logout completed: " + prettyError(outbound.error))
 				outbound.setId(logout.getId)
-			case openSession@OpenSessionInbound(_, database, config) =>
-				val token = channelToToken.get(channel)
-				val username = mbService.decodeToken(token)
-				val outbound = mbService.openSession(token, database, config)
-				logInfo(s"User($username), Token($token) open session completed: " + prettyError(outbound.error))
-				if (outbound.sessionId.isDefined) {
-					channelToSessionId.put(channel, outbound.sessionId.get)
-				}
+			case openSession@OpenSessionInbound(token, database, config) =>
+				val _token = Option(channelToToken.get(channel)).getOrElse(token)
+				val outbound = mbService.openSession(_token, database, config)
+				outbound.sessionId.foreach(sId => channelToSessionId.put(channel, sId))
 				outbound.setId(openSession.getId)
-			case closeSession@CloseSessionInbound(_, _) =>
-				val token = channelToToken.get(channel)
-				val sessionId = channelToSessionId.remove(channel)
-				val outbound = mbService.closeSession(token, sessionId)
-				logInfo(s"Token($token), SessionId($sessionId) close session completed: " + prettyError(outbound.error))
+			case closeSession@CloseSessionInbound(token, sessionId) =>
+				val _token = Option(channelToToken.get(channel)).getOrElse(token)
+				val _sessionId = Option(channelToSessionId.remove(channel)).getOrElse(sessionId)
+				val outbound = mbService.closeSession(_token, _sessionId)
 				outbound.setId(closeSession.getId)
-			case query@InteractiveQueryInbound(_, _, sqls, fetchSize, maxRows) =>
-				val token = channelToToken.get(channel)
-				val sessionId = channelToSessionId.get(channel)
-				val outbound = mbService.interactiveQuery(token, sessionId, sqls, fetchSize, maxRows)
-				logInfo(s"Query(sqls=$sqls, fetchSize=$fetchSize, maxRows=$maxRows) completed: " + prettyError(outbound.error))
+			case query@InteractiveQueryInbound(token, sessionId, sqls, fetchSize, maxRows) =>
+				val _token = Option(channelToToken.get(channel)).getOrElse(token)
+				val _sessionId = Option(channelToSessionId.remove(channel)).getOrElse(sessionId)
+				val outbound = mbService.interactiveQuery(_token, _sessionId, sqls, fetchSize, maxRows)
 				outbound.setId(query.getId)
-			case next@InteractiveNextResultInbound(sessionId, fetchSize) =>
-				val token = channelToToken.get(channel)
-				val sessionId = channelToSessionId.get(channel)
-				val outbound = mbService.interactiveNextResult(token, sessionId)
-				logInfo(s"NextResult_query(SessionId=$sessionId) completed: " + prettyError(outbound.error))
+			case next@InteractiveNextResultInbound(token, sessionId) =>
+				val _token = Option(channelToToken.get(channel)).getOrElse(token.get)
+				val _sessionId = Option(channelToSessionId.remove(channel)).getOrElse(sessionId)
+				val outbound = mbService.interactiveNextResult(_token, _sessionId)
 				outbound.setId(next.getId)
-			case query@BatchQueryInbound(token, sqls, config) =>
-			// TODO:  batch query
-			case progress@BatchQueryProgressInbound(token, jobId) =>
-			// TODO: batch query progress
-			case cancel: CancelQueryInbound =>
-				val token = channelToToken.get(channel)
-				val username = mbService.decodeToken(token)
-				val sessionId = channelToSessionId.get(channel)
-				val outbound = mbService.interactiveQueryCancel(token, sessionId=sessionId)
-				logInfo(s"User($username, token=$token, sessionId=$sessionId) query cancel completed: " + prettyError(outbound.error))
+			case query@BatchQueryInbound(username, password, sqls, config) =>
+				val outbound = mbService.batchQuery(username, password, sqls, config)
+				outbound.setId(query.getId)
+			case progress@BatchQueryProgressInbound(username, password, jobId) =>
+				val outbound = mbService.batchQueryProgress(username, password, jobId)
+				outbound.setId(progress.getId)
+			case cancel@InteractiveQueryCancelInbound(token, sessionId) =>
+				val _token = Option(channelToToken.get(channel)).getOrElse(token)
+				val _sessionId = Option(channelToSessionId.get(channel)).getOrElse(sessionId)
+				val outbound = mbService.interactiveQueryCancel(_token, sessionId=_sessionId)
+				outbound.setId(cancel.getId)
+			case cancel@BatchQueryCancelInbound(username, password, jobId) =>
+				val outbound = mbService.batchQueryCancel(username, password, jobId)
 				outbound.setId(cancel.getId)
 			case _ => logWarning("Received unsupported message, do noting!")
 		}

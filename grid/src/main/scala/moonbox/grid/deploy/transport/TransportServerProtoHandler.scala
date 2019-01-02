@@ -233,11 +233,12 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 
   private def handleBatchQuery(ctx: ChannelHandlerContext, in: protobuf.BatchQueryInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
-    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val username = in.getUsername
+    val password = in.getPassword
     val sqls = in.getSqlList
-    val config = in.getConfig
+    val config = in.getConfigMap
 
-    Future(mbService.batchQuery(token, sqls.asScala, config)) onComplete {
+    Future(mbService.batchQuery(username, password, sqls.asScala, config.asScala.toMap)) onComplete {
       case Success(BatchQueryOutbound(jobId, error)) => batchQueryResponse(jobId, error)
       case Failure(e) => batchQueryResponse(None, Some(e.getMessage))
     }
@@ -251,10 +252,11 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 
   private def handleBatchProgress(ctx: ChannelHandlerContext, in: protobuf.BatchQueryProgressInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
-    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val username = in.getUsername
+    val password = in.getPassword
     val jobId = in.getJobId
 
-    Future(mbService.batchQueryProgress(token, jobId)) onComplete {
+    Future(mbService.batchQueryProgress(username, password, jobId)) onComplete {
       case Success(BatchQueryProgressOutbound(message, state)) => batchProgressResponse(message, state)
       case Failure(exception) => batchProgressResponse(exception.getMessage, None)
     }
@@ -285,10 +287,11 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 
   private def handleBatchCancel(ctx: ChannelHandlerContext, in: protobuf.BatchQueryCancelInbound, messageId: Long): Unit = {
     implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
-    val token = Option(channelToToken.get(ctx.channel())).getOrElse(in.getToken)
+    val username = in.getUsername
+    val password = in.getPassword
     val jobId = Option(channelToSessionId.get(ctx.channel())).getOrElse(in.getJobId)
 
-    Future(mbService.batchQueryCancel(token, jobId)) onComplete {
+    Future(mbService.batchQueryCancel(username, password, jobId)) onComplete {
       case Success(CancelQueryOutbound(error)) => batchCancelResponse(error)
       case Failure(exception) => batchCancelResponse(Some(exception.getMessage))
     }

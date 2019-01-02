@@ -59,18 +59,19 @@ case class InteractiveNextResultOutbound(
 // batch mode
 // support cluster runtime engine only
 // support asynchronous
-case class BatchQueryInbound(token: String, sqls: Seq[String], config: String) extends Inbound
+case class BatchQueryInbound(username: String, password: String, sqls: Seq[String], config: Map[String, String]) extends Inbound
 case class BatchQueryOutbound(
 	jobId: Option[String] = None,
 	error: Option[String] = None) extends Outbound
 
-case class BatchQueryProgressInbound(token: String, jobId: String) extends Inbound
+case class BatchQueryProgressInbound(username: String, password: String, jobId: String) extends Inbound
 case class BatchQueryProgressOutbound(
 	message: String,
 	state: Option[String]) extends Outbound
 
 // interactive and batch
-case class CancelQueryInbound(token: String, jobId: Option[String], sessionId: Option[String]) extends Inbound
+case class BatchQueryCancelInbound(username: String, password: String, jobId: String) extends Inbound
+case class InteractiveQueryCancelInbound(token: String, sessionId: String) extends Inbound
 case class CancelQueryOutbound(error: Option[String] = None) extends Outbound
 
 // job and event

@@ -151,6 +151,11 @@ private[deploy] class MbService(
 		}
 	}
 
+	def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
+		// TODO:
+		null
+	}
+
 	def batchQuery(token: String, sqls: Seq[String], config: String)(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		auditLogger.log(decodeToken(token), "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config))
 		isLogin(token) match {
@@ -168,6 +173,11 @@ private[deploy] class MbService(
 		}
 	}
 
+	def batchQueryCancel(username: String, password: String, jobId: String): CancelQueryOutbound = {
+		// TODO:
+		null
+	}
+
 	def batchQueryCancel(token: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		auditLogger.log(decodeToken(token), "batchQueryCancel", Map("jobId" -> jobId))
 		isLogin(token) match {
@@ -183,6 +193,11 @@ private[deploy] class MbService(
 			case None =>
 				CancelQueryOutbound(error = Some("Please login first."))
 		}
+	}
+
+	def batchQueryProgress(username: String, password: String, jobId: String): BatchQueryProgressOutbound = {
+		// TODO:
+		null
 	}
 
 	def batchQueryProgress(token: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {

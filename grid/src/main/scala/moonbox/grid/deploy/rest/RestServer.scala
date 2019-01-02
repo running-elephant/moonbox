@@ -129,7 +129,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 				post {
 					entity(as[BatchQueryInbound]) { in =>
 						complete {
-							service.batchQuery(in.token, in.sqls, in.config)
+							service.batchQuery(in.username, in.password, in.sqls, in.config)
 						}
 					}
 				}
@@ -138,25 +138,41 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 				post {
 					entity(as[BatchQueryProgressInbound]) { in =>
 						complete {
-							service.batchQueryProgress(in.token, in.jobId)
+							service.batchQueryProgress(in.username, in.password, in.jobId)
 						}
 					}
 				}
 			} ~
-			path("cancel") {
+			path("cancelBatch") {
 				post {
-					entity(as[CancelQueryInbound]) { in =>
+					entity(as[BatchQueryCancelInbound]) { in =>
 						complete {
-							if (in.sessionId.isDefined) {
-								service.interactiveQueryCancel(in.token, in.sessionId.get)
-							} else {
-								service.batchQueryCancel(in.token, jobId = in.jobId.get)
-							}
+//							if (in.sessionId.isDefined) {
+//								service.interactiveQueryCancel(in.token, in.sessionId.get)
+//							} else {
+								service.batchQueryCancel(in.username, in.password, in.jobId)
+//							}
+						}
+					}
+				}
+			} ~
+			path("cancelInteractive") {
+				post {
+					entity(as[InteractiveQueryCancelInbound]) { in =>
+						complete {
+//							if (in.sessionId.isDefined) {
+								service.interactiveQueryCancel(in.token, in.sessionId)
+//							} else {
+//								service.batchQueryCancel(in.token, jobId = in.jobId.get)
+//							}
 
 						}
 					}
 				}
-			} /*~
+			}
+
+
+			/*~
 			path("requestAccess") {
 				post {
 					entity(as[RequestAccessInbound]) { in =>

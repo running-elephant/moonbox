@@ -1,6 +1,6 @@
 package moonbox.client
 
-import java.net.{InetAddress, SocketAddress}
+import java.net.SocketAddress
 
 import moonbox.client.entity.{JobState, MoonboxRowSet}
 
@@ -21,13 +21,13 @@ private[client] trait ClientInterface {
   /**
     * @return jobId
     */
-  def batchQuery(token: String, sqls: Seq[String], config: String): String
+  def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String]): String
   /**
     * @return JobState consists of error and\or job state
     */
-  def batchQueryProgress(token: String, jobId: String): JobState
+  def batchQueryProgress(username: String, password: String, jobId: String): JobState
   def cancelInteractiveQuery(token: String, sessionId: String): Boolean
-  def cancelBatchQuery(token: String, jobId: String): Boolean
+  def cancelBatchQuery(username: String, password: String, jobId: String): Boolean
 
   /* ---------------------------- client related -------------------------- */
   def connect(): ClientInterface
