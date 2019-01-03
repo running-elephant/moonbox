@@ -152,11 +152,23 @@ private[deploy] class MbService(
 	}
 
 	def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
-		// TODO:
-		null
+		auditLogger.log(username, "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config.mkString(", ")))
+		loginManager.login(username, password) match {
+			case Some(_) =>
+				askSync[JobSubmitResponse](JobSubmit(username, sqls, config))(SHORT_TIMEOUT) match {
+					case Left(JobSubmitResponse(Some(jobId), _)) =>
+						BatchQueryOutbound(jobId = Some(jobId))
+					case Left(JobSubmitResponse(None, message)) =>
+						BatchQueryOutbound(error = Some(message))
+					case Right(message) =>
+						BatchQueryOutbound(error = Some(message))
+				}
+			case None =>
+				BatchQueryOutbound(error = Some("Login failed. Please check your username and password."))
+		}
 	}
 
-	def batchQuery(token: String, sqls: Seq[String], config: String)(implicit connection: ConnectionInfo): BatchQueryOutbound = {
+	/*def batchQuery(token: String, sqls: Seq[String], config: String)(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		auditLogger.log(decodeToken(token), "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config))
 		isLogin(token) match {
 			case Some(username) =>
@@ -171,14 +183,26 @@ private[deploy] class MbService(
 			case None =>
 				BatchQueryOutbound(error = Some("Please login first."))
 		}
+	}*/
+
+	def batchQueryCancel(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
+		auditLogger.log(username, "batchQueryCancel", Map("jobId" -> jobId))
+		loginManager.login(username, password) match {
+			case Some(_) =>
+				askSync[BatchJobCancelResponse](BatchJobCancel(jobId))(SHORT_TIMEOUT) match {
+					case Left(BatchJobCancelResponse(id, true, _)) =>
+						CancelQueryOutbound()
+					case Left(BatchJobCancelResponse(id, false, message)) =>
+						CancelQueryOutbound(error = Some(message))
+					case Right(message) =>
+						CancelQueryOutbound(error = Some(message))
+				}
+			case None =>
+				CancelQueryOutbound(error = Some("Login failed. Please check your username and password."))
+		}
 	}
 
-	def batchQueryCancel(username: String, password: String, jobId: String): CancelQueryOutbound = {
-		// TODO:
-		null
-	}
-
-	def batchQueryCancel(token: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
+	/*def batchQueryCancel(token: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		auditLogger.log(decodeToken(token), "batchQueryCancel", Map("jobId" -> jobId))
 		isLogin(token) match {
 			case Some(username) =>
@@ -193,14 +217,24 @@ private[deploy] class MbService(
 			case None =>
 				CancelQueryOutbound(error = Some("Please login first."))
 		}
+	}*/
+
+	def batchQueryProgress(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
+		auditLogger.log(username, "batchQueryProgress", Map("jobId" -> jobId))
+		loginManager.login(username, password) match {
+			case Some(_) =>
+				askSync[JobProgressState](JobProgress(jobId))(SHORT_TIMEOUT) match {
+					case Left(JobProgressState(id, submitTime, state, message)) =>
+						BatchQueryProgressOutbound(message, Some(state))
+					case Right(message) =>
+						BatchQueryProgressOutbound(message, None)
+				}
+			case None =>
+				BatchQueryProgressOutbound("Please check your username and password.", None)
+		}
 	}
 
-	def batchQueryProgress(username: String, password: String, jobId: String): BatchQueryProgressOutbound = {
-		// TODO:
-		null
-	}
-
-	def batchQueryProgress(token: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
+	/*def batchQueryProgress(token: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
 		auditLogger.log(decodeToken(token), "batchQueryProgress", Map("jobId" -> jobId))
 		isLogin(token) match {
 			case Some(username) =>
@@ -213,7 +247,7 @@ private[deploy] class MbService(
 			case None =>
 				BatchQueryProgressOutbound("Please login first.", None)
 		}
-	}
+	}*/
 
 
 	def decodeToken(token: String): Option[String] = {

@@ -29,7 +29,7 @@ class EventJob extends Job with MbLogging {
 		val dataMap = ctx.getMergedJobDataMap
 		val definer = dataMap.getString(EventEntity.DEFINER)
 		val sqls = dataMap.get(EventEntity.SQLS).asInstanceOf[Seq[String]]
-		val config = dataMap.getString(EventEntity.CONFIG)
+		val config = dataMap.get(EventEntity.CONFIG).asInstanceOf[Map[String, String]]
 		val func = dataMap.get(EventEntity.HANDLER).asInstanceOf[EventHandler]
 		logInfo(s"""Timed event fire as user '$definer' run sqls (${sqls.mkString(", ")})""")
 		func(definer, sqls, config)

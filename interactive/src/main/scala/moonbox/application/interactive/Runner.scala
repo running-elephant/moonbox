@@ -80,7 +80,7 @@ class Runner(
 			group = userContext.organizationName,
 			name = name,
 			sqls = cmds,
-			config = "", // TODO
+			config = Map(), // TODO
 			cronExpr = expr,
 			definer = definer,
 			start = None,

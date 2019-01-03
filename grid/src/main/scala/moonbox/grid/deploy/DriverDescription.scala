@@ -90,7 +90,7 @@ case class ClientDriverDescription(
 case class ClusterDriverDescription(
 	username: String,
 	sqls: Seq[String],
-	userConfig: String,
+	userConfig: Map[String, String],
 	conf: Seq[String]
 ) extends DriverDescription {
 
@@ -110,7 +110,7 @@ case class ClusterDriverDescription(
 	}
 
 	override def toConf: Map[String, String] = {
-		Utils.typesafeConfig2Map(ConfigFactory.parseString(userConfig))
+		userConfig
 	}
 
 	override def appResource: String = {

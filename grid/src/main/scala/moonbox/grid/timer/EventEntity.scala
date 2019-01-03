@@ -33,7 +33,7 @@ case class EventEntity(
 	group: String,
 	name: String,
 	sqls: Seq[String],
-	config: String,
+	config: Map[String, String],
 	cronExpr: String,
 	definer: String,
 	start: Option[Date],

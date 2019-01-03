@@ -123,7 +123,7 @@ class MoonboxMaster(
 		try {
 			if (conf.get(TIMER_SERVICE_ENABLE)) {
 				timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
-					override def apply(user: String, sqls: Seq[String], config: String): Unit = {
+					override def apply(user: String, sqls: Seq[String], config: Map[String, String]): Unit = {
 						self ! JobSubmit(user, sqls, config)
 					}
 				})
@@ -348,26 +348,21 @@ class MoonboxMaster(
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				if (validateUserConfig(config)) {
-					val systemConfig = conf.getAll.filterKeys(_.startsWith("moonbox.deploy")).toSeq.flatMap { case (k, v) => Seq(k, v) }
-					val driver = createDriver(ClusterDriverDescription(username, sqls, config, systemConfig))
-					persistenceEngine.addDriver(driver)
-					waitingDrivers += driver
-					drivers.add(driver)
-					schedule()
-					val msg = s"Batch job successfully submitted as ${driver.id}"
-					logInfo(msg)
-					sender() ! JobSubmitResponse(Some(driver.id), msg)
-				} else {
-					sender() ! JobSubmitResponse(None,
-						s"Batch job submit failed, please check your config.")
-				}
+				val systemConfig = conf.getAll.filterKeys(_.startsWith("moonbox.deploy")).toSeq.flatMap { case (k, v) => Seq(k, v) }
+				val driver = createDriver(ClusterDriverDescription(username, sqls, config, systemConfig))
+				persistenceEngine.addDriver(driver)
+				waitingDrivers += driver
+				drivers.add(driver)
+				schedule()
+				val msg = s"Batch job successfully submitted as ${driver.id}"
+				logInfo(msg)
+				sender() ! JobSubmitResponse(Some(driver.id), msg)
 			}
 
 		case JobProgress(driverId) =>
 			if (state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state.  Can only request driver state in ACTIVE state."
-				sender() ! JobProgressState(driverId, -1, "unknown", msg)
+				sender() ! JobProgressState(driverId, -1, DriverState.UNKNOWN.toString, msg)
 			} else {
 				waitingDrivers.find(_.id == driverId) match {
 					case Some(driver) =>
@@ -381,7 +376,7 @@ class MoonboxMaster(
 							case None =>
 								val msg = s"Ask unknown job state: $driverId"
 								logWarning(msg)
-								sender() ! JobProgressState(driverId, -1, "unknown", msg)
+								sender() ! JobProgressState(driverId, -1, DriverState.UNKNOWN.toString, msg)
 						}
 				}
 			}

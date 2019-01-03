@@ -38,7 +38,7 @@ import moonbox.grid.config._
 import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 
 object TimedEventServiceImpl {
-	type EventHandler = Function3[String, Seq[String], String, Unit]
+	type EventHandler = Function3[String, Seq[String], Map[String, String], Unit]
 }
 
 class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEventService with MbLogging {
@@ -78,6 +78,7 @@ class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEve
 		jobDataMap.put(EventEntity.DEFINER, event.definer)
 		jobDataMap.put(EventEntity.SQLS, event.sqls)
 		jobDataMap.put(EventEntity.HANDLER, handle)
+		jobDataMap.put(EventEntity.CONFIG, event.config)
 		val jobBuilder = JobBuilder.newJob(classOf[EventJob])
 		if (event.desc.isDefined) {
 			jobBuilder.withDescription(event.desc.get)

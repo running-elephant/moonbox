@@ -43,7 +43,7 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.password", "123456")
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.maxConnections", "10")
 		timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
-			override def apply(v1: String, v2: Seq[String], v3: String): Unit = {
+			override def apply(v1: String, v2: Seq[String], v3: Map[String, String]): Unit = {
 				println(v1)
 				println(v2)
 				println(v3)
@@ -57,9 +57,10 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			group = "group_test",
 			name = "event_test",
 			sqls = Seq(),
-			config ="""|{
-				  | "spark.master": "local[*]",
-				  | "spark.app.name": "test1}"""".stripMargin,
+			config = Map(
+				"spark.master" -> "local[*]",
+				"spark.app.name" ->"test1"
+			),
 			cronExpr = "0/2 * * * * ?",
 			definer = "sally",
 			start = None,
@@ -71,9 +72,10 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 			group = "group_test",
 			name = "event_test2",
 			sqls = Seq(),
-			config ="""|{
-				  | "spark.master": "local[*]",
-				  | "spark.app.name": "test1"} """.stripMargin,
+			config = Map(
+				"spark.master" -> "local[*]",
+				"spark.app.name" ->"test1"
+			),
 			cronExpr = "0/4 * * * * ?",
 			definer = "lee",
 			start = None,

@@ -71,101 +71,96 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 	private def createRoutes(localAddress: String) = {
 		extractClientIP { clientIP =>
 			implicit val connectionInfo = ConnectionInfo(localAddress, clientIP.value, ConnectionType.REST)
-			path("login") {
-				post {
-					entity(as[LoginInbound]) { in =>
-						complete {
-							service.login(in.username, in.password)
+			pathPrefix("interactive") {
+				path("login") {
+					post {
+						entity(as[LoginInbound]) { in =>
+							complete {
+								service.login(in.username, in.password)
+							}
 						}
 					}
-				}
-			} ~
-			path("logout") {
-				post {
-					entity(as[LogoutInbound]) { in =>
-						complete {
-							service.logout(in.token)
+				} ~
+				path("logout") {
+					post {
+						entity(as[LogoutInbound]) { in =>
+							complete {
+								service.logout(in.token)
+							}
 						}
 					}
-				}
-			} ~
-			path("openSession") {
-				post {
-					entity(as[OpenSessionInbound]) { in =>
-						complete {
-							service.openSession(in.token, in.database, in.config)
+				} ~
+				path("openSession") {
+					post {
+						entity(as[OpenSessionInbound]) { in =>
+							complete {
+								service.openSession(in.token, in.database, in.config)
+							}
 						}
 					}
-				}
-			} ~
-			path("closeSession") {
-				post {
-					entity(as[CloseSessionInbound]) { in =>
-						complete {
-							service.closeSession(in.token, in.sessionId)
+				} ~
+				path("closeSession") {
+					post {
+						entity(as[CloseSessionInbound]) { in =>
+							complete {
+								service.closeSession(in.token, in.sessionId)
+							}
 						}
 					}
-				}
-			} ~
-			path("query") {
-				post {
-					entity(as[InteractiveQueryInbound]) { in =>
-						complete {
-							service.interactiveQuery(in.token, in.sessionId, in.sqls, in.fetchSize, in.maxRows)
+				} ~
+				path("query") {
+					post {
+						entity(as[InteractiveQueryInbound]) { in =>
+							complete {
+								service.interactiveQuery(in.token, in.sessionId, in.sqls, in.fetchSize, in.maxRows)
+							}
 						}
 					}
-				}
-			} ~
-			path("nextResult") {
-				post {
-					entity(as[InteractiveNextResultInbound]) { in =>
-						complete {
-							service.interactiveNextResult(in.token.get, in.sessionId)
+				} ~
+				path("nextResult") {
+					post {
+						entity(as[InteractiveNextResultInbound]) { in =>
+							complete {
+								service.interactiveNextResult(in.token.get, in.sessionId)
+							}
 						}
 					}
-				}
-			} ~
-			path("submit") {
-				post {
-					entity(as[BatchQueryInbound]) { in =>
-						complete {
-							service.batchQuery(in.username, in.password, in.sqls, in.config)
-						}
-					}
-				}
-			} ~
-			path("progress") {
-				post {
-					entity(as[BatchQueryProgressInbound]) { in =>
-						complete {
-							service.batchQueryProgress(in.username, in.password, in.jobId)
-						}
-					}
-				}
-			} ~
-			path("cancelBatch") {
-				post {
-					entity(as[BatchQueryCancelInbound]) { in =>
-						complete {
-//							if (in.sessionId.isDefined) {
-//								service.interactiveQueryCancel(in.token, in.sessionId.get)
-//							} else {
-								service.batchQueryCancel(in.username, in.password, in.jobId)
-//							}
-						}
-					}
-				}
-			} ~
-			path("cancelInteractive") {
-				post {
-					entity(as[InteractiveQueryCancelInbound]) { in =>
-						complete {
-//							if (in.sessionId.isDefined) {
+				} ~
+				path("cancel") {
+					post {
+						entity(as[InteractiveQueryCancelInbound]) { in =>
+							complete {
 								service.interactiveQueryCancel(in.token, in.sessionId)
-//							} else {
-//								service.batchQueryCancel(in.token, jobId = in.jobId.get)
-//							}
-
+							}
+						}
+					}
+				}
+			} ~
+			pathPrefix("batch") {
+				path("submit") {
+					post {
+						entity(as[BatchQueryInbound]) { in =>
+							complete {
+								service.batchQuery(in.username, in.password, in.sqls, in.config)
+							}
+						}
+					}
+				} ~
+				path("progress") {
+					post {
+						entity(as[BatchQueryProgressInbound]) { in =>
+							complete {
+								service.batchQueryProgress(in.username, in.password, in.jobId)
+							}
+						}
+					}
+				} ~
+				path("cancel") {
+					post {
+						entity(as[BatchQueryCancelInbound]) { in =>
+							complete {
+								service.batchQueryCancel(in.username, in.password, in.jobId)
+							}
 						}
 					}
 				}
