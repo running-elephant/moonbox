@@ -238,14 +238,14 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     val sqls = in.getSqlList
     val config = in.getConfigMap
 
-    Future(mbService.batchQuery(username, password, sqls.asScala, config.asScala.toMap)) onComplete {
+    Future(mbService.batchQuery(username, password, sqls.asScala.toList, config.asScala.toMap)) onComplete {
       case Success(BatchQueryOutbound(jobId, error)) => batchQueryResponse(jobId, error)
       case Failure(e) => batchQueryResponse(None, Some(e.getMessage))
     }
 
     def batchQueryResponse(jobId: Option[String], error: Option[String]): Unit = {
       val toResp = ProtoOutboundMessageBuilder.batchQueryOutbound(jobId.orNull, error.orNull)
-      val message = protobuf.ProtoMessage.newBuilder().setBatchQueryOutbound(toResp).build()
+      val message = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setBatchQueryOutbound(toResp).build()
       ctx.writeAndFlush(message)
     }
   }
@@ -263,7 +263,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 
     def batchProgressResponse(message: String, state: Option[String]): Unit = {
       val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(message, state.orNull)
-      val message1: ProtoMessage = protobuf.ProtoMessage.newBuilder().setBatchQueryProgressOutbound(toResp).build()
+      val message1: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setBatchQueryProgressOutbound(toResp).build()
       ctx.writeAndFlush(message1)
     }
   }

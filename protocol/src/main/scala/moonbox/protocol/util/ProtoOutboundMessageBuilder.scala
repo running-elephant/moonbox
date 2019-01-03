@@ -12,7 +12,8 @@ object ProtoOutboundMessageBuilder {
     val builder = LoginOutbound.newBuilder()
     if (error != null) {
       builder.setError(error)
-    } else if (token != null) {
+    }
+    if (token != null) {
       builder.setToken(token)
     }
     builder.build()
@@ -85,7 +86,8 @@ object ProtoOutboundMessageBuilder {
     val builder = InteractiveNextResultOutbound.newBuilder()
     if (error != null) {
       builder.setError(error)
-    } else if (data != null) {
+    }
+    if (data != null) {
       builder.setData(data)
     }
     builder.build()
@@ -95,7 +97,8 @@ object ProtoOutboundMessageBuilder {
     val builder = BatchQueryOutbound.newBuilder()
     if (error != null) {
       builder.setError(error)
-    } else if (jobId != null) {
+    }
+    if (jobId != null) {
       builder.setJobId(jobId)
     }
     builder.build()
@@ -105,7 +108,8 @@ object ProtoOutboundMessageBuilder {
     val builder = BatchQueryProgressOutbound.newBuilder()
     if (message != null) {
       builder.setMessage(message)
-    } else if (state != null) {
+    }
+    if (state != null) {
       builder.setState(state)
     }
     builder.build()
