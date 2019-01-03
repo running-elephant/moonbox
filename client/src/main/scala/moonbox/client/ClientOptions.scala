@@ -21,8 +21,7 @@ class ClientOptions(val options: CaseInsensitiveMap[String]) {
   val maxRows: Int = options.get(MAX_ROWS).map(_.toInt).getOrElse(Int.MinValue)
   val isLocal: Boolean = options.get(IS_LOCAL).exists(_.toBoolean)
   val serializer: String = options.getOrElse(SERIALIZER, "protobuf")
-  val extraOptions: Map[String, String] = options.filterKeys(key => !clientKeys.contains(key))
-
+  val extraOptions: Map[String, String] = options.filter{case (k, _) => !clientKeys.contains(k)}
 }
 
 object ClientOptions {

@@ -152,7 +152,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setMessageId(genMessageId)
       .setLoginInbound(ProtoInboundMessageBuilder.loginInbound(username, password))
       .build()
-    val resp = sendMessageSync(msg)
+    val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
     if (resp.hasLoginOutbound) {
       val out = resp.getLoginOutbound
       out.getError match {
@@ -166,7 +166,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setMessageId(genMessageId)
       .setLogoutInbound(ProtoInboundMessageBuilder.logoutInbound(token))
       .build()
-    val resp = sendMessageSync(msg)
+    val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
     if (resp.hasLogoutOutbound) {
       val out = resp.getLogoutOutbound
       out.getError match {
@@ -181,7 +181,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setMessageId(genMessageId)
       .setOpenSessionInbound(ProtoInboundMessageBuilder.openSessionInbound(token, database, isLocal, clientOptions.extraOptions.asJava))
       .build()
-    val resp = sendMessageSync(msg)
+    val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
     if (resp.hasOpenSessionOutbound) {
       val out = resp.getOpenSessionOutbound
       out.getError match {
@@ -196,7 +196,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setMessageId(genMessageId)
       .setCloseSessionInbound(ProtoInboundMessageBuilder.closeSessionInbound(token, sessionId))
       .build()
-    val resp = sendMessageSync(msg)
+    val resp = sendMessageSync(msg, CONNECTION_TIMEOUT_MILLIS)
     if (resp.hasCloseSessionOutbound) {
       val out = resp.getCloseSessionOutbound
       out.getError match {

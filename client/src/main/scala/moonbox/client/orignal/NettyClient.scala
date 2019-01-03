@@ -9,7 +9,7 @@ import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.handler.codec.serialization.{ClassResolvers, CompatibleObjectEncoder, ObjectDecoder, ObjectEncoder}
+import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.client.entity.{JobState, MoonboxRow, MoonboxRowSet}
 import moonbox.client.exception.BackendException
@@ -138,7 +138,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def login(username: String, password: String): String = {
-    sendMessageSync(wrapMessage(LoginInbound(username, password))) match {
+    sendMessageSync(wrapMessage(LoginInbound(username, password)), CONNECTION_TIMEOUT_MILLIS) match {
       case LoginOutbound(Some(token), _) => token
       case LoginOutbound(_, Some(error)) => throw BackendException(error)
       case other => throw new Exception(s"Unknown message: $other")
@@ -146,7 +146,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def logout(token: String): Boolean = {
-    sendMessageSync(wrapMessage(LogoutInbound(token))) match {
+    sendMessageSync(wrapMessage(LogoutInbound(token)), CONNECTION_TIMEOUT_MILLIS) match {
       case LogoutOutbound(None) => true
       case LogoutOutbound(error) => throw new Exception(s"Logout failed: ERROR=$error, TOKEN=$token")
       case other => throw new Exception(s"Unknown message: $other")
@@ -154,7 +154,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def openSession(token: String, database: String, isLocal: Boolean): (String, String, Int) = {
-    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), clientOptions.extraOptions.toSeq.toMap))) match {
+    sendMessageSync(wrapMessage(OpenSessionInbound(token, Some(database), clientOptions.extraOptions)), CONNECTION_TIMEOUT_MILLIS) match {
       case OpenSessionOutbound(Some(sessionId), Some(workerHost), Some(workerPort), None) => (sessionId, workerHost, workerPort)
       case OpenSessionOutbound(_, _, _, Some(error)) => throw BackendException(error)
       case other => throw new Exception(s"Unknown message: $other")
@@ -162,7 +162,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   override def closeSession(token: String, sessionId: String): Boolean = {
-    sendMessageSync(wrapMessage(CloseSessionInbound(token, sessionId))) match {
+    sendMessageSync(wrapMessage(CloseSessionInbound(token, sessionId)), CONNECTION_TIMEOUT_MILLIS) match {
       case CloseSessionOutbound(None) => true
       case CloseSessionOutbound(error) => throw new Exception(s"Close session failed: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
       case other => throw new Exception(s"Unknown message: $other")
@@ -198,7 +198,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
 
   override def cancelInteractiveQuery(token: String, sessionId: String): Boolean = {
     checkConnected()
-    sendMessageSync(wrapMessage(InteractiveQueryCancelInbound(token, sessionId))) match {
+    sendMessageSync(wrapMessage(InteractiveQueryCancelInbound(token, sessionId)), CONNECTION_TIMEOUT_MILLIS) match {
       case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, TOKEN=$token, SessionId=$sessionId")
       case CancelQueryOutbound(None) => true
       case other => throw new Exception(s"Unknown message: $other")
@@ -207,7 +207,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
 
   override def cancelBatchQuery(username: String, password: String, jobId: String): Boolean = {
     checkConnected()
-    sendMessageSync(wrapMessage(BatchQueryCancelInbound(username, password, jobId))) match {
+    sendMessageSync(wrapMessage(BatchQueryCancelInbound(username, password, jobId)), CONNECTION_TIMEOUT_MILLIS) match {
       case CancelQueryOutbound(Some(error)) => throw new Exception(s"Cancel query error: ERROR=$error, USER=$username, JobId=$jobId")
       case CancelQueryOutbound(None) => true
       case other => throw new Exception(s"Unknown message: $other")
