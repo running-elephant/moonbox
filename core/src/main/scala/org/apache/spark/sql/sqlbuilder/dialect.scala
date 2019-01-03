@@ -63,7 +63,7 @@ trait MbDialect {
   }
 
   def subqueryAliasToSQL(alias: String, child: String) = {
-    build(s"($child $alias)")
+    build(s"($child) $alias")
   }
 
   def dataTypeToSQL(dataType: DataType): String = {
