@@ -11,10 +11,10 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{ClusterDriverDescription, DriverDescription, MbService}
+import moonbox.grid.deploy.{BatchDriverDescription, DriverDescription, MbService}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
-import moonbox.grid.deploy.worker.WorkerState
+import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
@@ -288,7 +288,7 @@ class MoonboxMaster(
 					driverIdDesces.foreach { case (driverId, desc, date) =>
 						val driverMatches = worker.drivers.exists { case (id, _) => id == driverId }
 						if (!driverMatches) { // not exist
-							if (recoveryEnable && desc.isInstanceOf[ClusterDriverDescription]) {
+							if (recoveryEnable && desc.isInstanceOf[BatchDriverDescription]) {
 								logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
 								worker.endpoint ! KillDriver(driverId)
 							} else {
@@ -342,14 +342,14 @@ class MoonboxMaster(
 		case CheckForWorkerTimeOut =>
 			timeOutDeadWorkers()
 
-		case JobSubmit(username, sqls, config) =>
+		case JobSubmit(username, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				val systemConfig = conf.getAll.filterKeys(_.startsWith("moonbox.deploy")).toSeq.flatMap { case (k, v) => Seq(k, v) }
-				val driver = createDriver(ClusterDriverDescription(username, sqls, config, systemConfig))
+				val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
+				val driver = createDriver(BatchDriverDescription(username, sqls, config))
 				persistenceEngine.addDriver(driver)
 				waitingDrivers += driver
 				drivers.add(driver)

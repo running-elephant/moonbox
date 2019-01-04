@@ -31,7 +31,7 @@ case class LocalDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
+		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "CENTRALIZED"
@@ -52,7 +52,7 @@ case class LocalDriverDescription(
 	}
 }
 
-case class ClientDriverDescription(
+case class ClusterDriverDescription(
 	driverId: String,
 	masters: Array[String],
 	config: Map[String, String]) extends DriverDescription {
@@ -66,7 +66,7 @@ case class ClientDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark.")) ++ Map(
+		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "DISTRIBUTED"
@@ -87,11 +87,10 @@ case class ClientDriverDescription(
 	}
 }
 
-case class ClusterDriverDescription(
+case class BatchDriverDescription(
 	username: String,
 	sqls: Seq[String],
-	userConfig: Map[String, String],
-	conf: Seq[String]
+	config: Map[String, String]
 ) extends DriverDescription {
 
 	override def master = "yarn"
@@ -103,14 +102,14 @@ case class ClusterDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		conf ++ Map(
+		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
-		).toSeq.flatMap { case (k, v) => Seq(k, v) }
+		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
 	}
 
 	override def toConf: Map[String, String] = {
-		userConfig
+		config.filterKeys(_.startsWith("spark."))
 	}
 
 	override def appResource: String = {

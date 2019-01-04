@@ -2,7 +2,7 @@ package moonbox.grid.deploy.master
 
 import java.util.Date
 
-import moonbox.grid.deploy.{ClusterDriverDescription, DriverDescription}
+import moonbox.grid.deploy.DriverDescription
 
 
 private[deploy] class DriverInfo(

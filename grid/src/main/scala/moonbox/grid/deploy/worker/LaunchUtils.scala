@@ -10,22 +10,42 @@ import scala.collection.JavaConversions._
 
 object LaunchUtils extends MbLogging {
 
-	def getDriverConfigs(conf: MbConf): (Seq[Map[String, String]], Seq[Map[String, String]]) = {
-		val config = conf.getConfig("moonbox.mixcal")
+	private def getCommonDriverConfigs(config: Config): Map[String, String] = {
 		val commonEntrySet = config.entrySet().filterNot { entry =>
 			entry.getKey.equalsIgnoreCase("local") ||
-			entry.getKey.equalsIgnoreCase("cluster")
+				entry.getKey.equalsIgnoreCase("cluster")
 		}
-		val commonConfigs = entrySetToMap(commonEntrySet)
+		entrySetToMap(commonEntrySet).map { case (key, value) =>
+			if (!key.startsWith("spark")) {
+				"moonbox.mixcal." + key -> value
+			} else key -> value
+		}
+	}
+
+	def getLocalDriverConfigs(conf: MbConf): Seq[Map[String, String]] = {
+		val config = conf.getConfig("moonbox.mixcal")
+		val commonConfigs = getCommonDriverConfigs(config)
 		val localConfigs = getConfigs("local", config, commonConfigs)
+		localConfigs
+	}
+
+	def getClusterDriverConfigs(conf: MbConf): Seq[Map[String, String]] = {
+		val config = conf.getConfig("moonbox.mixcal")
+		val commonConfigs = getCommonDriverConfigs(config)
 		val clusterConfigs = getConfigs("cluster", config, commonConfigs)
-		(localConfigs, clusterConfigs)
+		clusterConfigs
+	}
+
+	def getBatchDriverConfigs(conf: MbConf, userConfig: Map[String, String]): Map[String, String] = {
+		val systemConfig = conf.getAll.filter { case (k, _) => k.startsWith("moonbox.deploy.catalog") }
+		val commonConfig = getCommonDriverConfigs(conf.getConfig("moonbox.mixcal"))
+		systemConfig ++ commonConfig ++ userConfig
 	}
 
 	private def getConfigs(key: String, config: Config, common: Map[String, String]): Seq[Map[String, String]] = {
 		try {
 			config.getConfigList(key).map(obj => entrySetToMap(obj.entrySet()))
-				.map(_.filterKeys(filterKeys)).map(_ ++ common)
+				.map(_.filterKeys(filterKeys)).map(common ++ _)
 		} catch {
 			case e: Missing =>
 				logInfo(s"mixcal type $key doesn't config.")
