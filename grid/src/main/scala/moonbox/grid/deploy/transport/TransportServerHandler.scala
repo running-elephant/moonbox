@@ -112,7 +112,7 @@ class TransportServerHandler(channelToToken: ConcurrentHashMap[Channel, String],
 				val outbound = mbService.interactiveQuery(_token, _sessionId, sqls, fetchSize, maxRows)
 				outbound.setId(query.getId)
 			case next@InteractiveNextResultInbound(token, sessionId) =>
-				val _token = Option(channelToToken.get(channel)).getOrElse(token.get)
+				val _token = Option(channelToToken.get(channel)).getOrElse(token)
 				val _sessionId = Option(channelToSessionId.remove(channel)).getOrElse(sessionId)
 				val outbound = mbService.interactiveNextResult(_token, _sessionId)
 				outbound.setId(next.getId)

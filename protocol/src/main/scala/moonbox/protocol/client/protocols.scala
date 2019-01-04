@@ -50,7 +50,7 @@ case class InteractiveQueryOutbound(
 	error: Option[String] = None,
 	data: Option[ResultData] = None) extends Outbound
 
-case class InteractiveNextResultInbound(token: Option[String] = None, sessionId: String) extends Inbound
+case class InteractiveNextResultInbound(token: String, sessionId: String) extends Inbound
 
 case class InteractiveNextResultOutbound(
 	error: Option[String] = None,

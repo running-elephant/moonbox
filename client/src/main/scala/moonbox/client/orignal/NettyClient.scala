@@ -236,7 +236,7 @@ private[client] class NettyClient(clientOptions: ClientOptions) extends ClientIn
   }
 
   private def interactiveNextResult(token: String, sessionId: String, timeout: Int): ResultData = {
-    dataFetchClient.sendMessageSync(wrapMessage(InteractiveNextResultInbound(Some(token), sessionId)), timeout) match {
+    dataFetchClient.sendMessageSync(wrapMessage(InteractiveNextResultInbound(token, sessionId)), timeout) match {
       case InteractiveNextResultOutbound(Some(error), _) => throw BackendException(error)
       case InteractiveNextResultOutbound(_, Some(resultData)) => resultData
       case other => throw new Exception(s"Unknown message: $other")

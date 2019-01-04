@@ -121,7 +121,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					post {
 						entity(as[InteractiveNextResultInbound]) { in =>
 							complete {
-								service.interactiveNextResult(in.token.get, in.sessionId)
+								service.interactiveNextResult(in.token, in.sessionId)
 							}
 						}
 					}
