@@ -37,7 +37,7 @@ object CmdPrivilegeChecker extends MbLogging {
 				 | AlterOrganizationSetName(_, _)
 				 | AlterOrganizationSetComment(_, _)
 				 | DropOrganization(_, _, _) => userContext.userName == "ROOT"
-			case CreateSa(_, _, _, _)
+			case CreateSa(_, _, _, _, _)
 				 | AlterSaSetName(_, _, _)
 				 | AlterSaSetPassword(_, _, _)
 				 | DropSa(_, _, _) => userContext.userName == "ROOT"

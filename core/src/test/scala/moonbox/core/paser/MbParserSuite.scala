@@ -71,12 +71,12 @@ class MbParserSuite extends FunSuite {
 
 	test("sa") {
 		assertEquals(
-			CreateSa("sa", "'123abc'", "org", ignoreIfExists = false),
+			CreateSa("sa", "'123abc'", "org", Map(), ignoreIfExists = false),
 			"CREATE SA sa IN ORG org IDENTIFIED BY '123abc'"
 		)
 
 		assertEquals(
-			CreateSa("sa", "'123abc'", "org", ignoreIfExists = true),
+			CreateSa("sa", "'123abc'", "org", Map(), ignoreIfExists = true),
 			"CREATE SA IF NOT EXISTS sa IN ORG org IDENTIFIED BY '123abc'"
 		)
 
@@ -104,12 +104,12 @@ class MbParserSuite extends FunSuite {
 
 	test("user") {
 		assertEquals(
-			CreateUser("user", "123abc", ignoreIfExists = false),
+			CreateUser("user", "123abc", Map(), ignoreIfExists = false),
 			"CREATE USER user IDENTIFIED BY 123abc"
 		)
 
 		assertEquals(
-			CreateUser("user", "123abc", ignoreIfExists = true),
+			CreateUser("user", "123abc", Map(), ignoreIfExists = true),
 			"CREATE USER IF NOT EXISTS user IDENTIFIED BY 123abc"
 		)
 
