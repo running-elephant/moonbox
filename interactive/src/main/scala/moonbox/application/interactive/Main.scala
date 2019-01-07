@@ -2,7 +2,7 @@ package moonbox.application.interactive
 
 
 import java.util.UUID
-import java.util.concurrent.Executors
+import java.util.concurrent.{ExecutionException, Executors}
 
 import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.ConfigFactory
@@ -156,8 +156,13 @@ class Main(
 								case IndirectResult(schema) =>
 									requester ! JobQueryResponse(success = true, schema = schema, data = Seq.empty, hasNext = true, message = "")
 							}
-						case Failure(e) =>
-							val errorMessage = Option(e.getMessage).getOrElse(e.getStackTrace.mkString("\n"))
+						case Failure(throwable) =>
+							val errorMessage = throwable match {
+								case ee : ExecutionException =>
+									ee.getCause.getMessage
+								case error =>
+									Option(error.getMessage).getOrElse(error.getStackTrace.mkString("\n"))
+							}
 							requester ! JobQueryResponse(
 								success = false,
 								schema = SchemaUtil.emptyJsonSchema,
