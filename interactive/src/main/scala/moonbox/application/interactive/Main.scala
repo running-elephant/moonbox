@@ -160,7 +160,7 @@ class Main(
 							val errorMessage = Option(e.getMessage).getOrElse(e.getStackTrace.mkString("\n"))
 							requester ! JobQueryResponse(
 								success = false,
-								schema = "",
+								schema = SchemaUtil.emptyJsonSchema,
 								data = Seq.empty,
 								hasNext = false,
 								message = errorMessage
@@ -183,7 +183,7 @@ class Main(
 			sessionIdToRunner.get(sessionId) match {
 				case Some(runner) =>
 					runner.cancel()
-					sender() ! InteractiveJobCancelResponse(success = true, "")
+					sender() ! InteractiveJobCancelResponse(success = true, s"Job canceled.")
 				case None =>
 					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
 					logWarning(msg)

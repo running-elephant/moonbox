@@ -230,12 +230,10 @@ class Runner(
 
 	def fetchResultData(): ResultData = {
 		logDebug(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
-		// var data: ArrayBuffer[Seq[Any]] = new ArrayBuffer[Seq[Any]]()
 		resultData.clear()
 		var rowCount = 0
 		while (currentData.hasNext && currentRowId < maxRows && rowCount < fetchSize) {
 			resultData.append(currentData.next().toSeq)
-			// data += currentData.next().toSeq
 			currentRowId += 1
 			rowCount += 1
 		}
