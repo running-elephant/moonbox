@@ -100,15 +100,6 @@ trait EntityComponent extends DatabaseComponent {
 
 	}
 
-	/*class CatalogDatasourceTable(tag: Tag) extends BaseTable[CatalogDatasource](tag, "datasources") {
-		def name = column[String]("name")
-		def properties = column[Map[String, String]]("properties")
-		def description = column[Option[String]]("description")
-		def organizationId = column[Long]("organizationId")
-		override def * = (id.?, name, properties, description, organizationId,
-			createBy, createTime, updateBy, updateTime) <> (CatalogDatasource.tupled, CatalogDatasource.unapply)
-	}*/
-
 	class CatalogDatabaseTable(tag: Tag) extends BaseTable[CatalogDatabase](tag, "databases") {
 		def name = column[String]("name")
 		def description = column[Option[String]]("description")

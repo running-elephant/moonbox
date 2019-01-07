@@ -24,17 +24,6 @@ import moonbox.common.util.Utils
 
 trait CatalogItem
 
-/*case class CatalogDatasource(
-	id: Option[Long] = None,
-	name: String,
-	properties: Map[String, String],
-	description: Option[String] = None,
-	organizationId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem*/
-
 case class CatalogDatabase(
 	id: Option[Long] = None,
 	name: String,
