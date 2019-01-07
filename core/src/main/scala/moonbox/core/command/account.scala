@@ -32,6 +32,7 @@ case class CreateSa(
 	name: String,
 	password: String,
 	organization: String,
+	configuration: Map[String, String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Account {
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -47,6 +48,7 @@ case class CreateSa(
 			grantDcl = true,
 			isSA = true,
 			organizationId = catalogOrganization.id.get,
+			configuration = configuration,
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
@@ -90,6 +92,25 @@ case class AlterSaSetPassword(
 	}
 }
 
+case class AlterSaSetOptions(
+	name: String,
+	options: Map[String, String],
+	organization: String) extends MbRunnableCommand with Account {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		val catalogOrganization: CatalogOrganization = mbSession.catalog.getOrganization(organization)
+		val existUser: CatalogUser = mbSession.catalog.getUser(catalogOrganization.id.get, name)
+		require(existUser.isSA, s"ROOT can not alter non-sa.")
+		mbSession.catalog.alterUser(
+			existUser.copy(
+				configuration = existUser.configuration ++ options,
+				updateBy = ctx.userId,
+				updateTime = Utils.now
+			)
+		)
+		Seq.empty[Row]
+	}
+}
+
 case class DropSa(
 	name: String,
 	organization: String,
@@ -108,6 +129,7 @@ case class DropSa(
 case class CreateUser(
 	name: String,
 	password: String,
+	configuration: Map[String, String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Account {
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -115,6 +137,7 @@ case class CreateUser(
 			name = name,
 			password = password,
 			organizationId = ctx.organizationId,
+			configuration = configuration,
 			createBy = ctx.userId,
 			updateBy = ctx.userId
 		)
@@ -163,15 +186,32 @@ case class AlterUserSetPassword(
 					)
 				)
 			} else if (!canAccount) {
-				throw new Exception("Access Denied.Please check your ACCOUNT privilege.")
+				throw new Exception("Access Denied. Please check your ACCOUNT privilege.")
 			} else if (mbSession.catalog.isSa(existUser.id.get)) {
-				throw new Exception("Access Denied.Sa's Password can only alter by ROOT or itself.")
+				throw new Exception("Access Denied. Sa's Password can only alter by ROOT or itself.")
 			} else if (name.equalsIgnoreCase("ROOT")) {
-				throw new Exception("Access Denied.ROOT's password can only alter by itself.")
+				throw new Exception("Access Denied. ROOT's password can only alter by itself.")
 			} else {
 				throw new Exception("Access Denied.")
 			}
 		}
+		Seq.empty[Row]
+	}
+}
+
+case class AlterUserSetOptions(
+	name: String,
+	options: Map[String, String]) extends MbRunnableCommand with Account {
+
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		val existUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, name)
+		mbSession.catalog.alterUser(
+			existUser.copy(
+				configuration = existUser.configuration ++ options,
+				updateBy = ctx.userId,
+				updateTime = Utils.now
+			)
+		)
 		Seq.empty[Row]
 	}
 }

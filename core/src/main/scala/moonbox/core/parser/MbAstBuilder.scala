@@ -85,8 +85,9 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val password = ctx.pwd.getText
 		val organization = ctx.org.getText
+		val configuration = Option(ctx.propertyList()).map(visitPropertyList).getOrElse(Map())
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateSa(name, password, organization, ignoreIfExists)
+		CreateSa(name, password, organization, configuration, ignoreIfExists)
 	}
 
 	override def visitRenameSa(ctx: RenameSaContext): MbCommand = {
@@ -110,6 +111,13 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		AlterSaSetPassword(name, password, organization)
 	}
 
+	override def visitSetSaOptions(ctx: SetSaOptionsContext): MbCommand = {
+		val name = ctx.name.getText
+		val organization = ctx.org.getText
+		val configuration = visitPropertyList(ctx.propertyList())
+		AlterSaSetOptions(name, configuration, organization)
+	}
+
 	override def visitDropSa(ctx: DropSaContext): MbCommand = {
 		val name = ctx.name.getText
 		val organization = ctx.org.getText
@@ -120,8 +128,9 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitCreateUser(ctx: CreateUserContext): MbCommand = {
 		val name = ctx.name.getText
 		val password = ctx.pwd.getText
+		val configuration = Option(ctx.propertyList()).map(visitPropertyList).getOrElse(Map())
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateUser(name, password, ignoreIfExists)
+		CreateUser(name, password, configuration, ignoreIfExists)
 	}
 
 	override def visitRenameUser(ctx: RenameUserContext): MbCommand = {
@@ -140,6 +149,12 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val password = ctx.pwd.getText
 		AlterUserSetPassword(name, password)
+	}
+
+	override def visitSetUserOptions(ctx: SetUserOptionsContext): MbCommand = {
+		val name = ctx.name.getText
+		val configuration = visitPropertyList(ctx.propertyList())
+		AlterUserSetOptions(name, configuration)
 	}
 
 	override def visitDropUser(ctx: DropUserContext): MbCommand = {
