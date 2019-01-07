@@ -16,12 +16,13 @@ mql
     | DROP (ORG|ORGANIZATION) (IF EXISTS)? name=identifier (CASCADE)?                           # dropOrganization
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)
-        org=identifier IDENTIFIED BY pwd=password                                               # createSa
+        org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)                        # createSa
     | RENAME SA name=identifier IN (ORG|ORGANIZATION) org=identifier TO newName=identifier      # renameSa
     | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier
         RENAME TO newName=identifier                                                            # setSaName
     | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier
         IDENTIFIED BY pwd=password                                                              # setSaPassword
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier SET OPTIONS propertyList    # setSaOptions
     | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION) org=identifier                 # dropSa
 
     | GRANT GRANT OPTION grantPrivilegeList TO USER users=identifierList                        # grantGrantToUser
@@ -39,10 +40,12 @@ mql
     | REVOKE privileges ON tableCollections FROM USER users=identifierList                      # revokeResourcePrivilegeFromUsers
     | REVOKE privileges ON tableCollections FROM GROUP groups=identifierList                    # revokeResourcePrivilegeFromGroups
 
-    | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password                   # createUser
+    | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password
+        (OPTIONS propertyList)                                                                  # createUser
     | RENAME USER name=identifier TO newName=identifier                                         # renameUser
     | ALTER USER name=identifier RENAME TO newName=identifier                                   # setUserName
     | ALTER USER name=identifier IDENTIFIED BY pwd=password                                     # setUserPassword
+    | ALTER USER name=identifier SET OPTIONS propertyList                                       # setUserOptions
     | DROP USER (IF EXISTS)? name=identifier                                                    # dropUser
 
     | CREATE GROUP (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                   # createGroup

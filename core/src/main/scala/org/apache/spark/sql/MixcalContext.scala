@@ -112,7 +112,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		} else {
 			val createTableSql =
 				s"""
-				   |create table ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)}
+				   |create table ${tableIdentifier.quotedString}
 				   |using ${DataSystem.lookupDataSource(typ)}
 				   |options($propsString)
 			 """.stripMargin
@@ -123,11 +123,10 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 	def registerView(tableIdentifier: TableIdentifier, sqlText: String): Unit = {
 		val createViewSql =
 			s"""
-			   |create or replace view ${tableIdentifier.database.map(db => s"$db.${tableIdentifier.table}").getOrElse(tableIdentifier.table)} as
+			   |create or replace view ${tableIdentifier.quotedString} as
 			   |$sqlText
 			 """.stripMargin
 		sqlToDF(createViewSql)
-		println()
 	}
 
 	def registerFunction(db: String, func: CatalogFunction): Unit = {
@@ -167,7 +166,6 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 }
 
 object MixcalContext extends MbLogging {
-	// TODO SparkContext.getOrCreate()
 	private var sparkContext: SparkContext = _
 	private var resourceMonitor: SparkResourceMonitor = _
 

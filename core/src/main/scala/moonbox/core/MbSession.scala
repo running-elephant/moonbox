@@ -52,7 +52,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	val catalog = new CatalogContext(conf)
 	val mixcal = new MixcalContext(conf)
 
-	def bindUser(username: String, initializedDatabase: Option[String] = None, autoLoadDatabases: Boolean = true): this.type = {
+	def bindUser(username: String, initializedDatabase: Option[String] = None, autoLoadDatabases: Boolean = false): this.type = {
 		this.userContext = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
