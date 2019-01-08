@@ -5,6 +5,7 @@ import java.sql.{Connection, DatabaseMetaData, ResultSet, RowIdLifetime}
 import moonbox.client.entity.{MoonboxRow, MoonboxRowSet}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMetaData {
 
@@ -37,14 +38,14 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def supportsGroupBy(): Boolean = ???
 	override def doesMaxRowSizeIncludeBlobs(): Boolean = ???
 	override def supportsCatalogsInDataManipulation(): Boolean = ???
-	override def getDatabaseProductName: String = ???
+	override def getDatabaseProductName: String = "moonbox"
 	override def supportsOpenCursorsAcrossCommit(): Boolean = ???
 	override def supportsTableCorrelationNames(): Boolean = ???
 	override def supportsExtendedSQLGrammar(): Boolean = ???
 	override def getJDBCMajorVersion: Int = ???
 	override def getUserName: String = ???
 	override def getMaxProcedureNameLength: Int = ???
-	override def getDriverName: String = ???
+	override def getDriverName: String = "moonbox.jdbc.MbDriver"
 	override def getMaxRowSize: Int = ???
 	override def dataDefinitionCausesTransactionCommit(): Boolean = ???
 	override def getMaxColumnNameLength: Int = ???
@@ -119,7 +120,15 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def nullsAreSortedHigh(): Boolean = ???
 	override def getTables(catalog: String, schemaPattern: String, tableNamePattern: String, types: Array[String]): ResultSet = {
 		val statement = connection.createStatement()
-		statement.executeQuery(s"show tables in $catalog like $tableNamePattern")
+		val sqlBuilder = new StringBuilder
+		sqlBuilder.append("show tables")
+		if (catalog != null) {
+			sqlBuilder.append(s" in $catalog")
+		}
+		if (tableNamePattern != null) {
+			sqlBuilder.append(s" like '$tableNamePattern'")
+		}
+		statement.executeQuery(sqlBuilder.toString)
 	}
 	override def supportsMultipleTransactions(): Boolean = ???
 	override def supportsNamedParameters(): Boolean = ???
@@ -173,36 +182,26 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def supportsPositionedDelete(): Boolean = ???
 	override def getColumns(catalog: String, schemaPattern: String, tableNamePattern: String, columnNamePattern: String): ResultSet = {
 		val resultSet = connection.createStatement().executeQuery(s"desc $tableNamePattern")
-		var dataString: String = null
 		val schema =
-			s"""{type: struct,
-				 				 			   |fields: [
-				 				 			   |{name: TABLE_CAT, type: string, nullable: true},
-				 				 			   |{name: TABLE_SCHEM, type: string, nullable: true},
-				 				 			   |{name: TABLE_NAME, type: string, nullable: true},
-				 				 			   |{name: COLUMN_NAME, type: string, nullable: true},
-				 				 			   |{name: DATA_TYPE, type: string, nullable: true},
-				 				 			   |{name: TYPE_NAME, type: string, nullable: true}
-				 				 			   |]
-				 				 			   |}
-				 				 			   |
-			 """.stripMargin
-		while (resultSet.next()) {
-			val column1 = resultSet.getString(1)
-			if (column1.equalsIgnoreCase("select")) {
-				dataString = resultSet.getString(2)
-			}
-		}
+			s"""{
+			|type: struct,
+			|fields: [
+			|{name: TABLE_CAT, type: string, nullable: true},
+			|{name: TABLE_SCHEM, type: string, nullable: true},
+			|{name: TABLE_NAME, type: string, nullable: true},
+			|{name: COLUMN_NAME, type: string, nullable: true},
+			|{name: DATA_TYPE, type: string, nullable: true},
+			|{name: TYPE_NAME, type: string, nullable: true}
+			|]
+			|}""".stripMargin
+
 		val moonboxRowSet = {
-			if (dataString == null || dataString.length == 0) {
-				new MoonboxRowSet(schema)
-			} else {
-				val data = dataString.substring(1, dataString.length - 1).replaceAll("\\s+", "").split("\\),\\(").map { s =>
-					val nameAndType = s.split(",")
-					Seq(null, null, null, nameAndType(0), null, nameAndType(1))
-				}.map(seq => new MoonboxRow(seq.toArray))
-				new MoonboxRowSet(data.toIterator.asJava, schema)
+			val rows = new ArrayBuffer[MoonboxRow]()
+			while (resultSet.next()) {
+				val row = Array[Any](connection.getCatalog, connection.getSchema, tableNamePattern, resultSet.getString(1), resultSet.getString(2), resultSet.getString(2))
+				rows.append(new MoonboxRow(row))
 			}
+			new MoonboxRowSet(rows.toIterator.asJava, schema)
 		}
 		new MoonboxResultSet(connection, resultSet.getStatement.asInstanceOf[MoonboxStatement], moonboxRowSet)
 	}

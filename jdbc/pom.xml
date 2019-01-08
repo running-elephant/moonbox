@@ -42,9 +42,6 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <!--<transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>-->
                             <artifactSet>
                                 <excludes>
                                     <exclude>org.scalatest:scalatest_2.11</exclude>
@@ -61,6 +58,16 @@
                                     </excludes>
                                 </filter>
                             </filters>
+
+                            <relocations>
+                                <relocation>
+                                    <pattern>io.netty</pattern>
+                                    <shadedPattern>io.moonbox_netty</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
