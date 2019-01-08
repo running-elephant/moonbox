@@ -25,6 +25,7 @@ import moonbox.catalog._
 import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, UserContext}
 import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.types.StructType
 
 sealed trait DDL
@@ -202,6 +203,7 @@ case class AlterTableSetName(
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		require(table.database == newTable.database, s"Rename table cant not rename database")
+		import mbSession.mixcal.sparkSession.sessionState.catalog
 		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -213,6 +215,15 @@ case class AlterTableSetName(
 			throw new UnsupportedOperationException("Can't rename table in physical database")
 		}
 		mbSession.catalog.renameTable(databaseId, ctx.organizationName, database, table.table, newTable.table, ctx.userId)
+
+		catalog.getTableMetadataOption(TableIdentifier(table.table, table.database)).foreach { catalogTable =>
+			catalog.alterTable(
+				catalogTable.copy(
+					identifier = catalogTable.identifier.copy(table = newTable.table)
+				)
+			)
+		}
+
 		Seq.empty[Row]
 	}
 }
@@ -221,6 +232,8 @@ case class AlterTableSetOptions(
 	table: MbTableIdentifier,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		import mbSession.mixcal.sparkSession.sessionState.catalog
+
 		val (databaseId, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -239,6 +252,13 @@ case class AlterTableSetOptions(
 				updateTime = Utils.now
 			)
 		)
+		catalog.getTableMetadataOption(TableIdentifier(table.table, table.database)).foreach { catalogTable =>
+			catalog.alterTable(
+				catalogTable.copy(
+					storage = catalogTable.storage.copy(properties = catalogTable.storage.properties ++ props)
+				)
+			)
+		}
 		Seq.empty[Row]
 	}
 }
