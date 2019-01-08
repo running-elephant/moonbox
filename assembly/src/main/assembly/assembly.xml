@@ -77,6 +77,7 @@
                 <exclude>edp.moonbox:moonbox-batchapp_2.11</exclude>
                 <exclude>edp.moonbox:moonbox-interactiveapp_2.11</exclude>
             </excludes>
+
             <outputDirectory>libs</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <unpack>false</unpack>

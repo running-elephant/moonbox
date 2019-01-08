@@ -33,15 +33,15 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-core_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-grid_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+             <groupId>edp.moonbox</groupId>
+             <artifactId>moonbox-core_2.11</artifactId>
+             <version>${project.version}</version>
+         </dependency>
+         <dependency>
+             <groupId>edp.moonbox</groupId>
+             <artifactId>moonbox-grid_2.11</artifactId>
+             <version>${project.version}</version>
+         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-repl_2.11</artifactId>

@@ -28,5 +28,10 @@
             <artifactId>moonbox-catalyst_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.11</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>

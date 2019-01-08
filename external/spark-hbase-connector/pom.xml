@@ -71,7 +71,7 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming_${scala.library}</artifactId>
             <version>${spark.version}</version>
-            <!--<scope>provided</scope>-->
+            <scope>provided</scope>
         </dependency>
         <!--
         hadoop-common-2.7.1 conflict with spark 2.0.0-> hadoop-common-2.2.0

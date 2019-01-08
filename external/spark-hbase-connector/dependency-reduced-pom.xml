@@ -233,8 +233,16 @@
           <groupId>net.sf.py4j</groupId>
         </exclusion>
         <exclusion>
+          <artifactId>spark-tags_2.11</artifactId>
+          <groupId>org.apache.spark</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>commons-crypto</artifactId>
           <groupId>org.apache.commons</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>unused</artifactId>
+          <groupId>org.spark-project.spark</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -272,12 +280,36 @@
           <groupId>org.apache.parquet</groupId>
         </exclusion>
         <exclusion>
+          <artifactId>spark-tags_2.11</artifactId>
+          <groupId>org.apache.spark</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>jackson-databind</artifactId>
           <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
         <exclusion>
           <artifactId>xbean-asm5-shaded</artifactId>
           <groupId>org.apache.xbean</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>unused</artifactId>
+          <groupId>org.spark-project.spark</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-streaming_2.11</artifactId>
+      <version>2.2.0</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>spark-tags_2.11</artifactId>
+          <groupId>org.apache.spark</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>unused</artifactId>
+          <groupId>org.spark-project.spark</groupId>
         </exclusion>
       </exclusions>
     </dependency>

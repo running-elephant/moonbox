@@ -36,7 +36,7 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
             <version>2.6.5</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>protobuf-java</artifactId>
@@ -48,21 +48,24 @@
             <groupId>org.datanucleus</groupId>
             <artifactId>datanucleus-api-jdo</artifactId>
             <version>3.2.6</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.datanucleus</groupId>
             <artifactId>datanucleus-core</artifactId>
             <version>3.2.10</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.datanucleus</groupId>
             <artifactId>datanucleus-rdbms</artifactId>
             <version>3.2.9</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.11</artifactId>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>protobuf-java</artifactId>
@@ -74,6 +77,7 @@
             <groupId>org.spark-project.hive</groupId>
             <artifactId>hive-exec</artifactId>
             <version>1.2.1.spark2</version>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>json</artifactId>
@@ -101,16 +105,19 @@
             <groupId>org.spark-project.hive</groupId>
             <artifactId>hive-metastore</artifactId>
             <version>1.2.1.spark2</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sf.jpam</groupId>
             <artifactId>jpam</artifactId>
             <version>1.1</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-servlet</artifactId>
             <version>9.3.11.v20160721</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
