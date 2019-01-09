@@ -15,10 +15,6 @@
 
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
-        <esv5.version>5.3.2</esv5.version>
-        <esv5-spark.version>5.3.2</esv5-spark.version>
-        <mongo.version>3.6.0</mongo.version>
-        <mongo-spark.version>2.2.0</mongo-spark.version>
     </properties>
 
     <dependencies>

@@ -71,6 +71,72 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 	private def createRoutes(localAddress: String) = {
 		extractClientIP { clientIP =>
 			implicit val connectionInfo = ConnectionInfo(localAddress, clientIP.value, ConnectionType.REST)
+
+			pathPrefix("management") {
+				path("workers") {
+					post {
+						complete(Unit)
+					}
+				} ~
+				path("applications") {
+					post {
+						complete(Unit)
+					}
+				}
+			} ~
+			pathPrefix("service") {
+				path("query") {
+					post {
+						complete(Unit)
+					}
+				} ~
+				path("verify") {
+					post {
+						complete(Unit)
+					}
+				} ~
+				path("schema") {
+					post {
+						complete(Unit)
+					}
+				} ~
+				path("lineage") {
+					post {
+						complete(Unit)
+					}
+				}
+			} ~
+			pathPrefix("batch") {
+				path("submit") {
+					post {
+						entity(as[BatchQueryInbound]) { in =>
+							complete {
+								service.batchQuery(in.username, in.password, in.sqls, in.config)
+							}
+						}
+					}
+				} ~
+				path("progress") {
+					post {
+						entity(as[BatchQueryProgressInbound]) { in =>
+							complete {
+								service.batchQueryProgress(in.username, in.password, in.jobId)
+							}
+						}
+					}
+				} ~
+				path("cancel") {
+					post {
+						entity(as[BatchQueryCancelInbound]) { in =>
+							complete {
+								service.batchQueryCancel(in.username, in.password, in.jobId)
+							}
+						}
+					}
+				}
+			}
+
+			/*~
 			pathPrefix("interactive") {
 				path("login") {
 					post {
@@ -94,7 +160,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					post {
 						entity(as[OpenSessionInbound]) { in =>
 							complete {
-								service.openSession(in.token, in.database, in.config)
+								service.openSession(in.token, in.database, in.config).copy(workerHost = None, workerPort = None)
 							}
 						}
 					}
@@ -135,36 +201,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 						}
 					}
 				}
-			} ~
-			pathPrefix("batch") {
-				path("submit") {
-					post {
-						entity(as[BatchQueryInbound]) { in =>
-							complete {
-								service.batchQuery(in.username, in.password, in.sqls, in.config)
-							}
-						}
-					}
-				} ~
-				path("progress") {
-					post {
-						entity(as[BatchQueryProgressInbound]) { in =>
-							complete {
-								service.batchQueryProgress(in.username, in.password, in.jobId)
-							}
-						}
-					}
-				} ~
-				path("cancel") {
-					post {
-						entity(as[BatchQueryCancelInbound]) { in =>
-							complete {
-								service.batchQueryCancel(in.username, in.password, in.jobId)
-							}
-						}
-					}
-				}
-			}
+			}*/
 
 
 			/*~

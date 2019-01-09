@@ -23,7 +23,6 @@
         <module>testkit</module>
         <module>protocol</module>
         <module>catalog</module>
-        <module>service</module>
         <module>catalyst</module>
         <module>core</module>
         <module>grid</module>
@@ -81,6 +80,10 @@
         <akka-http-json4s.version>1.11.0</akka-http-json4s.version>
         <cassandra-connector.version>2.0.7</cassandra-connector.version>
         <kudu.version>1.7.0</kudu.version>
+        <esv5.version>5.3.2</esv5.version>
+        <esv5-spark.version>5.3.2</esv5-spark.version>
+        <mongo.version>3.6.0</mongo.version>
+        <mongo-spark.version>2.2.0</mongo-spark.version>
     </properties>
 
     <dependencyManagement>

@@ -79,6 +79,10 @@ object LaunchUtils extends MbLogging {
 		}
 	}
 
+	private def getSparkHome(): String = {
+		sys.env.getOrElse("SPARK_HOME", throw  new Exception("$SPARK_HOME does not exist"))
+	}
+
 	def getLogsDirectory: Option[String] = {
 		val path = getMoonboxHome() + File.separator + "logs"
 		val file = new File(path)
@@ -105,13 +109,27 @@ object LaunchUtils extends MbLogging {
 		} else None
 	}
 
-	def getDriverClasspath(env: Map[String, String] = sys.env): String = {
+	private def getMoonboxLibs() : String = {
 		val path = getMoonboxHome() + File.separator + "libs"
 		val file = new File(path)
 		if (file.exists()) {
 			file.getAbsolutePath + File.separator + "*"
 		} else {
-			throw new Exception("Driver classpath dir libs is not found.")
+			throw new Exception("Driver classpath moonbox libs is not found.")
 		}
+	}
+
+	private def getSparkJars() : String = {
+		val path = getSparkHome() + File.separator + "jars"
+		val file = new File(path)
+		if (file.exists()) {
+			file.getAbsolutePath + File.separator + "*"
+		} else {
+			throw new Exception("Driver classpath spark jars is not found.")
+		}
+	}
+
+	def getDriverClasspath(env: Map[String, String] = sys.env): String = {
+		getMoonboxLibs() + ":" + getSparkJars()
 	}
 }
