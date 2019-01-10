@@ -344,6 +344,8 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     }
   }
   private def cellConvert(cell: Cell, dataType: DataType): Any = {
+	  if (cell.getObjectsCase.getNumber == 0) return null
+
     dataType match {
       case DECIMAL => toJavaBigDecimal(cell.getBigDecimal)  /* proto.BDecimal => java.math.BigDecimal */
       case BINARY => cell.getByteArray.toByteArray
