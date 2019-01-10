@@ -344,7 +344,7 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 		val update = manager.updatable()
 
 		val rows = columns.map { col =>
-			Row(col.name, col.dataType, select.contains(col), update.contains(col))
+			Row(col.name, col.dataType, select.contains(col).toString, update.contains(col).toString)
 		}
 		result.append(rows:_*)
 		result
