@@ -513,6 +513,13 @@ case class RefreshTable(table: MbTableIdentifier) extends MbRunnableCommand with
 	}
 }
 
+case class RefreshResource(path: String) extends MbRunnableCommand with DML {
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		mbSession.mixcal.sparkSession.catalog.refreshByPath(path)
+		Seq.empty[Row]
+	}
+}
+
 case class MQLQuery(query: String) extends MbCommand with DML
 
 case class CreateTempView(

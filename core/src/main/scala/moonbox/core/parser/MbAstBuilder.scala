@@ -846,4 +846,14 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val table = visitTableIdentifier(ctx.tableIdentifier())
 		RefreshTable(table)
 	}
+
+	override def visitRefreshResource(ctx: RefreshResourceContext): MbCommand = {
+		val path = Option(ctx.path).map(_.getText).map(ParserUtils.tripQuotes)
+		path match {
+			case Some(s) =>
+				RefreshResource(s)
+			case None =>
+				throw new Exception("Resource paths cannot be empty in REFRESH statements. Use / to match everything")
+		}
+	}
 }
