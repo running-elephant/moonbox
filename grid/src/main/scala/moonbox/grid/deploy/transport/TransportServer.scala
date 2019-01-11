@@ -30,13 +30,11 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.codec.protobuf.{ProtobufDecoder, ProtobufEncoder, ProtobufVarint32FrameDecoder, ProtobufVarint32LengthFieldPrepender}
-import io.netty.handler.codec.serialization.{ClassResolvers, ObjectDecoder, ObjectEncoder}
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.MbService
 import moonbox.message.protobuf.ProtoMessage
-import moonbox.protocol.NettyMessageType
 
 private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbService: MbService) extends MbLogging {
 
@@ -45,10 +43,9 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 	private val channelToSessionId = new ConcurrentHashMap[Channel, String]()
 	private var channelFuture: ChannelFuture = _
 	private var bootstrap: ServerBootstrap = _
-	private val protocol = conf.getOption("moonbox.deploy.tcp.protocol").getOrElse("protobuf")
 
 	def start(): Int = {
-		val channelHandler = getMasterHandler(protocol, channelToToken, channelToSessionId, mbService)
+
 		val bossGroup = new NioEventLoopGroup(0, new DefaultThreadFactory(this.getClass, true))
 		val workerGroup = bossGroup
 		bootstrap = new ServerBootstrap()
@@ -58,7 +55,16 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 			.option[JInt](ChannelOption.SO_BACKLOG, 1024)
 			.childOption[JInt](ChannelOption.SO_RCVBUF, 10240)
 			.childOption[JInt](ChannelOption.SO_SNDBUF, 10240)
-			.childHandler(channelHandler)
+			.childHandler(new ChannelInitializer[SocketChannel] {
+				override def initChannel(channel: SocketChannel): Unit = {
+					channel.pipeline
+						.addLast(new ProtobufVarint32FrameDecoder())
+						.addLast("decoder", new ProtobufDecoder(ProtoMessage.getDefaultInstance))
+						.addLast(new ProtobufVarint32LengthFieldPrepender())
+						.addLast("encoder", new ProtobufEncoder())
+						.addLast("handler", new TransportServerProtoHandler(channelToToken, channelToSessionId, mbService))
+				}
+			})
 
 		// Bind and start to accept incoming connections.
 		logInfo("Starting Master Transport server ...")
@@ -67,7 +73,7 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 			try {
 				channelFuture = bootstrap.bind(host, tryPort)
 				channelFuture.syncUninterruptibly()
-				logInfo(s"Master Transport server is listening on $host:$tryPort. message protocol: $protocol")
+				logInfo(s"Master Transport server is listening on $host:$tryPort.")
 				return tryPort
 			} catch {
 				case e: Exception =>
@@ -106,31 +112,4 @@ private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbS
 		bootstrap = null
 	}
 
-	private def getMasterHandler(protocol: String,
-															 channelToToken: ConcurrentHashMap[Channel, String],
-															 channelToSessionId: ConcurrentHashMap[Channel, String],
-															 mbService: MbService): ChannelHandler = {
-		NettyMessageType.getMessageType(protocol) match {
-			case NettyMessageType.JAVA_MESSAGE =>
-				new ChannelInitializer[SocketChannel] {
-					override def initChannel(channel: SocketChannel): Unit = {
-						channel.pipeline
-							.addLast("decoder", new ObjectDecoder(Int.MaxValue, ClassResolvers.cacheDisabled(null)))
-							.addLast("encoder", new ObjectEncoder())
-							.addLast("handler", new TransportServerHandler(channelToToken, channelToSessionId, mbService))
-					}
-				}
-			case NettyMessageType.PROTOBUF_MESSAGE | _ =>
-				new ChannelInitializer[SocketChannel] {
-					override def initChannel(channel: SocketChannel): Unit = {
-						channel.pipeline
-							.addLast(new ProtobufVarint32FrameDecoder())
-							.addLast("decoder", new ProtobufDecoder(ProtoMessage.getDefaultInstance))
-							.addLast(new ProtobufVarint32LengthFieldPrepender())
-							.addLast("encoder", new ProtobufEncoder())
-							.addLast("handler", new TransportServerProtoHandler(channelToToken, channelToSessionId, mbService))
-					}
-				}
-		}
-	}
 }
