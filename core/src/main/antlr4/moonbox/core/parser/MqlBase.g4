@@ -108,7 +108,7 @@ mql
     | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
     | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
     | SHOW VIEWS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                            # showViews
-    | SHOW FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                        # showFunctions
+    | SHOW (scope=identifier)? FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?    # showFunctions
     | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
     | SHOW PROCEDURES (LIKE pattern=STRING)?                                                    # showProcedures

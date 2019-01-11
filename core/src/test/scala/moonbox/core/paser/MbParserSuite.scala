@@ -463,22 +463,22 @@ class MbParserSuite extends FunSuite {
 
 	test("show functions") {
 		assertEquals(
-			ShowFunctions(None, None),
+			ShowFunctions(None, None, true, true),
 			"SHOW FUNCTIONS"
 		)
 		assertEquals(
-			ShowFunctions(Some("db"), None),
+			ShowFunctions(Some("db"), None, true, true),
 			"SHOW FUNCTIONS FROM db",
 			"SHOW FUNCTIONS IN db"
 		)
 		assertEquals(
-			ShowFunctions(Some("db"), Some("abc%")),
-			"SHOW FUNCTIONS FROM db LIKE 'abc%'",
-			"SHOW FUNCTIONS IN db LIKE 'abc%'"
+			ShowFunctions(Some("db"), Some("abc%"), true, false),
+			"SHOW USER FUNCTIONS FROM db LIKE 'abc%'",
+			"SHOW USER FUNCTIONS IN db LIKE 'abc%'"
 		)
 		assertEquals(
-			ShowFunctions(None, Some("abc%")),
-			"SHOW FUNCTIONS LIKE 'abc%'"
+			ShowFunctions(None, Some("abc%"), false, true),
+			"SHOW SYSTEM FUNCTIONS LIKE 'abc%'"
 		)
 	}
 

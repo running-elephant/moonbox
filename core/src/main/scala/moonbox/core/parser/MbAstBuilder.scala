@@ -30,7 +30,6 @@ import moonbox.core.command._
 import moonbox.core.parser.MqlBaseParser._
 import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.{ParseTree, TerminalNode}
-import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.types.{DecimalType, _}
 
 import scala.collection.JavaConversions._
@@ -742,9 +741,15 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitShowFunctions(ctx: ShowFunctionsContext): MbCommand = {
+		val (user, system) = Option(ctx.scope).map(_.getText.toLowerCase(Locale.ROOT)) match {
+			case None | Some("all") => (true, true)
+			case Some("system") => (false, true)
+			case Some("user") => (true, false)
+			case Some(x) => throw new Exception(s"SHOW $x FUNCTIONS not supported")
+		}
 		val database = Option(ctx.db).map(_.getText)
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowFunctions(database, pattern)
+		ShowFunctions(database, pattern, user, system)
 	}
 
 	override def visitShowUsers(ctx: ShowUsersContext): MbCommand = {

@@ -141,19 +141,37 @@ case class ShowViews(
 
 case class ShowFunctions(
 	database: Option[String],
-	pattern: Option[String]) extends MbRunnableCommand with DML {
+	pattern: Option[String],
+	showUserFunctions: Boolean,
+	showSystemFunctions: Boolean
+) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference("FUNCTION_NAME", StringType, nullable = false)() :: Nil
+		AttributeReference("function", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
-			.getOrElse(ctx.databaseId)
-		val functions = pattern.map { p =>
-			mbSession.catalog.listFunctions(databaseId, p)
-		}.getOrElse(mbSession.catalog.listFunctions(databaseId))
-		functions.map { f => Row(f.name) }
+
+		val (databaseId, databaseName) = database match {
+			case Some(dbName) if ctx.databaseName != dbName =>
+				val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, dbName)
+				(catalogDatabase.id.get, catalogDatabase.name)
+			case _ =>
+				(ctx.databaseId, ctx.databaseName)
+		}
+
+		val functions = new ArrayBuffer[String]()
+		if (showUserFunctions) {
+			val userFunctions = mbSession.catalog.listFunctions(databaseId, pattern.getOrElse("%")).map(_.name)
+			functions.append(userFunctions:_*)
+		}
+		if (showSystemFunctions) {
+			val systemFunctions = mbSession.mixcal.sparkSession.sessionState.catalog
+				.listFunctions(databaseName, Utils.escapeLikeRegex(pattern.getOrElse("%")))
+				.collect { case (f, "SYSTEM") => f.unquotedString }
+			functions.append(systemFunctions:_*)
+		}
+		functions.sorted.map(Row(_))
 	}
 }
 
