@@ -304,7 +304,7 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
 					key.toLowerCase.contains("password")
 		}.toSeq.mkString("(", ", ", ")")
 		val result = Row("database_name", database.name) ::
-				Row("islogical", isLogical) ::
+				Row("islogical", isLogical.toString) ::
 				Row("properties", properties) ::
 				Row("description", database.description.getOrElse("")) :: Nil
 		result
@@ -409,13 +409,13 @@ case class DescUser(user: String) extends MbRunnableCommand with DML {
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val catalogUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		val result = Row("User Name", catalogUser.name) ::
-			Row("Account", catalogUser.account) ::
-			Row("DDL", catalogUser.ddl) ::
-			Row("DCL", catalogUser.dcl) ::
-			Row("Grant Account", catalogUser.grantAccount) ::
-			Row("Grant DDL", catalogUser.grantDdl) ::
-			Row("Grant DCL", catalogUser.grantDcl) ::
-			Row("IsSA", catalogUser.isSA) :: Nil
+			Row("Account", catalogUser.account.toString) ::
+			Row("DDL", catalogUser.ddl.toString) ::
+			Row("DCL", catalogUser.dcl.toString) ::
+			Row("Grant Account", catalogUser.grantAccount.toString) ::
+			Row("Grant DDL", catalogUser.grantDdl.toString) ::
+			Row("Grant DCL", catalogUser.grantDcl.toString) ::
+			Row("IsSA", catalogUser.isSA.toString) :: Nil
 		result
 	}
 }
@@ -451,8 +451,8 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 		val result = Row("Event Name", catalogTimedEvent.name) ::
 			Row("Definer", catalogUser.name) ::
 			Row("Schedule", catalogTimedEvent.schedule) ::
-			Row("Enable", catalogTimedEvent.enable) ::
-			Row("Procedure", proc.cmds) ::
+			Row("Enable", catalogTimedEvent.enable.toString) ::
+			Row("Procedure", proc.cmds.mkString("; ")) ::
 			Row("Description", catalogTimedEvent.description.getOrElse("No Description.")) :: Nil
 		result
 	}
