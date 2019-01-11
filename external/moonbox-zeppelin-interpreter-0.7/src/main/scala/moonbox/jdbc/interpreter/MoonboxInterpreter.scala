@@ -90,6 +90,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       idToConnection.put(paragraphId, connection)
       log.info("Creating statement ...")
       statement = connection.createStatement()
+	  statement.setMaxRows(getMaxResultLine())
       if (statement == null) {
         interpreterResult = new InterpreterResult(InterpreterResult.Code.ERROR, "Creating statement error")
         throw new SQLException("Creating statement error")
@@ -142,7 +143,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
     }
     msg.append(NEWLINE)
     var rowCount = 0
-    while (resultSet.next() && rowCount < getMaxResultLine()) {
+    while (resultSet.next()) {
       for (i <- 1 to md.getColumnCount) {
         val col = resultSet.getObject(i)
         val value = if (col == null) "null" else col.toString
