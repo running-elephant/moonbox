@@ -8,7 +8,7 @@ import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAd
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
-import moonbox.protocol.client._
+import moonbox.grid.deploy.Interface._
 import moonbox.message.protobuf
 import moonbox.message.protobuf.ProtoMessage
 import moonbox.protocol.util.ProtoOutboundMessageBuilder

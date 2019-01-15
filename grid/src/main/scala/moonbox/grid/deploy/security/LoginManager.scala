@@ -60,10 +60,12 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 		}
 	}, 0, 60 * 1000, TimeUnit.MILLISECONDS)
 
-	def login(username: String, password: String): Option[String] = {
+	def login(username: String, password: String, forget: Boolean = false): Option[String] = {
 		if (loginImpl.doLogin(username, password)) {
 			val token = tokenEncoder.encode(username)
-			tokenToLastActiveTime.put(token, System.currentTimeMillis())
+			if (!forget) {
+				tokenToLastActiveTime.put(token, System.currentTimeMillis())
+			}
 			Some(token)
 		} else None
 	}

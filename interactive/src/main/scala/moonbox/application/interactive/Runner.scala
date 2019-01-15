@@ -9,7 +9,7 @@ import moonbox.core.command._
 import moonbox.core.datasys.{DataSystem, DataTable}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.timer.EventEntity
-import moonbox.protocol.client.ResultData
+import moonbox.grid.deploy.Interface.ResultData
 import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.catalyst.expressions.Literal
 import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit}
@@ -48,7 +48,7 @@ class Runner(
 		this.fetchSize = fetchSize
 		this.maxRows = if (maxRows == Int.MinValue) { 10000 } else maxRows
 		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
-		sqls.map(mbSession.parsedPlan).map {
+		sqls.map(mbSession.parsedCommand).map {
 			case event: CreateTimedEvent =>
 				createTimedEvent(event, manager)
 			case event: AlterTimedEventSetEnable =>

@@ -30,7 +30,7 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
-import moonbox.protocol.client._
+import moonbox.grid.deploy.Interface._
 import org.json4s.jackson.Serialization
 import org.json4s.{CustomSerializer, DefaultFormats, JInt, JString, Serializer}
 
@@ -38,7 +38,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
+class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 	implicit val akkaSystem: ActorSystem) extends JsonSerializer with MbLogging {
 
 	private val maxRetries: Int = conf.get(PORT_MAX_RETRIES)
@@ -73,36 +73,65 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 			implicit val connectionInfo = ConnectionInfo(localAddress, clientIP.value, ConnectionType.REST)
 
 			pathPrefix("management") {
-				path("workers") {
-					post {
-						complete(Unit)
+				path("cluster-info") {
+					get {
+						complete {
+							mbService.clusterInfo()
+						}
 					}
 				} ~
-				path("applications") {
-					post {
-						complete(Unit)
+				path("apps-info") {
+					get {
+						complete {
+							mbService.appsInfo()
+						}
 					}
 				}
 			} ~
 			pathPrefix("service") {
 				path("query") {
-					post {
-						complete(Unit)
+					get {
+						entity(as[SampleInbound]) { in =>
+							complete {
+								mbService.sample(in.username, in.password, in.sql, in.database)
+							}
+						}
 					}
 				} ~
 				path("verify") {
-					post {
-						complete(Unit)
+					get {
+						entity(as[VerifyInbound]) { in =>
+							complete {
+								mbService.verify(in.username, in.password, in.sql)
+							}
+						}
+					}
+				} ~
+				path("tableresources") {
+					get {
+						entity(as[TableResourceInbound]) { in =>
+							complete {
+								mbService.resources(in.username, in.password, in.sql)
+							}
+						}
 					}
 				} ~
 				path("schema") {
-					post {
-						complete(Unit)
+					get {
+						entity(as[SchemaInbound]) { in =>
+							complete {
+								mbService.schema(in.username, in.password, in.sql)
+							}
+						}
 					}
 				} ~
 				path("lineage") {
-					post {
-						complete(Unit)
+					get {
+						entity(as[LineageInbound]) { in =>
+							complete {
+								mbService.lineage(in.username, in.password, in.sql)
+							}
+						}
 					}
 				}
 			} ~
@@ -111,16 +140,16 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					post {
 						entity(as[BatchQueryInbound]) { in =>
 							complete {
-								service.batchQuery(in.username, in.password, in.sqls, in.config)
+								mbService.batchQuery(in.username, in.password, in.sqls, in.config)
 							}
 						}
 					}
 				} ~
 				path("progress") {
-					post {
+					get {
 						entity(as[BatchQueryProgressInbound]) { in =>
 							complete {
-								service.batchQueryProgress(in.username, in.password, in.jobId)
+								mbService.batchQueryProgress(in.username, in.password, in.jobId)
 							}
 						}
 					}
@@ -129,7 +158,7 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 					post {
 						entity(as[BatchQueryCancelInbound]) { in =>
 							complete {
-								service.batchQueryCancel(in.username, in.password, in.jobId)
+								mbService.batchQueryCancel(in.username, in.password, in.jobId)
 							}
 						}
 					}
@@ -198,111 +227,6 @@ class RestServer(host: String, port: Int, conf: MbConf, service: MbService,
 							complete {
 								service.interactiveQueryCancel(in.token, in.sessionId)
 							}
-						}
-					}
-				}
-			}*/
-
-
-			/*~
-			path("requestAccess") {
-				post {
-					entity(as[RequestAccessInbound]) { in =>
-						complete {
-							service.requestAccess(in.token.getOrElse(""), in.isLocal, ConnectionType.REST)
-						}
-					}
-				}
-			} ~
-			path("addYarnApp") {
-				post {
-					entity(as[AddAppInbound]) { in =>
-						complete {
-							service.yarnAppAdd(in.username, in.config)
-						}
-					}
-				}
-			} ~
-			path("removeYarnApp") {
-				post {
-					entity(as[RemoveAppInbound]) { in =>
-						complete {
-							service.yarnAppRemove(in.username, in.appId)
-						}
-					}
-				}
-			} ~
-			path("showYarnApp") {
-				post {
-					entity(as[ShowAppInbound]) { in =>
-						complete {
-							service.yarnAppShow(in.username)
-						}
-					}
-				}
-			} ~
-			path("showNodesInfo") {
-				post {
-					entity(as[ShowNodesInfoInbound]) { in =>
-						complete {
-							service.nodesInfoShow(in.username)
-						}
-					}
-				}
-			} ~
-			path("showRunningEvents") {
-				post {
-					entity(as[ShowRunningEventsInbound]) { in =>
-						complete {
-							service.runningEventsShow(in.username)
-						}
-					}
-				}
-			} ~
-			path("showNodeJobs") {
-				post {
-					entity(as[ShowNodeJobsInbound]) { in =>
-						complete {
-							service.nodeJobsShow(in.username)
-						}
-					}
-				}
-			} ~
-			path("showClusterJobs") {
-				post {
-					entity(as[ShowClusterJobsInbound]) { in =>
-						complete {
-							service.clusterJobsShow(in.username)
-						}
-					}
-				}
-			} ~
-			path("metadata" / "showDatabases") {
-				//第一次请求，moonbox将所有的数据库名 数据库连接信息 和 该标签，一起返回，比如（tag，（databasename， URL））
-				post {
-					entity(as[ShowDatabasesInbound]) { in =>
-						complete {
-							service.databasesShow(in.token)
-						}
-					}
-				}
-			} ~
-			path("metadata" / "showTables") {
-				//第二次请求根据数据库去获取该库下所有表名
-				post {
-					entity(as[ShowTablesInbound]) { in =>
-						complete {
-							service.tablesShow(in.token, in.database)
-						}
-					}
-				}
-			} ~
-			path("metadata" / "describeTable") {
-				//第三次请求根据表名获取所有字段信息
-				post {
-					entity(as[DescribeTablesInbound]) { in =>
-						complete {
-							service.tableDescribe(in.token, in.table, in.database)
 						}
 					}
 				}

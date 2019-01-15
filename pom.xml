@@ -45,6 +45,8 @@
         <module>external/cassandra-adapter</module>
         <module>external/clickhouse-adapter</module>
         <module>external/redis-adapter</module>
+        <module>external/moonbox-zeppelin-interpreter-0.7</module>
+        <module>external/moonbox-zeppelin-interpreter-0.8</module>
 
         <module>batch</module>
         <module>interactive</module>

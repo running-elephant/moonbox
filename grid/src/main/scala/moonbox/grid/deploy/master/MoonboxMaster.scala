@@ -7,6 +7,7 @@ import akka.actor.{ActorSystem, Address, Cancellable, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
@@ -161,30 +162,6 @@ class MoonboxMaster(
 		}
 
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
-		// for debug
-		/*context.system.scheduler.schedule(new FiniteDuration(2, SECONDS), new FiniteDuration(10, SECONDS)) {
-			println("=========================================================================")
-			println("idToWorker")
-			println(idToWorker.map { case (_, v) => v}.mkString("\n"))
-			println("--------------------------------------------------------------------------")
-			println("addressToWorker")
-			println(addressToWorker.map { case (_, v) => v}.mkString("\n"))
-			println("--------------------------------------------------------------------------")
-			println("workers")
-			println(workers.map(_.toString).mkString("\n"))
-			println("--------------------------------------------------------------------------")
-			println("drivers")
-			println(drivers.map(_.toString).mkString("\n"))
-			println("--------------------------------------------------------------------------")
-			println("idToApp")
-			println(idToApp.map { case (_, v) => v}.mkString("\n") )
-			println("--------------------------------------------------------------------------")
-			println("addressToApp")
-			println(addressToApp.map { case (_, v) => v}.mkString("\n") )
-			println("--------------------------------------------------------------------------")
-			println("apps")
-			println(apps.map(_.toString).mkString("\n") )
-		}*/
 	}
 
 	@scala.throws[Exception](classOf[Exception])
@@ -342,6 +319,75 @@ class MoonboxMaster(
 		case CheckForWorkerTimeOut =>
 			timeOutDeadWorkers()
 
+		case DriverStateChanged(driverId, driverState, appId, exception) =>
+			driverState match {
+				case DriverState.ERROR | DriverState.FINISHED | DriverState.KILLED | DriverState.FAILED =>
+					removeDriver(driverId, driverState, appId, exception)
+				case _ =>
+					drivers.find(_.id == driverId).foreach { d =>
+						d.state = driverState
+						d.appId = appId
+					}
+			}
+
+		case RegisterTimedEvent(event) =>
+			val requester = sender()
+			Future {
+				if (checkTimedService()) {
+					if (!timedEventService.timedEventExists(event.group, event.name)) {
+						timedEventService.addTimedEvent(event)
+						logInfo(s"Register time event: ${event.name}, ${event.cronExpr}, ${event.sqls}.")
+						RegisteredTimedEvent(self)
+					} else {
+						val message = s"Timed event ${event.name} already exists."
+						logWarning(message)
+						RegisterTimedEventFailed(message)
+					}
+				} else {
+					val message = s"Timer is out of service."
+					logWarning(s"Try to register timed event ${event.name}," + message)
+					RegisterTimedEventFailed(message)
+				}
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! RegisterTimedEventFailed(e.getMessage)
+			}
+
+		case UnregisterTimedEvent(group, name) =>
+			val requester = sender()
+			Future {
+				if (checkTimedService()) {
+					timedEventService.deleteTimedEvent(group, name)
+					logInfo(s"Unregistered timed event $name.")
+					UnregisteredTimedEvent(self)
+				} else {
+					val message = s"Timer is out of service."
+					logWarning(s"Try to disable timed event $name," + message)
+					UnregisterTimedEventFailed(message)
+				}
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! UnregisterTimedEventFailed(e.getMessage)
+			}
+
+		case job: JobMessage =>
+			handleJobMessage.apply(job)
+
+		case service: ServiceMessage =>
+			handleServiceMessage.apply(service)
+
+		case management: ManagementMessage =>
+			handleManagementMessage.apply(management)
+
+		case e => logWarning("Unknown message: " + e.toString)
+	}
+
+	private def handleJobMessage: Receive = {
+
 		case JobSubmit(username, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
@@ -404,17 +450,6 @@ class MoonboxMaster(
 						logWarning(msg)
 						sender() ! BatchJobCancelResponse(driverId, success = false, msg)
 				}
-			}
-
-		case DriverStateChanged(driverId, driverState, appId, exception) =>
-			driverState match {
-				case DriverState.ERROR | DriverState.FINISHED | DriverState.KILLED | DriverState.FAILED =>
-					removeDriver(driverId, driverState, appId, exception)
-				case _ =>
-					drivers.find(_.id == driverId).foreach { d =>
-						d.state = driverState
-						d.appId = appId
-					}
 			}
 
 		case open @ OpenSession(_, _, config) =>
@@ -483,52 +518,127 @@ class MoonboxMaster(
 				case None =>
 					requester ! InteractiveJobCancelResponse(success = false, s"Session $sessionId lost in master.")
 			}
+	}
 
-		case RegisterTimedEvent(event) =>
+	private def handleServiceMessage: Receive = {
+		case sample: SampleRequest =>
 			val requester = sender()
-			Future {
-				if (checkTimedService()) {
-					if (!timedEventService.timedEventExists(event.group, event.name)) {
-						timedEventService.addTimedEvent(event)
-						logInfo(s"Register time event: ${event.name}, ${event.cronExpr}, ${event.sqls}.")
-						RegisteredTimedEvent(self)
-					} else {
-						val message = s"Timed event ${event.name} already exists."
-						logWarning(message)
-						RegisterTimedEventFailed(message)
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to sample data.")
+					val f = app.endpoint.ask(sample).mapTo[SampleResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! SampleFailed(e.getMessage)
 					}
-				} else {
-					val message = s"Timer is out of service."
-					logWarning(s"Try to register timed event ${event.name}," + message)
-					RegisterTimedEventFailed(message)
-				}
-			}.onComplete {
-				case Success(response) =>
-					requester ! response
-				case Failure(e) =>
-					requester ! RegisterTimedEventFailed(e.getMessage)
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! SampleFailed(msg)
 			}
 
-		case UnregisterTimedEvent(group, name) =>
+		case verify: VerifyRequest =>
 			val requester = sender()
-			Future {
-				if (checkTimedService()) {
-					timedEventService.deleteTimedEvent(group, name)
-					logInfo(s"Unregistered timed event $name.")
-					UnregisteredTimedEvent(self)
-				} else {
-					val message = s"Timer is out of service."
-					logWarning(s"Try to disable timed event $name," + message)
-					UnregisterTimedEventFailed(message)
-				}
-			}.onComplete {
-				case Success(response) =>
-					requester ! response
-				case Failure(e) =>
-					requester ! UnregisterTimedEventFailed(e.getMessage)
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to verify sql.")
+					val f = app.endpoint.ask(verify).mapTo[VerifyResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! VerifyFailed(e.getMessage)
+					}
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! VerifyFailed(msg)
 			}
 
-		case e => println(e)
+		case resource: TableResourcesRequest =>
+			val requester = sender()
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to get tables and functions in sql.")
+					val f = app.endpoint.ask(resource).mapTo[TableResourcesResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! TableResourcesFailed(e.getMessage)
+					}
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! TableResourcesFailed(msg)
+			}
+
+		case schema: SchemaRequest =>
+			val requester = sender()
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to get schema for sql.")
+					val f = app.endpoint.ask(schema).mapTo[SchemaResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! SchemaFailed(e.getMessage)
+					}
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! SchemaFailed(msg)
+			}
+
+		case lineage: LineageRequest =>
+			val requester = sender()
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to get lineage for sql.")
+					val f = app.endpoint.ask(lineage).mapTo[LineageResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! LineageFailed(e.getMessage)
+					}
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! LineageFailed(msg)
+			}
+	}
+
+	private def handleManagementMessage: Receive = {
+		case ClusterInfoRequest =>
+			val clusterInfo = workers.toSeq.map { worker =>
+					Seq(
+						worker.host,
+						worker.port.toString,
+						worker.state.toString,
+						s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
+					)
+			}
+			sender() ! ClusterInfoResponse(clusterInfo)
+		case AppsInfoRequest =>
+			val appsInfo = apps.toSeq.map { app =>
+				Seq(
+					app.id,
+					app.host,
+					app.port.toString,
+					app.state.toString,
+					app.appType.toString
+				)
+			}
+			sender() ! AppsInfoResponse(appsInfo)
 	}
 
 	override def onDisconnected(remoteAddress: Address): Unit = {

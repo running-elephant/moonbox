@@ -29,7 +29,7 @@ import moonbox.grid.deploy.audit.AuditLogger
 import moonbox.grid.deploy.messages.Message
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.security.LoginManager
-import moonbox.protocol.client._
+import moonbox.grid.deploy.Interface._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
@@ -202,6 +202,109 @@ private[deploy] class MbService(
 
 	def decodeToken(token: String): Option[String] = {
 		loginManager.decode(token)
+	}
+
+	def sample(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SampleOutbound = {
+		auditLogger.log(username, "sample", Map("sql" -> sql))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[SampleResponse](SampleRequest(username, sql, database))(LONG_TIMEOUT) match {
+					case Left(SampleSuccessed(schema, data)) =>
+						SampleOutbound(success = true, schema = Some(schema), data = Some(data))
+					case Left(SampleFailed(message)) =>
+						SampleOutbound(success = false, message = Some(message))
+					case Right(message) =>
+						SampleOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				SampleOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
+	def verify(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): VerifyOutbound = {
+		auditLogger.log(username, "verify", Map("sql" -> sql))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[VerifyResponse](VerifyRequest(username, sql))(SHORT_TIMEOUT) match {
+					case Left(VerifySuccessed) =>
+						VerifyOutbound(success = true)
+					case Left(VerifyFailed(message)) =>
+						VerifyOutbound(success = false, message = Some(message))
+					case Right(message) =>
+						VerifyOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				VerifyOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
+	def resources(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): TableResourceOutbound = {
+		auditLogger.log(username, "resources", Map("sql" -> sql))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[TableResourcesResponse](TableResourcesRequest(username, sql))(SHORT_TIMEOUT) match {
+					case Left(TableResourcesSuccessed(tables, functions)) =>
+						TableResourceOutbound(success = true, tables = Some(tables), functions = Some(functions))
+					case Left(TableResourcesFailed(message)) =>
+						TableResourceOutbound(success = false, message = Some(message))
+					case Right(message) =>
+						TableResourceOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				TableResourceOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
+	def schema(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): SchemaOutbound = {
+		auditLogger.log(username, "schema", Map("sql" -> sql))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[SchemaResponse](SchemaRequest(username, sql))(SHORT_TIMEOUT) match {
+					case Left(SchemaSuccessed(schema)) =>
+						SchemaOutbound(success = true, schema = Some(schema))
+					case Left(SchemaFailed(message)) =>
+						SchemaOutbound(success = false, message = Some(message))
+					case Right(message) =>
+						SchemaOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				SchemaOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
+	def lineage(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): LineageOutbound = {
+		auditLogger.log(username, "lineage", Map("sql" -> sql))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[LineageResponse](LineageRequest(username, sql))(SHORT_TIMEOUT) match {
+					case Left(LineageSuccessed(lineage)) =>
+						LineageOutbound(success = true, lineage = Some(lineage))
+					case Left(LineageFailed(message)) =>
+						LineageOutbound(success = false, message = Some(message))
+					case Right(message) =>
+						LineageOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				LineageOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
+	def clusterInfo(): ClusterInfoOutbound = {
+		askSync[ClusterInfoResponse](ClusterInfoRequest)(SHORT_TIMEOUT) match {
+			case Left(ClusterInfoResponse(cluster)) =>
+				ClusterInfoOutbound(cluster)
+			case Right(message) =>
+				ClusterInfoOutbound(Seq.empty[Seq[String]])
+		}
+	}
+
+	def appsInfo(): AppsInfoOutbound = {
+		askSync[AppsInfoResponse](AppsInfoRequest)(SHORT_TIMEOUT) match {
+			case Left(AppsInfoResponse(apps)) =>
+				AppsInfoOutbound(apps)
+			case Right(message) =>
+				AppsInfoOutbound(Seq.empty[Seq[String]])
+		}
 	}
 
 	private def askSync[T: ClassTag](message: Message)(timeout: FiniteDuration): Either[T, String] = {

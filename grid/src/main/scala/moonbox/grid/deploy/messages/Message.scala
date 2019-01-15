@@ -55,8 +55,37 @@ object Message {
 	case class BatchJobCancelResponse(jobId: String, success: Boolean, message: String) extends JobMessage
 
 	// service
-	sealed trait ServiceMessage
+	sealed trait ServiceMessage extends Message
+
+	case class SampleRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
+	sealed trait SampleResponse extends ServiceMessage
+	case class SampleFailed(message: String) extends SampleResponse
+	case class SampleSuccessed(schema: String, data: Seq[Seq[Any]]) extends SampleResponse
+
+	case class VerifyRequest(username: String, sql: String) extends ServiceMessage
+	sealed trait VerifyResponse extends ServiceMessage
+	case class VerifyFailed(message: String) extends VerifyResponse
+	case object VerifySuccessed extends VerifyResponse
+
+	case class TableResourcesRequest(username: String, sql: String) extends ServiceMessage
+	sealed trait TableResourcesResponse extends ServiceMessage
+	case class TableResourcesFailed(message: String) extends TableResourcesResponse
+	case class TableResourcesSuccessed(tables: Seq[String], functions: Seq[String]) extends TableResourcesResponse
+
+	case class SchemaRequest(username: String, sql: String) extends ServiceMessage
+	sealed trait SchemaResponse extends ServiceMessage
+	case class SchemaFailed(message: String) extends SchemaResponse
+	case class SchemaSuccessed(schema: String) extends SchemaResponse
+
+	case class LineageRequest(username: String, sql: String) extends ServiceMessage
+	sealed trait LineageResponse extends ServiceMessage
+	case class LineageFailed(message: String) extends LineageResponse
+	case class LineageSuccessed(lineage: String) extends LineageResponse
 
 	// management
-	sealed trait ManagementMessage
+	sealed trait ManagementMessage extends Message
+	case object ClusterInfoRequest extends ManagementMessage
+	case class ClusterInfoResponse(cluster: Seq[Seq[String]]) extends ManagementMessage
+	case object AppsInfoRequest extends ManagementMessage
+	case class AppsInfoResponse(apps: Seq[Seq[String]]) extends ManagementMessage
 }

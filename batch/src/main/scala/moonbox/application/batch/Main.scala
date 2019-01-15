@@ -32,7 +32,7 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 
 	def runMain(): Unit = {
 		sqls.foreach { sql =>
-			mbSession.parsedPlan(sql) match {
+			mbSession.parsedCommand(sql) match {
 				case runnable: MbRunnableCommand =>
 					runnable.run(mbSession)(mbSession.userContext)
 

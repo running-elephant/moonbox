@@ -203,6 +203,7 @@ class Main(
 				logWarning(message)
 				sender() ! RegisterTimedEventFailed(message)
 			}
+
 		case event: UnregisterTimedEvent =>
 			if (master.isDefined) {
 				master.foreach(_ forward event)
@@ -211,6 +212,67 @@ class Main(
 				logWarning(message)
 				sender() ! UnregisterTimedEventFailed(message)
 			}
+
+		case sample @ SampleRequest(username, sql, database) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				servicer.sample(sql)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! SampleFailed(e.getMessage)
+			}
+
+		case verify @ VerifyRequest(username, sql) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				servicer.verify(sql)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! VerifyFailed(e.getMessage)
+			}
+
+		case resource @ TableResourcesRequest(username, sql) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				servicer.resources(sql)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! TableResourcesFailed(e.getMessage)
+			}
+
+		case schema @ SchemaRequest(username, sql) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				servicer.schema(sql)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! SchemaFailed(e.getMessage)
+			}
+
+		case lineage @ LineageRequest(username, sql) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				servicer.lineage(sql)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					requester ! LineageFailed(e.getMessage)
+			}
+
 		case e =>
 			logWarning(s"Unknown message received: $e")
 	}

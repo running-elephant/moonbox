@@ -111,8 +111,13 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
 	}
 
-	def parsedPlan(sql: String): MbCommand = {
+	def parsedCommand(sql: String): MbCommand = {
 		mbParser.parsePlan(sql)
+	}
+
+	def parsedPlan(sql: String): LogicalPlan = {
+		val preparedSql = prepareSql(sql)
+		mixcal.parsedLogicalPlan(preparedSql)
 	}
 
 	def analyzedPlan(sqlText: String): LogicalPlan = {
@@ -140,7 +145,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		registerFunctions(functionIdentifiers)
 	}
 
-	private def checkColumnPrivilege(plan: LogicalPlan): Unit = {
+	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
 		if (columnPermission) {
 			ColumnSelectPrivilegeChecker.intercept(plan, this)
 		}
@@ -272,7 +277,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		}
 	}
 
-	private def collectUnknownTablesAndFunctions(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
+	def collectUnknownTablesAndFunctions(plan: LogicalPlan): (Seq[TableIdentifier], Seq[FunctionIdentifier]) = {
 		val tables = new mutable.HashSet[TableIdentifier]()
 		val logicalTables = new mutable.HashSet[TableIdentifier]()
 		val functions = new mutable.HashSet[UnresolvedFunction]()
