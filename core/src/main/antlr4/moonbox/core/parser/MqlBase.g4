@@ -16,7 +16,7 @@ mql
     | DROP (ORG|ORGANIZATION) (IF EXISTS)? name=identifier (CASCADE)?                           # dropOrganization
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)
-        org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)                        # createSa
+        org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)?                       # createSa
     | RENAME SA name=identifier IN (ORG|ORGANIZATION) org=identifier TO newName=identifier      # renameSa
     | ALTER SA name=identifier IN (ORG|ORGANIZATION) org=identifier
         RENAME TO newName=identifier                                                            # setSaName
@@ -41,7 +41,7 @@ mql
     | REVOKE privileges ON tableCollections FROM GROUP groups=identifierList                    # revokeResourcePrivilegeFromGroups
 
     | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password
-        (OPTIONS propertyList)                                                                  # createUser
+        (OPTIONS propertyList)?                                                                 # createUser
     | RENAME USER name=identifier TO newName=identifier                                         # renameUser
     | ALTER USER name=identifier RENAME TO newName=identifier                                   # setUserName
     | ALTER USER name=identifier IDENTIFIED BY pwd=password                                     # setUserPassword
