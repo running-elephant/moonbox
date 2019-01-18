@@ -39,6 +39,8 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 	private val tokenToLastActiveTime = new ConcurrentHashMap[String, Long]()
 	private val tokenToSessionId = new ConcurrentHashMap[String, String]()
 
+	private val timeoutCatalogSessionCallback = new  ConcurrentHashMap[String, () => Unit]()
+
 	private val cleanTimeoutCatalogSessionThread =
 		ThreadUtils.newDaemonSingleThreadScheduledExecutor("loginManager-clean-timeout")
 
@@ -55,10 +57,17 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 						))
 					)
 					tokenToLastActiveTime.remove(u)
+					Option(timeoutCatalogSessionCallback.remove(u)).foreach { callback =>
+						callback()
+					}
 				}
 			}
 		}
-	}, 0, 60 * 1000, TimeUnit.MILLISECONDS)
+	}, 0, LOGIN_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+
+	def addTimeoutCallback(token: String, callback: () => Unit): Unit = {
+		timeoutCatalogSessionCallback.put(token, callback)
+	}
 
 	def login(username: String, password: String, forget: Boolean = false): Option[String] = {
 		if (loginImpl.doLogin(username, password)) {

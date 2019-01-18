@@ -54,6 +54,17 @@ private[deploy] class MbService(
 		}
 	}
 
+	def login(username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
+		auditLogger.log(username, "login")
+		loginManager.login(username, password) match {
+			case Some(token) =>
+				loginManager.addTimeoutCallback(token, callback)
+				LoginOutbound(Some(token), None)
+			case None =>
+				LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
+		}
+	}
+
 	def isLogin(token: String): Option[String] = {
 		loginManager.isLogin(token)
 	}

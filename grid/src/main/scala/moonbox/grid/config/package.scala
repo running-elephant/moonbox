@@ -39,30 +39,30 @@ package object config {
 		.stringConf
 		.createWithDefaultString("moonbox_secret")
 
-	val LOGIN_IMPLEMENTATION = ConfigBuilder("moonbox.login.implementation")
+	val LOGIN_IMPLEMENTATION = ConfigBuilder("moonbox.deploy.login.implementation")
 		.stringConf
 		.createWithDefault("built-in")
 
-	val LOGIN_TIMEOUT = ConfigBuilder("moonbox.login.timeout")
+	val LOGIN_TIMEOUT = ConfigBuilder("moonbox.deploy.login.timeout")
 	    .timeConf
 	    .createWithDefaultString("60m")
-	val LOGIN_SINGLE_CONTROL_ENABLE = ConfigBuilder("moonbox.login.single.enable")
+	val LOGIN_SINGLE_CONTROL_ENABLE = ConfigBuilder("moonbox.deploy.login.single.enable")
 	    .booleanConf
 	    .createWithDefault(false)
 
-	val LOGIN_LDAP_USER = ConfigBuilder("moonbox.login.ldap.user")
-	val LOGIN_LDAP_PASSWORD = ConfigBuilder("moonbox.login.ldap.password")
-	val LOGIN_LDAP_SERVER = ConfigBuilder("moonbox.login.ldap.server")
-	val LOGIN_LDAP_DC = ConfigBuilder("moonbox.login.ldap.dc")
+	val LOGIN_LDAP_USER = ConfigBuilder("moonbox.deploy.login.ldap.user")
+	val LOGIN_LDAP_PASSWORD = ConfigBuilder("moonbox.deploy.login.ldap.password")
+	val LOGIN_LDAP_SERVER = ConfigBuilder("moonbox.deploy.login.ldap.server")
+	val LOGIN_LDAP_DC = ConfigBuilder("moonbox.deploy.login.ldap.dc")
 
 
-	val LOGIN_LDAP_READ_TIMEOUT = ConfigBuilder("moonbox.login.ldap.read.timeout")
+	val LOGIN_LDAP_READ_TIMEOUT = ConfigBuilder("moonbox.deploy.login.ldap.read.timeout")
 		.timeConf
 		.createWithDefaultString("5s")
-	val LOGIN_LDAP_CONNECT_TIMEOUT = ConfigBuilder("moonbox.login.ldap.connect.timeout")
+	val LOGIN_LDAP_CONNECT_TIMEOUT = ConfigBuilder("moonbox.deploy.login.ldap.connect.timeout")
 		.timeConf
 		.createWithDefaultString("1s")
-	val LOGIN_LDAP_CONNECT_POOL = ConfigBuilder("moonbox.login.ldap.connect.pool")
+	val LOGIN_LDAP_CONNECT_POOL = ConfigBuilder("moonbox.deploy.login.ldap.connect.pool")
 		.booleanConf
 		.createWithDefault(false)
 

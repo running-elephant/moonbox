@@ -110,7 +110,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
     val username = inbound.getUesername
     val password = inbound.getPassword
 
-    Future(mbService.login(username, password)) onComplete {
+    Future(mbService.login(username, password, () => { ctx.channel().close() })) onComplete {
       case Success(LoginOutbound(token, error)) => loginResponse(token, error)
       case Failure(e) => loginResponse(None, Some(e.getMessage))
     }
