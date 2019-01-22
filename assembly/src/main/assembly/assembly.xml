@@ -94,6 +94,7 @@
                 <include>mysql:mysql-connector-java</include>
                 <!--kudu-->
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
+                <include>com.oracle:ojdbc6</include>
                 <!--<include>edp.moonbox:moonbox-mysql-adapter</include>-->
                 <!--&lt;!&ndash;hbase&ndash;&gt;
                 <include>org.apache.hbase:hbase-client</include>

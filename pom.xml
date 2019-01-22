@@ -48,8 +48,8 @@
         <module>external/moonbox-zeppelin-interpreter-0.7</module>
         <module>external/moonbox-zeppelin-interpreter-0.8</module>
 
-        <module>batch</module>
-        <module>interactive</module>
+        <module>applications/batch</module>
+        <module>applications/interactive</module>
 
         <module>assembly</module>
 
