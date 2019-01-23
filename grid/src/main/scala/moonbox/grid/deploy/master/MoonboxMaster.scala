@@ -797,16 +797,6 @@ class MoonboxMaster(
 		true
 	}
 
-	private def validateUserConfig(config: String): Boolean = {
-		try {
-			ConfigFactory.parseString(config)
-			true
-		} catch {
-			case e: Exception =>
-				false
-		}
-	}
-
 	private def newDriverId(submitDate: Date): String = {
 		val appId = "batch-%s-%04d".format(createDateFormat.format(submitDate), nextBatchDriverNumber)
 		nextBatchDriverNumber += 1
