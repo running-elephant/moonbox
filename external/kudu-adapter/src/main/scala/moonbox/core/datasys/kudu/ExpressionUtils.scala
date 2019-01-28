@@ -1,5 +1,6 @@
 package moonbox.core.datasys.kudu
 
+import java.math.BigDecimal
 import java.sql.Timestamp
 
 import org.apache.kudu.client.KuduPredicate
@@ -182,18 +183,20 @@ object ExpressionUtils {
     KuduPredicate.newInListPredicate(colSchema, values.asJava)
   }
 
-  def genComparisonPredicate(colSchema: ColumnSchema, op: ComparisonOp, value: Any): KuduPredicate = {
-    colSchema.getType match {
-      case Type.INT8 | Type.INT16 | Type.INT32 | Type.INT64 => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[Long])
-      case Type.BINARY => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[Array[Byte]])
-      case Type.STRING => KuduPredicate.newComparisonPredicate(colSchema, op, value.toString)
-      case Type.BOOL => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[Boolean])
-      case Type.FLOAT => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[Float])
-      case Type.DOUBLE => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[Double])
-      //      case "unixtime_micros" => new Timestamp(rowResult.getLong(index))
-      case Type.DECIMAL => KuduPredicate.newComparisonPredicate(colSchema, op, value.asInstanceOf[java.math.BigDecimal])
-      case other => throw new Exception(s"Column type $other is unknown.")
-    }
+  def genComparisonPredicate(columnSchema: ColumnSchema, operator: ComparisonOp, value: Any): KuduPredicate = {
+	  value match {
+		  case value: Boolean => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Byte => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Short => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Int => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Long => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Timestamp => KuduPredicate.newComparisonPredicate(columnSchema, operator, timestampToMicros(value))
+		  case value: Float => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Double => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: String => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: Array[Byte] => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: BigDecimal => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+	  }
   }
 
   /**
