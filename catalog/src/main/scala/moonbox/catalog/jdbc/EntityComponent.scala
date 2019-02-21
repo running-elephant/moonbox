@@ -68,7 +68,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val catalogUserGroupRels = TableQuery[CatalogUserGroupRelTable]
 	protected final val catalogVariables = TableQuery[CatalogVariableTable]
 
-	protected final val tableQuerys = Seq(
+	protected final val tableQueries = Seq(
 		catalogDatabases,
 		catalogTables,
 		catalogOrganizations,
