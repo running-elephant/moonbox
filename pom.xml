@@ -50,8 +50,10 @@
 
         <module>applications/batch</module>
         <module>applications/interactive</module>
+        <module>applications/hivenative</module>
 
         <module>assembly</module>
+
 
 
     </modules>
