@@ -34,7 +34,7 @@ object Main extends MbLogging {
 		val appType = conf.get("applicationType").getOrElse(throw new NoSuchElementException("applicationType"))
 
 		val akkaConfig = Map(
-			"akka.jvm-exit-on-fatal-error" -> "false",
+			"akka.jvm-exit-on-fatal-error" -> "true",
 			"akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
 			"akka.remote.enabled-transports.0" ->"akka.remote.netty.tcp",
 			"akka.remote.netty.tcp.hostname" -> Utils.localHostName(),

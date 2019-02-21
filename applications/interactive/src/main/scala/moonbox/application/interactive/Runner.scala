@@ -79,6 +79,7 @@ class Runner(
 		EventEntity(
 			group = userContext.organizationName,
 			name = name,
+			lang = "", // TODO
 			sqls = cmds,
 			config = Map(), // TODO
 			cronExpr = expr,
