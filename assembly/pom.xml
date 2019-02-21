@@ -64,6 +64,12 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-hivenative_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-thriftserver_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
