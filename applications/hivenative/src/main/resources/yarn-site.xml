@@ -60,7 +60,11 @@
         <name>yarn.resourcemanager.webapp.address</name>
         <value>master:8098</value>
     </property>
-    
+
+    <property>
+        <name>yarn.app.mapreduce.am.staging-dir</name>
+        <value></value>
+    </property>
 
    <property>
       <name>yarn.nodemanager.vmem-check-enabled</name>

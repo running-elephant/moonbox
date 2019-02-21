@@ -3,13 +3,13 @@ package moonbox.application.hivenative
 import java.io.OutputStream
 import java.nio.charset.Charset
 
-import org.apache.spark.MbLauncherBackend
-import org.apache.spark.launcher.SparkAppHandle
+import org.apache.spark.launcher.{AbstractLauncherBackend, SparkAppHandle}
 
 import scala.util.matching.Regex
 
 class MbOutputStream extends OutputStream {
-	private val launcherBackend = new MbLauncherBackend() {
+
+	private val launcherBackend = new AbstractLauncherBackend() {
 		override def onStopRequest(): Unit = stop(SparkAppHandle.State.KILLED)
 	}
 
@@ -44,14 +44,14 @@ class MbOutputStream extends OutputStream {
 
 	case object StartingJob {
 		def unapply(arg: String): Option[Boolean] = {
-			val r: Regex = "Hadoop job information for Stage-1".r
+			val r: Regex = "Hadoop job information for Stage.*".r
 			r.findFirstIn(arg).map(_ => true)
 		}
 	}
 
 	case object EndedJob {
 		def unapply(arg: String): Option[Boolean] = {
-			val r: Regex = "Time taken: .*".r
+			val r: Regex = "Total MapReduce CPU Time.*".r
 			r.findFirstIn(arg).map(_ => true)
 		}
 	}

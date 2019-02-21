@@ -147,7 +147,7 @@
   </property>
   <property>
     <name>hive.exec.pre.hooks</name>
-    <value/>
+    <value>moonbox.application.hivenative.ExecutionHook</value>
     <description>
       Comma-separated list of pre-execution hooks to be invoked for each statement. 
       A pre-execution hook is specified as the name of a Java class which implements the 
@@ -156,7 +156,7 @@
   </property>
   <property>
     <name>hive.exec.post.hooks</name>
-    <value/>
+      <value/>
     <description>
       Comma-separated list of post-execution hooks to be invoked for each statement. 
       A post-execution hook is specified as the name of a Java class which implements the 
@@ -165,7 +165,7 @@
   </property>
   <property>
     <name>hive.exec.failure.hooks</name>
-    <value/>
+      <value/>
     <description>
       Comma-separated list of on-failure hooks to be invoked for each statement. 
       An on-failure hook is specified as the name of Java class which implements the 
@@ -2288,7 +2288,7 @@
   </property>
   <property>
     <name>hive.stats.collect.tablekeys</name>
-    <value>false</value>
+    <value>true</value>
     <description>
       Whether join and group by keys on tables are derived and maintained in the QueryPlan.
       This is useful to identify how tables are accessed and to determine if they should be bucketed.
@@ -2296,7 +2296,7 @@
   </property>
   <property>
     <name>hive.stats.collect.scancols</name>
-    <value>false</value>
+    <value>true</value>
     <description>
       Whether column accesses are tracked in the QueryPlan.
       This is useful to identify how tables are accessed and to determine if there are wasted columns that can be trimmed.
