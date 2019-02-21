@@ -43,10 +43,8 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.password", "123456")
 		conf.set("moonbox.timer.org.quartz.dataSource.quartzDataSource.maxConnections", "10")
 		timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
-			override def apply(v1: String, v2: Seq[String], v3: Map[String, String]): Unit = {
-				println(v1)
-				println(v2)
-				println(v3)
+			override def apply(v1: String, v2: String, v3: Seq[String], v4: Map[String, String]): Unit = {
+				println(v1 + v2 + v3 + v4)
 			}
 		})
 		timedEventService.start()
@@ -56,6 +54,7 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 		timedEventService.addTimedEvent(EventEntity(
 			group = "group_test",
 			name = "event_test",
+			lang = "mql",
 			sqls = Seq(),
 			config = Map(
 				"spark.master" -> "local[*]",
@@ -71,6 +70,7 @@ class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {
 		timedEventService.addTimedEvent(EventEntity(
 			group = "group_test",
 			name = "event_test2",
+			lang = "hql",
 			sqls = Seq(),
 			config = Map(
 				"spark.master" -> "local[*]",

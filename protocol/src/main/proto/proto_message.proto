@@ -107,8 +107,9 @@ message InteractiveNextResultOutbound {
 message BatchQueryInbound {
     string username = 1;
     string password = 2;
-    repeated string sql = 3; //Seq[String]
-    map<string, string> config = 4; // or Map[String, String]
+    string lang = 3;
+    repeated string sql = 4; //Seq[String]
+    map<string, string> config = 5; // or Map[String, String]
 }
 message BatchQueryOutbound {
     string job_id = 1;

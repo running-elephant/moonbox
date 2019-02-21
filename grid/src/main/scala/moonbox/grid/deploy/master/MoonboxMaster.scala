@@ -12,7 +12,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{BatchDriverDescription, DriverDescription, MbService}
+import moonbox.grid.deploy.{BatchDriverDescription, DriverDescription, HiveDriverDescription, MbService}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
@@ -124,8 +124,8 @@ class MoonboxMaster(
 		try {
 			if (conf.get(TIMER_SERVICE_ENABLE)) {
 				timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
-					override def apply(user: String, sqls: Seq[String], config: Map[String, String]): Unit = {
-						self ! JobSubmit(user, sqls, config)
+					override def apply(user: String, lang: String, sqls: Seq[String], config: Map[String, String]): Unit = {
+						self ! JobSubmit(user, lang, sqls, config)
 					}
 				})
 			}
@@ -270,7 +270,7 @@ class MoonboxMaster(
 								worker.endpoint ! KillDriver(driverId)
 							} else {
 								logInfo(s"new driver registered $driverId")
-								val driver = createDriver(desc, Some(driverId), Some(date))
+								val driver = createDriver(desc, driverId, date)
 								persistenceEngine.addDriver(driver)
 								drivers.add(driver)
 								driver.worker = Some(worker)
@@ -388,14 +388,21 @@ class MoonboxMaster(
 
 	private def handleJobMessage: Receive = {
 
-		case JobSubmit(username, sqls, userConfig) =>
+		case JobSubmit(username, lang, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
 				sender() ! JobSubmitResponse(None, msg)
 			} else {
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
 				val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
-				val driver = createDriver(BatchDriverDescription(username, sqls, config))
+				val submitDate = new Date()
+				val driverId = newDriverId(submitDate)
+				val driverDesc = if (lang == "hql") {
+					HiveDriverDescription(driverId, username, sqls, config)
+				} else {
+					BatchDriverDescription(username, sqls, config)
+				}
+				val driver = createDriver(driverDesc, driverId, submitDate)
 				persistenceEngine.addDriver(driver)
 				waitingDrivers += driver
 				drivers.add(driver)
@@ -803,10 +810,8 @@ class MoonboxMaster(
 		appId
 	}
 
-	private def createDriver(desc: DriverDescription, driverId: Option[String] = None, submitDate: Option[Date] = None): DriverInfo = {
-		val now = System.currentTimeMillis()
-		val date = new Date(now)
-		new DriverInfo(now, driverId.getOrElse(newDriverId(date)), desc, submitDate.getOrElse(date))
+	private def createDriver(desc: DriverDescription, driverId: String, submitDate: Date): DriverInfo = {
+		new DriverInfo(submitDate.getTime, driverId, desc, submitDate)
 	}
 
 	private def launchDriver(worker: WorkerInfo, driver: DriverInfo): Unit = {

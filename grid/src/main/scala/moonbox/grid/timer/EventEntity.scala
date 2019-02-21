@@ -25,6 +25,7 @@ import java.util.Date
 object EventEntity {
 	val HANDLER = "handler"
 	val DEFINER = "definer"
+	val LANG = "lang"
 	val SQLS = "sqls"
 	val CONFIG = "config"
 }
@@ -32,6 +33,7 @@ object EventEntity {
 case class EventEntity(
 	group: String,
 	name: String,
+	lang: String,
 	sqls: Seq[String],
 	config: Map[String, String],
 	cronExpr: String,

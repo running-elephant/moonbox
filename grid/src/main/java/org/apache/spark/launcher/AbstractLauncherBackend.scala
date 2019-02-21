@@ -19,11 +19,9 @@ package org.apache.spark.launcher
 
 import java.net.{InetAddress, Socket}
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder
 import moonbox.common.MbLogging
-import org.apache.spark.SPARK_VERSION
 import org.apache.spark.launcher.LauncherProtocol._
-import org.apache.spark.util.{ThreadUtils, Utils}
-
 import scala.util.control.NonFatal
 
 /**
@@ -32,7 +30,7 @@ import scala.util.control.NonFatal
  *
  * See `LauncherServer` for an explanation of how launcher communication works.
  */
-abstract class LauncherBackend extends MbLogging {
+abstract class AbstractLauncherBackend extends MbLogging {
 
   private var clientThread: Thread = _
   private var connection: BackendConnection = _
@@ -45,8 +43,8 @@ abstract class LauncherBackend extends MbLogging {
     if (port != None && secret != None) {
       val s = new Socket(InetAddress.getLoopbackAddress(), port.get)
       connection = new BackendConnection(s)
-      connection.send(new Hello(secret.get, SPARK_VERSION))
-      clientThread = LauncherBackend.threadFactory.newThread(connection)
+      connection.send(new Hello(secret.get, ""))
+      clientThread = AbstractLauncherBackend.threadFactory.newThread(connection)
       clientThread.start()
       _isConnected = true
     }
@@ -92,7 +90,7 @@ abstract class LauncherBackend extends MbLogging {
   protected def onDisconnected() : Unit = { }
 
   private def fireStopRequest(): Unit = {
-    val thread = LauncherBackend.threadFactory.newThread(new Runnable() {
+    val thread = AbstractLauncherBackend.threadFactory.newThread(new Runnable() {
       override def run(): Unit = {
 		  try {
 			  onStopRequest()
@@ -128,8 +126,8 @@ abstract class LauncherBackend extends MbLogging {
 
 }
 
-private object LauncherBackend {
+private object AbstractLauncherBackend {
 
-  val threadFactory = ThreadUtils.namedThreadFactory("LauncherBackend")
+  val threadFactory = new ThreadFactoryBuilder().setDaemon(true).setNameFormat("LauncherBackend" + "-%d").build()
 
 }

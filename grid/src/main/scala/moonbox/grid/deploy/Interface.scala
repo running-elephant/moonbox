@@ -39,7 +39,7 @@ object Interface extends Interface {
 	// batch mode
 	// support cluster runtime engine only
 	// support asynchronous
-	case class BatchQueryInbound(username: String, password: String, sqls: Seq[String], config: Map[String, String]) extends Inbound
+	case class BatchQueryInbound(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends Inbound
 	case class BatchQueryOutbound(
 		jobId: Option[String] = None,
 		error: Option[String] = None) extends Outbound

@@ -140,7 +140,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[BatchQueryInbound]) { in =>
 							complete {
-								mbService.batchQuery(in.username, in.password, in.sqls, in.config)
+								mbService.batchQuery(in.username, in.password, in.lang, in.sqls, in.config)
 							}
 						}
 					}

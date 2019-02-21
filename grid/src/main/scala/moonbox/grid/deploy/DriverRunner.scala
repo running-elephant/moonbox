@@ -30,15 +30,12 @@ private[deploy] class DriverRunner(
 					LaunchUtils.getLogsDirectory.foreach { dir =>
 						launcher.redirectOutput(new File(dir + File.separator + driverId + ".log"))
 					}
-					launcher
-						.setAppName(driverId)
-						.setMaster(desc.master)
-					if (desc.deployMode.isDefined) {
-						launcher.setDeployMode(desc.deployMode.get)
-					}
-					if (sys.env.get("SPARK_HOME").isDefined) {
-						launcher.setSparkHome(sys.env("SPARK_HOME"))
-					}
+					launcher.setAppName(driverId)
+
+					desc.master.foreach(launcher.setMaster)
+					desc.deployMode.foreach(launcher.setDeployMode)
+					sys.env.get("SPARK_HOME").foreach(launcher.setSparkHome)
+
 					launcher
 						.setMainClass(desc.mainClass)
 						.addAppArgs(desc.toAppArgs:_*)

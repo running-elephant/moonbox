@@ -109,7 +109,7 @@ object LaunchUtils extends MbLogging {
 		} else None
 	}
 
-	private def getMoonboxLibs() : String = {
+	def getMoonboxLibs() : String = {
 		val path = getMoonboxHome() + File.separator + "libs"
 		val file = new File(path)
 		if (file.exists()) {
@@ -119,7 +119,7 @@ object LaunchUtils extends MbLogging {
 		}
 	}
 
-	private def getSparkJars() : String = {
+	def getSparkJars() : String = {
 		val path = getSparkHome() + File.separator + "jars"
 		val file = new File(path)
 		if (file.exists()) {

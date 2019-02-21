@@ -162,11 +162,11 @@ private[deploy] class MbService(
 		}
 	}
 
-	def batchQuery(username: String, password: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
+	def batchQuery(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		auditLogger.log(username, "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config.mkString(", ")))
 		loginManager.login(username, password) match {
 			case Some(_) =>
-				askSync[JobSubmitResponse](JobSubmit(username, sqls, config))(SHORT_TIMEOUT) match {
+				askSync[JobSubmitResponse](JobSubmit(username, lang, sqls, config))(SHORT_TIMEOUT) match {
 					case Left(JobSubmitResponse(Some(jobId), _)) =>
 						BatchQueryOutbound(jobId = Some(jobId))
 					case Left(JobSubmitResponse(None, message)) =>

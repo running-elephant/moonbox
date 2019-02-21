@@ -44,7 +44,7 @@ object Message {
 	case class InteractiveJobCancelResponse(success: Boolean, message: String) extends JobMessage
 
 	// for batch
-	case class JobSubmit(username: String, sqls: Seq[String], config: Map[String, String]) extends JobMessage
+	case class JobSubmit(username: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends JobMessage
 	case class JobSubmitResponse(jobId: Option[String], message: String) extends JobMessage
 
 
