@@ -161,6 +161,7 @@
             <includes>
                 <include>edp.moonbox:moonbox-batchapp_2.11</include>
                 <include>edp.moonbox:moonbox-interactiveapp_2.11</include>
+                <include>edp.moonbox:moonbox-hivenative_2.11</include>
             </includes>
             <outputDirectory>apps</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
