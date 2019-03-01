@@ -49,6 +49,11 @@
             <directory>
                 ${project.parent.basedir}/conf
             </directory>
+            <excludes>
+                <exclude>moonbox-defaults.conf</exclude>
+                <exclude>moonbox-env.sh</exclude>
+                <exclude>slaves</exclude>
+            </excludes>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
@@ -86,16 +91,13 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <!--common-->
-                <!--<include>edp.moonbox:moonbox-common_2.11</include>
-                <include>edp.moonbox:moonbox-catalog_2.11</include>-->
-                <include>edp.moonbox:moonbox-core_2.11</include>
-                <!--mysql-->
+                <!-- mysql -->
                 <include>mysql:mysql-connector-java</include>
+                <!-- oracle -->
+                <include>com.oracle:ojdbc6</include>
                 <!--kudu-->
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
-                <include>com.oracle:ojdbc6</include>
-                <!--<include>edp.moonbox:moonbox-mysql-adapter</include>-->
+
                 <!--&lt;!&ndash;hbase&ndash;&gt;
                 <include>org.apache.hbase:hbase-client</include>
                 <include>org.apache.hbase:hbase-common</include>
@@ -159,7 +161,6 @@
             <includes>
                 <include>edp.moonbox:moonbox-batchapp_2.11</include>
                 <include>edp.moonbox:moonbox-interactiveapp_2.11</include>
-                <include>edp.moonbox:moonbox-hivenative_2.11</include>
             </includes>
             <outputDirectory>apps</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
