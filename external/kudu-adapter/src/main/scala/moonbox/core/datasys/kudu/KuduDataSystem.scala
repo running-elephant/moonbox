@@ -46,11 +46,21 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	val FAULT_TOLERANT_SCANNER = "kudu.faultTolerantScan"
 	val SCAN_LOCALITY = "kudu.scanLocality"
 	val KUDU_SCANNER_LIMIT = "kudu.scanner.limit"
+	val DATABASE_KEY = "kudu.database"
+	val DATABASE_DELIMITER_KEY = "kudu.delimiter"
 
 	require(contains(KUDU_MASTER))
 
 	private def masterAddress(): String = {
 		props(KUDU_MASTER)
+	}
+
+	private def delimiter: String = {
+		props.getOrElse(DATABASE_DELIMITER_KEY, "::")
+	}
+
+	private def database: Option[String] = {
+		props.get(DATABASE_KEY).map(_ + delimiter)
 	}
 
 	private def getClient: KuduClient = {
@@ -61,15 +71,20 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 		val kuduClient = getClient
 		val tables = kuduClient.getTablesList.getTablesList
 		kuduClient.close()
-		tables
+		database match {
+			case Some(db) =>
+				tables.filter(_.startsWith(db)).map(t => t.stripPrefix(db))
+			case None =>
+				tables
+		}
 	}
 
 	override def tableName(): String = {
-		props(TABLE_KEY)
+		database + props(TABLE_KEY)
 	}
 
 	override def tableProperties(tableName: String): Map[String, String] = {
-		props.+(TABLE_KEY -> tableName)
+		props.+(TABLE_KEY -> database.map(_ + tableName).getOrElse(tableName))
 	}
 
 	override def test(): Boolean = {
@@ -254,7 +269,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	}
 
 	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-		throw new Exception("Unsupport operation: insert with datatalbe.")
+		throw new Exception("Unsupport operation: insert with datatable.")
 		/*val kuduClient = getClient
 		val schema = table.schema
 		val lastPropagatedTimestamp = kuduClient.getLastPropagatedTimestamp
