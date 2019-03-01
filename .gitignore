@@ -25,7 +25,7 @@ spark-warehouse
 *.pyc
 conf/moonbox-defaults.conf
 conf/moonbox-env.sh
-conf/nodes
+conf/slaves
 check_illegal.py
 **/dependency-reduced-pom.xml
 **/generate
