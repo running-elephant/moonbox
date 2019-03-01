@@ -1,14 +1,11 @@
 moonbox {
     deploy {
-
         catalog {
             implementation = "mysql"
             url = "jdbc:mysql://host:3306/moonbox?createDatabaseIfNotExist=true"
             user = "root"
             password = "123456"
             driver = "com.mysql.jdbc.Driver"
-            # implementation = "custom"
-            # class = ""
         }
     }
     mixcal {
