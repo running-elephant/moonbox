@@ -176,7 +176,28 @@ class SqlServerDataSystem(props: Map[String, String])
 	)
 
 	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-		throw new Exception("Unsupport operation: insert with datatalbe.")
+		throw new Exception("Unsupport operation: insert with datatable.")
+	}
+
+	override def test(): Boolean = {
+		var connection: Connection = null
+		try  {
+			connection = getConnection()
+			if (connection != null) {
+				true
+			} else {
+				false
+			}
+		} catch {
+			case e: Exception =>
+				logWarning(e.getMessage)
+				logWarning(e.getStackTrace.mkString("\n"))
+				false
+		} finally {
+			if (connection != null) {
+				connection.close()
+			}
+		}
 	}
 
 	private def socket: (String, Int) = {
