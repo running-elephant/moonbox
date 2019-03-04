@@ -102,7 +102,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					get {
 						entity(as[VerifyInbound]) { in =>
 							complete {
-								mbService.verify(in.username, in.password, in.sql)
+								mbService.verify(in.username, in.password, in.sqls)
 							}
 						}
 					}

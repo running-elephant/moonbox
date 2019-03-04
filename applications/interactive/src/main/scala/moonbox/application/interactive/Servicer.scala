@@ -77,17 +77,20 @@ class Servicer(
 		}
 	}
 
-	def verify(sql: String): VerifyResponse = {
-		try {
-			val analyzedPlan = mbSession.analyzedPlan(sql)
-			mbSession.checkColumnPrivilege(analyzedPlan)
-			VerifySuccessed
-		} catch {
-			case e: ColumnSelectPrivilegeException =>
-				VerifyFailed(e.getMessage)
-			case e: Exception =>
-				VerifyFailed(e.getMessage)
+	def verify(sqls: Seq[String]): VerifyResponse = {
+		val result = sqls.map { sql =>
+			try {
+				val analyzedPlan = mbSession.analyzedPlan(sql)
+				mbSession.checkColumnPrivilege(analyzedPlan)
+				(true, None)
+			} catch {
+				case e: ColumnSelectPrivilegeException =>
+					(false, Some(e.getMessage))
+				case e: Exception =>
+					(false, Some(e.getMessage))
+			}
 		}
+		VerifyResponse(success = true, result = Some(result))
 	}
 
 	def resources(sql: String): TableResourcesResponse = {
@@ -112,6 +115,6 @@ class Servicer(
 	}
 
 	def lineage(sql: String): LineageResponse = {
-		LineageFailed("unsupport yet")
+		LineageFailed("not support yet")
 	}
 }

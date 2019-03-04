@@ -558,12 +558,12 @@ class MoonboxMaster(
 						case Success(response) =>
 							requester ! response
 						case Failure(e) =>
-							requester ! VerifyFailed(e.getMessage)
+							requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 					}
 				case None =>
 					val msg = s"There is no available application for service."
 					logWarning(msg)
-					sender() ! VerifyFailed(msg)
+					sender() ! VerifyResponse(success = false, message = Some(msg))
 			}
 
 		case resource: TableResourcesRequest =>

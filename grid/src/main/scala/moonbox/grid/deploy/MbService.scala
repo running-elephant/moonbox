@@ -232,15 +232,13 @@ private[deploy] class MbService(
 		}
 	}
 
-	def verify(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): VerifyOutbound = {
-		auditLogger.log(username, "verify", Map("sql" -> sql))
+	def verify(username: String, password: String, sqls: Seq[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
+		auditLogger.log(username, "verify", Map("sqls" -> sqls.mkString(";")))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[VerifyResponse](VerifyRequest(username, sql))(SHORT_TIMEOUT) match {
-					case Left(VerifySuccessed) =>
-						VerifyOutbound(success = true)
-					case Left(VerifyFailed(message)) =>
-						VerifyOutbound(success = false, message = Some(message))
+				askSync[VerifyResponse](VerifyRequest(username, sqls))(SHORT_TIMEOUT) match {
+					case Left(VerifyResponse(success, message, result)) =>
+						VerifyOutbound(success, message, result)
 					case Right(message) =>
 						VerifyOutbound(success = false, message = Some(message))
 				}

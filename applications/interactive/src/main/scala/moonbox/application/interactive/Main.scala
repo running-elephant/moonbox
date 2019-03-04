@@ -225,16 +225,16 @@ class Main(
 					requester ! SampleFailed(e.getMessage)
 			}
 
-		case verify @ VerifyRequest(username, sql) =>
+		case verify @ VerifyRequest(username, sqls) =>
 			val requester = sender()
 			Future {
 				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
-				servicer.verify(sql)
+				servicer.verify(sqls)
 			}.onComplete {
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
-					requester ! VerifyFailed(e.getMessage)
+					requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 			}
 
 		case resource @ TableResourcesRequest(username, sql) =>
