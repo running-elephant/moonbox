@@ -228,6 +228,19 @@ class Main(
 					requester ! SampleFailed(e.getMessage)
 			}
 
+		case translate @ TranslateRequest(username, sql, dialect) =>
+			val requester = sender()
+			Future {
+				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				servicer.translate(sql, dialect)
+			}.onComplete {
+				case Success(response) =>
+					requester ! response
+				case Failure(e) =>
+					logError("sample error", e)
+					requester ! SampleFailed(e.getMessage)
+			}
+
 		case verify @ VerifyRequest(username, sqls) =>
 			val requester = sender()
 			Future {

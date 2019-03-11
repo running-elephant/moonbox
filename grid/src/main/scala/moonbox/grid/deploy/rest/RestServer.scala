@@ -98,6 +98,15 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 						}
 					}
 				} ~
+				path("translation") {
+					get {
+						entity(as[TranslationInbound]) { in =>
+							complete {
+								mbService.translate(in.username, in.password, in.sql, in.dialect)
+							}
+						}
+					}
+				} ~
 				path("verify") {
 					get {
 						entity(as[VerifyInbound]) { in =>

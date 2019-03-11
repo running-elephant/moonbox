@@ -566,6 +566,25 @@ class MoonboxMaster(
 					sender() ! VerifyResponse(success = false, message = Some(msg))
 			}
 
+		case translate: TranslateRequest =>
+			val requester = sender()
+			val candidate = selectApplication(true)
+			candidate match {
+				case Some(app) =>
+					logInfo(s"Asking application ${app.id} to translate sql.")
+					val f = app.endpoint.ask(translate).mapTo[TranslateResponse]
+					f.onComplete {
+						case Success(response) =>
+							requester ! response
+						case Failure(e) =>
+							requester ! TranslateResponse(success = false, message = Some(e.getMessage))
+					}
+				case None =>
+					val msg = s"There is no available application for service."
+					logWarning(msg)
+					sender() ! TranslateResponse(success = false, message = Some(msg))
+			}
+
 		case resource: TableResourcesRequest =>
 			val requester = sender()
 			val candidate = selectApplication(true)

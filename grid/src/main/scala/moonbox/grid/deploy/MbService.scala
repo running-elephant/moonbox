@@ -247,6 +247,21 @@ private[deploy] class MbService(
 		}
 	}
 
+	def translate(username: String, password: String, sql: String, dialect: String)(implicit connectionInfo: ConnectionInfo): TranslationOutbound = {
+		auditLogger.log(username, "translation", Map("sql" -> sql, "dialect" -> dialect))
+		loginManager.login(username, password, forget = true) match {
+			case Some(_) =>
+				askSync[TranslateResponse](TranslateRequest(username, sql, dialect))(SHORT_TIMEOUT) match {
+					case Left(TranslateResponse(success, message, res)) =>
+						TranslationOutbound(success = true, sql = res)
+					case Right(message) =>
+						TranslationOutbound(success = false, message = Some(message))
+				}
+			case None =>
+				TranslationOutbound(success = false, message = Some("Please check your username and password."))
+		}
+	}
+
 	def resources(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): TableResourceOutbound = {
 		auditLogger.log(username, "resources", Map("sql" -> sql))
 		loginManager.login(username, password, forget = true) match {

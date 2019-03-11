@@ -16,6 +16,7 @@ import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.expressions.Literal
 import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit, LogicalPlan}
 import org.apache.spark.sql.optimizer.WholePushdown
+import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.{DataFrame, Row, SaveMode}
 
@@ -74,6 +75,18 @@ class Servicer(
 				} else {
 					SampleFailed(e.getMessage)
 				}
+		}
+	}
+
+	def translate(sql: String, dialect: String): TranslateResponse = {
+		try {
+			val analyzedPlan = mbSession.analyzedPlan(sql)
+			val optimizedPlan = mbSession.optimizedPlan(analyzedPlan)
+			val resultSql = new MbSqlBuilder(optimizedPlan, MbDialect.get(dialect)).toSQL
+			TranslateResponse(success = true, sql = Some(resultSql))
+		} catch {
+			case e: Throwable =>
+				TranslateResponse(success = false, message = Some(e.getMessage))
 		}
 	}
 

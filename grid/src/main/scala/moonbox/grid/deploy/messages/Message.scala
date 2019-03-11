@@ -63,11 +63,10 @@ object Message {
 	case class SampleSuccessed(schema: String, data: Seq[Seq[Any]]) extends SampleResponse
 
 	case class VerifyRequest(username: String, sqls: Seq[String]) extends ServiceMessage
-
 	case class VerifyResponse(success: Boolean, message: Option[String] = None, result: Option[Seq[(Boolean, Option[String])]] = None) extends ServiceMessage
-	/*sealed trait VerifyResult
-	case class VerifyFailed(message: String) extends VerifyResult
-	case class VerifySuccessed() extends VerifyResult*/
+
+	case class TranslateRequest(username: String, sql: String, dialect: String) extends ServiceMessage
+	case class TranslateResponse(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends ServiceMessage
 
 	case class TableResourcesRequest(username: String, sql: String) extends ServiceMessage
 	sealed trait TableResourcesResponse extends ServiceMessage
