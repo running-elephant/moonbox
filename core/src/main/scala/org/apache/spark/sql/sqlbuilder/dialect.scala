@@ -35,105 +35,103 @@ import scala.collection.JavaConverters._
 
 trait MbDialect {
 
-  import MbDialect._
+	import MbDialect._
+	import MbSqlBuilder._
 
-  registerDialect(this)
+	registerDialect(this)
 
-  def relation(relation: LogicalRelation): String
+	def relation(relation: LogicalRelation): String
 
-  def canHandle(url: String): Boolean
+	def canHandle(url: String): Boolean
 
-  def explainSQL(sql: String): String
+	def explainSQL(sql: String): String
 
-  def quote(name: String): String
+	def quote(name: String): String
 
-  def maybeQuote(name: String): String
+	def maybeQuote(name: String): String
 
-  def getIndexes(conn: Connection, url: String, tableName: String): Set[String]
+	def getIndexes(conn: Connection, url: String, tableName: String): Set[String]
 
-  def getTableStat(conn: Connection, url: String, tableName: String): ((Option[BigInt], Option[Long]))
+	def getTableStat(conn: Connection, url: String, tableName: String): ((Option[BigInt], Option[Long]))
 
-  def projectToSQL(p: Project, isDistinct: Boolean, child: String, expression: String): String = {
-    build(
-      "SELECT",
-      if (isDistinct) "DISTINCT" else "",
-      expression,
-      if (p.child == OneRowRelation) "" else "FROM",
-      child)
-  }
+	def projectToSQL(p: Project, isDistinct: Boolean, child: String, expression: String): String = {
+		build(
+			"SELECT",
+			if (isDistinct) "DISTINCT" else "",
+			expression,
+			if (p.child == OneRowRelation) "" else "FROM",
+			child)
+	}
 
-  def subqueryAliasToSQL(alias: String, child: String) = {
-    build(s"($child) $alias")
-  }
+	def subqueryAliasToSQL(alias: String, child: String) = {
+		build(s"($child) $alias")
+	}
 
-  def dataTypeToSQL(dataType: DataType): String = {
-    dataType.sql
-  }
+	def dataTypeToSQL(dataType: DataType): String = {
+		dataType.sql
+	}
 
-  def literalToSQL(value: Any, dataType: DataType): String = (value, dataType) match {
-    case (_, NullType | _: ArrayType | _: MapType | _: StructType) if value == null => "NULL"
-    case (v: UTF8String, StringType) => "'" + v.toString.replace("\\", "\\\\").replace("'", "\\'") + "'"
-    case (v: Byte, ByteType) => v + ""
-    case (v: Boolean, BooleanType) => s"'$v'"
-    case (v: Short, ShortType) => v + ""
-    case (v: Long, LongType) => v + ""
-    case (v: Float, FloatType) => v + ""
-    case (v: Double, DoubleType) => v + ""
-    case (v: Decimal, t: DecimalType) => v + ""
-    case (v: Int, DateType) => s"'${DateTimeUtils.toJavaDate(v)}'"
-    case (v: Long, TimestampType) => s"'${DateTimeUtils.toJavaTimestamp(v)}'"
-    case _ => if (value == null) "NULL" else value.toString
-  }
+	def literalToSQL(value: Any, dataType: DataType): String = (value, dataType) match {
+		case (_, NullType | _: ArrayType | _: MapType | _: StructType) if value == null => "NULL"
+		case (v: UTF8String, StringType) => "'" + v.toString.replace("\\", "\\\\").replace("'", "\\'") + "'"
+		case (v: Byte, ByteType) => v + ""
+		case (v: Boolean, BooleanType) => s"'$v'"
+		case (v: Short, ShortType) => v + ""
+		case (v: Long, LongType) => v + ""
+		case (v: Float, FloatType) => v + ""
+		case (v: Double, DoubleType) => v + ""
+		case (v: Decimal, t: DecimalType) => v + ""
+		case (v: Int, DateType) => s"'${DateTimeUtils.toJavaDate(v)}'"
+		case (v: Long, TimestampType) => s"'${DateTimeUtils.toJavaTimestamp(v)}'"
+		case _ => if (value == null) "NULL" else value.toString
+	}
 
-  def limitSQL(sql: String, limit: String): String = {
-    s"$sql LIMIT $limit"
-  }
+	def limitSQL(sql: String, limit: String): String = {
+		s"$sql LIMIT $limit"
+	}
 
-  def joinSQL(p: Join, left: String, right: String, condition: String): String = {
-    build(
-      left,
-      p.joinType.sql,
-      "JOIN",
-      right,
-      condition)
-  }
+	def joinSQL(p: Join, left: String, right: String, condition: String): String = {
+		build(
+			left,
+			p.joinType.sql,
+			"JOIN",
+			right,
+			condition)
+	}
 
-  def getAttributeName(e: AttributeReference): String = {
-    val qualifierPrefix = e.qualifier.map(_ + ".").getOrElse("")
-    s"$qualifierPrefix${maybeQuote(e.name)}"
-  }
+	def getAttributeName(e: AttributeReference): String = {
+		val qualifierPrefix = e.qualifier.map(_ + ".").getOrElse("")
+		s"$qualifierPrefix${maybeQuote(e.name)}"
+	}
 
-  def expressionToSQL(e: Expression): String = {
-    e.prettyName
-  }
+	def expressionToSQL(e: Expression): String = {
+		e.prettyName
+	}
 
 }
 
 object MbDialect {
-  private[this] var dialects = List[MbDialect]()
+	private[this] var dialects = List[MbDialect]()
 
-  {
-    for (x <- ServiceLoader.load(classOf[MbDialect]).asScala) {}
-  }
+	{
+		for (x <- ServiceLoader.load(classOf[MbDialect]).asScala) {}
+	}
 
-  def registerDialect(dialect: MbDialect): Unit = synchronized {
-    dialects = dialect :: dialects.filterNot(_ == dialect)
-  }
+	def registerDialect(dialect: MbDialect): Unit = synchronized {
+		dialects = dialect :: dialects.filterNot(_ == dialect)
+	}
 
-  def unregisterDialect(dialect: MbDialect): Unit = synchronized {
-    dialects = dialects.filterNot(_ == dialect)
-  }
+	def unregisterDialect(dialect: MbDialect): Unit = synchronized {
+		dialects = dialects.filterNot(_ == dialect)
+	}
 
-  def get(url: String): MbDialect = {
-    val matchingDialects = dialects.filter(_.canHandle(url))
-    matchingDialects.headOption match {
-      case None => throw new NoSuchElementException(s"no suitable MbDialect from $url")
-      case Some(d) => d
-    }
-  }
-
-  def build(segments: String*): String =
-    segments.map(_.trim).filter(_.nonEmpty).mkString(" ")
+	def get(url: String): MbDialect = {
+		val matchingDialects = dialects.filter(_.canHandle(url))
+		matchingDialects.headOption match {
+			case None => throw new NoSuchElementException(s"no suitable MbDialect from $url")
+			case Some(d) => d
+		}
+	}
 
 }
 
