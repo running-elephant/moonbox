@@ -125,6 +125,7 @@ class Main(
 					logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
 					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
 				case Failure(e) =>
+					logError("open session error", e)
 					requester ! OpenSessionResponse(None, None, None, e.getMessage)
 			}
 
@@ -163,6 +164,7 @@ class Main(
 								case error =>
 									Option(error.getMessage).getOrElse(error.getStackTrace.mkString("\n"))
 							}
+							logError(errorMessage)
 							requester ! JobQueryResponse(
 								success = false,
 								schema = SchemaUtil.emptyJsonSchema,
@@ -222,6 +224,7 @@ class Main(
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
+					logError("sample error", e)
 					requester ! SampleFailed(e.getMessage)
 			}
 
@@ -234,6 +237,7 @@ class Main(
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
+					logError("verify error", e)
 					requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 			}
 
@@ -246,6 +250,7 @@ class Main(
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
+					logError("table resource error", e)
 					requester ! TableResourcesFailed(e.getMessage)
 			}
 
@@ -258,6 +263,7 @@ class Main(
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
+					logError("scheme error", e)
 					requester ! SchemaFailed(e.getMessage)
 			}
 
@@ -270,6 +276,7 @@ class Main(
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
+					logError("lineage error", e)
 					requester ! LineageFailed(e.getMessage)
 			}
 

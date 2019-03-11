@@ -238,7 +238,7 @@ private[deploy] class MbService(
 			case Some(_) =>
 				askSync[VerifyResponse](VerifyRequest(username, sqls))(SHORT_TIMEOUT) match {
 					case Left(VerifyResponse(success, message, result)) =>
-						VerifyOutbound(success, message, result)
+						VerifyOutbound(success, message, result.map(_.map { case (s, m) => VerifyResult(s, m) }))
 					case Right(message) =>
 						VerifyOutbound(success = false, message = Some(message))
 				}

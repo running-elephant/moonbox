@@ -60,7 +60,8 @@ object Interface extends Interface {
 	case class SampleOutbound(success: Boolean, schema: Option[String] = None, data: Option[Seq[Seq[Any]]] = None, message: Option[String] = None) extends Outbound
 
 	case class VerifyInbound(username: String, password: String, sqls: Seq[String]) extends Inbound
-	case class VerifyOutbound(success: Boolean, message: Option[String] = None, result: Option[Seq[(Boolean, Option[String])]] = None) extends Outbound
+	case class VerifyOutbound(success: Boolean, message: Option[String] = None, result: Option[Seq[VerifyResult]] = None) extends Outbound
+	case class VerifyResult(success: Boolean, message: Option[String])
 
 	case class SchemaInbound(username: String, password: String, sql: String) extends Inbound
 	case class SchemaOutbound(success: Boolean, schema: Option[String] = None, message: Option[String] = None) extends Outbound
