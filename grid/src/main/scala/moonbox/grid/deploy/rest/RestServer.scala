@@ -102,7 +102,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					get {
 						entity(as[TranslationInbound]) { in =>
 							complete {
-								mbService.translate(in.username, in.password, in.sql, in.dialect)
+								mbService.translate(in.username, in.password, in.sql, in.database)
 							}
 						}
 					}

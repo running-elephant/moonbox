@@ -14,7 +14,8 @@ import moonbox.grid.timer.EventEntity
 import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.expressions.Literal
-import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit, LogicalPlan}
+import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit, LocalRelation, LogicalPlan}
+import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.optimizer.WholePushdown
 import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
 import org.apache.spark.sql.types.IntegerType
@@ -78,14 +79,29 @@ class Servicer(
 		}
 	}
 
-	def translate(sql: String, dialect: String): TranslateResponse = {
+	def translate(sql: String): TranslateResponse = {
 		try {
 			val analyzedPlan = mbSession.analyzedPlan(sql)
+			val connectionUrl = analyzedPlan.collectLeaves().toList match {
+				case head :: Nil =>
+					head.asInstanceOf[LogicalRelation].catalogTable.get.storage.properties("url")
+				case head :: tails =>
+					val url = head.asInstanceOf[LogicalRelation].catalogTable.get.storage.properties("url")
+					val sameDb = tails.forall { relation =>
+						relation.asInstanceOf[LogicalRelation].catalogTable.get.storage.properties("url") == url
+					}
+					if (sameDb) {
+						url
+					} else {
+						throw new Exception("tables are cross multiple database instance.")
+					}
+			}
 			val optimizedPlan = mbSession.optimizedPlan(analyzedPlan)
-			val resultSql = new MbSqlBuilder(optimizedPlan, MbDialect.get(dialect)).toSQL
+			val resultSql = new MbSqlBuilder(optimizedPlan, MbDialect.get(connectionUrl)).toSQL
 			TranslateResponse(success = true, sql = Some(resultSql))
 		} catch {
 			case e: Throwable =>
+				logError("translate error", e)
 				TranslateResponse(success = false, message = Some(e.getMessage))
 		}
 	}
@@ -130,4 +146,5 @@ class Servicer(
 	def lineage(sql: String): LineageResponse = {
 		LineageFailed("not support yet")
 	}
+
 }

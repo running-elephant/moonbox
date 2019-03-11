@@ -65,7 +65,7 @@ object Message {
 	case class VerifyRequest(username: String, sqls: Seq[String]) extends ServiceMessage
 	case class VerifyResponse(success: Boolean, message: Option[String] = None, result: Option[Seq[(Boolean, Option[String])]] = None) extends ServiceMessage
 
-	case class TranslateRequest(username: String, sql: String, dialect: String) extends ServiceMessage
+	case class TranslateRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	case class TranslateResponse(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends ServiceMessage
 
 	case class TableResourcesRequest(username: String, sql: String) extends ServiceMessage

@@ -59,7 +59,7 @@ object Interface extends Interface {
 	case class SampleInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class SampleOutbound(success: Boolean, schema: Option[String] = None, data: Option[Seq[Seq[Any]]] = None, message: Option[String] = None) extends Outbound
 
-	case class TranslationInbound(username: String, password: String, sql: String, dialect: String) extends Inbound
+	case class TranslationInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class TranslationOutbound(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends Outbound
 
 	case class VerifyInbound(username: String, password: String, sqls: Seq[String]) extends Inbound
