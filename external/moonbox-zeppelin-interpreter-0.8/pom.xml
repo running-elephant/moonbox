@@ -10,6 +10,8 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <name>Moonbox Project Zeppelin Interpreter 0.8</name>
+
     <artifactId>moonbox-zeppelin-interpreter-0.8</artifactId>
 
     <dependencies>
