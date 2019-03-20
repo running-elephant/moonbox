@@ -54,17 +54,12 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-batchapp_2.11</artifactId>
+            <artifactId>moonbox-spark-batch_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-interactiveapp_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-hivenative_2.11</artifactId>
+            <artifactId>moonbox-spark-interactive_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
 

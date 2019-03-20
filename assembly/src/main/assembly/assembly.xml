@@ -97,6 +97,8 @@
                 <include>com.oracle:ojdbc6</include>
                 <!--kudu-->
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
+                <!-- sqlserver -->
+                <include>com.microsoft.sqlserver:sqljdbc4</include>
 
                 <!--&lt;!&ndash;hbase&ndash;&gt;
                 <include>org.apache.hbase:hbase-client</include>
@@ -159,9 +161,10 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>edp.moonbox:moonbox-batchapp_2.11</include>
-                <include>edp.moonbox:moonbox-interactiveapp_2.11</include>
-                <include>edp.moonbox:moonbox-hivenative_2.11</include>
+                <include>edp.moonbox:moonbox-spark-batch_2.11</include>
+                <include>edp.moonbox:moonbox-spark-interactive_2.11</include>
+                <include>edp.moonbox:moonbox-hive-batch_2.11</include>
+                <include>edp.moonbox:moonbox-hive-interactive_2.11</include>
             </includes>
             <outputDirectory>apps</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
