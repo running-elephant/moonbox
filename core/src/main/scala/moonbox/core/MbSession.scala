@@ -283,6 +283,9 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		val functions = new mutable.HashSet[UnresolvedFunction]()
 		def traverseAll(plan: LogicalPlan): Unit = {
 			plan.foreach {
+				case InsertIntoTable(UnresolvedRelation(tableIdentifier), _, query ,_ , _) =>
+					tables.add(tableIdentifier)
+					traverseAll(query)
 				case With(_, cteRelations) =>
 					cteRelations.foreach { case (sql, SubqueryAlias(alias, child)) =>
 						logicalTables.add(TableIdentifier(alias))
