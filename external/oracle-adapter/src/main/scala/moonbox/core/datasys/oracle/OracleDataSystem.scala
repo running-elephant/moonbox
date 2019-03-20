@@ -211,7 +211,7 @@ class OracleDataSystem(props: Map[String, String])
 
 	private def socket: (String, Int) = {
 		val url = props("url").toLowerCase
-		val removeProtocol = url.stripPrefix("jdbc:oracle:thin:@")
+		val removeProtocol = url.stripPrefix("jdbc:oracle:thin:@://")
 		val hostPort = removeProtocol.substring(0, removeProtocol.lastIndexOf(':')).split(":")
 		val host = hostPort(0)
 		val port = if (hostPort.length > 1) hostPort(1).toInt else 1521

@@ -14,7 +14,7 @@ import scala.collection.mutable
 
 class MbClickHouseDialect extends MbDialect {
 
-  import MbDialect._
+  import MbSqlBuilder._
 
   override def relation(relation: LogicalRelation): String = {
     relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
