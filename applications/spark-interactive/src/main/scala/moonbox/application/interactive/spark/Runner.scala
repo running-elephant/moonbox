@@ -46,7 +46,9 @@ class Runner(
 
 	def query(sqls: Seq[String], fetchSize: Int, maxRows: Int): QueryResult = {
 		this.fetchSize = fetchSize
-		this.maxRows = if (maxRows == Int.MinValue) { 10000 } else maxRows
+		this.maxRows = if (maxRows == Int.MinValue) {
+			10000
+		} else maxRows
 		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
 		sqls.map(mbSession.parsedCommand).map {
 			case event: CreateTimedEvent =>
@@ -75,11 +77,11 @@ class Runner(
 	}
 
 	private def createEventEntity(name: String, definer: String,
-		expr: String, cmds: Seq[String], desc: Option[String]): EventEntity = {
+		expr: String, cmds: Seq[String], lang: String, desc: Option[String]): EventEntity = {
 		EventEntity(
 			group = userContext.organizationName,
 			name = name,
-			lang = "", // TODO
+			lang = lang,
 			sqls = cmds,
 			config = Map(), // TODO
 			cronExpr = expr,
@@ -94,8 +96,10 @@ class Runner(
 		val (schema, data) = if (event.enable) {
 			val existsEvent = mbSession.catalog.getTimedEvent(userContext.organizationId, event.name)
 			val catalogUser = mbSession.catalog.getUser(existsEvent.definer)
-			val cmds = mbSession.catalog.getProcedure(existsEvent.procedure).cmds
-			val eventEntity = createEventEntity(event.name, catalogUser.name, existsEvent.schedule, cmds, existsEvent.description)
+			val procedure = mbSession.catalog.getProcedure(existsEvent.procedure)
+			val cmds = procedure.cmds
+			val lang = procedure.lang
+			val eventEntity = createEventEntity(event.name, catalogUser.name, existsEvent.schedule, cmds, lang, existsEvent.description)
 
 			val response = target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
 				case RegisteredTimedEvent(_) =>
@@ -124,8 +128,10 @@ class Runner(
 	private def createTimedEvent(event: CreateTimedEvent, target: ActorRef): QueryResult = {
 		val (schema, data) = if (event.enable) {
 			val definer = event.definer.getOrElse(userContext.userName)
-			val cmds = mbSession.catalog.getProcedure(userContext.organizationId, event.proc).cmds
-			val eventEntity = createEventEntity(event.name, definer, event.schedule, cmds, event.description)
+			val procedure = mbSession.catalog.getProcedure(userContext.organizationId, event.proc)
+			val cmds = procedure.cmds
+			val language = procedure.lang
+			val eventEntity = createEventEntity(event.name, definer, event.schedule, cmds, language, event.description)
 			val response = target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
 				case RegisteredTimedEvent(_) =>
 					Future {
@@ -206,7 +212,7 @@ class Runner(
 				.write
 				.format(format)
 				.options(options)
-				.partitionBy(colNames:_*)
+				.partitionBy(colNames: _*)
 				.mode(saveMode)
 			// TODO remove
 			if (options.contains("partitionColumnNames")) {

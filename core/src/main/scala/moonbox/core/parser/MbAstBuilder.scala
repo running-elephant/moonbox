@@ -487,8 +487,8 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val mqlList = visitProcCmds(ctx.procCmds())
 		val ignoreIfExists = ctx.EXISTS() != null
-		val config = visitPropertyList(ctx.propertyList())
-		CreateProcedure(name, mqlList, config, ignoreIfExists)
+		val lang = if (ctx.MQL() != null) "mql" else "hql"
+		CreateProcedure(name, mqlList, lang, ignoreIfExists)
 	}
 
 	override def visitRenameProcedure(ctx: RenameProcedureContext): MbCommand = {

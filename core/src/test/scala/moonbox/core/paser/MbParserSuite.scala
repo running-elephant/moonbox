@@ -334,16 +334,16 @@ class MbParserSuite extends FunSuite {
 	test("application") {
 		assertEquals(
 			CreateProcedure("app", Seq("CREATE TEMP VIEW view AS SELECT * FROM table", "SELECT * FROM view"),
-				Map("spark.master" -> "local[*]", "spark.app.name" -> "test1"),
+				"mql",
 				ignoreIfExists = true),
-			"CREATE PROCEDURE IF NOT EXISTS app AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view)"
+			"CREATE PROCEDURE IF NOT EXISTS app USING mql AS (CREATE TEMP VIEW view AS SELECT * FROM table; SELECT * FROM view)"
 		)
 
 		assertEquals(
 			CreateProcedure("app", Seq("SELECT * FROM table"),
-				Map("spark.master" -> "local[*]", "spark.app.name" -> "test1"),
+				"mql",
 				ignoreIfExists = true),
-			"CREATE PROCEDURE IF NOT EXISTS app AS (SELECT * FROM table)"
+			"CREATE PROCEDURE IF NOT EXISTS app USING mql AS (SELECT * FROM table)"
 		)
 		assertEquals(
 			AlterProcedureSetName(

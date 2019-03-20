@@ -203,10 +203,10 @@ trait EntityComponent extends DatabaseComponent {
 
 		def name = column[String]("name")
 		def cmds = column[Seq[String]]("cmds")
-		def config = column[String]("config")
+		def lang = column[String]("lang")
 		def organizationId = column[Long]("organizationId")
 		def description = column[Option[String]]("description")
-		override def * = (id.?, name, cmds, config, organizationId, description, createBy,
+		override def * = (id.?, name, cmds, lang, organizationId, description, createBy,
 			createTime, updateBy, updateTime) <> (CatalogProcedure.tupled, CatalogProcedure.unapply)
 	}
 

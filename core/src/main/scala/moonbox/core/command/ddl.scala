@@ -508,15 +508,14 @@ case class DropView(
 case class CreateProcedure(
 	name: String,
 	queryList: Seq[String],
-	config: Map[String, String],
+	lang: String,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		val configString = config.map{e => s"""${e._1} = "${e._2}" """}.mkString("{", "\n", "}")
 		val catalogProcedure = CatalogProcedure(
 			name = name,
 			cmds = queryList,
-			config = configString,
+			lang = lang,
 			organizationId = ctx.organizationId,
 			description = None,
 			createBy = ctx.userId,

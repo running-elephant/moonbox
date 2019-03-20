@@ -85,7 +85,7 @@ mql
     | ALTER VIEW name=tableIdentifier AS query                                                  # setViewQuery
     | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
 
-    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier OPTIONS propertyList AS procCmds # createProcedure
+    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds # createProcedure
     | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
     | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
     | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys
@@ -272,6 +272,7 @@ nonReserved
     | PROC | PROCEDURE | PROCEDURES | PARTITION
     | CASCADE | CACHE
     | WITH
+    | MQL | HQL
     ;
 
 ACCOUNT: 'ACCOUNT';
@@ -323,6 +324,7 @@ GRANT: 'GRANT';
 GRANTS: 'GRANTS';
 GROUP: 'GROUP';
 GROUPS: 'GROUPS';
+HQL: 'HQL';
 IDENTIFIED : 'IDENTIFIED ';
 IF: 'IF';
 IN: 'IN';
@@ -331,6 +333,7 @@ INTO: 'INTO';
 LIKE: 'LIKE';
 JOBS: 'JOBS';
 MOUNT: 'MOUNT';
+MQL: 'MQL';
 NOT: 'NOT';
 ON: 'ON';
 OPTION: 'OPTION';
