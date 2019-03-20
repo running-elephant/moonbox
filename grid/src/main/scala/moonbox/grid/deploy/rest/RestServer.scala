@@ -90,7 +90,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 			} ~
 			pathPrefix("service") {
 				path("query") {
-					get {
+					post {
 						entity(as[SampleInbound]) { in =>
 							complete {
 								mbService.sample(in.username, in.password, in.sql, in.database)
@@ -99,7 +99,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("translation") {
-					get {
+					post {
 						entity(as[TranslationInbound]) { in =>
 							complete {
 								mbService.translate(in.username, in.password, in.sql, in.database)
@@ -108,7 +108,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("verify") {
-					get {
+					post {
 						entity(as[VerifyInbound]) { in =>
 							complete {
 								mbService.verify(in.username, in.password, in.sqls)
@@ -117,7 +117,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("tableresources") {
-					get {
+					post {
 						entity(as[TableResourceInbound]) { in =>
 							complete {
 								mbService.resources(in.username, in.password, in.sql)
@@ -126,7 +126,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("schema") {
-					get {
+					post {
 						entity(as[SchemaInbound]) { in =>
 							complete {
 								mbService.schema(in.username, in.password, in.sql)
@@ -135,7 +135,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("lineage") {
-					get {
+					post {
 						entity(as[LineageInbound]) { in =>
 							complete {
 								mbService.lineage(in.username, in.password, in.sql)

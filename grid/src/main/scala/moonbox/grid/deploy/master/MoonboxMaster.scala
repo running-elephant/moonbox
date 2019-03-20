@@ -12,7 +12,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{BatchDriverDescription, DriverDescription, HiveDriverDescription, MbService}
+import moonbox.grid.deploy.{SparkBatchDriverDescription, DriverDescription, HiveBatchDriverDescription, MbService}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
@@ -265,7 +265,7 @@ class MoonboxMaster(
 					driverIdDesces.foreach { case (driverId, desc, date) =>
 						val driverMatches = worker.drivers.exists { case (id, _) => id == driverId }
 						if (!driverMatches) { // not exist
-							if (recoveryEnable && desc.isInstanceOf[BatchDriverDescription]) {
+							if (recoveryEnable && desc.isInstanceOf[SparkBatchDriverDescription]) {
 								logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
 								worker.endpoint ! KillDriver(driverId)
 							} else {
@@ -398,9 +398,9 @@ class MoonboxMaster(
 				val submitDate = new Date()
 				val driverId = newDriverId(submitDate)
 				val driverDesc = if (lang == "hql") {
-					HiveDriverDescription(driverId, username, sqls, config)
+					HiveBatchDriverDescription(driverId, username, sqls, config)
 				} else {
-					BatchDriverDescription(username, sqls, config)
+					SparkBatchDriverDescription(username, sqls, config)
 				}
 				val driver = createDriver(driverDesc, driverId, submitDate)
 				persistenceEngine.addDriver(driver)

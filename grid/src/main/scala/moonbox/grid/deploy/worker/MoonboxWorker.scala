@@ -51,7 +51,7 @@ class MoonboxWorker(
 		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
 			override def run(): Unit = {
 				drivers.values.foreach { driver =>
-					if (!driver.desc.isInstanceOf[BatchDriverDescription]) {
+					if (!driver.desc.isInstanceOf[SparkBatchDriverDescription]) {
 						driver.kill()
 					}
 				}
@@ -256,12 +256,12 @@ class MoonboxWorker(
 			val local = LaunchUtils.getLocalDriverConfigs(conf)
 			local.foreach { config =>
 				val driverId = newDriverId("local")
-				self ! LaunchDriver(driverId, new LocalDriverDescription(driverId, masterAddresses, config))
+				self ! LaunchDriver(driverId, new SparkLocalDriverDescription(driverId, masterAddresses, config))
 			}
 			val cluster = LaunchUtils.getClusterDriverConfigs(conf)
 			cluster.foreach { config =>
 				val driverId = newDriverId("cluster")
-				self ! LaunchDriver(driverId, new ClusterDriverDescription(driverId, masterAddresses, config))
+				self ! LaunchDriver(driverId, new SparkClusterDriverDescription(driverId, masterAddresses, config))
 			}
 		} catch {
 			case e: Throwable =>
