@@ -475,11 +475,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 		catalog.createProcedure(CatalogProcedure(
 			name = "application",
 			cmds = Seq("INSERT INTO TABLE table SELECT * FROM view"),
-			config ="""{
-				  |      "spark.master": "local[*]",
-				  |      "spark.app.name": "test1"
-				  |      }
-				""".stripMargin,
+			lang = "mql",
 			organizationId = 1,
 			description = Some("for testing"),
 			createBy = 1,
@@ -496,11 +492,7 @@ class CatalogContextSuite extends FunSuite with MbLogging {
 			catalog.createProcedure(CatalogProcedure(
 				name = "application",
 				cmds = Seq("INSERT INTO TABLE table SELECT * FROM view"),
-				config = """|{
-					        |      "spark.master": "local[*]",
-					        |      "spark.app.name": "test1"
-					        |      }
-					""".stripMargin,
+				lang = "mql",
 				organizationId = 1,
 				description = Some("for testing"),
 				createBy = 1,
