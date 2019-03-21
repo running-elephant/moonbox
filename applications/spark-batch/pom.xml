@@ -12,7 +12,7 @@
 
     <artifactId>moonbox-spark-batch_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Moonbox Project Batch Application</name>
+    <name>Moonbox Project Spark Batch Application</name>
 
     <dependencies>
         <dependency>
