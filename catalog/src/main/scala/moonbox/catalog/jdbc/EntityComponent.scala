@@ -210,7 +210,7 @@ trait EntityComponent extends DatabaseComponent {
 			createTime, updateBy, updateTime) <> (CatalogProcedure.tupled, CatalogProcedure.unapply)
 	}
 
-	class CatalogTimedEventTable(tag: Tag) extends BaseTable[CatalogTimedEvent](tag, "event") {
+	class CatalogTimedEventTable(tag: Tag) extends BaseTable[CatalogTimedEvent](tag, "events") {
 		def name = column[String]("name")
 		def organizationId = column[Long]("organizationId")
 		def definer = column[Long]("definer")
