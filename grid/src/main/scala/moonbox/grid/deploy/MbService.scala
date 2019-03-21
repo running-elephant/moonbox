@@ -44,7 +44,7 @@ private[deploy] class MbService(
 
 	private val loginManager = new LoginManager(conf, this)
 
-	def login(username: String, password: String)(implicit connection: ConnectionInfo): LoginOutbound = {
+	/*def login(username: String, password: String)(implicit connection: ConnectionInfo): LoginOutbound = {
 		auditLogger.log(username, "login")
 		loginManager.login(username, password) match {
 			case Some(token) =>
@@ -53,7 +53,7 @@ private[deploy] class MbService(
 				LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
 		}
 	}
-
+*/
 	def login(username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
 		auditLogger.log(username, "login")
 		loginManager.login(username, password) match {
