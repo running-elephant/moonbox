@@ -45,7 +45,7 @@ class Servicer(
 				mbSession.pushdownPlan(optimized) match {
 					case WholePushdown(child, queryable) =>
 						val dataTable = mbSession.toDT(child, queryable)
-						SampleSuccessed(dataTable.schema.json, iteratorToSeq(dataTable.iter).map(_.toSeq))
+						SampleSuccessed(dataTable.schema.json, iteratorToSeq(dataTable.iterator).map(_.toSeq))
 					case plan =>
 						val dataFrame = mbSession.toDF(plan)
 						SampleSuccessed(dataFrame.schema.json, iteratorToSeq(dataFrame.collect().iterator).map(_.toSeq))

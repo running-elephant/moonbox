@@ -280,16 +280,16 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
   }
 
   private def insertDirect(collection: MongoCollection[BsonDocument], table: DataTable, batchSize: Int): Unit = {
-    if (table.iter.nonEmpty) {
-      table.iter.grouped(batchSize).foreach { batch =>
+    if (table.iterator.nonEmpty) {
+      table.iterator.grouped(batchSize).foreach { batch =>
         collection.insertMany(batch.map(row => MapFunctions.rowToDocument(new GenericRowWithSchema(row.toSeq.toArray, table.schema))).asJava)
       }
     }
   }
 
   private def bulkWrite(collection: MongoCollection[BsonDocument], table: DataTable, batchSize: Int): Unit = {
-    if (table.iter.nonEmpty) {
-      table.iter.grouped(batchSize).foreach { batch =>
+    if (table.iterator.nonEmpty) {
+      table.iterator.grouped(batchSize).foreach { batch =>
         val updateOptions = new UpdateOptions().upsert(true)
         val requests = batch.map { row =>
           val doc = MapFunctions.rowToDocument(new GenericRowWithSchema(row.toSeq.toArray, table.schema))

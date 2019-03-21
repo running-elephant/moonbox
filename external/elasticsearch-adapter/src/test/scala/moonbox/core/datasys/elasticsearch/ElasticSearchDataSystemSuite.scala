@@ -49,7 +49,7 @@ class ElasticSearchDataSystemSuite extends FunSuite with BeforeAndAfterAll{
         esTbSystem.buildScan(optimized, spark).show(false) //test 1
 
         val table: DataTable = esTbSystem.buildQuery(optimized) //test 2
-        val iter = table.iter
+        val iter = table.iterator
         while (iter.hasNext) {
             val row = iter.next()
             row.toSeq.foreach(e => print(" " + e))
