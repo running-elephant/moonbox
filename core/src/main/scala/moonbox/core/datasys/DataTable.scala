@@ -23,19 +23,24 @@ package moonbox.core.datasys
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
-class DataTable(val iter: Iterator[Row],
+class DataTable(iter: Iterator[Row],
 								val schema: StructType,
 								closeIfNeed: () => Unit) {
 
-	def foreach(f: Row => Unit): Unit = {
-		iter.foreach { r =>
-			f(r)
-		}
-		closeIfNeed()
-	}
+	def iterator: Iterator[Row] = {
+		new Iterator[Row]() {
+			override def hasNext: Boolean = {
+				val hasNext = iter.hasNext
+				if (!hasNext) {
+					closeIfNeed()
+				}
+				hasNext
+			}
 
-	def close() = {
-		closeIfNeed()
+			override def next(): Row = {
+				iter.next()
+			}
+		}
 	}
 
 	def write(): DataTableWriter = {

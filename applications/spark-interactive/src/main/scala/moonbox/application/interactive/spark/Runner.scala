@@ -249,12 +249,11 @@ class Runner(
 
 	private def initCurrentData(dataTable: DataTable): QueryResult = {
 		currentRowId = 0
-		currentData = dataTable.iter
+		currentData = dataTable.iterator
 		currentSchema = dataTable.schema.json
 		logInfo(s"Initialize current data: schema=$currentSchema")
 
 		if (hasNext) {
-			// TODO:
 			IndirectResult(currentSchema)
 		} else {
 			DirectResult(currentSchema, Seq.empty)

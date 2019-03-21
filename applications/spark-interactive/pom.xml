@@ -12,7 +12,7 @@
 
     <artifactId>moonbox-spark-interactive_2.11</artifactId>
     <packaging>jar</packaging>
-    <name>Moonbox Project Interactive Application</name>
+    <name>Moonbox Project Spark Interactive Application</name>
 
     <dependencies>
         <dependency>

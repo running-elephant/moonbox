@@ -154,82 +154,66 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	}
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
-		val client: KuduClient = getClient
-		try {
-			val faultTolerantScanner = props.getOrElse(FAULT_TOLERANT_SCANNER, "false").toBoolean
-			val table = client.openTable(tableName())
-			val (requiredColumns, predicates) = ExpressionUtils.findPredicates(plan, table.getSchema)
-			val kuduRdd = new KuduRDD(new KuduContext(masterAddress(), sparkSession.sparkContext), 1024 * 1024 * 20, requiredColumns, predicates,
-				table, faultTolerantScanner, getScanLocalityType(), sparkSession.sparkContext)
-			sparkSession.createDataFrame(kuduRdd, plan.schema)
-		} finally {
-			if (client != null) {
-				try {
-					client.close()
-				}
-			}
-		}
-
+		val context = new KuduContext(masterAddress(), sparkSession.sparkContext)
+		val faultTolerantScanner = props.getOrElse(FAULT_TOLERANT_SCANNER, "false").toBoolean
+		val table = context.syncClient.openTable(tableName())
+		val (requiredColumns, predicates) = ExpressionUtils.findPredicates(plan, table.getSchema)
+		val kuduRdd = new KuduRDD(context, 1024 * 1024 * 20, requiredColumns, predicates,
+			table, faultTolerantScanner, getScanLocalityType(), sparkSession.sparkContext)
+		sparkSession.createDataFrame(kuduRdd, plan.schema)
 	}
 
 	override def buildQuery(plan: LogicalPlan): DataTable = {
 		val kuduClient = getClient
-		try {
-			val kuduTable = kuduClient.openTable(tableName())
-			val scannerBuilder = kuduClient.newScannerBuilder(kuduTable)
-			if (SCAN_LIMIT > 0) {
-				scannerBuilder.limit(SCAN_LIMIT)
-			}
-			buildKuduScanner(plan, scannerBuilder, kuduTable)
-			val kuduScanner = scannerBuilder.build()
-			val iterator: Iterator[Row] = new Iterator[Row] {
-				var limitValue: Long = kuduScanner.getLimit
-				var iterOption: Option[RowResultIterator] = getIter
+		val kuduTable = kuduClient.openTable(tableName())
+		val scannerBuilder = kuduClient.newScannerBuilder(kuduTable)
+		if (SCAN_LIMIT > 0) {
+			scannerBuilder.limit(SCAN_LIMIT)
+		}
+		buildKuduScanner(plan, scannerBuilder, kuduTable)
+		val kuduScanner = scannerBuilder.build()
+		val iterator: Iterator[Row] = new Iterator[Row] {
+			var limitValue: Long = kuduScanner.getLimit
+			var iterOption: Option[RowResultIterator] = getIter
 
-				override def hasNext = {
-					iterOption match {
-						case Some(iter) =>
-							if (iter.hasNext && limitValue > 0) true
-							else if (limitValue <= 0) {
-								logWarning(s"To make limit($limitValue) take effect forcibly, stop the iteration.")
-								false
-							} else {
-								iterOption = getIter
-								hasNext
-							}
-						case None => false
-					}
-				}
-
-				override def next() = {
-					limitValue -= 1
-					val rowResult = iterOption.get.next()
-					val row = new ArrayBuffer[Any]()
-					for (i <- 0 until rowResult.getSchema.getColumnCount) {
-						val typ = rowResult.getColumnType(i)
-						row += getColValue(rowResult, typ, i)
-					}
-					Row(row: _*)
-				}
-
-				private def getIter: Option[RowResultIterator] = {
-					if (kuduScanner.hasMoreRows) {
-						Some(kuduScanner.nextRows())
-					} else None
+			override def hasNext = {
+				iterOption match {
+					case Some(iter) =>
+						if (iter.hasNext && limitValue > 0) true
+						else if (limitValue <= 0) {
+							logWarning(s"To make limit($limitValue) take effect forcibly, stop the iteration.")
+							false
+						} else {
+							iterOption = getIter
+							hasNext
+						}
+					case None => false
 				}
 			}
-			val schema: StructType = plan.schema
-			val closeIfNeeded: () => Unit = () => {
-				kuduScanner.close()
-				kuduClient.close()
+
+			override def next() = {
+				limitValue -= 1
+				val rowResult = iterOption.get.next()
+				val row = new ArrayBuffer[Any]()
+				for (i <- 0 until rowResult.getSchema.getColumnCount) {
+					val typ = rowResult.getColumnType(i)
+					row += getColValue(rowResult, typ, i)
+				}
+				Row(row: _*)
 			}
-			new DataTable(iterator, schema, closeIfNeeded)
-		} finally {
-			try {
-				kuduClient.close()
+
+			private def getIter: Option[RowResultIterator] = {
+				if (kuduScanner.hasMoreRows) {
+					Some(kuduScanner.nextRows())
+				} else None
 			}
 		}
-
+		val schema: StructType = plan.schema
+		val closeIfNeeded: () => Unit = () => {
+			kuduScanner.close()
+			kuduClient.close()
+		}
+		new DataTable(iterator, schema, closeIfNeeded)
 	}
 
 	private def getColValue(rowResult: RowResult, colType: Type, index: Int): Any = {

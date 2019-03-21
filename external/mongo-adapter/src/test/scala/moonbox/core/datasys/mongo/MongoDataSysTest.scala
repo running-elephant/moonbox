@@ -67,7 +67,7 @@ class MongoDataSysTest extends FunSuite {
     val logicalPlan = parser.parse(sql)
     /* buildQuery */
     val dataTable = dataSys.buildQuery(logicalPlan)
-    dataTable.foreach(r => println(r))
+    dataTable.iterator.foreach(r => println(r))
   }
 
   test("insert test") {
