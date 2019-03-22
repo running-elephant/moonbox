@@ -21,7 +21,6 @@
 package moonbox.grid.timer
 
 import moonbox.common.MbConf
-import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class TimedScheduleServiceSuite extends FunSuite with BeforeAndAfterAll {

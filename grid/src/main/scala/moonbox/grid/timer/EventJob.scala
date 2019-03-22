@@ -21,7 +21,6 @@
 package moonbox.grid.timer
 
 import moonbox.common.MbLogging
-import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
 import org.quartz.{Job, JobExecutionContext}
 
 class EventJob extends Job with MbLogging {

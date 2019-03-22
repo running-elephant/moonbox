@@ -35,19 +35,14 @@ import org.quartz.impl.matchers.GroupMatcher
 
 import scala.collection.JavaConversions._
 import moonbox.grid.config._
-import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
-
-object TimedEventServiceImpl {
-	type EventHandler = Function4[String, String, Seq[String], Map[String, String], Unit]
-}
 
 class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEventService with MbLogging {
 
 	private val timedScheduler = {
 		val props = new Properties()
-		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.timer.")))
+		(TIMER_SERVICE_QUARTZ_DEFAULT_CONFIG ++ conf.getAll.filterKeys(key => key.startsWith("moonbox.deploy.timer.")))
 		.foreach {
-			case (key, value) => props.put(key.stripPrefix("moonbox.timer."), value)
+			case (key, value) => props.put(key.stripPrefix("moonbox.deploy.timer."), value)
 		}
 		new StdSchedulerFactory(props).getScheduler
 	}

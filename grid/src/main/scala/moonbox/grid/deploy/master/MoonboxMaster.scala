@@ -3,7 +3,7 @@ package moonbox.grid.deploy.master
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
-import akka.actor.{ActorSystem, Address, Cancellable, Props}
+import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -12,15 +12,14 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{SparkBatchDriverDescription, DriverDescription, HiveBatchDriverDescription, MbService}
+import moonbox.grid.deploy.{DriverDescription, HiveBatchDriverDescription, MbService, SparkBatchDriverDescription}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
-import moonbox.grid.timer.TimedEventServiceImpl.EventHandler
-import moonbox.grid.timer.{TimedEventService, TimedEventServiceImpl}
+import moonbox.grid.timer.{EventHandler, TimedEventService, TimedEventServiceImpl}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -123,11 +122,8 @@ class MoonboxMaster(
 		// start timer
 		try {
 			if (conf.get(TIMER_SERVICE_ENABLE)) {
-				timedEventService = new TimedEventServiceImpl(conf, new EventHandler() {
-					override def apply(user: String, lang: String, sqls: Seq[String], config: Map[String, String]): Unit = {
-						self ! JobSubmit(user, lang, sqls, config)
-					}
-				})
+				timedEventService = new TimedEventServiceImpl(conf, new EventHandler())
+				timedEventService.start()
 			}
 		} catch {
 			case e: Exception =>
@@ -339,7 +335,7 @@ class MoonboxMaster(
 						logInfo(s"Register time event: ${event.name}, ${event.cronExpr}, ${event.sqls}.")
 						RegisteredTimedEvent(self)
 					} else {
-						val message = s"Timed event ${event.name} already exists."
+						val message = s"Timed event ${event.name} is running already."
 						logWarning(message)
 						RegisterTimedEventFailed(message)
 					}
@@ -880,6 +876,8 @@ object MoonboxMaster extends MbLogging {
 	val SYSTEM_NAME = "Moonbox"
 	val MASTER_NAME = "MoonboxMaster"
 	val MASTER_PATH = s"/user/$MASTER_NAME"
+	// for timed event call
+	var MASTER_REF: ActorRef = _
 
 	def main(args: Array[String]) {
 		val conf = new MbConf()
@@ -888,7 +886,7 @@ object MoonboxMaster extends MbLogging {
 		val actorSystem = ActorSystem(SYSTEM_NAME, ConfigFactory.parseMap(param.akkaConfig.asJava))
 
 		try {
-			actorSystem.actorOf(Props(classOf[MoonboxMaster], actorSystem, conf), MASTER_NAME)
+			MASTER_REF = actorSystem.actorOf(Props(classOf[MoonboxMaster], actorSystem, conf), MASTER_NAME)
 		} catch {
 			case e: Exception =>
 				logError("Start MoonboxMaster failed with error: ", e)
