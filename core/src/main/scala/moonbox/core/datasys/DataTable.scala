@@ -28,19 +28,11 @@ class DataTable(iter: Iterator[Row],
 								closeIfNeed: () => Unit) {
 
 	def iterator: Iterator[Row] = {
-		new Iterator[Row]() {
-			override def hasNext: Boolean = {
-				val hasNext = iter.hasNext
-				if (!hasNext) {
-					closeIfNeed()
-				}
-				hasNext
-			}
+		iter
+	}
 
-			override def next(): Row = {
-				iter.next()
-			}
-		}
+	def close(): Unit = {
+		closeIfNeed()
 	}
 
 	def write(): DataTableWriter = {
