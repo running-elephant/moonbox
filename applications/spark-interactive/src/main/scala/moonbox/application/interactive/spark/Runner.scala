@@ -37,6 +37,8 @@ class Runner(
 	private var maxRows: Int = _
 	private var currentData: Iterator[Row] = _
 	private var currentSchema: String = _
+	private var currentCallback: Option[() => Unit] = _
+
 	private var currentRowId: Long = _
 	private var resultData: ArrayBuffer[Seq[Any]] = _
 
@@ -50,7 +52,11 @@ class Runner(
 			10000
 		} else maxRows
 		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
-		sqls.map(mbSession.parsedCommand).map {
+		val commands = sqls.map(mbSession.parsedCommand)
+		if (commands.count(_.isInstanceOf[MQLQuery]) > 1) {
+			throw new Exception(s"Can only write an SELECT SQL statement at a time。")
+		}
+		commands.map {
 			case event: CreateTimedEvent =>
 				createTimedEvent(event, manager)
 			case event: AlterTimedEventSetEnable =>
@@ -239,11 +245,17 @@ class Runner(
 		logDebug(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
 		resultData.clear()
 		var rowCount = 0
-		while (currentData.hasNext && currentRowId < maxRows && rowCount < fetchSize) {
+		while (hasNext && rowCount < fetchSize) {
 			resultData.append(currentData.next().toSeq)
 			currentRowId += 1
 			rowCount += 1
 		}
+
+		if (!hasNext) {
+			currentCallback.foreach(close => close())
+			logInfo("close client connection in datatable.")
+		}
+
 		ResultData(sessionId, currentSchema, resultData, hasNext)
 	}
 
@@ -251,6 +263,7 @@ class Runner(
 		currentRowId = 0
 		currentData = dataTable.iterator
 		currentSchema = dataTable.schema.json
+		currentCallback = Some(dataTable.close _)
 		logInfo(s"Initialize current data: schema=$currentSchema")
 
 		if (hasNext) {
@@ -264,6 +277,7 @@ class Runner(
 		currentRowId = 0
 		currentData = dataFrame.collect().toIterator
 		currentSchema = dataFrame.schema.json
+		currentCallback = None
 		logInfo(s"Initialize current data: schema=$currentSchema")
 
 		if (hasNext) {
