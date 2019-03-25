@@ -39,7 +39,7 @@ private[deploy] class MbService(
 	masterRef: ActorRef,
 	auditLogger: AuditLogger) extends MbLogging {
 
-	private val SHORT_TIMEOUT = new FiniteDuration(10, SECONDS)
+	private val SHORT_TIMEOUT = new FiniteDuration(30, SECONDS)
 	private val LONG_TIMEOUT = new FiniteDuration(3600 * 24, SECONDS)
 
 	private val loginManager = new LoginManager(conf, this)
