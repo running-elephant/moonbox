@@ -29,7 +29,8 @@ case class SparkLocalDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
+		(config.filterKeys(key => !key.startsWith("spark."))
+			++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "CENTRALIZED"
@@ -63,7 +64,8 @@ case class SparkClusterDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
+		(config.filterKeys(key => !key.startsWith("spark."))
+			++ Map(
 			"driverId" -> driverId,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "DISTRIBUTED"
@@ -98,14 +100,16 @@ case class SparkBatchDriverDescription(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !(key.startsWith("spark.hadoop") || key.startsWith("spark.yarn"))) ++ Map(
+		(config.filterKeys(key => !key.startsWith("spark."))
+			- ("spark.master", "spark.deploy.mode")
+			++ Map(
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
 		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
 	}
 
 	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("spark."))
+		config.filterKeys(_.startsWith("spark.")) - ("spark.master", "spark.deploy.mode")
 	}
 
 	override def appResource: String = {
