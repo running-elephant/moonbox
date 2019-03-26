@@ -671,7 +671,7 @@ class MoonboxMaster(
 	}
 
 	private def selectApplication(centralized: Boolean): Option[ApplicationInfo] = {
-		val activeApps = apps.filter(_.state == ApplicationState.RUNNING)
+		val activeApps = apps.filter(_.state == ApplicationState.RUNNING).toSeq
 		val typedApps = if (centralized) {
 			activeApps.filter(_.appType == ApplicationType.CENTRALIZED)
 		} else {
