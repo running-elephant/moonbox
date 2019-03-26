@@ -11,6 +11,7 @@ import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, LogicalPl
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.sources
 import org.apache.spark.sql.types.StringType
+import org.apache.spark.unsafe.types.UTF8String
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -41,7 +42,7 @@ object ExpressionUtils {
     (cols, filters.toArray)
   }
 
-  def predicate2Filter(predicate: Expression): sources.Filter = {
+  /*def predicate2Filter(predicate: Expression): sources.Filter = {
     predicate match {
       case And(left, right) =>
         sources.And(predicate2Filter(left), predicate2Filter(right))
@@ -80,7 +81,7 @@ object ExpressionUtils {
       case Contains(left, right) => throw new Exception(s"$predicate is temporarily unsupported.")
       case EndsWith(left, right) => throw new Exception(s"$predicate is temporarily unsupported.")
     }
-  }
+  }*/
 
   def toKuduPredicate(condition: Expression, schema: Schema): Seq[KuduPredicate] = {
     if (!condition.isInstanceOf[Predicate]) throw new Exception(s"Invalid predicate expression: $condition")
@@ -163,7 +164,7 @@ object ExpressionUtils {
     genComparisonPredicate(columnSchema, op, value)
   }
 
-  def binaryComparison2Filter(expression: BinaryComparison): sources.Filter = {
+  /*def binaryComparison2Filter(expression: BinaryComparison): sources.Filter = {
     val (columnName, value, needReverse) = getColumnNameAndValue(expression.left, expression.right)
     expression match {
       case EqualNullSafe(left, right) => throw new Exception(s"$expression is temporarily unsupported.")
@@ -173,7 +174,7 @@ object ExpressionUtils {
       case LessThan(left, right) => if (needReverse) sources.GreaterThan(columnName, value) else sources.LessThan(columnName, value)
       case LessThanOrEqual(left, right) => if (needReverse) sources.GreaterThanOrEqual(columnName, value) else sources.LessThanOrEqual(columnName, value)
     }
-  }
+  }*/
 
   def buildInListPredicate(colSchema: ColumnSchema, list: Seq[Expression]): KuduPredicate = {
     val values = list.map {
@@ -196,6 +197,7 @@ object ExpressionUtils {
 		  case value: String => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
 		  case value: Array[Byte] => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
 		  case value: BigDecimal => KuduPredicate.newComparisonPredicate(columnSchema, operator, value)
+		  case value: UTF8String => KuduPredicate.newComparisonPredicate(columnSchema, operator, value.toString)
 	  }
   }
 

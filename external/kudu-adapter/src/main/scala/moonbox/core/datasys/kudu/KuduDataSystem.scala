@@ -80,7 +80,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	}
 
 	override def tableName(): String = {
-		database.getOrElse("") + props(TABLE_KEY)
+		props(TABLE_KEY)
 	}
 
 	override def tableProperties(tableName: String): Map[String, String] = {
@@ -128,7 +128,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 
 	override def fastEquals(other: DataSystem): Boolean = false
 
-	private def collectFilters(plan: LogicalPlan): (Array[String], Array[org.apache.spark.sql.sources.Filter]) = {
+	/*private def collectFilters(plan: LogicalPlan): (Array[String], Array[org.apache.spark.sql.sources.Filter]) = {
 		var columns: Array[String] = Array.empty
 		val filters: ArrayBuffer[org.apache.spark.sql.sources.Filter] = new ArrayBuffer()
 		plan.children.foreach { child =>
@@ -143,7 +143,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 			case _ => /* no-op */
 		}
 		(columns, filters.toArray)
-	}
+	}*/
 
 	private def getScanLocalityType(): ReplicaSelection = {
 		props.getOrElse(SCAN_LOCALITY, "closest_replica").toLowerCase match {
@@ -311,7 +311,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 		}*/
 	}
 
-	private def writeRow(row: Row, schema: StructType, kuduTable: KuduTable, operation: Operation): Unit = {
+	/*private def writeRow(row: Row, schema: StructType, kuduTable: KuduTable, operation: Operation): Unit = {
 		val indices: Array[(Int, Int)] = schema.fields.zipWithIndex.map {
 			case (field, oldIndex) => oldIndex -> kuduTable.getSchema.getColumnIndex(field.name)
 		}
@@ -335,5 +335,5 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 				}
 			}
 		}
-	}
+	}*/
 }
