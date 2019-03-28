@@ -140,14 +140,21 @@ class MysqlDataSystem(props: Map[String, String])
 		sparkSession.createDataFrame(rdd, schema)
 	}
 
-	override def buildQuery(plan: LogicalPlan): DataTable = {
+	override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
 		val sqlBuilder = new MbSqlBuilder(plan, new MbMySQLDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")
 		val conn = getConnection()
 		val statement = conn.createStatement()
-		val resultSet = statement.executeQuery(sql)
+		val resultSet = try {
+			statement.executeQuery(sql)
+		} catch {
+			case e: Exception =>
+				conn.close()
+				logWarning("mysql pushdown execute failed.", e)
+				throw e
+		}
 
 		def close(): Unit = {
 			try {

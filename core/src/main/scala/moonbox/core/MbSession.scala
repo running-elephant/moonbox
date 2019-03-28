@@ -197,7 +197,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	def toDT(plan: LogicalPlan, datasys: Pushdownable): DataTable = {
 		val qe = mixcal.sparkSession.sessionState.executePlan(plan)
 		qe.assertAnalyzed()
-		datasys.buildQuery(plan)
+		datasys.buildQuery(plan, mixcal.sparkSession)
 	}
 
 	def withPrivilege[T](cmd: MbCommand)(f: => T): T = {

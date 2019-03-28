@@ -135,7 +135,7 @@ class ClickHouseDataSystem(props: Map[String, String])
   }
 
 
-  override def buildQuery(plan: LogicalPlan): DataTable = {
+  override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
     val sqlBuilder = new MbSqlBuilder(plan, new MbClickHouseDialect)
     val sql = sqlBuilder.toSQL
     val schema = sqlBuilder.finalLogicalPlan.schema

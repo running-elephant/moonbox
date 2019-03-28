@@ -48,7 +48,7 @@ class ElasticSearchDataSystemSuite extends FunSuite with BeforeAndAfterAll{
         val esTbSystem: ElasticSearchDataSystem = new ElasticSearchDataSystem(map)
         esTbSystem.buildScan(optimized, spark).show(false) //test 1
 
-        val table: DataTable = esTbSystem.buildQuery(optimized) //test 2
+        val table: DataTable = esTbSystem.buildQuery(optimized, null) //test 2
         val iter = table.iterator
         while (iter.hasNext) {
             val row = iter.next()
@@ -65,8 +65,8 @@ class ElasticSearchDataSystemSuite extends FunSuite with BeforeAndAfterAll{
 
         val map = Map("es.nodes" -> "testserver1:9200", "es.resource" -> "temp_test_table/my_table")
         val esTbSystem: ElasticSearchDataSystem = new ElasticSearchDataSystem(map)
-        val table: DataTable = esTbSystem.buildQuery(optimized) //test 1
-        val table2: DataTable = esTbSystem.buildQuery(optimized) //test 1
+        val table: DataTable = esTbSystem.buildQuery(optimized, null) //test 1
+        val table2: DataTable = esTbSystem.buildQuery(optimized, null) //test 1
 
         val map2 = Map("es.nodes" -> "testserver1:9200", "es.resource" -> "temp_test_table2/my_table")
         val esTbSystem2: ElasticSearchDataSystem  = new ElasticSearchDataSystem(map2)

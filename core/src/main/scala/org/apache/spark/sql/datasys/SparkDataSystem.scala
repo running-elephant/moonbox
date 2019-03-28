@@ -52,7 +52,7 @@ class SparkDataSystem extends DataSystem(Map()) with Pushdownable {
 
 	override def tableName(): String = {  throw new UnsupportedOperationException("unsupport method tableName") }
 
-	override def buildQuery(plan: LogicalPlan): DataTable = {
+	override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
 		throw new UnsupportedOperationException(s"unsupport call method buildQuery in spark datasystem")
 	}
 

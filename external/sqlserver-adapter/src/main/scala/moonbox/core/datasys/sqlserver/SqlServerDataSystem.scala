@@ -62,14 +62,21 @@ class SqlServerDataSystem(props: Map[String, String])
 		props.+("dbtable" -> tableName)
 	}
 
-	override def buildQuery(plan: LogicalPlan): DataTable = {
+	override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
 		val sqlBuilder = new MbSqlBuilder(plan, new MbSqlServerDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		logInfo(s"query sql: $sql")
 		val conn = getConnection()
 		val statement = conn.createStatement()
-		val resultSet = statement.executeQuery(sql)
+		val resultSet = try {
+			statement.executeQuery(sql)
+		} catch {
+			case e: Exception =>
+				conn.close()
+				logWarning("sqlserver pushdown execute failed.", e)
+				throw e
+		}
 
 		def close(): Unit = {
 			try {

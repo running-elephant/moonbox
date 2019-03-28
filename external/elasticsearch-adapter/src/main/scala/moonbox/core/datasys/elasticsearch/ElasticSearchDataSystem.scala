@@ -129,7 +129,7 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 		sparkSession.createDataFrame(rdd, plan.schema)
 	}
 
-    override def buildQuery(plan: LogicalPlan): DataTable = {
+    override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
         val prop: Properties = getProperties
         val executor = new EsCatalystQueryExecutor(prop)
         val schema = plan.schema

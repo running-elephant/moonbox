@@ -273,7 +273,7 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
     prop
   }
 
-  override def buildQuery(plan: LogicalPlan): DataTable = {
+  override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
     val schema = plan.schema
     val iter: Iterator[Row] = readExecutor.toIterator(plan, in => new JdbcRow(in: _*))
     new DataTable(iter, schema, () => readExecutor.close())

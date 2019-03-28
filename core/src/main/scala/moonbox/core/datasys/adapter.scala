@@ -71,7 +71,7 @@ trait Pushdownable { self: DataSystem =>
 
 	def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame
 
-	def buildQuery(plan: LogicalPlan): DataTable
+	def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable
 }
 
 trait Insertable {

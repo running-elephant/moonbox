@@ -66,7 +66,7 @@ class MongoDataSysTest extends FunSuite {
     val sql = "select * from book_nested limit 20"
     val logicalPlan = parser.parse(sql)
     /* buildQuery */
-    val dataTable = dataSys.buildQuery(logicalPlan)
+    val dataTable = dataSys.buildQuery(logicalPlan, null)
     dataTable.iterator.foreach(r => println(r))
   }
 
@@ -90,7 +90,7 @@ class MongoDataSysTest extends FunSuite {
     val sql = "select * from books limit 3"
     val plan = parser.parse(sql)
     /* buildQuery */
-    val dataTable = dataSys.buildQuery(plan)
+    val dataTable = dataSys.buildQuery(plan, null)
     /* insert */
     dataSys.insert(dataTable, SaveMode.Ignore)
   }
