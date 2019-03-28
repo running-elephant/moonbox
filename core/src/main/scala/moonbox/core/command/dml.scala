@@ -454,6 +454,23 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
 	}
 }
 
+case class DescProcedure(proc: String) extends MbRunnableCommand with DML {
+
+
+	override def output: Seq[Attribute] = {
+		AttributeReference("PROPERTY_NAME", StringType, nullable = false)() ::
+			AttributeReference("VALUE", StringType, nullable = false)() ::
+			Nil
+	}
+
+	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+		val procedure = mbSession.catalog.getProcedure(ctx.organizationId, proc)
+		val result = Row("language", procedure.lang) ::
+		Row("sql", procedure.cmds.mkString("; ")) :: Nil
+		result
+	}
+}
+
 case class DescEvent(event: String) extends MbRunnableCommand with DML {
 
   override def output = {
@@ -470,7 +487,9 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 			Row("Definer", catalogUser.name) ::
 			Row("Schedule", catalogTimedEvent.schedule) ::
 			Row("Enable", catalogTimedEvent.enable.toString) ::
-			Row("Procedure", proc.cmds.mkString("; ")) ::
+			Row("Procedure", proc.name) ::
+			Row("Language", proc.lang) ::
+			Row("Sqls", proc.cmds.mkString("; ")) ::
 			Row("Description", catalogTimedEvent.description.getOrElse("No Description.")) :: Nil
 		result
 	}

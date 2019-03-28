@@ -824,6 +824,12 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DescEvent(event)
 	}
 
+
+	override def visitDescProcedure(ctx: DescProcedureContext): MbCommand = {
+		val proc = ctx.name.getText
+		DescProcedure(proc)
+	}
+
 	override def visitSetVariable(ctx: SetVariableContext): MbCommand = {
 		val key = ctx.key.getText
 		// val value = Option(ctx.value.getText).orNull

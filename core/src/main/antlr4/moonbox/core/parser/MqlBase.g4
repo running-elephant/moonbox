@@ -111,13 +111,14 @@ mql
     | SHOW (scope=identifier)? FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?    # showFunctions
     | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
     | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
-    | SHOW PROCEDURES (LIKE pattern=STRING)?                                                    # showProcedures
+    | SHOW (PROCS | PROCEDURES) (LIKE pattern=STRING)?                                          # showProcedures
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
     | SHOW GRANTS FOR user=identifier                                                           # showGrants
     | SHOW CREATE TABLE name=tableIdentifier                                                    # showCreateTable
     | SHOW SCHEMA FOR query                                                                     # showSchema
 
     | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
+    | (DESC | DESCRIBE) (PROC | PROCEDURE) name=identifier                                      # descProcedure
     | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
     | (DESC | DESCRIBE) TABLE? EXTENDED? tableIdentifier                                        # descTable
     | (DESC | DESCRIBE) VIEW tableIdentifier                                                    # descView
@@ -345,6 +346,7 @@ OVERWRITE: 'OVERWRITE';
 PLAN: 'PLAN';
 PARTITION: 'PARTITION';
 PROC: 'PROC';
+PROCS: 'PROCS';
 PROCEDURE: 'PROCEDURE';
 PROCEDURES: 'PROCEDURES';
 REMOVE: 'REMOVE';
