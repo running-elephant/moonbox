@@ -101,7 +101,6 @@ case class SparkBatchDriverDescription(
 
 	override def toAppArgs: Seq[String] = {
 		(config.filterKeys(key => !key.startsWith("spark."))
-			- ("spark.master", "spark.deploy.mode")
 			++ Map(
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
@@ -109,7 +108,7 @@ case class SparkBatchDriverDescription(
 	}
 
 	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("spark.")) - ("spark.master", "spark.deploy.mode")
+		config.filterKeys(_.startsWith("spark."))
 	}
 
 	override def appResource: String = {

@@ -13,7 +13,8 @@ object LaunchUtils extends MbLogging {
 	private def getCommonDriverConfigs(config: Config): Map[String, String] = {
 		val commonEntrySet = config.entrySet().filterNot { entry =>
 			entry.getKey.equalsIgnoreCase("local") ||
-				entry.getKey.equalsIgnoreCase("cluster")
+				entry.getKey.equalsIgnoreCase("cluster") ||
+			entry.getKey.equalsIgnoreCase("batch")
 		}
 		entrySetToMap(commonEntrySet).map { case (key, value) =>
 			if (!key.startsWith("spark")) {
@@ -38,8 +39,11 @@ object LaunchUtils extends MbLogging {
 
 	def getBatchDriverConfigs(conf: MbConf, userConfig: Map[String, String]): Map[String, String] = {
 		val systemConfig = conf.getAll.filter { case (k, _) => k.startsWith("moonbox.deploy.catalog") }
-		val commonConfig = getCommonDriverConfigs(conf.getConfig("moonbox.mixcal"))
-		systemConfig ++ commonConfig ++ userConfig
+		val config = conf.getConfig("moonbox.mixcal")
+		val commonConfig = getCommonDriverConfigs(config)
+		val batchConfigs = getConfigs("batch", config, commonConfig)
+
+		systemConfig ++ batchConfigs.headOption.getOrElse(Map()) ++ userConfig
 	}
 
 	private def getConfigs(key: String, config: Config, common: Map[String, String]): Seq[Map[String, String]] = {
