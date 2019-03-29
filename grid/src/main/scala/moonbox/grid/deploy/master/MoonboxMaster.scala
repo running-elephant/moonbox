@@ -688,15 +688,10 @@ class MoonboxMaster(
 		val numWorkerAlive = shuffledAliveWorkers.size
 		var curPos = 0
 		for (driver <- waitingDrivers.toList) {
-			var numWorkersVisited = 0
-			while (numWorkersVisited < numWorkerAlive) {
-				val worker = shuffledAliveWorkers(curPos)
-				numWorkersVisited += 1
-				launchDriver(worker, driver)
-				waitingDrivers -= driver
-
-				curPos = (curPos + 1) % numWorkerAlive
-			}
+			val worker = shuffledAliveWorkers(curPos)
+			launchDriver(worker, driver)
+			waitingDrivers -= driver
+			curPos = (curPos + 1) % numWorkerAlive
 		}
 	}
 
