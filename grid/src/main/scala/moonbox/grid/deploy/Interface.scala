@@ -62,17 +62,17 @@ object Interface extends Interface {
 	case class TranslationInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class TranslationOutbound(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends Outbound
 
-	case class VerifyInbound(username: String, password: String, sqls: Seq[String]) extends Inbound
+	case class VerifyInbound(username: String, password: String, sqls: Seq[String], database: Option[String]) extends Inbound
 	case class VerifyOutbound(success: Boolean, message: Option[String] = None, result: Option[Seq[VerifyResult]] = None) extends Outbound
 	case class VerifyResult(success: Boolean, message: Option[String])
 
-	case class SchemaInbound(username: String, password: String, sql: String) extends Inbound
+	case class SchemaInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class SchemaOutbound(success: Boolean, schema: Option[String] = None, message: Option[String] = None) extends Outbound
 
-	case class TableResourceInbound(username: String, password: String, sql: String) extends Inbound
+	case class TableResourceInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class TableResourceOutbound(success: Boolean, tables: Option[Seq[String]] = None, functions: Option[Seq[String]] = None, message: Option[String] = None) extends Outbound
 
-	case class LineageInbound(username: String, password: String, sql: String) extends Outbound
+	case class LineageInbound(username: String, password: String, sql: String, database: Option[String]) extends Outbound
 	case class LineageOutbound(success: Boolean, lineage: Option[String] = None, message: Option[String] = None) extends Outbound
 
 	// management

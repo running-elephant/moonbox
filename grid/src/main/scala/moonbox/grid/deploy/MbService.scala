@@ -232,11 +232,11 @@ private[deploy] class MbService(
 		}
 	}
 
-	def verify(username: String, password: String, sqls: Seq[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
+	def verify(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
 		auditLogger.log(username, "verify", Map("sqls" -> sqls.mkString(";")))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[VerifyResponse](VerifyRequest(username, sqls))(SHORT_TIMEOUT) match {
+				askSync[VerifyResponse](VerifyRequest(username, sqls, database))(SHORT_TIMEOUT) match {
 					case Left(VerifyResponse(success, message, result)) =>
 						VerifyOutbound(success, message, result.map(_.map { case (s, m) => VerifyResult(s, m) }))
 					case Right(message) =>
@@ -262,11 +262,11 @@ private[deploy] class MbService(
 		}
 	}
 
-	def resources(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): TableResourceOutbound = {
+	def resources(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
 		auditLogger.log(username, "resources", Map("sql" -> sql))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[TableResourcesResponse](TableResourcesRequest(username, sql))(SHORT_TIMEOUT) match {
+				askSync[TableResourcesResponse](TableResourcesRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(TableResourcesSuccessed(tables, functions)) =>
 						TableResourceOutbound(success = true, tables = Some(tables), functions = Some(functions))
 					case Left(TableResourcesFailed(message)) =>
@@ -279,11 +279,11 @@ private[deploy] class MbService(
 		}
 	}
 
-	def schema(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): SchemaOutbound = {
+	def schema(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SchemaOutbound = {
 		auditLogger.log(username, "schema", Map("sql" -> sql))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[SchemaResponse](SchemaRequest(username, sql))(SHORT_TIMEOUT) match {
+				askSync[SchemaResponse](SchemaRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(SchemaSuccessed(schema)) =>
 						SchemaOutbound(success = true, schema = Some(schema))
 					case Left(SchemaFailed(message)) =>
@@ -296,11 +296,11 @@ private[deploy] class MbService(
 		}
 	}
 
-	def lineage(username: String, password: String, sql: String)(implicit connection: ConnectionInfo): LineageOutbound = {
+	def lineage(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
 		auditLogger.log(username, "lineage", Map("sql" -> sql))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[LineageResponse](LineageRequest(username, sql))(SHORT_TIMEOUT) match {
+				askSync[LineageResponse](LineageRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(LineageSuccessed(lineage)) =>
 						LineageOutbound(success = true, lineage = Some(lineage))
 					case Left(LineageFailed(message)) =>

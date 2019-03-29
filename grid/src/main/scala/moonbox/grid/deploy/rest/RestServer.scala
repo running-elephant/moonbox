@@ -111,7 +111,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[VerifyInbound]) { in =>
 							complete {
-								mbService.verify(in.username, in.password, in.sqls)
+								mbService.verify(in.username, in.password, in.sqls, in.database)
 							}
 						}
 					}
@@ -120,7 +120,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[TableResourceInbound]) { in =>
 							complete {
-								mbService.resources(in.username, in.password, in.sql)
+								mbService.resources(in.username, in.password, in.sql, in.database)
 							}
 						}
 					}
@@ -129,7 +129,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[SchemaInbound]) { in =>
 							complete {
-								mbService.schema(in.username, in.password, in.sql)
+								mbService.schema(in.username, in.password, in.sql, in.database)
 							}
 						}
 					}
@@ -138,7 +138,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[LineageInbound]) { in =>
 							complete {
-								mbService.lineage(in.username, in.password, in.sql)
+								mbService.lineage(in.username, in.password, in.sql, in.database)
 							}
 						}
 					}

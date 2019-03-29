@@ -44,6 +44,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 
 	private val mbParser = new MbParser()
 	implicit var userContext: UserContext = _
+	private var autoLoadDatabases: Boolean = _
 
 	val pushdown = sessionConfig.get(MbSession.PUSHDOWN).map(_.toBoolean).getOrElse(conf.get(MIXCAL_PUSHDOWN_ENABLE))
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE)
@@ -53,6 +54,8 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	val mixcal = new MixcalContext(conf)
 
 	def bindUser(username: String, initializedDatabase: Option[String] = None, autoLoadDatabases: Boolean = true): this.type = {
+
+		this.autoLoadDatabases = autoLoadDatabases
 		this.userContext = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
@@ -86,10 +89,8 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		mixcal.sparkSession.catalog.setCurrentDatabase(currentDb)
 
 		if (autoLoadDatabases) {
-			catalog.listDatabase(userContext.organizationId).map { catalogDatabase =>
-				if (!mixcal.sparkSession.sessionState.catalog.databaseExists(catalogDatabase.name)) {
-					mixcal.sqlToDF(s"create database if not exists ${catalogDatabase.name}")
-				}
+			catalog.listDatabase(userContext.organizationId).foreach { catalogDatabase =>
+				registerDatabase(catalogDatabase.name)
 			}
 		}
 		this
@@ -148,6 +149,12 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
 		if (columnPermission) {
 			ColumnSelectPrivilegeChecker.intercept(plan, this)
+		}
+	}
+
+	private def registerDatabase(db: String): Unit = {
+		if (!mixcal.sparkSession.sessionState.catalog.databaseExists(db)) {
+			mixcal.sqlToDF(s"create database if not exists ${db}")
 		}
 	}
 
@@ -318,6 +325,20 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 			}
 		}
 		traverseAll(plan)
+
+		if (!autoLoadDatabases) {
+			val catalogDatabases = catalog.listDatabase(userContext.organizationId).map(_.name)
+			(tables.map(_.database) ++ functions.map(_.name.database)).toSeq.distinct.foreach {
+				case Some(db) =>
+					if (catalogDatabases.contains(db)) {
+						registerDatabase(db)
+					} else {
+						throw new Exception(s"Database $db does not exist.")
+					}
+				case None =>
+				// do nothing
+			}
+		}
 
 		val needRegisterTables = tables.diff(logicalTables).filterNot { identifier =>
 			mixcal.sparkSession.sessionState.catalog.isTemporaryTable(identifier) ||

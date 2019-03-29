@@ -62,23 +62,23 @@ object Message {
 	case class SampleFailed(message: String) extends SampleResponse
 	case class SampleSuccessed(schema: String, data: Seq[Seq[Any]]) extends SampleResponse
 
-	case class VerifyRequest(username: String, sqls: Seq[String]) extends ServiceMessage
+	case class VerifyRequest(username: String, sqls: Seq[String], database: Option[String]) extends ServiceMessage
 	case class VerifyResponse(success: Boolean, message: Option[String] = None, result: Option[Seq[(Boolean, Option[String])]] = None) extends ServiceMessage
 
 	case class TranslateRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	case class TranslateResponse(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends ServiceMessage
 
-	case class TableResourcesRequest(username: String, sql: String) extends ServiceMessage
+	case class TableResourcesRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	sealed trait TableResourcesResponse extends ServiceMessage
 	case class TableResourcesFailed(message: String) extends TableResourcesResponse
 	case class TableResourcesSuccessed(tables: Seq[String], functions: Seq[String]) extends TableResourcesResponse
 
-	case class SchemaRequest(username: String, sql: String) extends ServiceMessage
+	case class SchemaRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	sealed trait SchemaResponse extends ServiceMessage
 	case class SchemaFailed(message: String) extends SchemaResponse
 	case class SchemaSuccessed(schema: String) extends SchemaResponse
 
-	case class LineageRequest(username: String, sql: String) extends ServiceMessage
+	case class LineageRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	sealed trait LineageResponse extends ServiceMessage
 	case class LineageFailed(message: String) extends LineageResponse
 	case class LineageSuccessed(lineage: String) extends LineageResponse

@@ -239,10 +239,10 @@ class Main(
 					requester ! SampleFailed(e.getMessage)
 			}
 
-		case verify @ VerifyRequest(username, sqls) =>
+		case verify @ VerifyRequest(username, sqls, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
 				servicer.verify(sqls)
 			}.onComplete {
 				case Success(response) =>
@@ -252,10 +252,10 @@ class Main(
 					requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 			}
 
-		case resource @ TableResourcesRequest(username, sql) =>
+		case resource @ TableResourcesRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
 				servicer.resources(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -265,10 +265,10 @@ class Main(
 					requester ! TableResourcesFailed(e.getMessage)
 			}
 
-		case schema @ SchemaRequest(username, sql) =>
+		case schema @ SchemaRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
 				servicer.schema(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -278,10 +278,10 @@ class Main(
 					requester ! SchemaFailed(e.getMessage)
 			}
 
-		case lineage @ LineageRequest(username, sql) =>
+		case lineage @ LineageRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, None, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
 				servicer.lineage(sql)
 			}.onComplete {
 				case Success(response) =>
