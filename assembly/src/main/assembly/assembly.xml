@@ -79,8 +79,8 @@
                 <exclude>io.netty:netty-buffer</exclude>
                 <exclude>org.apache.lucene:*</exclude>
                 <exclude>com.sun.jersey:*</exclude>
-                <exclude>edp.moonbox:moonbox-batchapp_2.11</exclude>
-                <exclude>edp.moonbox:moonbox-interactiveapp_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-spark-batch_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-spark-interactive_2.11</exclude>
             </excludes>
 
             <outputDirectory>libs</outputDirectory>
