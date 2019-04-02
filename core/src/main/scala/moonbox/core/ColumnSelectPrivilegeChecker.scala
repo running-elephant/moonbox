@@ -27,7 +27,7 @@ import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expressi
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
-import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, LogicalRelation}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -165,7 +165,12 @@ object TableInsertPrivilegeChecker {
 
 // TODO
 object ColumnSelectPrivilegeChecker {
-	def intercept(plan: LogicalPlan, mbSession: MbSession): Unit = {
+	def intercept(logicalPlan: LogicalPlan, mbSession: MbSession): Unit = {
+		val plan = logicalPlan match {
+			case InsertIntoDataSourceCommand(logicalRelation, query, _) => query
+			case _ => logicalPlan
+		}
+
 		val catalogSession = mbSession.userContext
 		val physicalColumns = new ArrayBuffer[AttributeSet]()
 		val availableColumns = collectRelationAndView(plan).flatMap { source =>
