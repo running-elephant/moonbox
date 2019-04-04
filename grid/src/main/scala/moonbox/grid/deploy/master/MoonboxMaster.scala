@@ -19,7 +19,7 @@ import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TransportServer
-import moonbox.grid.timer.{EventHandler, TimedEventService, TimedEventServiceImpl}
+import moonbox.grid.timer.{EventEntity, EventHandler, TimedEventService, TimedEventServiceImpl}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -392,7 +392,7 @@ class MoonboxMaster(
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
 				val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
 				val submitDate = new Date()
-				val driverId = newDriverId(submitDate)
+				val driverId = newDriverId(submitDate) + userConfig.getOrElse(EventEntity.NAME, "")
 				val driverDesc = if (lang == "hql") {
 					HiveBatchDriverDescription(driverId, username, sqls, config)
 				} else {

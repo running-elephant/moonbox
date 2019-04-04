@@ -25,6 +25,7 @@ import java.util.Date
 object EventEntity {
 	val HANDLER = "handler"
 	val DEFINER = "definer"
+	val NAME = "name"
 	val LANG = "lang"
 	val SQLS = "sqls"
 	val CONFIG = "config"
