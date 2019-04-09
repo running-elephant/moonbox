@@ -103,6 +103,7 @@ class Servicer(
 		val result = sqls.map { sql =>
 			try {
 				val analyzedPlan = mbSession.analyzedPlan(sql)
+				mbSession.mixcal.sparkSession.sessionState.analyzer.checkAnalysis(analyzedPlan)
 				mbSession.checkColumnPrivilege(analyzedPlan)
 				(true, None)
 			} catch {
@@ -128,8 +129,9 @@ class Servicer(
 
 	def schema(sql: String): SchemaResponse = {
 		try {
-			val schema = mbSession.analyzedPlan(sql).schema.json
-			SchemaSuccessed(schema)
+			val analyzed = mbSession.analyzedPlan(sql)
+			mbSession.mixcal.sparkSession.sessionState.analyzer.checkAnalysis(analyzed)
+			SchemaSuccessed(analyzed.schema.json)
 		} catch {
 			case e: Exception =>
 				SchemaFailed(e.getMessage)
