@@ -392,7 +392,7 @@ class MoonboxMaster(
 				logInfo("Batch job submitted: " + sqls.mkString("; "))
 				val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
 				val submitDate = new Date()
-				val driverId = newDriverId(submitDate) + userConfig.getOrElse(EventEntity.NAME, "")
+				val driverId = newDriverId(submitDate) + userConfig.get(EventEntity.NAME).map("-"+_).getOrElse("")
 				val driverDesc = if (lang == "hql") {
 					HiveBatchDriverDescription(driverId, username, sqls, config)
 				} else {
@@ -686,12 +686,14 @@ class MoonboxMaster(
 		}
 		val shuffledAliveWorkers = Random.shuffle(workers.toSeq.filter(_.state == WorkerState.ALIVE))
 		val numWorkerAlive = shuffledAliveWorkers.size
-		var curPos = 0
-		for (driver <- waitingDrivers.toList) {
-			val worker = shuffledAliveWorkers(curPos)
-			launchDriver(worker, driver)
-			waitingDrivers -= driver
-			curPos = (curPos + 1) % numWorkerAlive
+		if (numWorkerAlive > 0) {
+			var curPos = 0
+			for (driver <- waitingDrivers.toList) {
+				val worker = shuffledAliveWorkers(curPos)
+				launchDriver(worker, driver)
+				waitingDrivers -= driver
+				curPos = (curPos + 1) % numWorkerAlive
+			}
 		}
 	}
 
