@@ -86,6 +86,7 @@ case class UnmountDatabase(
 			throw new UnsupportedOperationException(s"Database $name is logical. Please use DROP DATABASE command.")
 		} else {
 			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade = false)
+			mbSession.mixcal.sparkSession.sessionState.catalog.dropDatabase(name, ignoreIfNotExists, cascade = true)
 		}
 		Seq.empty[Row]
 	}
