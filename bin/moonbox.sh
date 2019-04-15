@@ -19,7 +19,7 @@ apps-info)
     shift
     ;;
 shell)
-    CLASS="moonbox.repl.Main"
+    CLASS="moonbox.repl.MoonboxShell"
     shift
     ;;
 --help)

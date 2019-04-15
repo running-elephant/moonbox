@@ -5,5 +5,5 @@ if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
   . "${moonbox_home_dir}/conf/moonbox-env.sh"
 fi
 
-java -Dlog4j.configuration="file:$MOONBOX_HOME/conf/log4j.properties" -cp "$MOONBOX_HOME/libs/*"  moonbox.repl.Main "$@"
+java -cp "$MOONBOX_HOME/libs/*"  moonbox.repl.MoonboxShell "$@"
 
