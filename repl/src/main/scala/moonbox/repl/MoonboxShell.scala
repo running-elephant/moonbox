@@ -37,7 +37,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.io.AnsiColor
 import scala.language.implicitConversions
 
-object Main {
+object MoonboxShell {
 
   private var timeout: Int = 60 * 60 // unit: second
   private var islocal: Boolean = _
