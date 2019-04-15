@@ -91,12 +91,16 @@
         </dependencySet>
         <dependencySet>
             <includes>
+                <!-- moonbox core -->
+                <include>edp.moonbox:moonbox-core_2.11</include>
                 <!-- mysql -->
                 <include>mysql:mysql-connector-java</include>
                 <!-- oracle -->
                 <include>com.oracle:ojdbc6</include>
-                <!--kudu-->
+                <!-- kudu -->
                 <include>org.apache.kudu:kudu-spark2_2.11</include>
+                <include>edp.moonbox:moonbox-kudu-adapter</include>
+
                 <!-- sqlserver -->
                 <include>com.microsoft.sqlserver:sqljdbc4</include>
 
