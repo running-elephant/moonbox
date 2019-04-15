@@ -155,7 +155,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					}
 				} ~
 				path("progress") {
-					get {
+					post {
 						entity(as[BatchQueryProgressInbound]) { in =>
 							complete {
 								mbService.batchQueryProgress(in.username, in.password, in.jobId)
