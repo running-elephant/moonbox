@@ -32,4 +32,5 @@ check_illegal.py
 dev/deploy.sh
 bin/moonbox-submit.sh
 bin/moonbox.sh
+strategy
 
