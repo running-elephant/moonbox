@@ -303,6 +303,8 @@ case class UnmountTable(
 			throw new UnsupportedOperationException("Can't unmount table in physical database.")
 		}
 		mbSession.catalog.dropTable(databaseId, ctx.organizationName, database, table.table, ignoreIfNotExists)
+		mbSession.mixcal.sparkSession.sessionState.catalog
+			.dropTable(TableIdentifier(table.table, Some(database)), ignoreIfNotExists = ignoreIfNotExists, purge = true)
 		Seq.empty[Row]
 	}
 }
