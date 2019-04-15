@@ -28,8 +28,10 @@ import org.apache.spark.sql.MixcalContext
 import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 
 
-class ResourceMonitor {
-	private val mixCalResourceMonitor = MixcalContext.getMixcalResourceMonitor
+class ResourceMonitor(sparkContext: SparkContext) {
+	val sparkListener = new SparkResourceListener(sparkContext.getConf)
+	sparkContext.addSparkListener(sparkListener)
+	private val mixCalResourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
 
     def workerTotalMemory: Long = {
         Runtime.getRuntime.totalMemory  // Worker JVM 可使用内存

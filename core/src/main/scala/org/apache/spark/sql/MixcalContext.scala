@@ -167,14 +167,9 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 
 object MixcalContext extends MbLogging {
 	private var sparkContext: SparkContext = _
-	private var resourceMonitor: SparkResourceMonitor = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
 		sparkContext
-	}
-
-	def getMixcalResourceMonitor: SparkResourceMonitor = {
-		resourceMonitor
 	}
 
 	def start(conf: MbConf): Unit = {
@@ -185,13 +180,10 @@ object MixcalContext extends MbLogging {
 				}.map{ case (key, value) => (key.stripPrefix("moonbox.mixcal."), value)})
 
 				sparkContext = SparkContext.getOrCreate(sparkConf)
-
-				val sparkListener = new SparkResourceListener(sparkContext.getConf)
-				sparkContext.addSparkListener(sparkListener)
-				resourceMonitor = new SparkResourceMonitor(sparkContext, sparkListener)
-				//val toUpperCased = conf.get(MIXCAL_SPARK_LOGLEVEL.key, MIXCAL_SPARK_LOGLEVEL.defaultValueString).toUpperCase(Locale.ROOT)
-				//val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
-				//org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
+				sparkConf.getOption("spark.loglevel").foreach(sparkContext.setLogLevel)
+				// val toUpperCased =
+				// val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
+				// org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
 				logInfo("New a sparkContext instance.")
 			} else {
 				logInfo("Using an exists sparkContext.")
