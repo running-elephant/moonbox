@@ -7,6 +7,16 @@ moonbox {
             password = "123456"
             driver = "com.mysql.jdbc.Driver"
         }
+        rest {
+            enable = true
+            port = 9099
+            request.timeout = "600s"
+            idle.timeout= "600s"
+        }
+        tcp {
+            enable = true
+            port = 10010
+        }
     }
     mixcal {
         pushdown.enable = true
