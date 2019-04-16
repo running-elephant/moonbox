@@ -134,6 +134,6 @@ object LaunchUtils extends MbLogging {
 	}
 
 	def getDriverClasspath(env: Map[String, String] = sys.env): String = {
-		getMoonboxLibs() + ":" + getSparkJars()
+		getMoonboxLibs() + ":" + getSparkJars() + ":" + getRuntimeJars()
 	}
 }
