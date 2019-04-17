@@ -41,8 +41,8 @@ object MoonboxShell {
 
   private var timeout: Int = 60 * 60 // unit: second
   private var islocal: Boolean = _
-  private var host: String = "localhost"
-  private var port: Int = 10010
+  private var host: String  = sys.env.getOrElse("MOONBOX_MASTER_HOST", "localhost")
+  private var port: Int = Utils.getJdbcDefaultPort()
   private var user: String = _
   private var password: String = _
   private var fetchSize: Int = 1000
