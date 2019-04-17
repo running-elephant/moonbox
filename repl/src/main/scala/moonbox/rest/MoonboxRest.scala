@@ -47,7 +47,7 @@ object MoonboxRest {
 		new JSONObject(response).getString("jobId")
 	}
 
-	private def progress(url: String, jobId: String): String = {
+	private def progress(url: String, jobId: String): (String, String) = {
 		val jsonObject = new JSONObject()
 			.put("username", user)
 			.put("password", password)
@@ -55,17 +55,19 @@ object MoonboxRest {
 
 		println(jsonObject.toString())
 		val response = HttpClient.doPost(url, jsonObject.toString, Charsets.UTF_8.name())
-		new JSONObject(response).getString("state")
+		val responseObject = new JSONObject(response)
+		(responseObject.getString("state"), responseObject.getString("message"))
 	}
 
 	private def loopProgress(url: String, jobId: String, interval: Long): Unit = {
 		val SUCCESS = "FINISHED"
 		val FAILED = Seq("UNKNOWN", "KILLED", "FAILED", "ERROR")
 		while (true) {
-			val state = progress(url, jobId)
+			val (state, message) = progress(url, jobId)
 			if (state == SUCCESS) {
 				System.exit(0)
 			} else if (FAILED.contains(state)) {
+				System.out.println("error message: " + message)
 				System.exit(-1)
 			} else {
 				Thread.sleep(interval)
