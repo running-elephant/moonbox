@@ -42,6 +42,11 @@
             <artifactId>httpclient</artifactId>
             <version>4.5.2</version>
         </dependency>
+        <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>

@@ -48,4 +48,17 @@ object HttpClient {
 		}
 	}
 
+	def doGet(url: String, charset: String): String = {
+		val client: CloseableHttpClient = HttpClientBuilder.create().build()
+		try {
+			val get: HttpGet = new HttpGet(url)
+			val response = client.execute(get)
+			EntityUtils.toString(response.getEntity, charset)
+		} finally {
+			if (client != null) {
+				client.close()
+			}
+		}
+	}
+
 }

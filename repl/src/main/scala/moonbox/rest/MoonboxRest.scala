@@ -78,6 +78,7 @@ object MoonboxRest {
 	private def readSqls(): Seq[String] = {
 		val source = Source.fromFile(path)
 		val sqls = source.getLines().mkString(" ").split(";").filterNot(s => s == "" || s == null)
+		println(sqls)
 		source.close()
 		sqls
 	}
