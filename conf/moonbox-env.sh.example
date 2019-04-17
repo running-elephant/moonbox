@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+export JAVA_HOME=path/to/installed/dir
 export SPARK_HOME=path/to/installed/dir
 export YARN_CONF_DIR=path/to/yarn/conf/dir
 export MOONBOX_SSH_OPTS="-p 22"
