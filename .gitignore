@@ -30,7 +30,5 @@ check_illegal.py
 **/dependency-reduced-pom.xml
 **/generate
 dev/deploy.sh
-bin/moonbox-submit.sh
-bin/moonbox.sh
 strategy
 
