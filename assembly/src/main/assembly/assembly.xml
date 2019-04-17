@@ -87,10 +87,6 @@
                 <include>edp.moonbox:moonbox-catalyst_2.11</include>
                 <include>edp.moonbox:moonbox-core_2.11</include>
                 <include>edp.moonbox:moonbox-*-adapter</include>
-
-                <include>mysql:mysql-connector-java</include>
-                <include>com.oracle:ojdbc6</include>
-                <include>com.microsoft.sqlserver:sqljdbc4</include>
             </includes>
             <outputDirectory>runtime</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
