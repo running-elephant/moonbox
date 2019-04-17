@@ -8,7 +8,7 @@
     <artifactId>moonbox-parent_2.11</artifactId>
     <packaging>pom</packaging>
     <name>Moonbox Project Parent POM</name>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.3.0-beta</version>
 
     <licenses>
         <license>
