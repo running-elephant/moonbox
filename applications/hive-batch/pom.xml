@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <name>Moonbox Project Hive Batch Application</name>
-    <artifactId>moonbox-hivenative_2.11</artifactId>
+    <artifactId>moonbox-hive-batch_2.11</artifactId>
 
     <dependencies>
         <dependency>
