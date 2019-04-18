@@ -28,6 +28,7 @@ import java.util.{Calendar, GregorianCalendar, Locale}
 
 import moonbox.client.entity.MoonboxRowSet
 import moonbox.protocol.util.SchemaUtil
+
 class MoonboxResultSet(conn: MoonboxConnection,
                        stat: MoonboxStatement,
                        moonboxRowSet: MoonboxRowSet

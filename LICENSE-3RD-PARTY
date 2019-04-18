@@ -4,6 +4,7 @@ List of third-party dependencies grouped by their license type.
     Apache 2.0:
 
         * config (com.typesafe:config:1.3.1 - https://github.com/typesafehub/config)
+        * Commons IO (commons-io:commons-io:2.4 - http://commons.apache.org/io/)
         * Apache Log4j (log4j:log4j:1.2.17 - http://logging.apache.org/log4j/1.2/)
         * scalactic (org.scalactic:scalactic_2.11:3.0.0 - http://www.scalatest.org)
         * scalatest (org.scalatest:scalatest_2.11:3.0.0 - http://www.scalatest.org)
