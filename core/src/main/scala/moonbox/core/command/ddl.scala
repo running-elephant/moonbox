@@ -85,8 +85,8 @@ case class UnmountDatabase(
 		if (existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Database $name is logical. Please use DROP DATABASE command.")
 		} else {
-			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade = false)
-			mbSession.mixcal.sparkSession.sessionState.catalog.dropDatabase(name, ignoreIfNotExists, cascade = true)
+			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade = true)
+			mbSession.mixcal.sparkSession.sessionState.catalog.dropDatabase(name, ignoreIfNotExists = true, cascade = true)
 		}
 		Seq.empty[Row]
 	}
@@ -305,7 +305,7 @@ case class UnmountTable(
 		}
 		mbSession.catalog.dropTable(databaseId, ctx.organizationName, database, table.table, ignoreIfNotExists)
 		mbSession.mixcal.sparkSession.sessionState.catalog
-			.dropTable(TableIdentifier(table.table, Some(database)), ignoreIfNotExists = ignoreIfNotExists, purge = true)
+			.dropTable(TableIdentifier(table.table, Some(database)), ignoreIfNotExists = true, purge = true)
 		Seq.empty[Row]
 	}
 }
