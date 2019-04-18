@@ -21,13 +21,13 @@
         <!-- Force import of Spark's servlet API for unit tests -->
 
         <!-- Mark Spark / Scala as provided -->
-        <dependency>
+        <!--<dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
-            <!--Notice: if provided, shade do not have it in package finally-->
-            <!--<scope>provided</scope>-->
-        </dependency>
+            &lt;!&ndash;Notice: if provided, shade do not have it in package finally&ndash;&gt;
+            &lt;!&ndash;<scope>provided</scope>&ndash;&gt;
+        </dependency>-->
         <!-- we exclude jsr305 below and then expressly relist it as
              provided / optional to avoid dependency resolution possibly
              bringing it back into runtime scope.
@@ -202,11 +202,11 @@
                 <configuration>
                     <shadedArtifactAttached>false</shadedArtifactAttached>
                     <!-- put your configurations here -->
-                    <!--<artifactSet>
+                    <artifactSet>
                         <excludes>
                             <exclude>org.apache.hadoop:*</exclude>
                         </excludes>
-                    </artifactSet>-->
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>
@@ -218,6 +218,7 @@
                             <artifactSet>
                                 <excludes>
                                     <exclude>org.scalatest:scalatest_2.11</exclude>
+                                    <exclude>org.scala-lang:*</exclude>
                                 </excludes>
                             </artifactSet>
 
@@ -236,6 +237,10 @@
                                 <relocation>
                                     <pattern>io.netty</pattern>
                                     <shadedPattern>hbase.io.netty</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.jboss.netty</pattern>
+                                    <shadedPattern>hbase.org.jboss.netty</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.google.protobuf</pattern>

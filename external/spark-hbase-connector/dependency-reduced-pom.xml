@@ -24,6 +24,7 @@
               <artifactSet>
                 <excludes>
                   <exclude>org.scalatest:scalatest_2.11</exclude>
+                  <exclude>org.scala-lang:*</exclude>
                 </excludes>
               </artifactSet>
               <filters>
@@ -42,6 +43,10 @@
                   <shadedPattern>hbase.io.netty</shadedPattern>
                 </relocation>
                 <relocation>
+                  <pattern>org.jboss.netty</pattern>
+                  <shadedPattern>hbase.org.jboss.netty</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>com.google.protobuf</pattern>
                   <shadedPattern>hbase.com.google.protobuf</shadedPattern>
                 </relocation>
@@ -54,6 +59,11 @@
         </executions>
         <configuration>
           <shadedArtifactAttached>false</shadedArtifactAttached>
+          <artifactSet>
+            <excludes>
+              <exclude>org.apache.hadoop:*</exclude>
+            </excludes>
+          </artifactSet>
         </configuration>
       </plugin>
     </plugins>
@@ -144,6 +154,10 @@
         <exclusion>
           <artifactId>commons-net</artifactId>
           <groupId>commons-net</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>scala-library</artifactId>
+          <groupId>org.scala-lang</groupId>
         </exclusion>
         <exclusion>
           <artifactId>json4s-jackson_2.11</artifactId>
@@ -289,6 +303,10 @@
       <scope>provided</scope>
       <exclusions>
         <exclusion>
+          <artifactId>scala-library</artifactId>
+          <groupId>org.scala-lang</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>spark-tags_2.11</artifactId>
           <groupId>org.apache.spark</groupId>
         </exclusion>
@@ -425,6 +443,10 @@
         <exclusion>
           <artifactId>scala-parser-combinators_2.11</artifactId>
           <groupId>org.scala-lang.modules</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>scala-library</artifactId>
+          <groupId>org.scala-lang</groupId>
         </exclusion>
       </exclusions>
     </dependency>
