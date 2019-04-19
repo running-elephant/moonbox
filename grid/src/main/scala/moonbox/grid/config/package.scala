@@ -117,13 +117,13 @@ package object config {
 		.createWithDefault(9090)
 	val REST_SERVER_REQUEST_TIME = ConfigBuilder("moonbox.deploy.rest.request-timeout")
 	    .timeConf
-		.createWithDefaultString("1800s")
+		.createWithDefaultString("60s")
 	val REST_SERVER_IDLE_TIMEOUT = ConfigBuilder("moonbox.deploy.rest.idle-timeout")
 	    .timeConf
-	    .createWithDefaultString("1800s")
+	    .createWithDefaultString("60s")
 	val REST_CLIENT_IDLE_TIME = ConfigBuilder("moonbox.deploy.rest.client.idle-timeout")
 	    .timeConf
-	    .createWithDefaultString("1800s")
+	    .createWithDefaultString("60s")
 
 	val TCP_SERVER_ENABLE = ConfigBuilder("moonbox.deploy.tcp.enable")
 	    .booleanConf
@@ -203,7 +203,7 @@ package object config {
 
 	val WORKER_TIMEOUT = ConfigBuilder("moonbox.worker.timeout")
 	    .timeConf
-	    .createWithDefaultString("30m")
+	    .createWithDefaultString("5m")
 
 	val WORKER_STATEREPORT_INTERVAL = ConfigBuilder("moonbox.worker.stateReport.interval")
 	    .timeConf
