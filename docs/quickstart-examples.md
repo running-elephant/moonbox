@@ -1,8 +1,10 @@
 #### 系统初始化
 step 1: 使用ROOT账号登录
 ```
-bin/cli.sh -h master -P port -u ROOT -p 123456 [-r local]
+bin/cli.sh -u ROOT -p 123456 -r local
 ```
+其中, -r local为可选, 表示是否连接到Spark Local的app上。如果不加则连接到 Spark Yarn的pp上。
+
 step 2: 创建organization
 ```
 create org org_test;
@@ -21,7 +23,7 @@ exit
 #### 用户使用
 - 使用sally登录
 ```
-bin/cli.sh -h master -P port -u sally -p 123456
+bin/cli.sh -u sally -p 123456
 ```
 - 挂载数据源
 ```
@@ -89,4 +91,6 @@ show create table view_name
 ```
 desc view_name
 ```
+
+目前,我们仅仅只挂载了一个数据源进行简单查询, 跨数据源混合计算以及更多其他操作请参阅User Guide章节。
 

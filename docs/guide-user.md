@@ -3,212 +3,57 @@ layout: global
 title: User Guide
 ---
 
-### Quick Start
-Moonbox服务启动之后,系统管理人员使用ROOT用户连接Moonbox,输入SQL语句,以分号结束。
-```
-cd $MOONBOX_HOME/bin
-./cli.sh -m rest -u ROOT -p 123456 -h localhost -P 18090
-```
-其中:
-- -m 连接Moonbox的方式, 选项为rest和jdbc
-- -u 用户名
-- -p 密码,ROOT初始密码为123456
-- -h Moonbox rest server服务地址
-- -P Moonbox rest server 服务端口
+### 用户接口
 
-创建Organization,假设名为testOrg
-```
-CREATE ORG/ORGANIZATION testOrg;
-```
-在该Organization中创建Sa,假设名为sally
-```
-CREATE SA sally IN ORG testOrg IDENTIFIED BY 123456;
-```
-至此,用户空间已经创建完毕,更多命令请参考Indexing部分。
-
-应用管理人员使用Sa用户登录
-```
-cd $MOONBOX_HOME/bin
-./cli.sh -m rest -u sally -p 123456 -h localhost -P 18090
-```
-当Sa初始登录之后,Sa所属的Organization中只有一个默认的名为default的数据库,可以在该数据库下挂载虚拟表。例如挂载MySQL类型数据库test中的booklist表。
-```
-MOUNT TABLE mysql_test OPTIONS(
-    type 'mysql',
-    url 'jdbc:mysql://localhost:3306/test',
-    user 'root',
-    password 'password',
-    driver 'com.mysql.jdbc.Driver',
-    dbtable 'booklist'
-);
-```
-当执行挂载表指令的时候,系统会检查连接参数的正确性,所以要确保参数正确。需要注意,在发行包中并没有包含MySQL的jdbc驱动,所以需要自行将对应的驱动包拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中。
-
-列出所有表
-```
-SHOW TABLES;
-```
-查看表详情
-```
-DESCRIBE TABLE mysql_test;
-```
-对表内容做查询
-```
-CREATE TEMP VIEW mysql_test_view AS SELECT * FROM mysql_test WHERE id < 100;
-SELECT * FROM mysql_test_view;
-SELECT count(*) FROM mysql_test_view;
-```
-Sa还可以创建新用户
-```
-    CREATE USER username IDENTIFIED BY password; # 创建用户
-    GRANT ACCOUNT, DDL, DCL TO USER username; # 给用户授权, ACCOUNT、DDL、DCL按需选择
-```
-如果不给新创建的用户进行授权,那么该用户就只有DML权限,即只能执行SELECT, SHOW ,DESCRIBE等操作。
-至此,Sa即可将新创建的账号分配给用户使用了。以上只是一个简短快速的体验,更多内容请阅读接下来的部分。
-
-### 客户端使用
-
-Moonbox内置http server和tcp server,支持通过rest和jdbc方式接入。
+Moonbox内置http server和tcp server,支持通过rest api、shell以及jdbc编程方式接入。其中:
+- rest api
+    用于异步提交batch批量作业、查询作业执行状态、取消作业
+- shell
+    用于进行adhoc交互式查询
+- jdbc
+    用于程序连接进行查询,因此可与zeppelin和davinci对接
 
 #### 使用命令行
 ```
 cd $MOONBOX_HOME/bin
-./cli.sh -m rest -u username -p password -h localhost -P 18090
+./moonbox-shell -u username -p password [-h localhost -P 18090 -r local]
 ```
 其中:
 
-- -m 连接Moonbox的方式, 选项为rest和jdbc
-- -u 用户名
-- -p 密码,ROOT初始密码为123456
-- -h Moonbox rest server服务地址
-- -P Moonbox rest server 服务端口
+- -u 必填, 用户名
+- -p 必填, 密码
+- -h MoonboxMaster地址, 如客户端机器属于集群, 则不用填写
+- -P Moonbox Tcp Server 服务端口, 如客户端机器属于集群, 则不用填写
+- -r 可选, 如值为local则表示连接Spark Local APP
 
-#### 使用rest
-rest方式支持batch和adhoc两种方式。batch是两批作业之间无上下文关联,可能对调度到不同的机器上的runner执行,adhoc是上下文相关的,有session的概念,会调度到同一个runner中执行。其中batch又分为异步和同步模式,adhoc只支持同步。
+#### 使用rest api
 
-##### 系统登录
+提交批量作业
 ```
-# request 示例
-curl -XPOST http://host:port/login -d '{
-    "username": "sally",
-    "password": "123456"
+curl -XPOST http://host:port/batch/submit -d '{
+    "username" : "",
+    "password" : "",
+    "config" : {},
+    "sqls" : ["use default", "insert into ..."]
 }'
-# response 示例,该token内容作为该用户今后登录凭证
-{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjVhMjNiMDczLWE4NzctNGRmZC1hYjkyLWY2ZGI0YjNmNzVlYyJ9._jIe1cgbc9d9JMW6g6D6KA"
-}
-```
-##### 查询提交
-adhoc方式
-```
-# 开启session,request示例
-curl -XPOST http://host:port/openSession -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjVhMjNiMDczLWE4NzctNGRmZC1hYjkyLWY2ZGI0YjNmNzVlYyJ9._jIe1cgbc9d9JMW6g6D6KA"
-}'
-# 开启session,response示例,该sessionId用于session标识
-{
-  "sessionId" : "3ddec591-16db-4a7c-93a7-c6df54763ad0"
-}
-
-# 提交查询,request示例
-curl -XPOST http://host:port/query -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "sessionId" : "3ddec591-16db-4a7c-93a7-c6df54763ad0",
-    "sqls":["use default", "show tables"]
-}'
-# 提交查询,response示例
-{
-"jobId" : "job-20180730150004-00001",
-"data" : [["mysql_test"], ["oracle_test"]]
-}
-
-# 关闭session,request示例
-curl -XPOST http://host:port/closeSession -d '{
-{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "sessionId" : "3ddec591-16db-4a7c-93a7-c6df54763ad0",
-}'
-# 关闭session,response示例
-{}
 ```
 
-batch同步方式
+查询作业状态
 ```
-# 同步提交查询,request示例
-curl -XPOST http://host:port/submit -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "mode" : "sync",
-    "sqls":["use default", "show tables"]
+curl -XPOST http://host:port/batch/progress -d '{
+    "username" : "",
+    "password" : "",
+    "jobId" : ""
 }'
-# 同步提交查询,response示例
-{
-"jobId" : "job-20180730150004-00001",
-"data" : [["mysql_test"], ["oracle_test"]]
-}
-```
-batch异步方式
-
-异步提交作业,会将select类型作业结果保存到缓存,等待用户查询结果。对于insert类型作业会将结果保存到对应的外部存储。所以使用异步方式提交查询时,请注意create、alter、drop、show或者desc等指令,结果会丢失,因为这类指令的返回结果为direct类型,不会存储到缓存。
-```
-# 异步提交查询,request示例
-curl -XPOST http://host:port/submit -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "mode" : "async",
-    "sqls":["use default", "select * from mysql_test"]
-}'
-# 异步提交查询,response示例
-{
-  "jobId" : "job-20180730192553-00000"
-}
-
-# 查询异步作业状态, request示例
-curl -XPOST http://host:port/progress -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "jobId" : "job-20180730192553-00000"
-}'
-# 查询异步作业状态,response示例
-{
-    "jobId" : "job-20180730192553-00000",
-    "status" : "SUCCESS"
-}
-
-# 获取异步作业结果,request示例
-curl -XPOST http://host:port/result -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "jobId" : "job-20180730192553-00000",
-    "offset" : 0,
-    "size" : 2
-}'
-# 获取异步作业结果,response示例
-{
-  "jobId" : "job-20180730192553-00000",
-  "schema" : "{\"type\":\"struct\",\"fields\":[{\"name\":\"id\",\"type\":\"long\",\"nullable\":true,\"metadata\":{\"name\":\"id\",\"scale\":0}},{\"name\":\"bname\",\"type\":\"string\",\"nullable\":true,\"metadata\":{\"name\":\"bname\",\"scale\":0}},{\"name\":\"male\",\"type\":\"boolean\",\"nullable\":true,\"metadata\":{\"name\":\"male\",\"scale\":0}},{\"name\":\"outer_key\",\"type\":\"long\",\"nullable\":true,\"metadata\":{\"name\":\"outer_key\",\"scale\":0}},{\"name\":\"china_key\",\"type\":\"string\",\"nullable\":true,\"metadata\":{\"name\":\"china_key\",\"scale\":0}},{\"name\":\"china_name\",\"type\":\"string\",\"nullable\":true,\"metadata\":{\"name\":\"china_name\",\"scale\":0}}]}",
-  "data" : [ [ 1, "name1", false, 1, "xx科技", "刘明" ], [ 8, "bbbb", true, 2, "xx科技", "李军" ]]
-}
-
-# 取消正在运行的作业, request示例
-curl -XPOST http://host:port/cancel -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
-    "jobId" : "job-20180730192553-00000"
-}'
-
-# 取消正在运行的作业, response示例
-{
-    "jobId" : "job-20180730203509-00010"
-}
 ```
 
-##### 系统登出
-
+取消作业状态
 ```
-# 系统登出,request示例
-curl -XPOST http://host:port/logout -d '{
-    "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJITUQ1In0.eyJ1c2VybmFtZSI6InNhbGx5Iiwic2VlZCI6IjI1MzYyNmU0LWNkMzMtNDc1ZC04NTFhLWEzYTMzZTY1NGVhMSJ9.L6t_WRLTuyXuub_i46ZAhA",
+curl -XPOST http://host:port/batch/cancel -d '{
+    "username" : "",
+    "password" : "",
+    "jobId" : ""
 }'
-# 系统登出,response示例
-{
-    "message" : "Logout successfully."
-}
 ```
 
 #### 使用jdbc编程
@@ -228,10 +73,10 @@ while (rs.next) {
 }
 ```
 
-### 使用命令
+### 命令介绍
 
 #### ROOT用户
-ROOT用户作为系统管理员,推荐仅用作创建管理Organization和Sa。ROOT可以执行的指令有:
+ROOT用户作为系统管理员,推荐仅用作创建管理Organization和Sa(管理员)。ROOT可以执行的指令有:
 ```
 # 修改自己的用户名
 ALTER USER root IDENTIFIED BY newPassword
@@ -268,23 +113,99 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
 - DML
 
     默认所有的用户都拥有DML权限,可以执行SHOW、DESC、SELECT、INSERT类指令。
+    列出用户
+    ```
+    SHOW USERS
+    SHOW USERS like '%'
+    ```
+
+    列出数据库
     ```
     SHOW DATABASES
+    SHOW DATABASES like '%'
+    ```
+
+    列出表
+    ```
     SHOW TABLES
-    SHOW USERS
+    SHOW TABLES IN db
+    SHOW TABLES IN db like '%'
+    ```
+
+    列出函数
+    ```
     SHOW FUNTIONS
-    SHOW PROCEDURES
+    SHOW SYSTEM FUNCTIONS like '%'
+    SHOW USER FUNCTIONS like '%'
+    ```
+
+    列出过程
+    ```
+    SHOW PROCS
+    SHOW PROCS like '%'
+    ```
+
+    列出定时任务
+    ```
     SHOW EVENTS
+    SHOW EVENTS like '%'
+    ```
+
+    展示表的创建方式
+    ```
+    SHOW CREATE TABLE tbname
+    ```
+
+    描述SQL语句结果的schema
+    ```
+    SHOW SCHEMA FOR SELECT ...
+    ```
+
+    描述数据库信息
+    ```
     DESC DATABASE dbname
+    ```
+
+    描述表结构
+    ```
     DESC TABLE tbname
+    ```
+
+    描述用户信息
+    ```
     DESC USER username
+    ```
+
+    描述函数信息
+    ```
     DESC FUNTION funcname
+    ```
+
+    描述定时任务信息
+    ```
     DESC EVENT eventname
+    ```
+
+    切换数据库
+    ```
     USER dbname
+    ```
+
+    查询返回结果
+    ```
     SELECT ...
+    ```
+
+    创建视图
+    ```
     CREATE TEMP VIEW viewname AS SELECT ...
+    ```
+
+    查询将结果写入到存储
+    ```
     INSERT INTO/OVERWRITE tbname AS SELECT ...
     ```
+
 - Account
 
     拥有Account权限的用户,可以执行账号相关指令。
@@ -322,7 +243,7 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     ```
     创建、修改、删除procedure,procedure为一系列SQL的封装,主要用于定时任务。
     ```
-    CREATE PROC procname AS (USE default; INSERT INTO oracle_external AS SELECT * FROM mysql_test)
+    CREATE PROC procname USING MQL AS (USE default; INSERT INTO oracle_external AS SELECT * FROM mysql_test)
     RENAME PROC procname TO newname
     ALTER PROC procname RENAME TO newname
     ALTER PROC procname AS (USE default; INSERT INTO oracle_external AS SELECT * FROM mysql_test LIMIT 100)
@@ -394,5 +315,4 @@ REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER username
     GRANT DCL TO USER username
     REVOKE DCL FROM USER username
     ```
-
-以上属性看起来很复杂,可以把ACCOUNT、DDL、DCL理解为一阶权力,GrantAccount、GrantDDL、GrantDCL为二阶权力,二阶权力掌管一阶权力的授予和撤销。SA掌管二阶权力的授予和撤销。理论上通过属性的自由组合可以根据需求构建出"集权"和"三权分立"的用户体系。
+    以上属性看起来很复杂,可以把ACCOUNT、DDL、DCL理解为一阶权力,GrantAccount、GrantDDL、GrantDCL为二阶权力,二阶权力掌管一阶权力的授予和撤销。SA掌管二阶权力的授予和撤销。理论上通过属性的自由组合可以根据需求构建出"集权"和"三权分立"的用户体系。

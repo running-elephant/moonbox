@@ -4,7 +4,7 @@ title: Command Indexing
 ---
 
 #### 符号说明
-- [|]
+- [ | ]
 
     选择其一
 - ?
@@ -93,7 +93,7 @@ CREATE FUNCTION (IF NOT EXISTS)? funcIdentifier AS
 
 DROP FUNCTION (IF EXISTS)? funcIdentifier
 
-CREATE [PROC | PROCEDURE] (IF NOT EXISTS)? identifier AS cmd*
+CREATE [PROC | PROCEDURE] (IF NOT EXISTS)? identifier USING MQL AS cmd*
 RENAME [PROC | PROCEDURE] identifier TO identifier
 ALTER [PROC | PROCEDURE] identifier RENAME TO identifier
 ALTER [PROC | PROCEDURE] identifier AS cmd*
@@ -114,26 +114,23 @@ DROP EVENT (IF EXISTS)? identifier
 
 
 USE identifier -- USE DATABASE
-SHOW SYSINFO
-SHOW JOBS
-SHOW RUNNING EVENTS
 SHOW EVENTS (LIKE STRING)?
 SHOW DATABASES (LIKE STRING)?
 SHOW TABLES ([FROM | IN] identifier)? (LIKE STRING)?
 SHOW VIEWS ([FROM | IN] identifier)? (LIKE STRING)?
-SHOW FUNCTIONS ([FROM | IN] identifier)? (LIKE STRING)?
+SHOW (SYSTEM | USER)? FUNCTIONS ([FROM | IN] identifier)? (LIKE STRING)?
 SHOW USERS (LIKE STRING)?
-SHOW GROUPS (LIKE STRING)?
 SHOW PROCEDURES (LIKE STRING)?
 SHOW VARIABLES (LIKE STRING)?
 SHOW GRANTS FOR identifier
+SHOW CREATE TABLE FOR identifier
+SHOW SCHEMA FORM SELECT ...
 
-[DESC | DESCRIBE] EVENT identifier
 [DESC | DESCRIBE] DATABASE identifier
 [DESC | DESCRIBE] TABLE? EXTENDED? tableIdentifier
 [DESC | DESCRIBE] FUNCTION EXTENDED? funcIdentifier
+[DESC | DESCRIBE] EVENT identifier
 [DESC | DESCRIBE] USER identifier
-[DESC | DESCRIBE] GROUP identifier
 
 EXPLAIN EXTENDED? PLAN? query
 SET identifier [= | ==]? .*?

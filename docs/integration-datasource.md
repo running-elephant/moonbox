@@ -5,7 +5,7 @@ title: Integration DataSource
 
 Moonbox支持多种数据源,以下为挂载各种类型的数据源的示例。
 
-#### 在TYPE 1类型数据库中挂载虚拟表
+#### 在TYPE 1类型数据库中挂载虚拟表。
 
 - MySQL
 
@@ -20,7 +20,7 @@ mount table mysql_test_table options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
-2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
 
 - MyCat
 
@@ -35,7 +35,7 @@ mount table mycat_test_table options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
-2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
    
 - SqlServer
 
@@ -50,7 +50,7 @@ mount table sqlserver_test_booklist options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Psqlserver选项增加SqlServer支持<br/>
-2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/runtime中
 
 - Oracle
 
@@ -65,7 +65,7 @@ mount table oracle_test_booklist options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Poracle选项增加Oracle支持<br/>
-2 需要将Oracle驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将Oracle驱动拷贝到$MOONBOX_HOME/runtime中
 
 - Mongo
 
@@ -78,7 +78,7 @@ mount table mongo_test_booklist options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmongo选项增加Mongo支持<br/>
-2 参考MongoDB Spark Connector配置
+2 更多配置参考MongoDB Spark Connector配置
 
 - Elasticsearch
 
@@ -94,6 +94,7 @@ mount table test_es5_100 options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pes选项增加Elasticsearch支持
+2 仅测试过5.3版本, 其他版本可能会有问题。
 
 - Presto
 
@@ -107,7 +108,6 @@ mount table presto_test_booklist options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Ppresto选项增加Presto支持<br/>
-2 需要将Presto驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
 - Kudu
 
@@ -147,6 +147,22 @@ mount table cass_test_booklist options(
 Note: <br/>
 1 如果自己编译源码需要添加-Pcassandra选项增加Cassandra支持
 
+- Hive
+
+```
+mount table hive_test_booklist options(
+    type 'hive',                                        # 类型，必填，为hive
+    metastore.url 'jdbc:mysql://host:3306/database',    # metastore的url地址，必填
+    metastore.driver 'com.mysql.jdbc.Driver',           # metastore driver，必填
+    hivedb 'default',                                   # hive的database名，必填
+    hivetable 'table_name'                              # hive的表名, 必填
+    metastore.user 'root',                              # metastore 用户名，必填
+    metastore.password 'pwd'                            # metastore 密码，必填
+);
+```
+Note: <br/>
+1 如果Hive元数据使用MySQL存储,需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
+
 
 #### 挂载TYPE 2类型数据库
 
@@ -162,7 +178,7 @@ mount database mysql_test_test options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
-2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
 
 - MyCat
 
@@ -176,7 +192,7 @@ mount database mycat_test_testdb options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmysql选项增加MySQL支持<br/>
-2 需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
 
 - SqlServer
 
@@ -190,7 +206,7 @@ mount table sqlserver_test_booklist options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Psqlserver选项增加SqlServer支持<br/>
-2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将SqlServer驱动拷贝到$MOONBOX_HOME/runtime中
 
 - Oracle
 
@@ -204,7 +220,7 @@ mount database oracle_test_orcl options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Poracle选项增加Oracle支持<br/>
-2 需要将Oracle驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+2 需要将Oracle驱动拷贝到$MOONBOX_HOME/runtime中
 
 - Cassandra
 
@@ -230,6 +246,7 @@ mount database es5_test_default options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pes选项增加Elasticsearch支持
+2 仅测试过5.3版本, 其他版本可能会有问题。
 
 - Kudu
 
@@ -255,7 +272,7 @@ mount database hive_test_default options(
 );
 ```
 Note: <br/>
-1 如果Hive元数据使用MySQL存储,需要将MySQL驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
+1 如果Hive元数据使用MySQL存储,需要将MySQL驱动拷贝到$MOONBOX_HOME/runtime中
 
 - Presto
 
@@ -268,7 +285,6 @@ mount database presto_test_test options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Ppresto选项增加Presto支持<br/>
-2 需要将Presto驱动拷贝到$MOONBOX_HOME/libs和$MOONBOX_HOME/runtime中
 
 - Mongo
 
@@ -281,11 +297,8 @@ mount database mongo_test_test options(
 ```
 Note: <br/>
 1 如果自己编译源码需要添加-Pmongo选项增加Mongo支持<br/>
-2 参考MongoDB Spark Connector配置
+2 更多配置请参考MongoDB Spark Connector配置
 
 #### Notices
 - For HBase:
     + Not support 'mount database'
-    + Not support 'describe table'
-- For Elasticsearch:
-    + ES6 support is inconclusive

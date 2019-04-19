@@ -1,12 +1,17 @@
 #### 环境准备
-- 确保Hadoop 服务已启动
-- 已安装Apache Spark 2.2.0 (其他版本暂不支持)
+
+- 已安装Apache Spark 2.2.0
 - 已安装MySQL并启动,且开启远程访问
 - 各安装节点已经配置ssh免密登录
+
 #### 下载
+[moonbox-0.3.0-beta下载](https://github.com/edp963/moonbox/releases/tag/0.3.0)
 
 #### 解压
-tar -zxvf moonbox-assembly_2.11-0.3.0-dist.tar.gz
+
+```
+tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
+```
 
 #### 修改配置文件
 配置文件位于conf目录下
@@ -30,6 +35,7 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-dist.tar.gz
     ```
     将会看到如下内容:
     ```
+    export JAVA_HOME=path/to/installed/dir
     export SPARK_HOME=path/to/installed/dir
     export YARN_CONF_DIR=path/to/yarn/conf/dir
     export MOONBOX_SSH_OPTS="-p 22"
@@ -127,7 +133,7 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-dist.tar.gz
     ```
 
 #### 分发安装包
-   将修改完配置文件之后的moonbox安装目录拷贝到所有安装节点, 确保位置与主节点位置一致。
+   将MySQL Jdbc驱动包放置到libs和runtime目录下, 然后将整个moonbox安装目录拷贝到所有安装节点, 确保位置与主节点位置一致。
 
 #### 启动集群
    在master节点执行
