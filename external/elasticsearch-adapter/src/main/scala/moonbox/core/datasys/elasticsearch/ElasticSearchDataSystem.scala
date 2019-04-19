@@ -200,8 +200,8 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
             true
         } catch {
             case e: Throwable =>
-				logWarning(s"test failed ${e.getMessage}")
-				logWarning(e.getStackTrace.mkString("\n"))
+				logError(s"test failed ${e.getMessage}")
+				e.printStackTrace()
                false
         } finally {
             if(executor != null) { executor.close() }
