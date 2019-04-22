@@ -10,7 +10,7 @@ title: Deploying
 - 各安装节点已经配置ssh免密登录
 
 #### 下载
-[moonbox-0.3.0-beta下载](https://github.com/edp963/moonbox/releases/tag/0.3.0)
+[moonbox-0.3.0-beta下载](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
 
 #### 解压
 
