@@ -19,7 +19,7 @@ Moonbox以master-slave集群模式工作, 集群中主要有三种进程,分别�
     真正进行任务处理的节点, 可以有各种不同的APP节点,例如Spark APP, Hive APP, 或者各种自定义的APP。
 
 <p style="text-align: center;">
-  <img src="img/guide-architecture1.jpg" title="Cluster Mode Overview" alt="Cluster Mode Overview" />
+  <img src="img/guide-architecture1.png" title="Cluster Mode Overview" alt="Cluster Mode Overview" />
 </p>
 
 下面详细介绍Spark APP的工作模式。每个Spark APP拥有一个常驻的SparkContext, 在APP节点启动的时候就进行了初始化。
@@ -28,7 +28,7 @@ Moonbox以master-slave集群模式工作, 集群中主要有三种进程,分别�
 MbSession是对SparkSession的封装, 额外添加了一些其他的功能, 例如用户体系, 元数据持久化, 权限体系,下推优化等。
 
 <p style="text-align: center;">
-  <img src="img/guide-architecture2.jpg" title="Spark APP" alt="Spark APP" />
+  <img src="img/guide-architecture2.png" title="Spark APP" alt="Spark APP" />
 </p>
 
 以APP为Spark APP为例, 当Client向Master发送连接请求时, Master会根据该Client请求的任务类型自动返回一个合适的APP服务地址给Client,将Client重定向连接到APP上。
