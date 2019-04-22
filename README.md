@@ -15,7 +15,7 @@ Please refer [WEBSITE](https://edp963.github.io/moonbox).
 
 Latest Release
 =============
-[LATEST RELEASE](https://github.com/edp963/moonbox/releases/tag/0.2.0)
+[LATEST RELEASE](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
 
 Get Help
 ============
