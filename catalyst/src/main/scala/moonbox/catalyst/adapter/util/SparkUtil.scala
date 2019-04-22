@@ -327,6 +327,7 @@ object SparkUtil {
                 //2015-01-01 , 2042/03/20, 2015-01-01T12:10:30Z, 2015/01/01 12:10:30
                 val onlyDateRegexa :Regex = "^(\\d+)-(\\d+)-(\\d+)$".r
                 val onlyDateRegexb: Regex = "^(\\d+)/(\\d+)/(\\d+)$".r
+				val timestampReg: Regex = "^\\d+$".r
                 val ns = if(onlyDateRegexa.pattern.matcher(s).matches()){
                      s + " 00:00:00" //onlyDateRegex.pattern.matcher(s).matches()
                 }else if(onlyDateRegexb.pattern.matcher(s).matches()){
@@ -334,7 +335,11 @@ object SparkUtil {
                 }
                 else s
                 //NOTICE: spark need the raw type(timestamp), not convert it to  => LONG
-                java.sql.Timestamp.valueOf(ns.replace("T", " ").replace("Z", " "))  //.getTime
+				if (timestampReg.pattern.matcher(s).matches()) {
+					new Timestamp(ns.toLong).getTime
+				} else {
+					java.sql.Timestamp.valueOf(ns.replace("T", " ").replace("Z", " "))  //.getTime
+				}
             case (s: String, DateType) =>
                 //NOTICE: spark need the raw type(date), not convert it to  => LONG
                 java.sql.Date.valueOf(s.replace("T", " ").replace("Z", " "))  //.getTime
