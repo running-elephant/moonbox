@@ -57,11 +57,21 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
     vim moonbox-defaults.conf
     ```
     将会看到以下内容,其中:
-    - catalog 配置元数据存储位置, 必须修改, 请根据实际情况修改
-    - rest 配置rest服务, 按需修改
-    - tcp 配置tcp(jdbc)服务, 按需修改
-    - local 配置Spark Local模式作业, 值为数组, 有多少个元素表示每个Worker节点启动多少个Spark Local模式作业。如不需要可删除。
-    - cluster 配置Spark yarn模式作业, 值为数组, 有多少个元素表示每个Worker节点启动多少个Spark Yarn模式作业。如不需要可删除。
+    - catalog
+
+      配置元数据存储位置, 必须修改, 请根据实际情况修改
+    - rest
+
+      配置rest服务, 按需修改
+    - tcp
+
+      配置tcp(jdbc)服务, 按需修改
+    - local
+
+      配置Spark Local模式作业, 值为数组, 有多少个元素表示每个Worker节点启动多少个Spark Local模式作业。如不需要可删除。
+    - cluster
+
+      配置Spark yarn模式作业, 值为数组, 有多少个元素表示每个Worker节点启动多少个Spark Yarn模式作业。如不需要可删除。
     ```
     moonbox {
         deploy {
