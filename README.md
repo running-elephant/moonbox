@@ -3,9 +3,8 @@ Moonbox
 
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
-> 来自[宜信](https://www.creditease.cn/)[技术研发中心](http://crdc.creditease.cn/)的虚拟混算平台
+Moonbox是一个DVtaaS（Data Virtualization as a Service）平台解决方案。Moonbox基于数据虚拟化设计思想，致力于提供批量计算服务解决方案。Moonbox负责屏蔽底层数据源的物理和使用细节，为用户带来虚拟数据库般使用体验，用户只需通过统一SQL语言，即可透明实现跨异构数据系统混算和写出。此外Moonbox还提供数据服务、数据管理、数据工具、数据开发等基础支持，可支撑更加敏捷和灵活的数据应用架构和逻辑数仓实践。
 
-Moonbox是一个DAAS（Data Virtualization as a Service）平台解决方案。Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力于提供数据虚拟化解决方案。既可作为数据应用底层数据查询计算统一入口，也可作为逻辑数据仓库替代现有数据仓库。用户只需通过统一SQL服务调用和Moonbox交互，即可透明屏蔽异构数据系统异构交互方式，轻松实现跨异构数据系统Adhoc混算。
 
 For more details, see the [WEBSITE](https://edp963.github.io/moonbox).
 
