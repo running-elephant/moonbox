@@ -1,3 +1,8 @@
+---
+layout: global
+title: Examples
+---
+
 #### 系统初始化
 step 1: 使用ROOT账号登录
 ```

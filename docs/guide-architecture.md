@@ -1,6 +1,6 @@
 ---
 layout: global
-title: Deploying Overview
+title: Architecture
 ---
 
 本节主要介绍Moonbox的工作模式,让大家对Moonbox有个整体的认识。

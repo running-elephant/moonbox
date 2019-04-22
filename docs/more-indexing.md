@@ -1,6 +1,6 @@
 ---
 layout: global
-title: Command Indexing
+title: MQL Indexing
 ---
 
 #### 符号说明
