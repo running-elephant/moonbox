@@ -81,6 +81,7 @@ Moonbox面向数据仓库工程师/数据分析师/数据科学家等，致力�
 
 
 - **计算/存储层**
+
   Moonbox默认使用Spark作为计算引擎，将一个常驻的Spark作业称之为一个App, 支持standalone和yarn运行模式。Spark App处理用户发过来的请求，包括用户体系管理操作、权限管理操作、SQL解析、下推优化、执行引擎选择等，并提交真正的计算任务。当计算逻辑可以完全下推到数据源计算时，Moonbox将计算任务直接mapping成数据源的查询语言进行下推计算，以减小启动分布式作业的开销。数据源除了可以是hdfs这种纯存储系统，mysql、elasticsearch这种带计算能力的存储系统，还可以是presto等计算引擎，Moonbox将他们统一视为数据源。
 
 ## Feature
