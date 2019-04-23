@@ -6,6 +6,8 @@ title: Deploying
 #### 环境准备
 
 - 已安装Apache Spark 2.2.0
+
+  (此版本仅支持Apache Spark 2.2.0, 其他Spark 版本后续会兼容)
 - 已安装MySQL并启动,且开启远程访问
 - 各安装节点已经配置ssh免密登录
 
