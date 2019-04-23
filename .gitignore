@@ -23,12 +23,11 @@ metastore_db
 spark-warehouse
 *.bak
 *.pyc
-conf/moonbox-defaults.conf
-conf/moonbox-env.sh
-conf/slaves
 check_illegal.py
 **/dependency-reduced-pom.xml
 **/generate
 dev/deploy.sh
 strategy
-
+conf/moonbox-defaults.conf
+conf/moonbox-env.sh
+conf/slaves
