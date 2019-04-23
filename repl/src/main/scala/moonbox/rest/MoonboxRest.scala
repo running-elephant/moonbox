@@ -37,6 +37,7 @@ object MoonboxRest {
 	private var database: Option[String] = _
 	private var path: String = _
 	private var server: String = _
+	private var name: Option[String] = _
 
 	def main(args: Array[String]) {
 		parse(args.toList)
@@ -56,12 +57,14 @@ object MoonboxRest {
 	}
 
 	private def submit(url: String): String = {
+		val config = new scala.collection.mutable.HashMap[String, String]
+		name.foreach(n => config.put("name", n))
 		val jsonObject = new JSONObject()
 			.put("username", user)
 			.put("password", password)
 			.put("sqls", readSqls().asJava)
 			.put("lang", language)
-			.put("config", Map[String, String]().asJava)
+			.put("config", config.toMap.asJava)
 
 		val response = HttpClient.doPost(url, jsonObject.toString, Charsets.UTF_8.name())
 		new JSONObject(response).getString("jobId")
@@ -87,7 +90,7 @@ object MoonboxRest {
 			if (state == SUCCESS) {
 				System.exit(0)
 			} else if (FAILED.contains(state)) {
-				System.out.println("error message: " + message)
+				println("error message: " + message)
 				System.exit(-1)
 			} else {
 				Thread.sleep(interval)
@@ -130,6 +133,9 @@ object MoonboxRest {
 			parse(tail)
 		case f :: tail if f.startsWith("-f") =>
 			path = f.stripPrefix("-f")
+			parse(tail)
+		case n :: tail if n.startsWith("-n") =>
+			name = Some(n.stripPrefix("-n"))
 			parse(tail)
 		case Nil =>
 		case _ =>
