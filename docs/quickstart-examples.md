@@ -6,7 +6,7 @@ title: Examples
 #### 系统初始化
 step 1: 使用ROOT账号登录
 ```
-bin/cli.sh -u ROOT -p 123456 -r local
+bin/moonbox-shell -u ROOT -p 123456 -r local
 ```
 其中, -r local为可选, 表示是否连接到Spark Local的app上。如果不加则连接到 Spark Yarn的pp上。
 
@@ -28,7 +28,7 @@ exit
 #### 用户使用
 - 使用sally登录
 ```
-bin/cli.sh -u sally -p 123456
+bin/moonbox-shell -u sally -p 123456
 ```
 - 挂载数据源
 ```
