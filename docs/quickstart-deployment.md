@@ -155,12 +155,12 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
 #### 启动集群
    在master节点执行
    ```
-   bin/start-all.sh
+   sbin/start-all.sh
    ```
 #### 停止集群
    在master节点执行
    ```
-   bin/stop-all.sh
+   sbin/stop-all.sh
    ```
 
 #### 检查集群是否成功启动
