@@ -27,7 +27,7 @@ import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Exists, Expressi
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
-import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -168,6 +168,7 @@ object ColumnSelectPrivilegeChecker {
 	def intercept(logicalPlan: LogicalPlan, mbSession: MbSession): Unit = {
 		val plan = logicalPlan match {
 			case InsertIntoDataSourceCommand(logicalRelation, query, _) => query
+			case fs: InsertIntoHadoopFsRelationCommand => fs.query
 			case _ => logicalPlan
 		}
 
