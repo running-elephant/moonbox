@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.spark.launcher.CommandBuilderUtils.*;
-import static org.apache.spark.launcher.CommandBuilderUtils.checkState;
 
 public class Launcher extends SparkLauncher {
 

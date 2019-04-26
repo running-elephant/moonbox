@@ -29,7 +29,8 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy.DeployMessages.DriverStateChanged
 import moonbox.grid.deploy.master.DriverState
 import moonbox.grid.deploy.worker.LaunchUtils
-import org.apache.spark.launcher.{Launcher, SparkAppHandle, SparkLauncher}
+import moonbox.launcher.AppLauncher
+import org.apache.spark.launcher.SparkAppHandle
 
 private[deploy] class DriverRunner(
 	conf: MbConf,
@@ -45,7 +46,7 @@ private[deploy] class DriverRunner(
 		new Thread("DriverRunner for " + driverId) {
 			override def run(): Unit = {
 				try {
-					val launcher = new Launcher()
+					val launcher = new AppLauncher()
 					// redirect log
 					LaunchUtils.getLogsDirectory.foreach { dir =>
 						launcher.redirectOutput(new File(dir + File.separator + driverId + ".log"))
@@ -110,8 +111,8 @@ private[deploy] class DriverRunner(
 		logInfo(s"Killing application with id: $appId.")
 		if (sparkAppHandle != null) {
 			try {
-				if (process != null) { process.destroy() }
 				sparkAppHandle.stop()
+				if (process != null) { process.destroy() }
 			} catch {
 				case e: Exception =>
 					logWarning(s"Kill application with id: $appId failed." + e.getMessage)
