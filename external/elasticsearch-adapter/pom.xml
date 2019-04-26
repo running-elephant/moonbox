@@ -37,7 +37,10 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-spark-20_2.11</artifactId>
-            <version>${esv5-spark.version}</version>
+            <version>5.6.16</version>
+            <!--<groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch-spark-20_2.11</artifactId>
+            <version>${esv5-spark.version}</version>-->
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.spark</groupId>
@@ -55,9 +58,14 @@
         </dependency>
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+            <version>5.6.16</version>
+        </dependency>
+        <!--<dependency>
+            <groupId>org.elasticsearch.client</groupId>
             <artifactId>rest</artifactId>
             <version>${esv5.version}</version>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
