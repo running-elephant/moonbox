@@ -20,6 +20,7 @@
 
     <modules>
         <module>common</module>
+        <module>launcher</module>
         <module>testkit</module>
         <module>protocol</module>
         <module>catalog</module>
@@ -45,6 +46,7 @@
         <module>external/cassandra-adapter</module>
         <module>external/clickhouse-adapter</module>
         <module>external/redis-adapter</module>
+        <module>external/kafka-adapter</module>
         <module>external/moonbox-zeppelin-interpreter-0.7</module>
         <module>external/moonbox-zeppelin-interpreter-0.8</module>
 
