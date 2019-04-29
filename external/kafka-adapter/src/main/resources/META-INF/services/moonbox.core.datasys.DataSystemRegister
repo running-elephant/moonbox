@@ -1,1 +1,1 @@
-moonbox.core.datasys.kudu.KuduDataSystemProvider
+moonbox.core.datasys.kafka.KafkaDataSystemProvider

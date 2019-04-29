@@ -49,7 +49,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	val DATABASE_KEY = "kudu.database"
 	val DATABASE_DELIMITER_KEY = "kudu.delimiter"
 
-	require(contains(KUDU_MASTER))
+	checkOptions(KUDU_MASTER)
 
 	private def masterAddress(): String = {
 		props(KUDU_MASTER)

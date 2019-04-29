@@ -42,7 +42,7 @@ import scala.collection.mutable.ArrayBuffer
 class OracleDataSystem(props: Map[String, String])
 	extends DataSystem(props) with Pushdownable with Insertable with MbLogging {
 
-	require(contains("type", "url", "user", "password"))
+	checkOptions("type", "url", "user", "password")
 
 	override def tableNames(): Seq[String] = {
 		val showTablesSql = if (props.contains("sql.showtables")) {

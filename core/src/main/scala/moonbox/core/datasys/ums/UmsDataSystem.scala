@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,48 +18,22 @@
  * >>
  */
 
-package moonbox.core.datasys.hive
+package moonbox.core.datasys.ums
 
 import moonbox.core.datasys.DataSystem
-import org.apache.spark.sql.hive.HiveClientUtils
 
-class HiveDataSystem(props: Map[String, String])
+class UmsDataSystem(props: Map[String, String])
 	extends DataSystem(props) {
 
-	if (props.contains("metastore.uris")) {
-		checkOptions("metastore.uris", "hivedb")
-	} else {
-		checkOptions("metastore.url", "metastore.driver", "metastore.user",
-			"metastore.password", "hivedb")
-	}
+	checkOptions("path")
 
-
-	override def tableNames(): Seq[String] = {
-		val client = HiveClientUtils.getHiveClient(props)
-		client.listTables(props("hivedb"))
-	}
+	override def tableNames(): Seq[String] = Seq()
 
 	override def tableName(): String = {
-		props("hivetable")
+		props("path")
 	}
 
 	override def tableProperties(tableName: String): Map[String, String] = {
-		props.+("hivetable" -> tableName)
-	}
-
-	override def test(): Boolean = {
-		try {
-			val client = HiveClientUtils.getHiveClient(props)
-			if (client != null) {
-				true
-			} else {
-				false
-			}
-		} catch {
-			case e: Exception =>
-				false
-		} finally {
-			// we do not close hive client here
-		}
+		props
 	}
 }

@@ -2,3 +2,4 @@ moonbox.core.datasys.hive.HiveDataSystemProvider
 moonbox.core.datasys.parquet.ParquetDataSystemProvider
 moonbox.core.datasys.csv.CsvDataSystemProvider
 moonbox.core.datasys.text.TextDataSystemProvider
+moonbox.core.datasys.ums.UmsDataSystemProvider

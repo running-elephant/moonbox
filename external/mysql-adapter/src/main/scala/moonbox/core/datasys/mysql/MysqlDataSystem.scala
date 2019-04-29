@@ -41,7 +41,7 @@ import scala.collection.mutable.ArrayBuffer
 class MysqlDataSystem(props: Map[String, String])
 	extends DataSystem(props) with Pushdownable with Insertable with MbLogging {
 
-	require(contains("type", "url", "user", "password"))
+	checkOptions("type", "url", "user", "password")
 
 	override val supportedOperators: Seq[Class[_]] = Seq(
 		classOf[Project],

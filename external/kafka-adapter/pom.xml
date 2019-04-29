@@ -12,5 +12,45 @@
 
     <artifactId>moonbox-kafka-adapter</artifactId>
 
+    <name>Moonbox Project Data Adapter Kafka</name>
 
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-core_2.11</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.11</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
+        </dependency>
+        <!--<dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.11</artifactId>
+            <version>0.10.0.1</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>zkclient</artifactId>
+                    <groupId>com.101tec</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>metrics-core</artifactId>
+                    <groupId>com.yammer.metrics</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>scala-parser-combinators_2.11</artifactId>
+                    <groupId>org.scala-lang.modules</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>-->
+    </dependencies>
 </project>

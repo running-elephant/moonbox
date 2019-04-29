@@ -24,7 +24,7 @@ import org.apache.hadoop.hbase.client.{Admin, ConnectionFactory, HBaseAdmin}
 import org.apache.hadoop.hbase.{HBaseConfiguration, HConstants}
 
 class HbaseDataSystem(props: Map[String, String]) extends DataSystem(props) {
-	require(contains("hbase.zookeeper.quorum"))
+	checkOptions("hbase.zookeeper.quorum")
 
 	private def getClient: Admin = {
 		val conf = HBaseConfiguration.create

@@ -25,6 +25,8 @@ import moonbox.core.datasys.DataSystem
 class ParquetDataSystem(props: Map[String, String])
 	extends DataSystem(props) {
 
+	checkOptions("path")
+
 	override def tableNames(): Seq[String] = Seq()
 
 	override def tableName(): String = {

@@ -126,7 +126,7 @@ object TextInputJsonDataSource extends JsonDataSource {
         inferFromDataset(json, parsedOptions)
     }
 
-
+	// modified
     def inferFromDataset(json: Dataset[String], parsedOptions: JSONOptions): StructType = {
 
         val sampled: Dataset[String] = JsonUtils.sample(json, parsedOptions)
@@ -155,6 +155,7 @@ object TextInputJsonDataSource extends JsonDataSource {
                 .select("value").as(Encoders.STRING)
     }
 
+	// modified
     override def readFile(  conf: Configuration,
                             file: PartitionedFile,
                             parser: JacksonParser,

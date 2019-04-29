@@ -36,8 +36,10 @@ import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 class ElasticSearchDataSystem(@transient val props: Map[String, String])
 	extends DataSystem(props) with Pushdownable with Insertable
 		with Truncatable with MbLogging {
-    import ElasticSearchDataSystem._
-    require(contains(ES_NODES, ES_RESOURCE))
+
+	import ElasticSearchDataSystem._
+
+	checkOptions(ES_NODES, ES_RESOURCE)
 
 	override val supportedOperators: Seq[Class[_]] = Seq(
 		classOf[Project],
@@ -83,28 +85,28 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 	private def getProperties: Properties = {
 
 		val properties = new Properties()
-        //change es.nodes to nodes, es.resource to database and table, for mb catalyst parser
+		//change es.nodes to nodes, es.resource to database and table, for mb catalyst parser
 		properties.put("nodes", props(ES_NODES).split('/')(0))
 
-        val resourceArray: Array[String] = props(ES_RESOURCE).split('/')
-        if(resourceArray.length == 2) {
-            properties.put("database", resourceArray(0))
-            properties.put("table", resourceArray(1))
-        }else if(resourceArray.length == 1){
-            properties.put("database", resourceArray(0))
-        }
+		val resourceArray: Array[String] = props(ES_RESOURCE).split('/')
+		if (resourceArray.length == 2) {
+			properties.put("database", resourceArray(0))
+			properties.put("table", resourceArray(1))
+		} else if (resourceArray.length == 1) {
+			properties.put("database", resourceArray(0))
+		}
 
-        if (props.contains(ES_HTTP_USER)){
-            properties.put("user", props(ES_HTTP_USER))
-        }
-        if (props.contains(ES_HTTP_PWD)) {
-            properties.put("password", props(ES_HTTP_PWD))
-        }
+		if (props.contains(ES_HTTP_USER)) {
+			properties.put("user", props(ES_HTTP_USER))
+		}
+		if (props.contains(ES_HTTP_PWD)) {
+			properties.put("password", props(ES_HTTP_PWD))
+		}
 
-        props.foreach{ prop =>  properties.put(prop._1, prop._2) }
+		props.foreach { prop => properties.put(prop._1, prop._2) }
 
 		//"es.read.field.as.array.include"    //Fields/properties that should be considered as arrays/lists
-        //"es.mapping.id" //The document field/property name containing the document id.
+		//"es.mapping.id" //The document field/property name containing the document id.
 
 		properties
 	}
@@ -114,104 +116,114 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 		val prop: Properties = getProperties
 		val executor = new EsCatalystQueryExecutor(prop)
 		val json = executor.translate(plan).head
-		val mapping: Seq[(String, String)] = executor.getColumnMapping()	//alias name : column name
+		val mapping: Seq[(String, String)] = executor.getColumnMapping() //alias name : column name
 		logInfo(json)
 		executor.close()
 
 		val rdd = new MbElasticSearchRDD[Row](sparkSession.sparkContext,
-                                                json,
-                                                mapping,
-                                                schema,
-                                                1,
-                                                getProperties,
-                                                executor.context.limitSize,
-                                                (schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
+			json,
+			mapping,
+			schema,
+			1,
+			getProperties,
+			executor.context.limitSize,
+			(schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
 		sparkSession.createDataFrame(rdd, plan.schema)
 	}
 
-    override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
-        val prop: Properties = getProperties
-        val executor = new EsCatalystQueryExecutor(prop)
-        val schema = plan.schema
-        val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
-        new DataTable(iter, schema, () => executor.close())
+	override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
+		val prop: Properties = getProperties
+		val executor = new EsCatalystQueryExecutor(prop)
+		val schema = plan.schema
+		val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
+		new DataTable(iter, schema, () => executor.close())
 
-    }
+	}
 
-    override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-        /*val prop: Properties = getProperties
-        val executor = new EsCatalystQueryExecutor(prop)
-        try {
-            executor.execute4Insert(table.iter, table.schema, saveMode)
-        }finally {
-            executor.close()
-        }*/
+	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
+		/*val prop: Properties = getProperties
+		val executor = new EsCatalystQueryExecutor(prop)
+		try {
+			executor.execute4Insert(table.iter, table.schema, saveMode)
+		}finally {
+			executor.close()
+		}*/
 		throw new Exception("Unsupport operation: insert with datatable")
-    }
+	}
 
-    def update(id: String, data: Seq[(String, String)]): Unit = {
-        val prop: Properties = getProperties
-        val executor = new EsCatalystQueryExecutor(prop)
-        try {
-            executor.execute4Update(id, data)
-        }finally {
-            executor.close()
-        }
-    }
+	def update(id: String, data: Seq[(String, String)]): Unit = {
+		val prop: Properties = getProperties
+		val executor = new EsCatalystQueryExecutor(prop)
+		try {
+			executor.execute4Update(id, data)
+		} finally {
+			executor.close()
+		}
+	}
 
-    override def tableNames(): Seq[String] = {
-        val prop: Properties = getProperties
-        val executor = new EsCatalystQueryExecutor(prop)
-        var tablesNames: Seq[String] = Seq.empty[String]
-        try {  //throw exception and close connection
-            tablesNames = executor.showTableByBb()
-        }finally {
-            executor.close()
-        }
-        tablesNames
-    }
+	override def tableNames(): Seq[String] = {
+		val prop: Properties = getProperties
+		val executor = new EsCatalystQueryExecutor(prop)
+		var tablesNames: Seq[String] = Seq.empty[String]
+		try {
+			//throw exception and close connection
+			tablesNames = executor.showTableByBb()
+		} finally {
+			executor.close()
+		}
+		tablesNames
+	}
 
-    override def truncate(): Unit = {  //try  throw
-        val prop: Properties = getProperties
-        val executor = new EsCatalystQueryExecutor(prop)
-        try {  //throw exception and close connection
-            executor.execute4Truncate()
-        }finally {
-            executor.close()
-        }
-    }
+	override def truncate(): Unit = {
+		//try  throw
+		val prop: Properties = getProperties
+		val executor = new EsCatalystQueryExecutor(prop)
+		try {
+			//throw exception and close connection
+			executor.execute4Truncate()
+		} finally {
+			executor.close()
+		}
+	}
 
-    override def tableProperties(tableName: String): Map[String, String] = {
-        val resource: String = props(ES_RESOURCE).split("/")(0)
-        props + (ES_RESOURCE -> s"$resource/$tableName")
-    }
+	override def tableProperties(tableName: String): Map[String, String] = {
+		val resource: String = props(ES_RESOURCE).split("/")(0)
+		props + (ES_RESOURCE -> s"$resource/$tableName")
+	}
 
-    override def tableName(): String = {
-        val res = props(ES_RESOURCE).split("/")
-        if(res.length == 2){ res(1) }
-        else{ throw new Exception(s"$ES_RESOURCE $res does not have 2 elements by / separator")}
-    }
+	override def tableName(): String = {
+		val res = props(ES_RESOURCE).split("/")
+		if (res.length == 2) {
+			res(1)
+		}
+		else {
+			throw new Exception(s"$ES_RESOURCE $res does not have 2 elements by / separator")
+		}
+	}
 
-    override def test(): Boolean = {
-        val prop: Properties = getProperties
-        var executor: EsCatalystQueryExecutor = null
-        try { //throw exception and close connection
-            executor = new EsCatalystQueryExecutor(prop)
-            true
-        } catch {
-            case e: Throwable =>
+	override def test(): Boolean = {
+		val prop: Properties = getProperties
+		var executor: EsCatalystQueryExecutor = null
+		try {
+			//throw exception and close connection
+			executor = new EsCatalystQueryExecutor(prop)
+			true
+		} catch {
+			case e: Throwable =>
 				logError(s"test failed ${e.getMessage}")
 				e.printStackTrace()
-               false
-        } finally {
-            if(executor != null) { executor.close() }
-        }
-    }
+				false
+		} finally {
+			if (executor != null) {
+				executor.close()
+			}
+		}
+	}
 }
 
-object ElasticSearchDataSystem{
-    val ES_NODES: String = "es.nodes"
-    val ES_RESOURCE: String = "es.resource"
-    val ES_HTTP_USER: String = "es.net.http.auth.user"
-    val ES_HTTP_PWD: String = "es.net.http.auth.pass"
+object ElasticSearchDataSystem {
+	val ES_NODES: String = "es.nodes"
+	val ES_RESOURCE: String = "es.resource"
+	val ES_HTTP_USER: String = "es.net.http.auth.user"
+	val ES_HTTP_PWD: String = "es.net.http.auth.pass"
 }

@@ -30,7 +30,10 @@ import scala.collection.JavaConverters._
 
 abstract class DataSystem(props: Map[String, String]) {
 
-	protected def contains(params: String*): Boolean = params.forall(props.contains)
+	protected def checkOptions(params: String*): Unit = {
+		val message = s"${params.mkString(", ")} must be in options."
+		require(params.forall(props.contains), message)
+	}
 
 	def tableNames(): Seq[String]
 

@@ -41,7 +41,7 @@ import scala.collection.mutable.ArrayBuffer
 class SqlServerDataSystem(props: Map[String, String])
 	extends DataSystem(props) with Pushdownable with Insertable with MbLogging {
 
-	require(contains("type", "url", "user", "password"))
+	checkOptions("type", "url", "user", "password")
 
 	override def tableNames(): Seq[String] = {
 		val tables = new ArrayBuffer[String]()
@@ -125,7 +125,7 @@ class SqlServerDataSystem(props: Map[String, String])
 			sparkSession.sparkContext,
 			getConnection,
 			sql,
-			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs):_*)
+			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs): _*)
 		)
 		val schema = sqlBuilder.finalLogicalPlan.schema
 		sparkSession.createDataFrame(rdd, schema)
@@ -188,7 +188,7 @@ class SqlServerDataSystem(props: Map[String, String])
 
 	override def test(): Boolean = {
 		var connection: Connection = null
-		try  {
+		try {
 			connection = getConnection()
 			if (connection != null) {
 				true
@@ -224,6 +224,6 @@ class SqlServerDataSystem(props: Map[String, String])
 				Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver")
 				DriverManager.getConnection(url, props)
 			}
-		})(props("url"), p)
+		}) (props("url"), p)
 	}
 }

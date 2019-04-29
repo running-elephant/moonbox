@@ -26,7 +26,8 @@ import moonbox.core.datasys.DataSystem
 import scala.collection.JavaConverters._
 
 class CassandraDataSystem(props: Map[String, String]) extends DataSystem(props) {
-	require(contains("spark.cassandra.connection.host"))
+
+	checkOptions("spark.cassandra.connection.host")
 
 	private def getCluster: Cluster = {
         val hosts = props("spark.cassandra.connection.host").split(",")
