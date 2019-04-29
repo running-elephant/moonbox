@@ -27,6 +27,11 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-launcher_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-protocol_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -41,15 +46,6 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-launcher_2.11</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <!--<dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-catalyst_2.11</artifactId>
-        </dependency>-->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
