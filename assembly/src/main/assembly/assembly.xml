@@ -37,10 +37,6 @@
             <directory>
                 ${project.parent.basedir}/bin
             </directory>
-            <excludes>
-                <exclude>moonbox-submit.sh</exclude>
-                <exclude>moonbox.sh</exclude>
-            </excludes>
             <outputDirectory>bin</outputDirectory>
         </fileSet>
         <fileSet>
