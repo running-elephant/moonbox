@@ -30,6 +30,7 @@ import scala.collection.JavaConverters._
 object MoonboxRest {
 	private val SUBMIT_PATH = "/batch/submit"
 	private val PROGRESS_PATH = "/batch/progress"
+	private val CANCEL_PATH = "/batch/cancel"
 
 	private var user: String = _
 	private var password: String = _
@@ -37,7 +38,7 @@ object MoonboxRest {
 	private var database: Option[String] = _
 	private var path: String = _
 	private var server: String = _
-	private var name: Option[String] = _
+	private var name: Option[String] = None
 
 	def main(args: Array[String]) {
 		parse(args.toList)
@@ -51,7 +52,12 @@ object MoonboxRest {
 		}
 
 		val jobId = submit(url + SUBMIT_PATH)
-		println("batchId: " + jobId)
+
+		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+			override def run(): Unit = {
+				cancel(url + CANCEL_PATH, jobId)
+			}
+		}))
 
 		loopProgress(url + PROGRESS_PATH, jobId, 1 * 60 * 1000)
 	}
@@ -66,8 +72,11 @@ object MoonboxRest {
 			.put("lang", language)
 			.put("config", config.toMap.asJava)
 
-		val response = HttpClient.doPost(url, jsonObject.toString, Charsets.UTF_8.name())
-		new JSONObject(response).getString("jobId")
+		val parameter = jsonObject.toString
+		val response = HttpClient.doPost(url, parameter, Charsets.UTF_8.name())
+		val jobId = new JSONObject(response).getString("jobId")
+		println(s"batch job submitted as $jobId, parameters is $parameter")
+		jobId
 	}
 
 	private def progress(url: String, jobId: String): (String, String) = {
@@ -75,8 +84,6 @@ object MoonboxRest {
 			.put("username", user)
 			.put("password", password)
 			.put("jobId", jobId)
-
-		println(jsonObject.toString())
 		val response = HttpClient.doPost(url, jsonObject.toString, Charsets.UTF_8.name())
 		val responseObject = new JSONObject(response)
 		(responseObject.getString("state"), responseObject.getString("message"))
@@ -98,10 +105,20 @@ object MoonboxRest {
 		}
 	}
 
+	private def cancel(url: String, jobId: String): Unit = {
+		if (jobId != null) {
+			val jsonObject = new JSONObject()
+				.put("username", user)
+				.put("password", password)
+				.put("jobId", jobId)
+			HttpClient.doPost(url, jsonObject.toString(), Charsets.UTF_8.name())
+			println(s"Job $jobId has been canceled.")
+		}
+	}
+
 	private def readSqls(): Seq[String] = {
 		val source = Source.fromFile(path)
 		val sqls = source.getLines().mkString(" ").split(";").filterNot(s => s == "" || s == null)
-		println(sqls)
 		source.close()
 		sqls
 	}
