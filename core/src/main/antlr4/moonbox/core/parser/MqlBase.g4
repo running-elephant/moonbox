@@ -134,6 +134,7 @@ mql
     | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
     | query                                                                                     # mqlQuery
+    | statement=.*?                                                                             # otherStatement
     ;
 
 procCmds

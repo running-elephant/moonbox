@@ -39,7 +39,9 @@ case class SparkLocalDriverDescription(
 
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
-		Some(s"local[${cores * 10}]")
+		val specialized = config.get("spark.driver.cores")
+		val configured = specialized.map(_.toInt).getOrElse(cores / 2)
+		Some(s"local[$configured]")
 	}
 	override def deployMode = None
 	override def mainClass = "moonbox.application.interactive.spark.Main"

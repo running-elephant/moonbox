@@ -92,6 +92,8 @@ class Runner(
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case MQLQuery(sql) =>
 				query(sql)
+			case other: OtherStatement =>
+				otherStatement(other.sql)
 			case other =>
 				throw new Exception(s"Unsupport command $other")
 		}.last
@@ -201,6 +203,11 @@ class Runner(
 					throw e
 				}
 		}
+	}
+
+	private def otherStatement(sql: String): QueryResult = {
+		val dataFrame = mbSession.mixcal.sparkSession.sql(sql)
+		initCurrentData(dataFrame)
 	}
 
 	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], overwrite: Boolean): Unit = {

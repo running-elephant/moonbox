@@ -29,7 +29,7 @@ object ProtoInboundMessageBuilder {
 
   def loginInbound(username: String, password: String): LoginInbound = {
     LoginInbound.newBuilder()
-      .setUesername(username)
+      .setUsername(username)
       .setPassword(password)
       .build()
   }

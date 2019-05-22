@@ -582,3 +582,5 @@ case class InsertInto(
 	query: String,
 	colNames: Seq[String],
 	overwrite: Boolean) extends MbCommand with DML
+
+case class OtherStatement(sql: String) extends MbCommand with DML

@@ -706,6 +706,12 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		InsertInto(tableIdentifier, query, colNames, overwrite)
 	}
 
+
+	override def visitOtherStatement(ctx: OtherStatementContext): MbCommand = {
+		val statment = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
+		OtherStatement(statment)
+	}
+
 	override def visitShowSysInfo(ctx: ShowSysInfoContext): MbCommand = {
 		ShowSysInfo
 	}

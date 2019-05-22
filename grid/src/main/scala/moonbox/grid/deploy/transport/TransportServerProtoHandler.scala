@@ -127,7 +127,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 
 	private def handleLogin(ctx: ChannelHandlerContext, inbound: protobuf.LoginInbound, messageId: Long): Unit = {
 		implicit val connection: ConnectionInfo = getConnectionInfo(ctx)
-		val username = inbound.getUesername
+		val username = inbound.getUsername
 		val password = inbound.getPassword
 
 		Future(mbService.login(username, password, () => {

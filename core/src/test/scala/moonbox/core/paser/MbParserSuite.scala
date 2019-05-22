@@ -639,8 +639,13 @@ class MbParserSuite extends FunSuite {
 			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), overwrite = true),
 			"INSERT OVERWRITE TABLE db.table1 SELECT * FROM table"
 		)
+	}
 
-
+	test("other statement") {
+		assertEquals(
+			OtherStatement("analyze table t1 compute statistics"),
+			"analyze table t1 compute statistics"
+		)
 	}
 
 	test("temp view") {
