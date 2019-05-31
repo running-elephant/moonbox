@@ -59,10 +59,11 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		this.userContext = {
 			catalog.getUserOption(username) match {
 				case Some(catalogUser) =>
-					if (catalogUser.name == "ROOT") {
+					if (catalogUser.name.equalsIgnoreCase("ROOT") ) {
 						new UserContext(
 							catalogUser.id.get,
 							catalogUser.name,
+							isSa = false,
 							-1, "SYSTEM", true, -1, "SYSTEM")
 					} else {
 						val organization = catalog.getOrganization(catalogUser.organizationId)
@@ -70,6 +71,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 						new UserContext(
 							catalogUser.id.get,
 							catalogUser.name,
+							isSa = catalogUser.isSA,
 							database.id.get,
 							database.name,
 							database.isLogical,

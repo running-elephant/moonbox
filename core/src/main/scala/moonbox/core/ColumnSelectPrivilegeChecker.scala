@@ -162,10 +162,12 @@ object TableInsertPrivilegeChecker {
 	}
 }
 
-
-// TODO
 object ColumnSelectPrivilegeChecker {
 	def intercept(logicalPlan: LogicalPlan, mbSession: MbSession): Unit = {
+		if (mbSession.userContext.isSa) {
+			return
+		}
+
 		val plan = logicalPlan match {
 			case InsertIntoDataSourceCommand(logicalRelation, query, _) => query
 			case fs: InsertIntoHadoopFsRelationCommand => fs.query

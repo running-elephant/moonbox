@@ -23,6 +23,7 @@ package moonbox.core
 case class UserContext(
 	userId: Long,
 	var userName: String,
+	var isSa: Boolean,
 	var databaseId: Long,
 	var databaseName: String,
 	var isLogical: Boolean,
