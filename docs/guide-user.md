@@ -34,6 +34,7 @@ curl -XPOST http://host:port/batch/submit -d '{
     "username" : "",
     "password" : "",
     "config" : {},
+    "lang" : "mql"
     "sqls" : ["use default", "insert into ..."]
 }'
 ```

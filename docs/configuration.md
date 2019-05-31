@@ -226,7 +226,7 @@ Catalog目前仅支持关系型数据库,支持mysql、oracle、sqlserver、db2�
 </tr>
 <tr>
   <td><code>moonbox.deploy.catalog.password</code></td>
-  <td>testPass</td>
+  <td>无</td>
   <td>
     建立数据库连接使用的密码
   </td>

@@ -8,7 +8,7 @@ step 1: 使用ROOT账号登录
 ```
 bin/moonbox-shell -u ROOT -p 123456 -r local
 ```
-其中, -r local为可选, 表示是否连接到Spark Local的app上。如果不加则连接到 Spark Yarn的pp上。
+其中, -r local为可选, 表示是否连接到Spark Local的app上。如果不加则连接到 Spark Yarn的app上。
 
 step 2: 创建organization
 ```
