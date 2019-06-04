@@ -39,6 +39,7 @@ object MoonboxRest {
 	private var path: String = _
 	private var server: String = _
 	private var name: Option[String] = None
+	private val config = new scala.collection.mutable.HashMap[String, String]
 
 	def main(args: Array[String]) {
 		parse(args.toList)
@@ -63,7 +64,6 @@ object MoonboxRest {
 	}
 
 	private def submit(url: String): String = {
-		val config = new scala.collection.mutable.HashMap[String, String]
 		name.foreach(n => config.put("name", n))
 		val jsonObject = new JSONObject()
 			.put("username", user)
@@ -154,6 +154,12 @@ object MoonboxRest {
 		case n :: tail if n.startsWith("-n") =>
 			name = Some(n.stripPrefix("-n"))
 			parse(tail)
+		case c :: tail if c.startsWith("-C") =>
+			c.stripPrefix("-C").split(",").foreach { keyvalues =>
+				val kv = keyvalues.trim.split("=")
+				assert(kv.length == 2, "please check config format.")
+				config.put(kv(0).trim, kv(1).trim)
+			}
 		case Nil =>
 		case _ =>
 			printUsageAndExit(1)
