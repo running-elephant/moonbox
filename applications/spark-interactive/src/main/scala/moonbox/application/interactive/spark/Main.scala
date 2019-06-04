@@ -272,17 +272,17 @@ class Main(
 					requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 			}
 
-		case resource @ TableResourcesRequest(username, sql, database) =>
+		case resource @ TableResourcesRequest(username, sqls, database) =>
 			val requester = sender()
 			Future {
 				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
-				servicer.resources(sql)
+				servicer.resources(sqls)
 			}.onComplete {
 				case Success(response) =>
 					requester ! response
 				case Failure(e) =>
 					logError("table resource error", e)
-					requester ! TableResourcesFailed(e.getMessage)
+					requester ! TableResourcesResponses(success=false, message = Some(e.getMessage))
 			}
 
 		case schema @ SchemaRequest(username, sql, database) =>

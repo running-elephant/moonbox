@@ -89,8 +89,10 @@ object Interface extends Interface {
 	case class SchemaInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
 	case class SchemaOutbound(success: Boolean, schema: Option[String] = None, message: Option[String] = None) extends Outbound
 
-	case class TableResourceInbound(username: String, password: String, sql: String, database: Option[String]) extends Inbound
-	case class TableResourceOutbound(success: Boolean, tables: Option[Seq[String]] = None, functions: Option[Seq[String]] = None, message: Option[String] = None) extends Outbound
+	case class TableResourceInbound(username: String, password: String, sqls: Seq[String], database: Option[String]) extends Inbound
+	case class TableResourceOutbound(success: Boolean, message: Option[String] = None, result: Option[Seq[ResourceResult]] = None) extends Outbound
+
+	case class ResourceResult(success: Boolean, message: Option[String] = None, inputTables: Option[Seq[String]] = None, outputTable: Option[String] = None, functions: Option[Seq[String]] = None)
 
 	case class LineageInbound(username: String, password: String, sql: String, database: Option[String]) extends Outbound
 	case class LineageOutbound(success: Boolean, lineage: Option[String] = None, message: Option[String] = None) extends Outbound

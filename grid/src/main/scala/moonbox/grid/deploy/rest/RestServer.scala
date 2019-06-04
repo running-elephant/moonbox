@@ -120,7 +120,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
 					post {
 						entity(as[TableResourceInbound]) { in =>
 							complete {
-								mbService.resources(in.username, in.password, in.sql, in.database)
+								mbService.resources(in.username, in.password, in.sqls, in.database)
 							}
 						}
 					}

@@ -262,15 +262,21 @@ private[deploy] class MbService(
 		}
 	}
 
-	def resources(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
-		auditLogger.log(username, "resources", Map("sql" -> sql))
+	def resources(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
+		auditLogger.log(username, "resources", Map("sql" -> sqls.mkString("; ")))
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
-				askSync[TableResourcesResponse](TableResourcesRequest(username, sql, database))(SHORT_TIMEOUT) match {
-					case Left(TableResourcesSuccessed(tables, functions)) =>
-						TableResourceOutbound(success = true, tables = Some(tables), functions = Some(functions))
-					case Left(TableResourcesFailed(message)) =>
-						TableResourceOutbound(success = false, message = Some(message))
+				askSync[TableResourcesResponses](TableResourcesRequest(username, sqls, database))(SHORT_TIMEOUT) match {
+					case Left(TableResourcesResponses(success, _, result)) =>
+						val res = result.map { r =>
+							r.map {
+								case TableResourcesFailed(message) =>
+									ResourceResult(success=false, message=Some(message))
+								case TableResourcesSuccessed(inputTables, outputTable, functions) =>
+									ResourceResult(success=true, inputTables=Some(inputTables), outputTable=outputTable, functions=Some(functions))
+							}
+						}
+						TableResourceOutbound(success = true, result = res)
 					case Right(message) =>
 						TableResourceOutbound(success = false, message = Some(message))
 				}

@@ -26,7 +26,7 @@ import moonbox.core._
 import moonbox.grid.deploy.messages.Message._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.Literal
-import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, LocalLimit, LogicalPlan}
+import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, InsertIntoTable, LocalLimit, LogicalPlan}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.optimizer.WholePushdown
 import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
@@ -136,15 +136,23 @@ class Servicer(
 		VerifyResponse(success = true, result = Some(result))
 	}
 
-	def resources(sql: String): TableResourcesResponse = {
-		try {
-			val parsedPlan: LogicalPlan = mbSession.parsedPlan(sql)
-			val (tables, functions) = mbSession.collectUnknownTablesAndFunctions(parsedPlan)
-			TableResourcesSuccessed(tables.map(_.table), functions.map(_.funcName))
-		} catch {
-			case e: Exception =>
-				TableResourcesFailed(e.getMessage)
+	def resources(sqls: Seq[String]): TableResourcesResponses = {
+		val result = sqls.map { sql =>
+			try {
+				val parsedPlan: LogicalPlan = mbSession.parsedPlan(sql)
+				val (tables, functions) = mbSession.collectUnknownTablesAndFunctions(parsedPlan)
+				val (inputTables, outputTable) = if (parsedPlan.isInstanceOf[InsertIntoTable]) {
+					(tables.tail, Some(tables.head))
+				} else {
+					(tables, None)
+				}
+				TableResourcesSuccessed(inputTables.map(_.unquotedString), outputTable.map(_.unquotedString), functions.map(_.funcName))
+			} catch {
+				case e: Exception =>
+					TableResourcesFailed(e.getMessage)
+			}
 		}
+		TableResourcesResponses(success = true, result = Some(result))
 	}
 
 	def schema(sql: String): SchemaResponse = {

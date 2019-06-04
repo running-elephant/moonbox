@@ -88,10 +88,15 @@ object Message {
 	case class TranslateRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	case class TranslateResponse(success: Boolean, message: Option[String] = None, sql: Option[String] = None) extends ServiceMessage
 
-	case class TableResourcesRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
-	sealed trait TableResourcesResponse extends ServiceMessage
+	case class TableResourcesRequest(username: String, sqls: Seq[String], database: Option[String]) extends ServiceMessage
+	case class TableResourcesResponses(
+		success: Boolean,
+		message: Option[String] = None,
+		result: Option[Seq[TableResourcesResponse]] = None) extends ServiceMessage
+
+	sealed trait TableResourcesResponse
 	case class TableResourcesFailed(message: String) extends TableResourcesResponse
-	case class TableResourcesSuccessed(tables: Seq[String], functions: Seq[String]) extends TableResourcesResponse
+	case class TableResourcesSuccessed(inputTables: Seq[String], outputTable: Option[String], functions: Seq[String]) extends TableResourcesResponse
 
 	case class SchemaRequest(username: String, sql: String, database: Option[String]) extends ServiceMessage
 	sealed trait SchemaResponse extends ServiceMessage
