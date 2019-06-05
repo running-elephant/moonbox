@@ -612,12 +612,12 @@ class MoonboxMaster(
 						case Success(response) =>
 							requester ! response
 						case Failure(e) =>
-							requester ! TableResourcesFailed(e.getMessage)
+							requester ! TableResourcesResponses(success = false, Some(e.getMessage))
 					}
 				case None =>
 					val msg = s"There is no available application for service."
 					logWarning(msg)
-					sender() ! TableResourcesFailed(msg)
+					sender() ! TableResourcesResponses(success = false, Some(msg))
 			}
 
 		case schema: SchemaRequest =>
