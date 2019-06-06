@@ -267,16 +267,21 @@ private[deploy] class MbService(
 		loginManager.login(username, password, forget = true) match {
 			case Some(_) =>
 				askSync[TableResourcesResponses](TableResourcesRequest(username, sqls, database))(SHORT_TIMEOUT) match {
-					case Left(TableResourcesResponses(success, _, result)) =>
-						val res = result.map { r =>
-							r.map {
-								case TableResourcesFailed(message) =>
-									ResourceResult(success=false, message=Some(message))
-								case TableResourcesSuccessed(inputTables, outputTable, functions) =>
-									ResourceResult(success=true, inputTables=Some(inputTables), outputTable=outputTable, functions=Some(functions))
+					case Left(TableResourcesResponses(success, sysmgs, result)) =>
+						if (success) {
+							val res = result.map { r =>
+								r.map {
+									case TableResourcesFailed(message) =>
+										ResourceResult(success=false, message=Some(message))
+									case TableResourcesSuccessed(inputTables, outputTable, functions) =>
+										ResourceResult(success=true, inputTables=Some(inputTables), outputTable=outputTable, functions=Some(functions))
+								}
 							}
+							TableResourceOutbound(success = true, result = res)
+						} else {
+							TableResourceOutbound(success = false, message = sysmgs)
 						}
-						TableResourceOutbound(success = true, result = res)
+
 					case Right(message) =>
 						TableResourceOutbound(success = false, message = Some(message))
 				}

@@ -607,7 +607,7 @@ class MoonboxMaster(
 			candidate match {
 				case Some(app) =>
 					logInfo(s"Asking application ${app.id} to get tables and functions in sql.")
-					val f = app.endpoint.ask(resource).mapTo[TableResourcesResponse]
+					val f = app.endpoint.ask(resource).mapTo[TableResourcesResponses]
 					f.onComplete {
 						case Success(response) =>
 							requester ! response
