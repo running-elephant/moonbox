@@ -41,6 +41,8 @@ object MoonboxRest {
 	private var name: Option[String] = None
 	private val config = new scala.collection.mutable.HashMap[String, String]
 
+	private var success = false
+
 	def main(args: Array[String]) {
 		parse(args.toList)
 		if (!checkArgs()) {
@@ -56,7 +58,9 @@ object MoonboxRest {
 
 		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
 			override def run(): Unit = {
-				cancel(url + CANCEL_PATH, jobId)
+				if (!success) {
+					cancel(url + CANCEL_PATH, jobId)
+				}
 			}
 		}))
 
@@ -95,6 +99,7 @@ object MoonboxRest {
 		while (true) {
 			val (state, message) = progress(url, jobId)
 			if (state == SUCCESS) {
+				success = true
 				System.exit(0)
 			} else if (FAILED.contains(state)) {
 				println("error message: " + message)
