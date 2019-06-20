@@ -25,8 +25,8 @@ import java.sql.{Connection, DriverManager}
 import java.util.Properties
 
 import moonbox.common.MbLogging
-import moonbox.core.util.MbIterator
 import moonbox.core.datasys.{DataTable, _}
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans._
@@ -34,12 +34,12 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbMySQLDialect, MbSqlBuilder}
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
 
 class MysqlDataSystem(props: Map[String, String])
-	extends DataSystem(props) with Pushdownable with Insertable with MbLogging {
+	extends DataSystem(props) with Pushdownable with Insertable with Updatable with MbLogging {
 
 	checkOptions("type", "url", "user", "password")
 
@@ -228,4 +228,10 @@ class MysqlDataSystem(props: Map[String, String])
 			}
 		}
 	}
+
+	override def update(data: DataFrame, tableSchema: Option[StructType],
+		isCaseSensitive: Boolean,parameter: Map[String, String]): Unit = {
+		MysqlUtils.updateTable(data, tableSchema, isCaseSensitive, parameter)
+	}
+
 }

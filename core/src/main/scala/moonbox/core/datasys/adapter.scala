@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.expressions.{Expression, ScalaUDF}
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.logical.{Join, LogicalPlan}
 import org.apache.spark.sql.execution.aggregate.ScalaUDAF
+import org.apache.spark.sql.types.StructType
 
 trait Pushdownable { self: DataSystem =>
 	val supportedOperators: Seq[Class[_]]
@@ -87,5 +88,8 @@ trait Deletable {
 }
 
 trait Updatable {
-	def update(key: Any, values: Seq[(String, String)]): Unit
+	def update(data: DataFrame,
+		tableSchema: Option[StructType],
+		isCaseSensitive: Boolean,
+		parameter: Map[String, String]): Unit
 }

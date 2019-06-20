@@ -580,7 +580,14 @@ case class DropTempFunction(
 case class InsertInto(
 	table: MbTableIdentifier,
 	query: String,
-	colNames: Seq[String],
-	overwrite: Boolean) extends MbCommand with DML
+	partitionColumns: Seq[String],
+	insertMode: InsertMode.Value
+) extends MbCommand with DML
+
+object InsertMode extends Enumeration {
+	val Append = Value
+	val Overwrite = Value
+	val Merge = Value
+}
 
 case class OtherStatement(sql: String) extends MbCommand with DML

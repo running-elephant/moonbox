@@ -22,7 +22,7 @@ package moonbox.application.batch.spark
 
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core._
-import moonbox.core.command._
+import moonbox.core.command.{InsertMode, _}
 import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.SaveMode
 
@@ -68,11 +68,11 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 						df.createTempView(createTempView.name)
 					}
 
-				case insert @ InsertInto(MbTableIdentifier(table, database), query, colNames, overwrite) =>
+				case insert @ InsertInto(MbTableIdentifier(table, database), query, colNames, insertMode) =>
 					val sinkCatalogTable = mbSession.getCatalogTable(table, database)
 					val options = sinkCatalogTable.properties
 					val format = DataSystem.lookupDataSource(options("type"))
-					val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Append
+					val saveMode = if (insertMode == InsertMode.Overwrite) SaveMode.Overwrite else SaveMode.Append
 					val optimized = mbSession.optimizedPlan(query)
 					val dataFrame = mbSession.toDF(optimized)
 					val dataFrameWriter = TableInsertPrivilegeChecker
@@ -82,6 +82,9 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 						.options(options)
 						.partitionBy(colNames:_*)
 						.mode(saveMode)
+					if (insertMode == InsertMode.Merge) {
+						dataFrameWriter.option("update", "true")
+					}
 					if (options.contains("partitionColumnNames")) {
 						dataFrameWriter.partitionBy(options("partitionColumnNames").split(","): _*)
 					}

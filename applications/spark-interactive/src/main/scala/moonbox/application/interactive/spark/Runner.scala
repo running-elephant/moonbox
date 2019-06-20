@@ -87,8 +87,8 @@ class Runner(
 			case CreateTempView(table, query, isCache, replaceIfExists) =>
 				createTempView(table, query, isCache, replaceIfExists)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
-			case InsertInto(MbTableIdentifier(table, db), query, colNames, overwrite) =>
-				insert(table, db, query, colNames, overwrite)
+			case InsertInto(MbTableIdentifier(table, db), query, colNames, insertMode) =>
+				insert(table, db, query, colNames, insertMode)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case MQLQuery(sql) =>
 				query(sql)
@@ -210,11 +210,11 @@ class Runner(
 		initCurrentData(dataFrame)
 	}
 
-	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], overwrite: Boolean): Unit = {
+	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], insertMode: InsertMode.Value): Unit = {
 		val sinkCatalogTable = mbSession.getCatalogTable(table, db)
 		val options = sinkCatalogTable.properties
 		val format = DataSystem.lookupDataSource(options("type"))
-		val saveMode = if (overwrite) SaveMode.Overwrite else SaveMode.Append
+		val saveMode = if (insertMode == InsertMode.Overwrite) SaveMode.Overwrite else SaveMode.Append
 		val optimized = mbSession.optimizedPlan(query)
 		try {
 			doInsert(pushdownEnable = true)
@@ -247,6 +247,9 @@ class Runner(
 				.options(options)
 				.partitionBy(colNames: _*)
 				.mode(saveMode)
+			if (insertMode == InsertMode.Merge) {
+				dataFrameWriter.option("update", "true")
+			}
 			// TODO remove
 			if (options.contains("partitionColumnNames")) {
 				dataFrameWriter.partitionBy(options("partitionColumnNames").split(","): _*)

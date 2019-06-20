@@ -131,8 +131,8 @@ mql
     | REFRESH TABLE tableIdentifier                                                             # refreshTable
     | REFRESH path=.*?                                                                          #refreshResource
 
-    | INSERT (INTO | OVERWRITE) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
-    | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS query              # createTemporaryView
+    | INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
+    | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS? query             # createTemporaryView
     | query                                                                                     # mqlQuery
     | statement=.*?                                                                             # otherStatement
     ;
@@ -337,6 +337,7 @@ IN: 'IN';
 INSERT: 'INSERT';
 INTO: 'INTO';
 LIKE: 'LIKE';
+MERGE: 'MERGE';
 JOBS: 'JOBS';
 MOUNT: 'MOUNT';
 MQL: 'MQL';

@@ -701,11 +701,13 @@ class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitInsertInto(ctx: InsertIntoContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
 		val query = visitQuery(ctx.query()).query
-		val colNames = Option(ctx.partitionSpec()).map(_.identifier().map(_.getText).toSeq).getOrElse(Seq())
-		val overwrite = ctx.OVERWRITE() != null
-		InsertInto(tableIdentifier, query, colNames, overwrite)
-	}
+		val partitionColumns = Option(ctx.partitionSpec()).map(_.identifier().map(_.getText).toSeq).getOrElse(Seq())
+		val insertMode = if (ctx.INTO() != null) InsertMode.Append
+		else if (ctx.OVERWRITE() != null) InsertMode.Overwrite
+		else InsertMode.Merge
 
+		InsertInto(tableIdentifier, query, partitionColumns, insertMode)
+	}
 
 	override def visitOtherStatement(ctx: OtherStatementContext): MbCommand = {
 		val statment = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
