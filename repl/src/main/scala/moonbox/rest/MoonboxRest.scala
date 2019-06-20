@@ -68,7 +68,10 @@ object MoonboxRest {
 	}
 
 	private def submit(url: String): String = {
-		name.foreach(n => config.put("name", n))
+		name.foreach {
+			n => config.put("name", n)
+			println(s"the job name is: $n")
+		}
 		val jsonObject = new JSONObject()
 			.put("username", user)
 			.put("password", password)
