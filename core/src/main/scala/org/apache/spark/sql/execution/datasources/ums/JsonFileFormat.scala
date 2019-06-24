@@ -75,7 +75,6 @@ class JsonFileFormat extends TextBasedFileFormat with DataSourceRegister {
       sparkSession.sessionState.conf.columnNameOfCorruptRecord)
 
     JsonDataSource(parsedOptions).inferSchema(sparkSession, files, parsedOptions)
-
   }
 
   override def prepareWrite(
@@ -137,13 +136,12 @@ class JsonFileFormat extends TextBasedFileFormat with DataSourceRegister {
         broadcastedHadoopConf.value.value,
         file,
         parser,
-        requiredSchema,
-        dataSchema
+        requiredSchema
       )
     }
   }
 
-  override def toString: String = "JSON"
+  override def toString: String = "UMS"
 
   override def hashCode(): Int = getClass.hashCode()
 

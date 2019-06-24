@@ -110,9 +110,10 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 				ignoreIfExists = true
 			)
 		} else {
+			val schema = props.get("schema").map(s => s"($s)").getOrElse("")
 			val createTableSql =
 				s"""
-				   |create table ${tableIdentifier.quotedString}
+				   |create table ${tableIdentifier.quotedString}$schema
 				   |using ${DataSystem.lookupDataSource(typ)}
 				   |options($propsString)
 			 """.stripMargin
