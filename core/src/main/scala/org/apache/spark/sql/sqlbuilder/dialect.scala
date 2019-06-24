@@ -101,7 +101,7 @@ trait MbDialect {
 
 	def getAttributeName(e: AttributeReference): String = {
 		val qualifierPrefix = e.qualifier.map(_ + ".").getOrElse("")
-		s"$qualifierPrefix${maybeQuote(e.name)}"
+		s"$qualifierPrefix${quote(e.name)}"
 	}
 
 	def expressionToSQL(e: Expression): String = {
