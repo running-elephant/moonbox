@@ -26,11 +26,12 @@ import org.scalatest.FunSuite
 
 class MbUmsSuite extends FunSuite {
     val conf = new SparkConf(true)
-            .setMaster("local[2]")
+		//.set("spark.sql.hive.manageFilesourcePartitions", "false")
+            .setMaster("local[*]")
             .setAppName("ums")
     val session = SparkSession.builder().config(conf).getOrCreate()
 
-    test("ums1 read local json") {
+    /*test("ums1 read local json") {
         val rootDir = System.getProperty("user.dir")
         val df = session.read.format("ums").load(s"$rootDir/core/src/test/resources/ums.json")
         println(df.schema)
@@ -50,4 +51,46 @@ class MbUmsSuite extends FunSuite {
         println(df1.schema)
         df1.show(500, false)
     }
+	test("ums") {
+		session.sql(
+			"""
+			  |create table aaa(
+			  |`header.tag` string,
+			  |ums_ts_ timestamp,
+			  |ums_op_ string,
+			  |`header.ip` string,
+			  |tmax long,
+			  |tavg long,
+			  |tmin long,
+			  |`header.ext.appgroup` string,
+			  |tmin_st long
+			  |) using ums options(path 'hdfs://master:8020/tmp/uav/[0-9]*')
+			""".stripMargin)
+		session.sql("select * from aaa").show(10000, false)
+	}*/
+
+	test("aa") {
+		session.sql(
+			"""
+			  |create table bbb(
+			  |ums_id_  		string,
+			  |ums_ts_  		timestamp,
+			  |ums_op_  		string,
+			  |ums_uid_  		long,
+			  |actor_id  		string,
+			  |first_name  		string,
+			  |last_name   		string,
+			  |mobile      		long,
+			  |last_update 		date,
+			  |col_1      		string,
+			  |mark      		string,
+			  |col_2      		string,
+			  |aaa				string
+			  |) using ums options(path '/tmp/actor/10/0/0/data_increment_data/right/[0-9]*')
+			""".stripMargin)
+
+		// val df = session.read.format("ums").load(s"hdfs://master:8020/tmp/actor")
+		session.sql("select * from bbb").show(1000, false)
+	}
+
 }
