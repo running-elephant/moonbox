@@ -41,7 +41,7 @@ abstract class DataSystem(props: Map[String, String]) {
 
 	def tableName(): String
 
-	def test(): Boolean = true
+	def test(): Unit = {}
 }
 
 object DataSystem extends MbLogging {

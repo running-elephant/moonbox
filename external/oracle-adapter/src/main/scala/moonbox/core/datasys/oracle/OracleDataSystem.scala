@@ -236,20 +236,14 @@ class OracleDataSystem(props: Map[String, String])
 		}) (props("url"), p)
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		var connection: Connection = null
 		try {
 			connection = getConnection()
-			if (connection != null) {
-				true
-			} else {
-				false
-			}
 		} catch {
 			case e: Exception =>
-				logWarning(e.getMessage)
-				logWarning(e.getStackTrace.mkString("\n"))
-				false
+				logError("oracle test failed.", e)
+				throw e
 		} finally {
 			if (connection != null) {
 				connection.close()

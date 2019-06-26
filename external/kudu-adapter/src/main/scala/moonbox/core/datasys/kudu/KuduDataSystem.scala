@@ -90,18 +90,14 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 		props.+(TABLE_KEY -> database.map(_ + tableName).getOrElse(tableName))
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		var client: KuduClient = null
 		try {
 			client = getClient
-			if (client != null) {
-				true
-			} else {
-				false
-			}
 		} catch {
 			case e: Exception =>
-				false
+				logError("kudu test failed.", e)
+				throw e
 		} finally {
 			if (client != null) {
 				client.close()

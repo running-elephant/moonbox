@@ -20,11 +20,12 @@
 
 package moonbox.core.datasys.hive
 
+import moonbox.common.MbLogging
 import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.hive.HiveClientUtils
 
 class HiveDataSystem(props: Map[String, String])
-	extends DataSystem(props) {
+	extends DataSystem(props) with MbLogging {
 
 	if (props.contains("metastore.uris")) {
 		checkOptions("metastore.uris", "hivedb")
@@ -47,17 +48,13 @@ class HiveDataSystem(props: Map[String, String])
 		props.+("hivetable" -> tableName)
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		try {
-			val client = HiveClientUtils.getHiveClient(props)
-			if (client != null) {
-				true
-			} else {
-				false
-			}
+			HiveClientUtils.getHiveClient(props)
 		} catch {
 			case e: Exception =>
-				false
+				logError("hive test failed.", e)
+				throw e
 		} finally {
 			// we do not close hive client here
 		}

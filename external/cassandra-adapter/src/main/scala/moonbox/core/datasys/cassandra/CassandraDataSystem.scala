@@ -21,11 +21,12 @@
 package moonbox.core.datasys.cassandra
 
 import com.datastax.driver.core.Cluster
+import moonbox.common.MbLogging
 import moonbox.core.datasys.DataSystem
 
 import scala.collection.JavaConverters._
 
-class CassandraDataSystem(props: Map[String, String]) extends DataSystem(props) {
+class CassandraDataSystem(props: Map[String, String]) extends DataSystem(props) with MbLogging {
 
 	checkOptions("spark.cassandra.connection.host")
 
@@ -60,14 +61,18 @@ class CassandraDataSystem(props: Map[String, String]) extends DataSystem(props) 
         props.+("table" -> tableName)
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
+		var cluster: Cluster = null
 		try {
-            val cluster = getCluster
-            cluster.getClusterName
-            cluster.close()
-			true
-		}catch {
-			case _: Exception => false
+			cluster = getCluster
+		} catch {
+			case e: Throwable =>
+				logError("cassandra test failed.", e)
+				throw e
+		} finally {
+			if (cluster != null) {
+				cluster.close()
+			}
 		}
 	}
 }

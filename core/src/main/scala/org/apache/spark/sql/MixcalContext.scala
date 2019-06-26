@@ -92,7 +92,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 	}
 
 	def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
-		val propsString = props.map { case (k, v) => s"$k '$v'" }.mkString(",")
+		val propsString = props.map { case (k, v) => s"'$k' '$v'" }.mkString(",")
 		val typ = props("type")
 		val catalog = sparkSession.sessionState.catalog
 

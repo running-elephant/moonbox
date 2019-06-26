@@ -87,15 +87,11 @@ class ElasticSearchDataSystemSuite extends FunSuite with BeforeAndAfterAll{
     test("exist") {
         val map1 = Map("es.nodes" -> "testserver1:9200", "es.resource" -> "test_mb_1000")
         val esDbSystem1: ElasticSearchDataSystem = new ElasticSearchDataSystem(map1)
-        val ret1 = esDbSystem1.test()
-        println(s"ret1= $ret1")
-        assert(ret1)
+		esDbSystem1.test()
 
         val map2 = Map("es.nodes" -> "testserver1:9300", "es.resource" -> "test_mb_1000")
         val esDbSystem2: ElasticSearchDataSystem = new ElasticSearchDataSystem(map2)
-        val ret2 = esDbSystem2.test()
-        println(s"ret2= $ret2")
-        assert(!ret2)
+		assertThrows(esDbSystem2.test())
     }
 
 }

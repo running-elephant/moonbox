@@ -394,34 +394,28 @@ class MongoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
 	override def tableName(): String = readCollection
 
-	private def isClientInfoValid(uri: String, timeout: Int = 3000): Boolean = {
+	private def validate(uri: String, timeout: Int = 3000): Unit = {
+		var mongoClient: MongoClient = null
 		val clientURI = new MongoClientURI(uri, MongoClientOptions.builder().serverSelectionTimeout(timeout))
-		val mongoClient = new MongoClient(clientURI)
-		mongoClient.getAddress
-		mongoClient.close()
-		true
-	}
-
-	override def test(): Boolean = {
 		try {
-			var testFlag: Boolean = false
-			val timeout: Int = 3000 // milliseconds
-			if (props.contains(MONGO_SPARK_INPUT_PREFIX + URI_KEY)) {
-				val uri = cleanedInputMap(URI_KEY)
-				testFlag = isClientInfoValid(uri, timeout)
-			}
-			if (props.contains(MONGO_SPARK_OUTPUT_PREFIX + URI_KEY)) {
-				val uri = cleanedOutputMap(URI_KEY)
-				testFlag = isClientInfoValid(uri, timeout)
-			}
-			testFlag
+			mongoClient = new MongoClient(clientURI)
 		} catch {
 			case e: Throwable =>
-				val stringWriter = new StringWriter
-				e.printStackTrace(new PrintWriter(stringWriter))
-				logWarning(stringWriter.toString)
-				false
+				logError("mongo test failed.", e)
+				throw e
+		} finally {
+			if (mongoClient != null) {
+				mongoClient.close()
+			}
 		}
 	}
 
+	override def test(): Unit = {
+		if (props.contains(MONGO_SPARK_INPUT_PREFIX + URI_KEY)) {
+			validate(cleanedInputMap(URI_KEY))
+		}
+		if (props.contains(MONGO_SPARK_OUTPUT_PREFIX + URI_KEY)) {
+			validate(cleanedOutputMap(URI_KEY))
+		}
+	}
 }

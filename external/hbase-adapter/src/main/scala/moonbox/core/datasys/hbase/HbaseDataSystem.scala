@@ -19,11 +19,12 @@
  */
 
 package moonbox.core.datasys.hbase
+import moonbox.common.MbLogging
 import moonbox.core.datasys.DataSystem
 import org.apache.hadoop.hbase.client.{Admin, ConnectionFactory, HBaseAdmin}
 import org.apache.hadoop.hbase.{HBaseConfiguration, HConstants}
 
-class HbaseDataSystem(props: Map[String, String]) extends DataSystem(props) {
+class HbaseDataSystem(props: Map[String, String]) extends DataSystem(props) with MbLogging {
 	checkOptions("hbase.zookeeper.quorum")
 
 	private def getClient: Admin = {
@@ -49,15 +50,15 @@ class HbaseDataSystem(props: Map[String, String]) extends DataSystem(props) {
 		throw new Exception("Function tableProperties no implementation, for HBASE dose not support physical mount")
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		try {
 			val conf = HBaseConfiguration.create
 			conf.set(HConstants.ZOOKEEPER_QUORUM, props("hbase.zookeeper.quorum"))
-
 			HBaseAdmin.checkHBaseAvailable(conf)
-			true
-		}catch {
-			case _: Exception => false
+		} catch {
+			case e: Throwable =>
+				logError("hbase test failed", e)
+				throw e
 		}
 	}
 }

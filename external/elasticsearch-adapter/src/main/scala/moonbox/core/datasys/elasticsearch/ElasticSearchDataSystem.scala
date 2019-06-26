@@ -201,18 +201,15 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 		}
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		val prop: Properties = getProperties
 		var executor: EsCatalystQueryExecutor = null
 		try {
-			//throw exception and close connection
 			executor = new EsCatalystQueryExecutor(prop)
-			true
 		} catch {
 			case e: Throwable =>
-				logError(s"test failed ${e.getMessage}")
-				e.printStackTrace()
-				false
+				logError(s"es test failed.", e)
+				throw e
 		} finally {
 			if (executor != null) {
 				executor.close()

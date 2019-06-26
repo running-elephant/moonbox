@@ -36,21 +36,20 @@ case class MountDatabase(
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		val validate = DataSystem.lookupDataSystem(props).test()
-		if (!validate) {
-			throw new Exception("Can't connect to the database. Please check your connecting parameters.")
-		} else {
-			val catalogDatabase = CatalogDatabase(
-				name = name,
-				properties = props,
-				description = None,
-				organizationId = ctx.organizationId,
-				isLogical = false,
-				createBy = ctx.userId,
-				updateBy = ctx.userId
-			)
-			mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
-		}
+
+		DataSystem.lookupDataSystem(props).test()
+
+		val catalogDatabase = CatalogDatabase(
+			name = name,
+			properties = props,
+			description = None,
+			organizationId = ctx.organizationId,
+			isLogical = false,
+			createBy = ctx.userId,
+			updateBy = ctx.userId
+		)
+		mbSession.catalog.createDatabase(catalogDatabase, ctx.organizationName, ignoreIfExists)
+
 		Seq.empty[Row]
 	}
 }
@@ -178,21 +177,18 @@ case class MountTable(
 			throw new UnsupportedOperationException(s"Can't mount table in physical database $database")
 		} else {
 			// for verifying options
-			val validate = DataSystem.lookupDataSystem(props).test()
-			if (!validate) {
-				throw new Exception("Can't connect to the database. Please check your connecting parameters.")
-			} else {
-				val catalogTable = CatalogTable(
-					name = table.table,
-					description = None,
-					databaseId = databaseId,
-					properties = props,
-					isStream = isStream,
-					createBy = ctx.userId,
-					updateBy = ctx.userId
-				)
-				mbSession.catalog.createTable(catalogTable, ctx.organizationName, database, ignoreIfExists)
-			}
+			DataSystem.lookupDataSystem(props).test()
+
+			val catalogTable = CatalogTable(
+				name = table.table,
+				description = None,
+				databaseId = databaseId,
+				properties = props,
+				isStream = isStream,
+				createBy = ctx.userId,
+				updateBy = ctx.userId
+			)
+			mbSession.catalog.createTable(catalogTable, ctx.organizationName, database, ignoreIfExists)
 		}
 		Seq.empty[Row]
 	}

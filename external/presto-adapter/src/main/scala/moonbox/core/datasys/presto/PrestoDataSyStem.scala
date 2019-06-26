@@ -200,18 +200,14 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 		props("dbtable")
 	}
 
-	override def test(): Boolean = {
+	override def test(): Unit = {
 		var connection: Connection = null
 		try  {
 			connection = getConnection()
-			if (connection != null) {
-				true
-			} else {
-				false
-			}
 		} catch {
 			case e: Exception =>
-				false
+				logError("presto test failed.", e)
+				throw e
 		} finally {
 			if (connection != null) {
 				connection.close()
