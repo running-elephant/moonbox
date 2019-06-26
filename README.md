@@ -6,7 +6,7 @@
 [![](https://img.shields.io/badge/%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C-%E4%B8%AD%E6%96%87%E7%89%88-blue.svg)](https://edp963.github.io/moonbox/)
 
 ## Introduction
-Moonbox, designed based on the concept "Data Virtualization", is aimed at offering batch computing services. Moonbox hides the details and complexities of accessing data from the underlying data sources. Users can implement hybrid computation across disparate data systems and write out with SQL. In addition, Moonbox provides basic services like data service, data management, data tools, data development, etc., and it can make data application architecture and practice of logical data warehouse much more agile and flexible.
+Moonbox, designed based on the concept "Data Virtualization", is aimed at offering batch and interactive computing services. Moonbox hides the details and complexities of accessing data from the underlying data sources. Users can implement hybrid computation across disparate data systems and write out with SQL. In addition, Moonbox provides basic services like data service, data management, data tools, data development, etc., and it can make data application architecture and practice of logical data warehouse much more agile and flexible.
 
 ## Features
 * Multi-tenant Supported  
