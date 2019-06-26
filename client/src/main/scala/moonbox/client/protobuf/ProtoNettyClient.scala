@@ -59,7 +59,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   /* val */
   private val host = clientOptions.host
   private val port = clientOptions.port
-  private val CONNECTION_TIMEOUT_MILLIS = 1000 * 60 // ms
+  private val CONNECTION_TIMEOUT_MILLIS = 1000 * 10 // ms
   private val promises = new ConcurrentHashMap[Long, ChannelPromise]
   private val responses = new ConcurrentHashMap[Long, ProtoMessage]
   private val callbacks = new ConcurrentHashMap[Long, ProtoMessage => Any]

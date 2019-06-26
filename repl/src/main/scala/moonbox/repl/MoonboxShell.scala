@@ -189,36 +189,29 @@ object MoonboxShell {
 	}
 
 	private def initClient(): Unit = {
-		var retryTimes = DEFAULT_RETRY_TIMES
-		while (retryTimes > 0 && !clientInited) {
-			try {
-				checkParameters()
-				val clientOptions =
-					ClientOptions.builder()
-						.options(handleExtraOptions(extraOptions))
-						.user(user)
-						.password(password)
-						.host(host)
-						.port(port)
-						.isLocal(islocal)
-						.fetchSize(fetchSize)
-						.timeout(timeout)
-						.maxRows(maxRowsToShow)
-						.database("default")
-						.build()
-				client = MoonboxClient.builder(clientOptions).build()
-				clientInited = true
-			} catch {
-				case e: Exception =>
-					Console.err.println(e.getMessage)
-					if (client != null) {
-						client.close()
-					}
-					retryTimes -= 1
-					if (retryTimes > 0) {
-						Console.err.println(s"Retry ${DEFAULT_RETRY_TIMES - retryTimes} ...")
-					}
-			}
+		try {
+			checkParameters()
+			val clientOptions =
+				ClientOptions.builder()
+					.options(handleExtraOptions(extraOptions))
+					.user(user)
+					.password(password)
+					.host(host)
+					.port(port)
+					.isLocal(islocal)
+					.fetchSize(fetchSize)
+					.timeout(timeout)
+					.maxRows(maxRowsToShow)
+					.database("default")
+					.build()
+			client = MoonboxClient.builder(clientOptions).build()
+			clientInited = true
+		} catch {
+			case e: Exception =>
+				if (client != null) {
+					client.close()
+				}
+				throw e
 		}
 	}
 
@@ -261,6 +254,7 @@ object MoonboxShell {
 	private def shutdown(): Unit = {
 		try {
 			closeCurrentClient()
+			Console.out.println("Bye!")
 			System.exit(0)
 		} catch {
 			case e: Exception =>
