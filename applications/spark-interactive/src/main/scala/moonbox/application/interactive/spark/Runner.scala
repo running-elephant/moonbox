@@ -322,6 +322,6 @@ class Runner(
 	private def init(): Unit = {
 		mbSession.bindUser(username, database)
 		userContext = mbSession.userContext
-		mbSession.mixcal.setJobGroup(sessionId)
+		mbSession.mixcal.setJobGroup(sessionId, username)
 	}
 }
