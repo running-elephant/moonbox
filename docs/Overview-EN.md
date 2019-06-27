@@ -35,7 +35,7 @@ Generally speaking, Moonbox consists of four parts, namely Client, Access Layer,
 - Client  
   Following are several Moonbox Clients:  
   - Rest API  
-    You can submit a batch job, check for a job state or cancel a job with Restful API.
+    You can submit a batch obligation, check for a obligation state or cancel a obligation with Restful API.
   - JDBC  
     Moonbox provides JDBC driver. You can use JDBC to programme and  access data.
   - ODBC  
@@ -55,7 +55,7 @@ Generally speaking, Moonbox consists of four parts, namely Client, Access Layer,
   - App also registers with Master. App is the one that is responsible for processing and computing, which can be a Spark APP or other customized App.    
 
 - Storage/Computation Layer  
-  For Moonbox, Spark is the default calculation engine, and a long-running Spark job is called App, supporting Standalone mode and Yarn mode. Spark App processes user requests, including user system management, permission management, SQL parsing, pushdown optimization, execution engine selection, etc., and submits computation tasks.  When computational logic can be pushed to data sources, Moonbox will figure out the data source query language as the mapping of the computation task and push the task down, so as to reduce cost for distributed job. Storage systems like HDFS, storage systems with computing capabilities like MySQL and Elasticsearch and calculation engine like Presto, all of them can be data sources of Moonbox.
+  For Moonbox, Spark is the default calculation engine, and a long-running Spark obligation is called App, supporting Standalone mode and Yarn mode. Spark App processes user requests, including user system management, permission management, SQL parsing, pushdown optimization, execution engine selection, etc., and submits computation tasks.  When computational logic can be pushed to data sources, Moonbox will figure out the data source query language as the mapping of the computation task and push the task down, so as to reduce cost for distributed obligation. Storage systems like HDFS, storage systems with computing capabilities like MySQL and Elasticsearch and calculation engine like Presto, all of them can be data sources of Moonbox.
   
 
 ## Features
@@ -70,7 +70,7 @@ Generally speaking, Moonbox consists of four parts, namely Client, Access Layer,
   Spark SQL is the standard query language of Moonbox. With Spark SQL, specific DDL and DCL are expanded, including creating, deleting and authorizing users, access authorization for data table and data column, mount/umount of physical data source/table, creating or deleting logical database/timing task and udf/udaf, etc..
  
 - Optimization Strategy Supported  
-  Moonbox supports hybrid calculation based on Apache Spark, and Spark SQL supports multiple data sources. However, Spark SQL fails to utilize the calculation feature of data sources while pulling data, only focusing on the pushdown of project and filter (operators). Moonbox optimizes LogicalPlan that has been optimized by Spark Optimizer, splits subtree which can be pushed to data source, figures out the Data Source Query Language as the mapping of the subtree, and pulls the results back to Spark for further calculation. If the whole LogicalPlan can be pushed to data source, Moonbox will directly run the query statement (mapping of LogicalPlan) with data source, so as to reduce the cost of distributed job and save computing resource.
+  Moonbox supports hybrid calculation based on Apache Spark, and Spark SQL supports multiple data sources. However, Spark SQL fails to utilize the calculation feature of data sources while pulling data, only focusing on the pushdown of project and filter (operators). Moonbox optimizes LogicalPlan that has been optimized by Spark Optimizer, splits subtree which can be pushed to data source, figures out the Data Source Query Language as the mapping of the subtree, and pulls the results back to Spark for further calculation. If the whole LogicalPlan can be pushed to data source, Moonbox will directly run the query statement (mapping of LogicalPlan) with data source, so as to reduce the cost of distributed obligation and save computing resource.
 
 - Column Permissions Control  
   Moonbox defines DCL to implement column permission control. SA authorizes data tables or columns to user with DCL, and Moonbox saves the permission relationship between user and tables/columns into catalog. While user executes SQL query,  Moonbox will intercept the SQL and analyze whether it contains unauthorized tables/columns. If it does, Moonbox will report errors to users.
