@@ -176,15 +176,11 @@ object MoonboxShell {
 	private def doCancelInteractiveQuery(): Unit = {
 		if (client != null && client.isActive) {
 			try {
-				println("Query cancelling ...")
-				if (client.cancelInteractiveQuery()) {
-					println("Query canceled.")
-				} else {
-					println("Query cancel failed.")
-				}
+				client.cancelInteractiveQuery()
 			} catch {
-				case e: Exception => Console.err.println(s"Cancel query error: ${e.getMessage}")
+				case e: Exception =>
 			}
+			println("Query canceled.")
 		}
 	}
 

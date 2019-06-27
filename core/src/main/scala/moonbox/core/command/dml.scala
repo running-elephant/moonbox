@@ -87,14 +87,15 @@ case class ShowDatabases(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output: Seq[Attribute] = {
-		AttributeReference("DATABASE_NAME", StringType, nullable = false)() :: Nil
+		AttributeReference("DATABASE_NAME", StringType, nullable = false)() ::
+			AttributeReference("DATABASE_TYPE", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
 		val databases = pattern.map { p =>
 			mbSession.catalog.listDatabase(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatabase(ctx.organizationId))
-		databases.map { d => Row(d.name)}
+		databases.map { d => Row(d.name, if (d.isLogical) "logical" else "physical")}
 	}
 }
 
@@ -103,7 +104,8 @@ case class ShowTables(
 	pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference("TABLE_NAME", StringType, nullable = false)() :: Nil
+		AttributeReference("TABLE_NAME", StringType, nullable = false)() ::
+			AttributeReference("TABLE_TYPE", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
@@ -112,12 +114,19 @@ case class ShowTables(
 
 		val tables = pattern.map { p =>
 			mbSession.catalog.listTables(databaseId, p)
-		}.getOrElse(mbSession.catalog.listTables(databaseId)).map(_.name)
+		}.getOrElse(mbSession.catalog.listTables(databaseId)).map(t => Row(t.name, "table"))
 
 		val views = pattern.map { p =>
 			mbSession.catalog.listViews(databaseId, p)
-		}.getOrElse(mbSession.catalog.listViews(databaseId)).map(_.name)
-		(tables ++ views).map { t =>  Row(t)}
+		}.getOrElse(mbSession.catalog.listViews(databaseId)).map(v => Row(v.name, "view"))
+
+		val tempViews = pattern.map { p =>
+			mbSession.mixcal.sparkSession.sessionState.catalog.listTables("global_temp", p)
+		}.getOrElse {
+			mbSession.mixcal.sparkSession.sessionState.catalog.listTables("global_temp")
+		}.map(tv => Row(tv.table, "temp_view"))
+
+		tables ++ views ++ tempViews
 	}
 }
 

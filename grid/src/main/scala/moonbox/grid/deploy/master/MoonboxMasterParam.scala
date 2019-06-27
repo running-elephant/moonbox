@@ -73,7 +73,7 @@ class MoonboxMasterParam(args: Array[String], val conf: MbConf) extends MbLoggin
 	private def printUsageAndExit(exitCode: Int): Unit = {
 		// scalastyle: off println
 		System.err.println(
-			"Usage: MbMaster [options]\n" +
+			"Usage: MoonboxMaster [options]\n" +
 				"options:\n" +
 				"   -h, --host : the host using for rpc\n" +
 				"   -p, --port : the port using for rpc\n" +
