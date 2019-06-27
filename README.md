@@ -21,7 +21,7 @@ Spark SQL is the standard query language of Moonbox. With Spark SQL, specific DD
 * Optimization Strategy Supported  
 Moonbox supports hybrid calculation based on Apache Spark, and Spark SQL supports multiple data sources. However, Spark SQL fails to utilize the calculation feature of data sources while pulling data, only focusing on the pushdown of project and filter (operators). 
 Moonbox optimizes LogicalPlan that has been optimized by Spark Optimizer, splits subtree which can be pushed to data source, figures out the Data Source Query Language as the mapping of the subtree, and pulls the results back to Spark for further calculation. 
-If the whole LogicalPlan can be pushed to data source, Moonbox will directly run the query statement (mapping of LogicalPlan) with data source, so as to reduce the cost of distributed job and save computing resource.
+If the whole LogicalPlan can be pushed to data source, Moonbox will directly run the query statement (mapping of LogicalPlan) with data source, so as to reduce the cost of distributed obligation and save computing resource.
 
 * Column Permissions Control  
 Moonbox defines DCL to implement column permission control. SA authorizes data tables or columns to user with DCL, and Moonbox saves the permission relationship between user and tables/columns into catalog. While user executes SQL query,  Moonbox will intercept the SQL and analyze whether it contains unauthorized tables/columns. If it does, Moonbox will report errors to users.
