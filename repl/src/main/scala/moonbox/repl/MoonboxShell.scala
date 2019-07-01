@@ -440,7 +440,7 @@ object MoonboxShell {
 	private def printUsageAndExit(exitCode: Int): Unit = {
 		// scalastyle: off println
 		System.err.println(
-			"Usage: moonbox [options]\n" +
+			"Usage: moonbox-sh [options]\n" +
 				"options:\n" +
 				"   -h, --host            Connect to host.\n" +
 				"   -P, --port            Port num to ues for connecting to server.\n" +
