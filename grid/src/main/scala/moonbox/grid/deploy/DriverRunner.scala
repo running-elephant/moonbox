@@ -76,8 +76,10 @@ private[deploy] class DriverRunner(
 						override def stateChanged(handle: SparkAppHandle): Unit = {
 							logInfo(handle.getState.toString)
 							val state = handle.getState match {
-								case SparkAppHandle.State.UNKNOWN | SparkAppHandle.State.LOST =>
+								case SparkAppHandle.State.UNKNOWN  =>
 									DriverState.UNKNOWN
+								case SparkAppHandle.State.LOST =>
+									DriverState.LOST
 								case SparkAppHandle.State.CONNECTED =>
 									DriverState.CONNECTED
 								case SparkAppHandle.State.SUBMITTED  =>
@@ -97,7 +99,7 @@ private[deploy] class DriverRunner(
 					process = launcher.process
 				} catch {
 					case e: Exception =>
-						logError("Launch cluster driver failed.", e)
+						logError("Launch driver failed.", e)
 						worker ! DriverStateChanged(driverId, DriverState.ERROR, None, Some(e))
 				}
 			}

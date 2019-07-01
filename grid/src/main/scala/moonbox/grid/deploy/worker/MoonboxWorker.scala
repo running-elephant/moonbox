@@ -59,6 +59,9 @@ class MoonboxWorker(
 	private val drivers = new mutable.HashMap[String, DriverRunner]
 	private val finishedDrivers = new mutable.LinkedHashMap[String, DriverRunner]
 
+	private val driverIdToDriverDesc = new mutable.HashMap[String, DriverDescription]()
+	private val killMarker = new mutable.HashSet[String]()
+
 	private var registerToMasterScheduler: Option[Cancellable] = None
 
 
@@ -71,7 +74,7 @@ class MoonboxWorker(
 		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
 			override def run(): Unit = {
 				drivers.values.foreach { driver =>
-					if (!driver.desc.isInstanceOf[SparkBatchDriverDescription]) {
+					if (driver.desc.isInstanceOf[LongRunDriverDescription]) {
 						driver.kill()
 					}
 				}
@@ -113,8 +116,10 @@ class MoonboxWorker(
 
 		case KillDriver(driverId) =>
 			logInfo(s"Asked to kill driver $driverId")
+			driverIdToDriverDesc.remove(driverId)
 			drivers.get(driverId) match {
 				case Some(runner) =>
+					killMarker.add(driverId)
 					runner.kill()
 				case None =>
 					logError(s"Asked to kill unknown driver $driverId")
@@ -149,11 +154,28 @@ class MoonboxWorker(
 		if (DriverState.isFinished(state)) {
 			finishDriver(driverId)
 		}
+
 		sendToMaster(driverStateChanged)
+
+		if (state == DriverState.FINISHED) {
+			if (killMarker.contains(driverId)) {
+				killMarker.remove(driverId)
+			} else {
+				driverIdToDriverDesc.get(driverId).foreach { desc =>
+					if (desc.isInstanceOf[LongRunDriverDescription]) {
+						system.scheduler.scheduleOnce(new FiniteDuration(3, SECONDS)) {
+							logInfo(s"Relaunch driver $driverId")
+							self ! LaunchDriver(driverId, desc)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private def finishDriver(driverId: String): Unit = {
 		drivers.remove(driverId).foreach { driver =>
+			driver.kill()
 			finishedDrivers(driverId) = driver
 		}
 	}
@@ -276,12 +298,16 @@ class MoonboxWorker(
 			val local = LaunchUtils.getLocalDriverConfigs(conf)
 			local.foreach { config =>
 				val driverId = newDriverId("local")
-				self ! LaunchDriver(driverId, new SparkLocalDriverDescription(driverId, masterAddresses, config))
+				val driverDesc = new SparkLocalDriverDescription(driverId, masterAddresses, config)
+				driverIdToDriverDesc.put(driverId, driverDesc)
+				self ! LaunchDriver(driverId, driverDesc)
 			}
 			val cluster = LaunchUtils.getClusterDriverConfigs(conf)
 			cluster.foreach { config =>
 				val driverId = newDriverId("cluster")
-				self ! LaunchDriver(driverId, new SparkClusterDriverDescription(driverId, masterAddresses, config))
+				val driverDesc = new SparkClusterDriverDescription(driverId, masterAddresses, config)
+				driverIdToDriverDesc.put(driverId, driverDesc)
+				self ! LaunchDriver(driverId, driverDesc)
 			}
 		} catch {
 			case e: Throwable =>

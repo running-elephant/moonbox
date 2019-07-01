@@ -32,10 +32,14 @@ trait DriverDescription {
 	def toConf: Map[String, String]
 }
 
+trait LongRunDriverDescription extends DriverDescription
+
+trait OnceRunDriverDescription extends DriverDescription
+
 case class SparkLocalDriverDescription(
 	driverId: String,
 	masters: Array[String],
-	config: Map[String, String]) extends DriverDescription {
+	config: Map[String, String]) extends LongRunDriverDescription {
 
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
@@ -75,7 +79,7 @@ case class SparkLocalDriverDescription(
 case class SparkClusterDriverDescription(
 	driverId: String,
 	masters: Array[String],
-	config: Map[String, String]) extends DriverDescription {
+	config: Map[String, String]) extends LongRunDriverDescription {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("client")
@@ -111,7 +115,7 @@ case class SparkBatchDriverDescription(
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
-) extends DriverDescription {
+) extends OnceRunDriverDescription {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("cluster")
@@ -145,7 +149,7 @@ case class HiveBatchDriverDescription(
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
-) extends DriverDescription {
+) extends OnceRunDriverDescription {
 
 	override def master = None
 	override def deployMode = None

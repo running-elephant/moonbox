@@ -337,7 +337,7 @@ class MoonboxMaster(
 
 		case DriverStateChanged(driverId, driverState, appId, exception) =>
 			driverState match {
-				case DriverState.ERROR | DriverState.FINISHED | DriverState.KILLED | DriverState.FAILED =>
+				case DriverState.ERROR | DriverState.FINISHED | DriverState.LOST | DriverState.KILLED | DriverState.FAILED =>
 					removeDriver(driverId, driverState, appId, exception)
 				case _ =>
 					drivers.find(_.id == driverId).foreach { d =>
