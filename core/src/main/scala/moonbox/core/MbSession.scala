@@ -366,8 +366,4 @@ object MbSession extends MbLogging {
 
 	def getMbSession(conf: MbConf, sessionConfig: Map[String, String]) = new MbSession(conf, sessionConfig)
 
-	def startMixcalEnv(conf: MbConf): Unit = {
-		MixcalContext.start(conf)
-	}
-
 }
