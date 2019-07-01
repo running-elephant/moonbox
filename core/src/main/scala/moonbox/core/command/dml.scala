@@ -20,10 +20,13 @@
 
 package moonbox.core.command
 
+import java.util.Locale
+
 import moonbox.common.util.Utils
 import moonbox.catalog._
 import moonbox.core._
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.FunctionIdentifier
 import org.apache.spark.sql.catalyst.errors.TreeNodeException
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.optimizer.WholePushdown
@@ -398,7 +401,7 @@ case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML 
 
 }
 
-case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
+case class DescFunction(function: MbFunctionIdentifier, isExtended: Boolean)
 	extends MbRunnableCommand with DML {
 
   override def output = {
@@ -408,20 +411,68 @@ case class DescFunction(function: MbFunctionIdentifier, extended: Boolean)
   }
 
 	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		val result = new ArrayBuffer[Row]()
 
 		val databaseId = function.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
-		val catalogFunction = mbSession.catalog.getFunction(databaseId, function.func)
-		result.append(
-			Row("Function Name", catalogFunction.name),
-			Row("Description", catalogFunction.description.getOrElse(""))
-		)
-		if (extended) {
-			// TODO
-			result.append( Row("Class", catalogFunction.className))
+
+		val isUDF = mbSession.catalog.functionExists(databaseId, function.func)
+		if (isUDF) {
+			val catalogFunction = mbSession.catalog.getFunction(databaseId, function.func)
+			val result =
+				Row("Function", catalogFunction.name) ::
+					Row("Usage", catalogFunction.description.getOrElse("")) ::
+					Row("Class", catalogFunction.className) :: Nil
+			if (isExtended) {
+				// TODO
+				result :+ Row("Extended Usage", "")
+			} else {
+				result
+			}
+		} else {
+			val functionName = FunctionIdentifier(function.func, function.database)
+			function.func.toLowerCase(Locale.ROOT) match {
+				case "<>" =>
+					Row("Function", functionName) ::
+						Row("Usage",
+							" expr1 <> expr2 - Returns true if `expr1` is not equal to `expr2`.") :: Nil
+				case "!=" =>
+					Row(s"Function", functionName) ::
+						Row("Usage",
+							"expr1 != expr2 - Returns true if `expr1` is not equal to `expr2`.") :: Nil
+				case "between" =>
+					Row("Function", "between") ::
+						Row("Usage",
+							"expr1 [NOT] BETWEEN expr2 AND expr3 - evaluate if `expr1` is [not] in between `expr2` and `expr3`.") :: Nil
+				case "case" =>
+					Row("Function", "case") ::
+						Row("Usage", "CASE expr1 WHEN expr2 THEN expr3 " +
+							"[WHEN expr4 THEN expr5]* [ELSE expr6] END - " +
+							"When `expr1` = `expr2`, returns `expr3`; " +
+							"when `expr1` = `expr4`, return `expr5`; else return `expr6`.") :: Nil
+				case _ =>
+					val info = mbSession.mixcal.sparkSession.sessionState.catalog.lookupFunctionInfo(functionName)
+					val name = if (info.getDb != null) info.getDb + "." + info.getName else info.getName
+					val result =
+						Row(s"Function", name) ::
+							Row(s"Class", info.getClassName) ::
+							Row(s"Usage", replaceFunctionName(info.getUsage, info.getName)) :: Nil
+
+					if (isExtended) {
+						result :+
+							Row(s"Extended Usage", replaceFunctionName(info.getExtended, info.getName))
+					} else {
+						result
+					}
+			}
 		}
-		result
+	}
+
+	private def replaceFunctionName(usage: String, functionName: String): String = {
+		if (usage == null) {
+			"N/A."
+		} else {
+			usage.replaceAll("_FUNC_", functionName)
+		}
 	}
 }
 

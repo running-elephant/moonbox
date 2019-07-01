@@ -559,19 +559,19 @@ class MbParserSuite extends FunSuite {
 
 	test("desc function") {
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func"), extended = false),
+			DescFunction(MbFunctionIdentifier("func"), isExtended = false),
 			"DESC FUNCTION func",
 			"DESCRIBE FUNCTION func"
 		)
 
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func", Some("db")), extended = false),
+			DescFunction(MbFunctionIdentifier("func", Some("db")), isExtended = false),
 			"DESC FUNCTION db.func",
 			"DESCRIBE FUNCTION db.func"
 		)
 
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func", Some("db")), extended = true),
+			DescFunction(MbFunctionIdentifier("func", Some("db")), isExtended = true),
 			"DESC FUNCTION EXTENDED db.func",
 			"DESCRIBE FUNCTION EXTENDED db.func"
 		)
