@@ -175,7 +175,6 @@ class MoonboxWorker(
 
 	private def finishDriver(driverId: String): Unit = {
 		drivers.remove(driverId).foreach { driver =>
-			driver.kill()
 			finishedDrivers(driverId) = driver
 		}
 	}
