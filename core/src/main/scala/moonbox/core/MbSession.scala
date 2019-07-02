@@ -32,6 +32,7 @@ import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.command.{AnalyzeColumnCommand, AnalyzeTableCommand}
 import org.apache.spark.sql.{DataFrame, MixcalContext}
 
 import scala.collection.mutable
@@ -292,6 +293,10 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		val functions = new mutable.HashSet[UnresolvedFunction]()
 		def traverseAll(plan: LogicalPlan): Unit = {
 			plan.foreach {
+				case AnalyzeTableCommand(tableIdent, _) =>
+					tables.add(tableIdent)
+				case AnalyzeColumnCommand(tableIdent, _) =>
+					tables.add(tableIdent)
 				case InsertIntoTable(UnresolvedRelation(tableIdentifier), _, query ,_ , _) =>
 					tables.add(tableIdentifier)
 					traverseAll(query)
