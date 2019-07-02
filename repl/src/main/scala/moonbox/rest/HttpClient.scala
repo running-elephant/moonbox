@@ -23,7 +23,7 @@ package moonbox.rest
 
 import org.apache.http.client.entity.UrlEncodedFormEntity
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet, HttpPost}
-import org.apache.http.entity.StringEntity
+import org.apache.http.entity.{ContentType, StringEntity}
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClientBuilder, HttpClients}
 import org.apache.http.message.BasicNameValuePair
 import org.apache.http.util.EntityUtils
@@ -55,9 +55,7 @@ object HttpClient {
 		val client: CloseableHttpClient = HttpClientBuilder.create().build()
 		try {
 			val post: HttpPost = new HttpPost(url)
-			val entity: StringEntity = new StringEntity(json)
-			entity.setContentEncoding(charset)
-			entity.setContentType("application/json")
+			val entity: StringEntity = new StringEntity(json, ContentType.APPLICATION_JSON)
 			post.setEntity(entity)
 			val response = client.execute(post)
 			EntityUtils.toString(response.getEntity, charset)
