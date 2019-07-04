@@ -1,3 +1,4 @@
+/*
 /*-
  * <<
  * Moonbox
@@ -233,3 +234,4 @@ case class HiveTableScanExec(
 
 	override def otherCopyArgs: Seq[AnyRef] = Seq(sparkSession)
 }
+*/

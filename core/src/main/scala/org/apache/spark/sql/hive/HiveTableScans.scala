@@ -24,8 +24,9 @@ import org.apache.spark.sql.{SparkSession, Strategy}
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Expression}
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, ScriptTransformation}
 import org.apache.spark.sql.execution.SparkPlan
+import org.apache.spark.sql.hive.execution.{HiveScriptIOSchema, HiveTableScanExec, ScriptTransformationExec}
 
 case class HiveTableScans(sparkSession: SparkSession) extends Strategy {
 	def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
@@ -45,5 +46,14 @@ case class HiveTableScans(sparkSession: SparkSession) extends Strategy {
 				HiveTableScanExec(_, relation, pruningPredicates)(sparkSession)) :: Nil
 		case _ =>
 			Nil
+	}
+}
+
+object Scripts extends Strategy {
+	def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
+		case ScriptTransformation(input, script, output, child, ioschema) =>
+			val hiveIoSchema = HiveScriptIOSchema(ioschema)
+			ScriptTransformationExec(input, script, output, planLater(child), hiveIoSchema) :: Nil
+		case _ => Nil
 	}
 }

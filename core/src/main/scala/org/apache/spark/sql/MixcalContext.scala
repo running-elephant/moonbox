@@ -29,11 +29,11 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import moonbox.core.udf.UdfUtils
 import moonbox.core.datasys.DataSystem
-import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
-import org.apache.spark.sql.hive.{HiveClientUtils, HiveTableScans}
+import org.apache.spark.sql.execution.datasources.{FindDataSourceTable, PreWriteCheck, ResolveSQLOnFile}
+import org.apache.spark.sql.hive._
 
 
 class MixcalContext(conf: MbConf) extends MbLogging {
@@ -42,7 +42,14 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 		SparkSession.clearDefaultSession()
 		SparkSession.clearActiveSession()
 		SparkSession.builder().sparkContext(getSparkContext(conf))
-			.withExtensions(_.injectPlannerStrategy(sparkSession => HiveTableScans(sparkSession)))
+			.withExtensions(se => se.injectResolutionRule(session => new ResolveHiveSerdeTable(session)))
+			.withExtensions(se => se.injectResolutionRule(session => new FindDataSourceTable(session)))
+			.withExtensions(se => se.injectResolutionRule(session => new ResolveSQLOnFile(session)))
+
+			.withExtensions(se => se.injectPostHocResolutionRule(session => new DetermineTableStats(session)))
+			.withExtensions(se => se.injectCheckRule(_ => PreWriteCheck))
+			.withExtensions(se => se.injectPlannerStrategy(HiveTableScans))
+			.withExtensions(se => se.injectPlannerStrategy(_ => Scripts))
 			.getOrCreate()
 	}
 	lazy val mbOptimizer = new MbOptimizer(sparkSession)
@@ -102,6 +109,7 @@ class MixcalContext(conf: MbConf) extends MbLogging {
 			catalog.createTable(hiveCatalogTable.copy(
 				identifier = tableIdentifier,
 				tableType = CatalogTableType.EXTERNAL,
+				provider = Some("hive"),
 				properties = hiveCatalogTable.properties ++ props
 			), ignoreIfExists = true)
 			catalog.createPartitions(
