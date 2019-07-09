@@ -93,4 +93,15 @@ class MbUmsSuite extends FunSuite {
 		session.sql("select * from bbb").show(1000, false)
 	}
 
+	test("string") {
+		session.sql(
+			// ums_id_ string,ums_ts_ timestamp,ums_op_ string,ums_uid_ long,advance_rate string,advance_rate_desc string,advance_type string,bank_code string,bank_name string,create_time timestamp,enterprise_or_personal int,expire_period int,expire_period_unit int,id long,incr_amount decimal,interest_rule string,interest_time_desc string,left_quota decimal,min_amount decimal,name string,open_time timestamp,product_id long,product_type int,publish_quota decimal,publish_time timestamp,purchase_agreement string,quota decimal,remark string,return_rate decimal,sort_weight int,status int,update_time timestamp,valid int,withdrawal_agreement string
+			"""create table a(
+			  |interest_rule string
+			  |) using ums options(path '/Users/wanghao/moonbox_test_data/product_ums.txt')
+			""".stripMargin
+		)
+		session.sql("select * from a").show()
+	}
+
 }

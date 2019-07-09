@@ -112,6 +112,8 @@ object JsonDataSource {
 			TextInputJsonDataSource
 		}
 	}
+
+
 }
 
 object TextInputJsonDataSource extends JsonDataSource {
@@ -177,7 +179,9 @@ object TextInputJsonDataSource extends JsonDataSource {
 	}
 
 	private def getPayloadData(text: Text, requiredSchema: StructType): Iterator[String] = {
-		val ums = new ObjectMapper().readTree(text.toString)
+		val mapper = new ObjectMapper()
+		// mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
+		val ums = mapper.readTree(text.toString)
 		val payload = ums.get(UMSProtocol.PAYLOAD).iterator()
 		val nameTypeIndex = ums.get(UMSProtocol.SCHEMA).get(UMSProtocol.FIELDS).toSeq.zipWithIndex.map { case (node, index) =>
 			(node.get(UMSProtocol.NAME).asText, (node.get(UMSProtocol.TYPE).asText, index))}.toMap
@@ -188,9 +192,16 @@ object TextInputJsonDataSource extends JsonDataSource {
 			val record = node.get(UMSProtocol.TUPLE)
 			existsFields.map { f =>
 				// generate json according to ums schema, that make sure the json format is valid
+				// such as one column is number type (not quoted), then change to string(must quoted).
 				val value = nameTypeIndex(f.name) match {
 					case (UMSProtocol.STRING | UMSProtocol.TIMESTAMP | UMSProtocol.DATETIME | UMSProtocol.DATE, index) =>
-						"\"" + record.get(index).asText() + "\""
+						"\"" +
+							record.get(index).asText()
+								.stripPrefix("\"")
+								.stripSuffix("\"")
+								.replace("\n", "\\n")
+						    	.replace("\"", "\\\"") +
+							"\""
 					case (_, index) =>
 						record.get(index).asText()
 				}
