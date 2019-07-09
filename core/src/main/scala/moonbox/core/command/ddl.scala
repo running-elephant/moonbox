@@ -22,7 +22,7 @@ package moonbox.core.command
 
 import moonbox.common.util.Utils
 import moonbox.catalog._
-import moonbox.core.{MbFunctionIdentifier, MbSession, MbTableIdentifier, UserContext}
+import moonbox.core.{MbFunctionIdentifier, MoonboxSession, MbTableIdentifier, SessionEnv}
 import moonbox.core.datasys.DataSystem
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -35,7 +35,7 @@ case class MountDatabase(
 	props: Map[String, String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 
 		DataSystem.lookupDataSystem(props).test()
 
@@ -58,7 +58,7 @@ case class AlterDatabaseSetOptions(
 	name: String,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Logical database $name can not be set properties")
@@ -79,13 +79,13 @@ case class UnmountDatabase(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Database $name is logical. Please use DROP DATABASE command.")
 		} else {
 			mbSession.catalog.dropDatabase(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists, cascade = true)
-			mbSession.mixcal.sparkSession.sessionState.catalog.dropDatabase(name, ignoreIfNotExists = true, cascade = true)
+			mbSession.engine.sparkSession.sessionState.catalog.dropDatabase(name, ignoreIfNotExists = true, cascade = true)
 		}
 		Seq.empty[Row]
 	}
@@ -96,7 +96,7 @@ case class CreateDatabase(
 	comment: Option[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogDatabase = CatalogDatabase(
 			name = name,
 			description = comment,
@@ -115,7 +115,7 @@ case class AlterDatabaseSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.catalog.renameDatabase(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		// alter current database's name
 		if (name.equalsIgnoreCase(ctx.databaseName)) {
@@ -129,7 +129,7 @@ case class AlterDatabaseSetComment(
 	name: String,
 	comment: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		mbSession.catalog.alterDatabase(
 			existDatabase.copy(
@@ -147,7 +147,7 @@ case class DropDatabase(
 	ignoreIfNotExists: Boolean,
 	cascade: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existDatabase = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		if (!existDatabase.isLogical) {
 			throw new UnsupportedOperationException(s"Database $name is physical. Please use UNMOUNT DATABASE command.")
@@ -165,7 +165,7 @@ case class MountTable(
 	isStream: Boolean,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database, isLogical)= table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -198,9 +198,9 @@ case class AlterTableSetName(
 	table: MbTableIdentifier,
 	newTable: MbTableIdentifier) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		require(table.database == newTable.database, s"Rename table cant not rename database")
-		import mbSession.mixcal.sparkSession.sessionState.catalog
+		import mbSession.engine.sparkSession.sessionState.catalog
 		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -228,8 +228,8 @@ case class AlterTableSetName(
 case class AlterTableSetOptions(
 	table: MbTableIdentifier,
 	props: Map[String, String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		import mbSession.mixcal.sparkSession.sessionState.catalog
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
+		import mbSession.engine.sparkSession.sessionState.catalog
 
 		val (databaseId, isLogical) = table.database match {
 			case Some(db) =>
@@ -288,7 +288,7 @@ case class UnmountTable(
 	table: MbTableIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database, isLogical) = table.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -300,7 +300,7 @@ case class UnmountTable(
 			throw new UnsupportedOperationException("Can't unmount table in physical database.")
 		}
 		mbSession.catalog.dropTable(databaseId, ctx.organizationName, database, table.table, ignoreIfNotExists)
-		mbSession.mixcal.sparkSession.sessionState.catalog
+		mbSession.engine.sparkSession.sessionState.catalog
 			.dropTable(TableIdentifier(table.table, Some(database)), ignoreIfNotExists = true, purge = true)
 		Seq.empty[Row]
 	}
@@ -313,7 +313,7 @@ case class CreateFunction(
 	resources: Seq[FunctionResource],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database) = function.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -381,7 +381,7 @@ case class AlterFunctionSetOptions(
 case class DropFunction(
 	function: MbFunctionIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database) = function.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -400,7 +400,7 @@ case class CreateView(
 	comment: Option[String],
 	replaceIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database)= view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -426,7 +426,7 @@ case class CreateView(
 case class AlterViewSetName(
 	view: MbTableIdentifier,
 	newView: MbTableIdentifier) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		require(view.database == newView.database, s"Rename view cant not rename database")
 		// TODO check table exists
 		val (databaseId, database)= view.database match {
@@ -444,7 +444,7 @@ case class AlterViewSetName(
 case class AlterViewSetComment(
 	view: MbTableIdentifier,
 	comment: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databaseId = view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -467,7 +467,7 @@ case class AlterViewSetComment(
 case class AlterViewSetQuery(
 	view: MbTableIdentifier,
 	query: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databaseId = view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -491,7 +491,7 @@ case class AlterViewSetQuery(
 case class DropView(
 	view: MbTableIdentifier,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val (databaseId, database)= view.database match {
 			case Some(db) =>
 				val currentDatabase: CatalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, db)
@@ -510,7 +510,7 @@ case class CreateProcedure(
 	lang: String,
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogProcedure = CatalogProcedure(
 			name = name,
 			cmds = queryList,
@@ -529,7 +529,7 @@ case class AlterProcedureSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with DDL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.catalog.renameProcedure(ctx.organizationId, ctx.organizationName, name, newName, ctx.userId)
 		Seq.empty[Row]
 	}
@@ -538,7 +538,7 @@ case class AlterProcedureSetName(
 case class AlterProcedureSetQuery(
 	name: String,
 	queryList: Seq[String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existProcedure: CatalogProcedure = mbSession.catalog.getProcedure(ctx.organizationId, name)
 		mbSession.catalog.alterProcedure(
 			existProcedure.copy(
@@ -554,7 +554,7 @@ case class AlterProcedureSetQuery(
 case class DropProcedure(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.catalog.dropProcedure(ctx.organizationId, ctx.organizationName, name, ignoreIfNotExists)
 		Seq.empty[Row]
 	}
@@ -571,7 +571,7 @@ case class CreateTimedEvent(
 	ignoreIfExists: Boolean) extends MbRunnableCommand with DDL {
 
 	// TODO schedule validation
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val definerId = definer.map(user => mbSession.catalog.getUser(ctx.organizationId, user).id.get).getOrElse(ctx.userId)
 		val appId = mbSession.catalog.getProcedure(ctx.organizationId, proc).id.get
 		mbSession.catalog.createTimedEvent(
@@ -593,7 +593,7 @@ case class CreateTimedEvent(
 
 case class AlterTimedEventSetName(
 	name: String, newName: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't rename Event $name, while it is running.")
@@ -606,7 +606,7 @@ case class AlterTimedEventSetName(
 case class AlterTimedEventSetDefiner(
 	name: String,
 	definer: Option[String]) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't alter definer of Event $name, while it is running.")
@@ -621,7 +621,7 @@ case class AlterTimedEventSetDefiner(
 
 case class AlterTimedEventSetSchedule(
 	name: String, schedule: String) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't alter schedule of Event $name, while it is running.")
@@ -635,7 +635,7 @@ case class AlterTimedEventSetSchedule(
 
 case class AlterTimedEventSetEnable(
 	name: String, enable: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		mbSession.catalog.alterTimedEvent(
 			timedEvent.copy(enable = enable)
@@ -647,7 +647,7 @@ case class AlterTimedEventSetEnable(
 case class DropTimedEvent(
 	name: String,
 	ignoreIfNotExists: Boolean) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, name)
 		if (timedEvent.enable) {
 			throw new Exception(s"Can't delete schedule of Event $name, while it is running.")

@@ -32,34 +32,34 @@ import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, 
 import scala.collection.mutable.ArrayBuffer
 
 class TablePrivilegeManager {
-	private var mbSession: MbSession = _
+	private var mbSession: MoonboxSession = _
 	private var catalogView: CatalogView = _
 	private var catalogTable: CatalogTable = _
 	private var dbPrivileges: Seq[CatalogDatabasePrivilege] = _
 	private var tablePrivileges: Seq[CatalogTablePrivilege] = _
 	private var isView: Boolean = _
 
-	def this(mbSession: MbSession, catalogView: CatalogView) = {
+	def this(mbSession: MoonboxSession, catalogView: CatalogView) = {
 		this()
 		this.mbSession = mbSession
 		this.catalogView = catalogView
 		this.isView = true
 		this.dbPrivileges = mbSession.catalog.getDatabasePrivilege(
-			mbSession.userContext.userId, catalogView.databaseId)
+			mbSession.sessionEnv.userId, catalogView.databaseId)
 		this.tablePrivileges = mbSession.catalog.getTablePrivilege(
-			mbSession.userContext.userId, catalogView.databaseId, catalogView.name)
+			mbSession.sessionEnv.userId, catalogView.databaseId, catalogView.name)
 
 	}
 
-	def this(mbSession: MbSession, catalogTable: CatalogTable) = {
+	def this(mbSession: MoonboxSession, catalogTable: CatalogTable) = {
 		this()
 		this.mbSession = mbSession
 		this.catalogTable = catalogTable
 		this.isView = false
 		this.dbPrivileges = mbSession.catalog.getDatabasePrivilege(
-			mbSession.userContext.userId, catalogTable.databaseId)
+			mbSession.sessionEnv.userId, catalogTable.databaseId)
 		this.tablePrivileges = mbSession.catalog.getTablePrivilege(
-			mbSession.userContext.userId, catalogTable.databaseId, catalogTable.name)
+			mbSession.sessionEnv.userId, catalogTable.databaseId, catalogTable.name)
 
 	}
 	//val physicalTableName = DataSystem.lookupDataSystem(catalogTable.properties).tableName()
@@ -86,7 +86,7 @@ class TablePrivilegeManager {
 
 	private def tableLevelPrivilege(privilegeType: String): Boolean = {
 		if (isView) {
-			if (catalogView.createBy == mbSession.userContext.userId || !mbSession.columnPermission) {
+			if (catalogView.createBy == mbSession.sessionEnv.userId || !mbSession.columnPermission) {
 				true
 			} else if (dbPrivileges.exists(dbPriv => dbPriv.databaseId == catalogView.databaseId &&
 				dbPriv.privilegeType == privilegeType)) true
@@ -94,7 +94,7 @@ class TablePrivilegeManager {
 				tablePriv.table.equalsIgnoreCase(catalogView.name) && tablePriv.privilegeType == privilegeType)) true
 			else false
 		} else {
-			if (catalogTable.createBy == mbSession.userContext.userId || !mbSession.columnPermission) {
+			if (catalogTable.createBy == mbSession.sessionEnv.userId || !mbSession.columnPermission) {
 				true
 			} else if (dbPrivileges.exists(dbPriv => dbPriv.databaseId == catalogTable.databaseId &&
 				dbPriv.privilegeType == privilegeType)) true
@@ -107,27 +107,27 @@ class TablePrivilegeManager {
 	private def columnLevelPrivileges(privilegeType: String): Seq[CatalogColumn] = {
 		if (isView) {
 			val catalogColumns = mbSession.schema(catalogView.databaseId, catalogView.name, catalogView.cmd)
-			if (catalogView.createBy == mbSession.userContext.userId || !mbSession.columnPermission) {
+			if (catalogView.createBy == mbSession.sessionEnv.userId || !mbSession.columnPermission) {
 				catalogColumns
 			} else {
 				val tablePrivi = tableLevelPrivilege(privilegeType)
 				if (tablePrivi) catalogColumns
 				else {
 					val visibleColumns = mbSession.catalog.getColumnPrivilege(
-						mbSession.userContext.userId, catalogView.databaseId, catalogView.name, privilegeType).map(_.column)
+						mbSession.sessionEnv.userId, catalogView.databaseId, catalogView.name, privilegeType).map(_.column)
 					catalogColumns.filter(column => visibleColumns.contains(column.name))
 				}
 			}
 		} else {
 			val catalogColumns = mbSession.schema(catalogTable.databaseId, catalogTable.name)
-			if (catalogTable.createBy == mbSession.userContext.userId || !mbSession.columnPermission) {
+			if (catalogTable.createBy == mbSession.sessionEnv.userId || !mbSession.columnPermission) {
 				catalogColumns
 			} else {
 				val tablePrivi = tableLevelPrivilege(privilegeType)
 				if (tablePrivi) catalogColumns
 				else {
 					val visibleColumns = mbSession.catalog.getColumnPrivilege(
-						mbSession.userContext.userId, catalogTable.databaseId, catalogTable.name, privilegeType).map(_.column)
+						mbSession.sessionEnv.userId, catalogTable.databaseId, catalogTable.name, privilegeType).map(_.column)
 					catalogColumns.filter(column => visibleColumns.contains(column.name))
 				}
 			}
@@ -136,7 +136,7 @@ class TablePrivilegeManager {
 }
 
 object TableInsertPrivilegeChecker {
-	def intercept(mbSession: MbSession, catalogTable: CatalogTable, dataTable: DataTable): DataTable = {
+	def intercept(mbSession: MoonboxSession, catalogTable: CatalogTable, dataTable: DataTable): DataTable = {
 		if (mbSession.columnPermission) {
 			val manager = new TablePrivilegeManager(mbSession, catalogTable)
 			if (manager.insertable()) {
@@ -148,7 +148,7 @@ object TableInsertPrivilegeChecker {
 			dataTable
 		}
 	}
-	def intercept(mbSession: MbSession, catalogTable: CatalogTable, dataFrame: DataFrame): DataFrame = {
+	def intercept(mbSession: MoonboxSession, catalogTable: CatalogTable, dataFrame: DataFrame): DataFrame = {
 		if (mbSession.columnPermission) {
 			val manager = new TablePrivilegeManager(mbSession, catalogTable)
 			if (manager.insertable()) {
@@ -163,8 +163,8 @@ object TableInsertPrivilegeChecker {
 }
 
 object ColumnSelectPrivilegeChecker {
-	def intercept(logicalPlan: LogicalPlan, mbSession: MbSession): Unit = {
-		if (mbSession.userContext.isSa) {
+	def intercept(logicalPlan: LogicalPlan, mbSession: MoonboxSession): Unit = {
+		if (mbSession.sessionEnv.isSa) {
 			return
 		}
 
@@ -174,7 +174,7 @@ object ColumnSelectPrivilegeChecker {
 			case _ => logicalPlan
 		}
 
-		val catalogSession = mbSession.userContext
+		val catalogSession = mbSession.sessionEnv
 		val physicalColumns = new ArrayBuffer[AttributeSet]()
 		val availableColumns = collectRelationAndView(plan).flatMap { source =>
 			val (catalog, isView) = source match {

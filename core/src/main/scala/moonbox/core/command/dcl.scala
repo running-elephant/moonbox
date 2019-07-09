@@ -23,7 +23,7 @@ package moonbox.core.command
 import moonbox.common.util.Utils
 import moonbox.catalog._
 import moonbox.core.command.PrivilegeType.PrivilegeType
-import moonbox.core.{MbSession, MbTableIdentifier, UserContext}
+import moonbox.core.{MoonboxSession, MbTableIdentifier, SessionEnv}
 import org.apache.spark.sql.Row
 
 sealed trait DCL
@@ -32,7 +32,7 @@ case class GrantGrantToUser(
 	grants: Seq[PrivilegeType],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -62,7 +62,7 @@ case class GrantGrantToGroup(
 	grants: Seq[PrivilegeType],
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -97,7 +97,7 @@ case class RevokeGrantFromUser(
 	grants: Seq[PrivilegeType],
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -127,7 +127,7 @@ case class RevokeGrantFromGroup(
 	grants: Seq[PrivilegeType],
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -161,7 +161,7 @@ case class RevokeGrantFromGroup(
 
 case class GrantPrivilegeToUser(privileges: Seq[PrivilegeType], users: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -191,7 +191,7 @@ case class GrantPrivilegeToUser(privileges: Seq[PrivilegeType], users: Seq[Strin
 
 case class GrantPrivilegeToGroup(privileges: Seq[PrivilegeType], groups: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -225,7 +225,7 @@ case class GrantPrivilegeToGroup(privileges: Seq[PrivilegeType], groups: Seq[Str
 
 case class RevokePrivilegeFromUser(privileges: Seq[PrivilegeType], users: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		require(users.size == catalogUsers.size,
 			s"User does not exist: '${users.diff(catalogUsers.map(_.name)).mkString(", ")}'")
@@ -255,7 +255,7 @@ case class RevokePrivilegeFromUser(privileges: Seq[PrivilegeType], users: Seq[St
 
 case class RevokePrivilegeFromGroup(privileges: Seq[PrivilegeType], groups: Seq[String])
 	extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogGroups: Seq[CatalogGroup] = mbSession.catalog.getGroups(ctx.organizationId, groups)
 		require(groups.size == catalogGroups.size,
 			s"Group does not exist: '${groups.diff(catalogGroups.map(_.name)).mkString(", ")}'")
@@ -291,8 +291,8 @@ case class GrantResourceToUser(
 	tableIdentifier: MbTableIdentifier,
 	users: Seq[String]) extends MbRunnableCommand with DCL {
 
-	private def dbLevelPrivileges(mbSession: MbSession, catalogUsers: Seq[CatalogUser],
-		catalogDatabase: CatalogDatabase)(implicit ctx: UserContext) = {
+	private def dbLevelPrivileges(mbSession: MoonboxSession, catalogUsers: Seq[CatalogUser],
+		catalogDatabase: CatalogDatabase)(implicit ctx: SessionEnv) = {
 		val privilegeType = privileges.flatMap {
 			case SelectPrivilege(columns) if columns.nonEmpty =>
 				throw new Exception("Illegal grant command.")
@@ -329,7 +329,7 @@ case class GrantResourceToUser(
 		}
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
@@ -442,7 +442,7 @@ case class GrantResourceToGroup(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}
@@ -456,7 +456,7 @@ case class RevokeResourceFromUser(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	users: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUsers = mbSession.catalog.getUsers(ctx.organizationId, users)
 		val catalogDatabase = mbSession.catalog.getDatabase(ctx.organizationId, tableIdentifier.database.getOrElse(ctx.databaseName))
 
@@ -544,7 +544,7 @@ case class RevokeResourceFromGroup(
 	privileges: Seq[ResourcePrivilege],
 	tableIdentifier: MbTableIdentifier,
 	groups: Seq[String]) extends MbRunnableCommand with DCL {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val userGroupRel = mbSession.catalog.getGroups(ctx.organizationId, groups).flatMap { catalogGroup =>
 			mbSession.catalog.getUserGroupRelsByGroup(catalogGroup.id.get)
 		}

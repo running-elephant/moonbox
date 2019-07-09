@@ -21,7 +21,7 @@
 package moonbox.core.command
 
 import moonbox.common.util.Utils
-import moonbox.core.{MbSession, UserContext}
+import moonbox.core.{MoonboxSession, SessionEnv}
 import moonbox.catalog.CatalogOrganization
 import org.apache.spark.sql.Row
 
@@ -33,7 +33,7 @@ case class CreateOrganization(
 	comment: Option[String],
 	ignoreIfExists: Boolean) extends MbRunnableCommand with Organization {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val organization = CatalogOrganization(
 			name = name,
 			description = comment,
@@ -49,7 +49,7 @@ case class AlterOrganizationSetName(
 	name: String,
 	newName: String) extends MbRunnableCommand with Organization {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.catalog.renameOrganization(name, newName, ctx.userId)
 		ctx.organizationName = newName
 		Seq.empty[Row]
@@ -60,7 +60,7 @@ case class AlterOrganizationSetComment(
 	name: String,
 	comment: String) extends MbRunnableCommand with Organization {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val existOrganization: CatalogOrganization = mbSession.catalog.getOrganization(name)
 		mbSession.catalog.alterOrganization(
 			existOrganization.copy(description = Some(comment), updateBy = ctx.userId, updateTime = Utils.now)
@@ -74,7 +74,7 @@ case class DropOrganization(
 	ignoreIfNotExists: Boolean,
 	cascade: Boolean) extends MbRunnableCommand with Organization {
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.catalog.dropOrganization(name, ignoreIfNotExists, cascade)
 		Seq.empty[Row]
 	}

@@ -25,7 +25,7 @@ import moonbox.core.command.PrivilegeType.{PrivilegeType, DDL => _, _}
 import moonbox.core.command._
 
 object CmdPrivilegeChecker extends MbLogging {
-	def intercept(cmd: MbCommand, catalog: CatalogContext, userContext: UserContext): Boolean = {
+	def intercept(cmd: MbCommand, catalog: CatalogContext, userContext: SessionEnv): Boolean = {
 		cmd match {
 			case dml: DML => catalog.canDml(userContext.userId)
 			case ddl: DDL => catalog.canDdl(userContext.userId)

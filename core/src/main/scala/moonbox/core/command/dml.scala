@@ -37,22 +37,22 @@ import scala.collection.mutable.ArrayBuffer
 sealed trait DML
 
 case class UseDatabase(db: String) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val currentDb = mbSession.catalog.getDatabase(ctx.organizationId, db)
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
 		ctx.isLogical = currentDb.isLogical
-		if (!mbSession.mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
-			mbSession.mixcal.sqlToDF(s"create database if not exists ${currentDb.name}")
+		if (!mbSession.engine.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
+			mbSession.engine.createDataFrame(s"create database if not exists ${currentDb.name}")
 		}
-		mbSession.mixcal.sparkSession.catalog.setCurrentDatabase(ctx.databaseName)
+		mbSession.engine.sparkSession.catalog.setCurrentDatabase(ctx.databaseName)
 		Seq.empty[Row]
 	}
 }
 
 case class SetVariable(name: String, value: String, isGlobal: Boolean)
 	extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		// TODO
 		if (isGlobal) {
 			throw new UnsupportedOperationException("Set global configuration doesn't support now.")
@@ -70,7 +70,7 @@ case class ShowVariables(pattern: Option[String]) extends MbRunnableCommand with
 		AttributeReference("VALUE", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val variables = pattern.map { p =>
 			mbSession.getVariables.filterKeys(key =>
 				Utils.escapeLikeRegex(p).r.pattern.matcher(key).matches()).toSeq
@@ -94,7 +94,7 @@ case class ShowDatabases(
 			AttributeReference("DATABASE_TYPE", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databases = pattern.map { p =>
 			mbSession.catalog.listDatabase(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listDatabase(ctx.organizationId))
@@ -111,7 +111,7 @@ case class ShowTables(
 			AttributeReference("TABLE_TYPE", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 		    .getOrElse(ctx.databaseId)
 
@@ -124,9 +124,9 @@ case class ShowTables(
 		}.getOrElse(mbSession.catalog.listViews(databaseId)).map(v => Row(v.name, "view"))
 
 		val tempViews = pattern.map { p =>
-			mbSession.mixcal.sparkSession.sessionState.catalog.listTables("global_temp", p)
+			mbSession.engine.sparkSession.sessionState.catalog.listTables("global_temp", p)
 		}.getOrElse {
-			mbSession.mixcal.sparkSession.sessionState.catalog.listTables("global_temp")
+			mbSession.engine.sparkSession.sessionState.catalog.listTables("global_temp")
 		}.map(tv => Row(tv.table, "temp_view"))
 
 		tables ++ views ++ tempViews
@@ -141,7 +141,7 @@ case class ShowViews(
 		AttributeReference("VIEW_NAME", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databaseId = database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val views = pattern.map { p =>
@@ -162,7 +162,7 @@ case class ShowFunctions(
 		AttributeReference("function", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 
 		val (databaseId, databaseName) = database match {
 			case Some(dbName) if ctx.databaseName != dbName =>
@@ -178,7 +178,7 @@ case class ShowFunctions(
 			functions.append(userFunctions:_*)
 		}
 		if (showSystemFunctions) {
-			val systemFunctions = mbSession.mixcal.sparkSession.sessionState.catalog
+			val systemFunctions = mbSession.engine.sparkSession.sessionState.catalog
 				.listFunctions(databaseName, Utils.escapeLikeRegex(pattern.getOrElse("%")))
 				.collect { case (f, "SYSTEM") => f.unquotedString }
 			functions.append(systemFunctions:_*)
@@ -194,7 +194,7 @@ case class ShowUsers(
 		AttributeReference("USER_NAME", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val users = pattern.map { p =>
 			mbSession.catalog.listUsers(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listUsers(ctx.organizationId))
@@ -208,7 +208,7 @@ case class ShowGroups(
 	override def output = {
 		AttributeReference("GROUP_NAME", StringType, nullable = false)() :: Nil
 	}
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val groups = pattern.map { p =>
 			mbSession.catalog.listGroups(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listGroups(ctx.organizationId))
@@ -223,7 +223,7 @@ case class ShowProcedures(
 		AttributeReference("PROCEDURE_NAME", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val procedures = pattern.map { p =>
 			mbSession.catalog.listProcedures(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listProcedures(ctx.organizationId))
@@ -237,7 +237,7 @@ case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DM
 		AttributeReference("EVENT_NAME", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvents = pattern.map { p =>
 			mbSession.catalog.listTimedEvents(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listTimedEvents(ctx.organizationId))
@@ -254,7 +254,7 @@ case class ShowGrants(user: String) extends MbRunnableCommand with DML {
 		  Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext) = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv) = {
 		val catalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		if (mbSession.catalog.isSa(ctx.userId) || user == ctx.userName) {
 			val buffer = new ArrayBuffer[Row]()
@@ -284,7 +284,7 @@ case class ShowCreateTable(table: MbTableIdentifier) extends MbRunnableCommand w
 		AttributeReference("Create Table", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		import mbSession.catalog._
 		val databaseId = table.database.map(db => getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
@@ -310,7 +310,7 @@ case class ShowSchema(sql: String) extends MbRunnableCommand with DML {
 			AttributeReference("metadata", StringType, nullable = false)() :: Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		mbSession.analyzedPlan(sql).schema.map { field =>
 			Row(field.name, field.dataType.simpleString, field.nullable.toString, field.metadata.json)
 		}
@@ -325,7 +325,7 @@ case class DescDatabase(name: String) extends MbRunnableCommand with DML {
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val database = mbSession.catalog.getDatabase(ctx.organizationId, name)
 		val isLogical = database.isLogical
 		val properties = database.properties.filterNot { case (key, _) =>
@@ -351,7 +351,7 @@ case class DescTable(table: MbTableIdentifier, extended: Boolean) extends MbRunn
 	  Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		import mbSession.catalog._
 		val result = new ArrayBuffer[Row]()
 
@@ -389,7 +389,7 @@ case class DescView(view: MbTableIdentifier) extends MbRunnableCommand with DML 
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val databaseId = view.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
 		val catalogView = mbSession.catalog.getView(databaseId, view.table)
@@ -410,7 +410,7 @@ case class DescFunction(function: MbFunctionIdentifier, isExtended: Boolean)
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 
 		val databaseId = function.database.map(db => mbSession.catalog.getDatabase(ctx.organizationId, db).id.get)
 			.getOrElse(ctx.databaseId)
@@ -450,7 +450,7 @@ case class DescFunction(function: MbFunctionIdentifier, isExtended: Boolean)
 							"When `expr1` = `expr2`, returns `expr3`; " +
 							"when `expr1` = `expr4`, return `expr5`; else return `expr6`.") :: Nil
 				case _ =>
-					val info = mbSession.mixcal.sparkSession.sessionState.catalog.lookupFunctionInfo(functionName)
+					val info = mbSession.engine.sparkSession.sessionState.catalog.lookupFunctionInfo(functionName)
 					val name = if (info.getDb != null) info.getDb + "." + info.getName else info.getName
 					val result =
 						Row(s"Function", name) ::
@@ -484,7 +484,7 @@ case class DescUser(user: String) extends MbRunnableCommand with DML {
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogUser: CatalogUser = mbSession.catalog.getUser(ctx.organizationId, user)
 		val result = Row("User Name", catalogUser.name) ::
 			Row("Account", catalogUser.account.toString) ::
@@ -506,7 +506,7 @@ case class DescGroup(group: String) extends MbRunnableCommand with DML {
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogGroup: CatalogGroup = mbSession.catalog.getGroup(ctx.organizationId, group)
 		val result = Row("Group Name", catalogGroup.name) ::
 			Row("Description", catalogGroup.description.getOrElse("")) :: Nil
@@ -523,7 +523,7 @@ case class DescProcedure(proc: String) extends MbRunnableCommand with DML {
 			Nil
 	}
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val procedure = mbSession.catalog.getProcedure(ctx.organizationId, proc)
 		val result = Row("language", procedure.lang) ::
 		Row("sql", procedure.cmds.mkString("; ")) :: Nil
@@ -539,7 +539,7 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
       Nil
   }
 
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val catalogTimedEvent = mbSession.catalog.getTimedEvent(ctx.organizationId, event)
 		val catalogUser = mbSession.catalog.getUser(catalogTimedEvent.definer)
 		val proc = mbSession.catalog.getProcedure(catalogTimedEvent.procedure)
@@ -576,7 +576,7 @@ case class Explain(query: String, extended: Boolean = false) extends MbRunnableC
   }
 
 	// TODO
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = try {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = try {
 		val logicalPlan = mbSession.pushdownPlan(mbSession.optimizedPlan(query))
 		val outputString = logicalPlan match {
 			case w@WholePushdown(child, _) =>
@@ -603,16 +603,16 @@ case class Explain(query: String, extended: Boolean = false) extends MbRunnableC
 }
 
 case class RefreshTable(table: MbTableIdentifier) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val tableName = table.database.map(db => s"$db.${table.table}").getOrElse(table.table)
-		mbSession.mixcal.sparkSession.catalog.refreshTable(tableName)
+		mbSession.engine.sparkSession.catalog.refreshTable(tableName)
 		Seq.empty[Row]
 	}
 }
 
 case class RefreshResource(path: String) extends MbRunnableCommand with DML {
-	override def run(mbSession: MbSession)(implicit ctx: UserContext): Seq[Row] = {
-		mbSession.mixcal.sparkSession.catalog.refreshByPath(path)
+	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
+		mbSession.engine.sparkSession.catalog.refreshByPath(path)
 		Seq.empty[Row]
 	}
 }
