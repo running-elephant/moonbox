@@ -23,12 +23,12 @@ package moonbox.core.paser
 import moonbox.catalog.{FunctionResource}
 import moonbox.core.{MbFunctionIdentifier, MbTableIdentifier}
 import moonbox.core.command._
-import moonbox.core.parser.MbParser
+import moonbox.core.parser.MoonboxParser
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
 class MbParserSuite extends FunSuite {
-	private val parser = new MbParser()
+	private val parser = new MoonboxParser()
 
 	private def assertEquals(command: MbCommand, mql: String*) = {
 		val commands = mql.map(parser.parsePlan)

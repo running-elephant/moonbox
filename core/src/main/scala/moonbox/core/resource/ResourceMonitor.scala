@@ -24,7 +24,7 @@ import java.io.{BufferedReader, InputStreamReader}
 import java.util.StringTokenizer
 
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.MixcalContext
+import org.apache.spark.sql.SparkEngine
 import org.apache.spark.sql.resource.{SparkResourceListener, SparkResourceMonitor}
 
 

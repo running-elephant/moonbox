@@ -27,76 +27,76 @@ import moonbox.catalog.{CatalogColumn, CatalogTable}
 import moonbox.core.command._
 import moonbox.core.config._
 import moonbox.core.datasys.{DataTable, Pushdownable}
-import moonbox.core.parser.MbParser
+import moonbox.core.parser.MoonboxParser
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.expressions.{Exists, Expression, ListQuery, ScalarSubquery}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.command.{AnalyzeColumnCommand, AnalyzeTableCommand}
-import org.apache.spark.sql.{DataFrame, MixcalContext}
+import org.apache.spark.sql.{DataFrame, SparkEngine}
 
 import scala.collection.mutable
 
-class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogging {
+class MoonboxSession(
+	conf: MbConf,
+	username: String,
+	defaultDb: Option[String] = None,
+	autoLoadDatabases: Boolean = true,
+	sessionConfig: Map[String, String] = Map()) extends MbLogging {
 
-	def this(conf: MbConf) = {
-		this(conf, Map())
-	}
-
-	private val mbParser = new MbParser()
-	implicit var userContext: UserContext = _
-	private var autoLoadDatabases: Boolean = _
-
-	val pushdown = sessionConfig.get(MbSession.PUSHDOWN).map(_.toBoolean).getOrElse(conf.get(MIXCAL_PUSHDOWN_ENABLE))
+	val pushdown = sessionConfig.get(MoonboxSession.PUSHDOWN).map(_.toBoolean).getOrElse(conf.get(MIXCAL_PUSHDOWN_ENABLE))
 	val columnPermission = conf.get(MIXCAL_COLUMN_PERMISSION_ENABLE)
 
-	private val userVariable = new mutable.HashMap[String, String]()
+	private val parser = new MoonboxParser()
+
 	val catalog = new CatalogContext(conf)
-	val mixcal = new MixcalContext(conf)
+	val engine = new SparkEngine(conf)
 
-	def bindUser(username: String, initializedDatabase: Option[String] = None, autoLoadDatabases: Boolean = true): this.type = {
+	implicit val sessionEnv: SessionEnv = createSessionEnv()
 
-		this.autoLoadDatabases = autoLoadDatabases
-		this.userContext = {
-			catalog.getUserOption(username) match {
-				case Some(catalogUser) =>
-					if (catalogUser.name.equalsIgnoreCase("ROOT") ) {
-						new UserContext(
-							catalogUser.id.get,
-							catalogUser.name,
-							isSa = false,
-							-1, "SYSTEM", true, -1, "SYSTEM")
-					} else {
-						val organization = catalog.getOrganization(catalogUser.organizationId)
-						val database = catalog.getDatabase(catalogUser.organizationId, initializedDatabase.getOrElse("default"))
-						new UserContext(
-							catalogUser.id.get,
-							catalogUser.name,
-							isSa = catalogUser.isSA,
-							database.id.get,
-							database.name,
-							database.isLogical,
-							organization.id.get,
-							organization.name
-						)
-					}
-				case None =>
-					throw new Exception(s"$username does not exist.")
+	initDatabase()
+
+	private val userVariable = new mutable.HashMap[String, String]()
+
+	private def createSessionEnv(): SessionEnv = {
+		val userOption = catalog.getUserOption(username)
+		if (userOption.isEmpty) {
+			throw new Exception(s"$username does not exist.")
+		} else {
+			val user = userOption.get
+			if (user.name.equalsIgnoreCase("ROOT") ) {
+				SessionEnv(
+					user.id.get,
+					user.name,
+					isSa = false,
+					-1, "SYSTEM", true, -1, "SYSTEM")
+			} else {
+				val organization = catalog.getOrganization(user.organizationId)
+				val database = catalog.getDatabase(user.organizationId, defaultDb.getOrElse("default"))
+				SessionEnv(
+					user.id.get,
+					user.name,
+					isSa = user.isSA,
+					database.id.get,
+					database.name,
+					database.isLogical,
+					organization.id.get,
+					organization.name
+				)
 			}
 		}
+	}
 
-		val currentDb = initializedDatabase.getOrElse("default")
-		if (!mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb)) {
-			mixcal.createDataFrameFromSQL(s"create database if not exists $currentDb")
-		}
-		mixcal.sparkSession.catalog.setCurrentDatabase(currentDb)
-
+	private def initDatabase(): Unit = {
+		val currentDb = defaultDb.getOrElse("default")
 		if (autoLoadDatabases) {
-			catalog.listDatabase(userContext.organizationId).foreach { catalogDatabase =>
-				registerDatabase(catalogDatabase.name)
+			catalog.listDatabase(sessionEnv.organizationId).foreach { db =>
+				engine.registerDatabase(db.name)
 			}
+		} else {
+			engine.registerDatabase(currentDb)
 		}
-		this
+		engine.sparkSession.catalog.setCurrentDatabase(currentDb)
 	}
 
 	def setVariable(key: String, value: String): Unit = {
@@ -112,41 +112,41 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	}
 
 	def cancelJob(jobId: String): Unit = {
-		mixcal.sparkSession.sparkContext.cancelJobGroup(jobId)
+		engine.cancelJobGroup(jobId)
 	}
 
 	def parsedCommand(sql: String): MbCommand = {
-		mbParser.parsePlan(sql)
+		parser.parsePlan(sql)
 	}
 
 	def parsedPlan(sql: String): LogicalPlan = {
 		val preparedSql = prepareSql(sql)
-		mixcal.parsedLogicalPlan(preparedSql)
+		engine.parsedLogicalPlan(preparedSql)
 	}
 
 	def analyzedPlan(sqlText: String): LogicalPlan = {
 		val preparedSql = prepareSql(sqlText)
-		val parsedLogicalPlan = mixcal.parsedLogicalPlan(preparedSql)
+		val parsedLogicalPlan = engine.parsedLogicalPlan(preparedSql)
 		val qualifiedLogicalPlan = qualifierFunctionName(parsedLogicalPlan)
 		prepareAnalyze(qualifiedLogicalPlan)
-		mixcal.analyzedLogicalPlan(qualifiedLogicalPlan)
+		engine.analyzedLogicalPlan(qualifiedLogicalPlan)
 	}
 
 	def optimizedPlan(plan: LogicalPlan): LogicalPlan = {
 		checkColumnPrivilege(plan)
-		mixcal.optimizedLogicalPlan(plan)
+		engine.optimizedLogicalPlan(plan)
 	}
 
 	def optimizedPlan(sqlText: String): LogicalPlan = {
 		val analyzedLogicalPlan = analyzedPlan(sqlText)
 		checkColumnPrivilege(analyzedLogicalPlan)
-		mixcal.optimizedLogicalPlan(analyzedLogicalPlan)
+		engine.optimizedLogicalPlan(analyzedLogicalPlan)
 	}
 
 	private def prepareAnalyze(plan: LogicalPlan): Unit = {
-		val (tableIdentifiers, functionIdentifiers) = collectUnknownTablesAndFunctions(plan)
-		registerTables(tableIdentifiers)
-		registerFunctions(functionIdentifiers)
+		val (tables, functions) = collectUnknownTablesAndFunctions(plan)
+		tables.foreach(registerTable)
+		functions.foreach(registerFunction)
 	}
 
 	def checkColumnPrivilege(plan: LogicalPlan): Unit = {
@@ -155,63 +155,53 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		}
 	}
 
-	private def registerDatabase(db: String): Unit = {
-		if (!mixcal.sparkSession.sessionState.catalog.databaseExists(db)) {
-			mixcal.createDataFrameFromSQL(s"create database if not exists ${db}")
+	private def registerTable(table: TableIdentifier): Unit = {
+		val isView = table.database.map(db => catalog.viewExists(sessionEnv.organizationId, db, table.table))
+			.getOrElse(catalog.viewExists(sessionEnv.databaseId, table.table))
+		if (isView) {
+			val catalogView = table.database.map(db => catalog.getView(sessionEnv.organizationId, db, table.table))
+				.getOrElse(catalog.getView(sessionEnv.databaseId, table.table))
+			val preparedSql = prepareSql(catalogView.cmd)
+			val parsedPlan = engine.parsedLogicalPlan(preparedSql)
+			prepareAnalyze(qualifierFunctionName(parsedPlan))
+			engine.registerView(table, preparedSql)
+		} else {
+			// if table not exists, throws NoSuchTableException exception
+			val catalogTable = table.database.map(db => catalog.getTable(sessionEnv.organizationId, db, table.table))
+				.getOrElse(catalog.getTable(sessionEnv.databaseId, table.table))
+			engine.registerTable(table, catalogTable.properties)
 		}
 	}
 
-	private def registerTables(tables: Seq[TableIdentifier]): Unit = {
-		tables.foreach { table =>
-			val isView = table.database.map(db => catalog.viewExists(userContext.organizationId, db, table.table))
-				.getOrElse(catalog.viewExists(userContext.databaseId, table.table))
-			if (isView) {
-				val catalogView = table.database.map(db => catalog.getView(userContext.organizationId, db, table.table))
-					.getOrElse(catalog.getView(userContext.databaseId, table.table))
-				val preparedSql = prepareSql(catalogView.cmd)
-				val parsedPlan = mixcal.parsedLogicalPlan(preparedSql)
-				prepareAnalyze(qualifierFunctionName(parsedPlan))
-				mixcal.registerView(table, preparedSql)
-			} else {
-				// if table not exists, throws NoSuchTableException exception
-				val catalogTable = table.database.map(db => catalog.getTable(userContext.organizationId, db, table.table))
-					.getOrElse(catalog.getTable(userContext.databaseId, table.table))
-				mixcal.registerTable(table, catalogTable.properties)
-			}
+	private def registerFunction(function: FunctionIdentifier): Unit = {
+		val (databaseId, databaseName) = if (function.database.isEmpty) {
+			(sessionEnv.databaseId, sessionEnv.databaseName)
+		} else {
+			val catalogDatabase = catalog.getDatabase(sessionEnv.organizationId, function.database.get)
+			(catalogDatabase.id.get, catalogDatabase.name)
 		}
-	}
-
-	private def registerFunctions(functions: Seq[FunctionIdentifier]): Unit = {
-		functions.foreach { function =>
-			val (databaseId, databaseName) = if (function.database.isEmpty) {
-				(userContext.databaseId, userContext.databaseName)
-			} else {
-				val catalogDatabase = catalog.getDatabase(userContext.organizationId, function.database.get)
-				(catalogDatabase.id.get, catalogDatabase.name)
-			}
-			val catalogFunction = catalog.getFunction(databaseId, function.funcName)
-			mixcal.registerFunction(databaseName, catalogFunction)
-		}
+		val catalogFunction = catalog.getFunction(databaseId, function.funcName)
+		engine.registerFunction(databaseName, catalogFunction)
 	}
 
 	def pushdownPlan(plan: LogicalPlan, pushdown: Boolean = this.pushdown): LogicalPlan = {
 		if (pushdown) {
-			mixcal.furtherOptimizedLogicalPlan(plan)
+			engine.furtherOptimizedLogicalPlan(plan)
 		} else plan
 	}
 
 	def toDF(plan: LogicalPlan): DataFrame = {
-		mixcal.createDataFrameFromLogicalPlan(plan)
+		engine.createDataFrame(plan)
 	}
 
 	def toDT(plan: LogicalPlan, datasys: Pushdownable): DataTable = {
-		val qe = mixcal.sparkSession.sessionState.executePlan(plan)
+		val qe = engine.sparkSession.sessionState.executePlan(plan)
 		qe.assertAnalyzed()
-		datasys.buildQuery(plan, mixcal.sparkSession)
+		datasys.buildQuery(plan, engine.sparkSession)
 	}
 
 	def withPrivilege[T](cmd: MbCommand)(f: => T): T = {
-		CmdPrivilegeChecker.intercept(cmd, catalog, userContext) match {
+		CmdPrivilegeChecker.intercept(cmd, catalog, sessionEnv) match {
 			case false => throw new Exception("Permission denied.")
 			case true => f
 		}
@@ -220,9 +210,9 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	def getCatalogTable(table: String, database: Option[String]): CatalogTable = {
 		database match {
 			case None =>
-				catalog.getTable(userContext.databaseId, table)
+				catalog.getTable(sessionEnv.databaseId, table)
 			case Some(databaseName) =>
-				val database = catalog.getDatabase(userContext.organizationId, databaseName)
+				val database = catalog.getDatabase(sessionEnv.organizationId, databaseName)
 				catalog.getTable(database.id.get, table)
 		}
 	}
@@ -249,11 +239,11 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	}
 
 	def schema(table: String, database: Option[String]): Seq[CatalogColumn] = {
-		val db = database.getOrElse(userContext.databaseName)
-		val catalogDatabase = catalog.getDatabase(userContext.organizationId, db)
+		val db = database.getOrElse(sessionEnv.databaseName)
+		val catalogDatabase = catalog.getDatabase(sessionEnv.organizationId, db)
 		val tableIdentifier = TableIdentifier(table, Some(db))
 		prepareAnalyze(UnresolvedRelation(tableIdentifier))
-		mixcal.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
+		engine.analyzedLogicalPlan(UnresolvedRelation(tableIdentifier)).schema.map { field =>
 			CatalogColumn(
 				name = field.name,
 				dataType = field.dataType.simpleString,
@@ -276,10 +266,10 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	private def qualifierFunctionName(plan: LogicalPlan): LogicalPlan = {
 		plan.transformAllExpressions {
 			case func@UnresolvedFunction(identifier, children, _) => {
-				if (mixcal.sparkSession.sessionState.catalog.functionExists(identifier)) {
+				if (engine.sparkSession.sessionState.catalog.functionExists(identifier)) {
 					func
 				} else {
-					val database = identifier.database.orElse(Some(userContext.databaseName))
+					val database = identifier.database.orElse(Some(sessionEnv.databaseName))
 					func.copy(name = identifier.copy(database = database))
 				}
 
@@ -334,11 +324,11 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		traverseAll(plan)
 
 		if (!autoLoadDatabases) {
-			val catalogDatabases = catalog.listDatabase(userContext.organizationId).map(_.name)
+			val catalogDatabases = catalog.listDatabase(sessionEnv.organizationId).map(_.name)
 			(tables.map(_.database) ++ functions.map(_.name.database)).toSeq.distinct.foreach {
 				case Some(db) =>
 					if (catalogDatabases.contains(db)) {
-						registerDatabase(db)
+						engine.registerDatabase(db)
 					} else {
 						throw new Exception(s"Database $db does not exist.")
 					}
@@ -348,27 +338,21 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 		}
 
 		val needRegisterTables = tables.diff(logicalTables).filterNot { identifier =>
-			mixcal.sparkSession.sessionState.catalog.isTemporaryTable(identifier) ||
-				mixcal.sparkSession.sessionState.catalog.tableExists(identifier)
+			engine.sparkSession.sessionState.catalog.isTemporaryTable(identifier) ||
+				engine.sparkSession.sessionState.catalog.tableExists(identifier)
 		}.map { identifier =>
 			if (identifier.database.isDefined) identifier
-			else identifier.copy(database = Some(userContext.databaseName))
+			else identifier.copy(database = Some(sessionEnv.databaseName))
 		}.toSeq
 		val needRegisterFunctions = {
 			functions.filterNot { case UnresolvedFunction(identifier, children, _) =>
-				mixcal.sparkSession.sessionState.catalog.functionExists(identifier)
+				engine.sparkSession.sessionState.catalog.functionExists(identifier)
 			}
 		}.map(_.name).toSeq
 		(needRegisterTables, needRegisterFunctions)
 	}
 }
 
-object MbSession extends MbLogging {
-
+object MoonboxSession extends MbLogging {
 	val PUSHDOWN = "pushdown"
-
-	def getMbSession(conf: MbConf): MbSession = new MbSession(conf)
-
-	def getMbSession(conf: MbConf, sessionConfig: Map[String, String]) = new MbSession(conf, sessionConfig)
-
 }
