@@ -34,7 +34,7 @@ import org.apache.spark.sql.types.{DecimalType, _}
 
 import scala.collection.JavaConversions._
 
-class MbAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
+class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 
 	protected def typedVisit[T](ctx: ParseTree): T = {
 		ctx.accept(this).asInstanceOf[T]

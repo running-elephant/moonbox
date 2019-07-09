@@ -87,7 +87,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 
 		val currentDb = initializedDatabase.getOrElse("default")
 		if (!mixcal.sparkSession.sessionState.catalog.databaseExists(currentDb)) {
-			mixcal.sqlToDF(s"create database if not exists $currentDb")
+			mixcal.createDataFrameFromSQL(s"create database if not exists $currentDb")
 		}
 		mixcal.sparkSession.catalog.setCurrentDatabase(currentDb)
 
@@ -157,7 +157,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 
 	private def registerDatabase(db: String): Unit = {
 		if (!mixcal.sparkSession.sessionState.catalog.databaseExists(db)) {
-			mixcal.sqlToDF(s"create database if not exists ${db}")
+			mixcal.createDataFrameFromSQL(s"create database if not exists ${db}")
 		}
 	}
 
@@ -201,7 +201,7 @@ class MbSession(conf: MbConf, sessionConfig: Map[String, String]) extends MbLogg
 	}
 
 	def toDF(plan: LogicalPlan): DataFrame = {
-		mixcal.treeToDF(plan)
+		mixcal.createDataFrameFromLogicalPlan(plan)
 	}
 
 	def toDT(plan: LogicalPlan, datasys: Pushdownable): DataTable = {

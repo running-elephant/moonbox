@@ -20,7 +20,7 @@
 
 package moonbox.core
 
-case class UserContext(
+case class SessionEnv(
 	userId: Long,
 	var userName: String,
 	var isSa: Boolean,

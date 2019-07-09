@@ -25,7 +25,7 @@ import moonbox.core.command.MbCommand
 import org.antlr.v4.runtime.CommonTokenStream
 import org.apache.spark.sql.catalyst.parser.{ParseErrorListener, PostProcessor}
 
-class MbParser extends MbLogging {
+class MoonboxParser extends MbLogging {
 	private lazy val astBuilder = new MbAstBuilder
 
 	private def parse[T](mql: String)(toResult: MqlBaseParser => T): T = {
