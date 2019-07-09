@@ -234,14 +234,15 @@ case class ShowProcedures(
 case class ShowEvents(pattern: Option[String]) extends MbRunnableCommand with DML {
 
 	override def output = {
-		AttributeReference("EVENT_NAME", StringType, nullable = false)() :: Nil
+		AttributeReference("EVENT_NAME", StringType, nullable = false)() ::
+			AttributeReference("ENABLE", StringType, nullable = false)() :: Nil
 	}
 
 	override def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row] = {
 		val timedEvents = pattern.map { p =>
 			mbSession.catalog.listTimedEvents(ctx.organizationId, p)
 		}.getOrElse(mbSession.catalog.listTimedEvents(ctx.organizationId))
-		timedEvents.map { e => Row(e.name) }
+		timedEvents.map { e => Row(e.name, e.enable.toString) }
 	}
 }
 
@@ -548,8 +549,8 @@ case class DescEvent(event: String) extends MbRunnableCommand with DML {
 			Row("Schedule", catalogTimedEvent.schedule) ::
 			Row("Enable", catalogTimedEvent.enable.toString) ::
 			Row("Procedure", proc.name) ::
-			Row("Language", proc.lang) ::
-			Row("Sqls", proc.cmds.mkString("; ")) ::
+			/*Row("Language", proc.lang) ::
+			Row("Sqls", proc.cmds.mkString("; ")) ::*/
 			Row("Description", catalogTimedEvent.description.getOrElse("No Description.")) :: Nil
 		result
 	}
