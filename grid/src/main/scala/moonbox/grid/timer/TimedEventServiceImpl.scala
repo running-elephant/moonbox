@@ -47,7 +47,7 @@ class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEve
 		new StdSchedulerFactory(props).getScheduler
 	}
 
-	private val descriptor = CronDescriptor.instance(Locale.US) //Locale.CHINA
+	private val descriptor = CronDescriptor.instance(Locale.ROOT) //Locale.CHINA
 	private val parser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ))
 
 
