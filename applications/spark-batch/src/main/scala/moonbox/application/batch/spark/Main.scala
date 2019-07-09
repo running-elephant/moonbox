@@ -48,13 +48,13 @@ object Main extends MbLogging {
 
 class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 
-	private val mbSession: MbSession = new MbSession(conf).bindUser(username, autoLoadDatabases = false)
+	private val mbSession: MoonboxSession = new MoonboxSession(conf, username, autoLoadDatabases = false)
 
 	def runMain(): Unit = {
 		sqls.foreach { sql =>
 			mbSession.parsedCommand(sql) match {
 				case runnable: MbRunnableCommand =>
-					runnable.run(mbSession)(mbSession.userContext)
+					runnable.run(mbSession)(mbSession.sessionEnv)
 
 				case createTempView: CreateTempView =>
 					val optimized = mbSession.optimizedPlan(createTempView.query)

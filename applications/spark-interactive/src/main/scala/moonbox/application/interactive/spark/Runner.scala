@@ -23,7 +23,7 @@ package moonbox.application.interactive.spark
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
-import moonbox.common.MbLogging
+import moonbox.common.{MbConf, MbLogging}
 import moonbox.core._
 import moonbox.core.command._
 import moonbox.core.datasys.{DataSystem, DataTable}
@@ -46,7 +46,8 @@ class Runner(
 	sessionId: String,
 	username: String,
 	database: Option[String],
-	mbSession: MbSession,
+	conf: MbConf,
+	sessionConfig: Map[String, String],
 	manager: ActorRef
 ) extends MbLogging {
 
@@ -62,7 +63,9 @@ class Runner(
 	private var currentRowId: Long = _
 	private var resultData: ArrayBuffer[Seq[Any]] = _
 
-	private implicit var userContext: UserContext = _
+	private val mbSession = new MoonboxSession(conf, username, database, sessionConfig = sessionConfig)
+
+	private implicit var userContext: SessionEnv = mbSession.sessionEnv
 
 	init()
 
@@ -101,7 +104,7 @@ class Runner(
 
 	def cancel(): Unit = {
 		logInfo(s"Cancel job group with job group id $sessionId")
-		mbSession.mixcal.cancelJobGroup(sessionId)
+		mbSession.engine.cancelJobGroup(sessionId)
 	}
 
 	private def createEventEntity(name: String, definer: String,
@@ -206,7 +209,7 @@ class Runner(
 	}
 
 	private def otherStatement(sql: String): QueryResult = {
-		val dataFrame = mbSession.mixcal.sparkSession.sql(sql)
+		val dataFrame = mbSession.engine.sparkSession.sql(sql)
 		initCurrentData(dataFrame)
 	}
 
@@ -320,8 +323,6 @@ class Runner(
 	private def hasNext: Boolean = currentData.hasNext && currentRowId < maxRows
 
 	private def init(): Unit = {
-		mbSession.bindUser(username, database)
-		userContext = mbSession.userContext
-		mbSession.mixcal.setJobGroup(sessionId, username)
+		mbSession.engine.setJobGroup(sessionId, username)
 	}
 }

@@ -27,13 +27,13 @@ import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.MbSession
+import moonbox.core.MoonboxSession
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.ApplicationType
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.protocol.util.SchemaUtil
-import org.apache.spark.sql.MixcalContext
+import org.apache.spark.sql.SparkEngine
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -136,7 +136,7 @@ class Main(
 		case open @ OpenSession(username, database, sessionConfig) =>
 			val requester = sender()
 			val sessionId = newSessionId
-			val f = Future(new Runner(sessionId, username, database, MbSession.getMbSession(conf, sessionConfig), self))
+			val f = Future(new Runner(sessionId, username, database, conf, sessionConfig, self))
 			f.onComplete {
 				case Success(runner) =>
 					sessionIdToRunner.put(sessionId, runner)
@@ -236,7 +236,7 @@ class Main(
 		case sample @ SampleRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.sample(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -249,7 +249,7 @@ class Main(
 		case translate @ TranslateRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.translate(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -262,7 +262,7 @@ class Main(
 		case verify @ VerifyRequest(username, sqls, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.verify(sqls)
 			}.onComplete {
 				case Success(response) =>
@@ -275,7 +275,7 @@ class Main(
 		case resource @ TableResourcesRequest(username, sqls, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.resources(sqls)
 			}.onComplete {
 				case Success(response) =>
@@ -288,7 +288,7 @@ class Main(
 		case schema @ SchemaRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.schema(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -301,7 +301,7 @@ class Main(
 		case lineage @ LineageRequest(username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, MbSession.getMbSession(conf), self)
+				val servicer = new Servicer(username, database, conf, self)
 				servicer.lineage(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -320,7 +320,7 @@ class Main(
 	}
 
 	private def startComputeEnv(): Unit = {
-		MixcalContext.start(conf)
+		SparkEngine.start(conf)
 	}
 
 	private def handleRegisterResponse(msg: RegisterApplicationResponse): Unit = {

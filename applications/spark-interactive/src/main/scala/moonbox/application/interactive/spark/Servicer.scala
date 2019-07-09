@@ -21,7 +21,7 @@
 package moonbox.application.interactive.spark
 
 import akka.actor.ActorRef
-import moonbox.common.MbLogging
+import moonbox.common.{MbConf, MbLogging}
 import moonbox.core._
 import moonbox.grid.deploy.messages.Message._
 import org.apache.spark.sql.Row
@@ -37,18 +37,12 @@ import scala.collection.mutable.ArrayBuffer
 class Servicer(
 	username: String,
 	database: Option[String],
-	mbSession: MbSession,
+	conf: MbConf,
 	manager: ActorRef
 ) extends MbLogging {
 
-	private implicit var userContext: UserContext = _
-
-	init()
-
-	private def init(): Unit = {
-		mbSession.bindUser(username, database, autoLoadDatabases = false)
-		userContext = mbSession.userContext
-	}
+	private val mbSession = new MoonboxSession(conf, username, database, autoLoadDatabases = false)
+	private implicit var userContext: SessionEnv = mbSession.sessionEnv
 
 	private def iteratorToSeq(iter: Iterator[Row]): Seq[Row] = {
 		val buf = new ArrayBuffer[Row]()
@@ -123,7 +117,7 @@ class Servicer(
 		val result = sqls.map { sql =>
 			try {
 				val analyzedPlan = mbSession.analyzedPlan(sql)
-				mbSession.mixcal.sparkSession.sessionState.analyzer.checkAnalysis(analyzedPlan)
+				mbSession.engine.sparkSession.sessionState.analyzer.checkAnalysis(analyzedPlan)
 				mbSession.checkColumnPrivilege(analyzedPlan)
 				(true, None)
 			} catch {
@@ -158,7 +152,7 @@ class Servicer(
 	def schema(sql: String): SchemaResponse = {
 		try {
 			val analyzed = mbSession.analyzedPlan(sql)
-			mbSession.mixcal.sparkSession.sessionState.analyzer.checkAnalysis(analyzed)
+			mbSession.engine.sparkSession.sessionState.analyzer.checkAnalysis(analyzed)
 			SchemaSuccessed(analyzed.schema.json)
 		} catch {
 			case e: Exception =>
