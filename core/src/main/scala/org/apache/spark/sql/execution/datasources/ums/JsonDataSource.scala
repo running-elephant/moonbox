@@ -202,6 +202,13 @@ object TextInputJsonDataSource extends JsonDataSource {
 								.replace("\n", "\\n")
 						    	.replace("\"", "\\\"") +
 							"\""
+					case (UMSProtocol.DECIMAL, index) =>
+						val data = record.get(index).asText()
+						if (data.startsWith(".")) {
+							"0" + data
+						} else if (data.startsWith("-.")) {
+							"-0." + data.stripPrefix("-.")
+						} else data
 					case (_, index) =>
 						record.get(index).asText()
 				}

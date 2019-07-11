@@ -11,4 +11,5 @@ object UMSProtocol {
 	val TIMESTAMP = "timestamp"
 	val DATETIME = "datetime"
 	val DATE = "date"
+	val DECIMAL = "decimal"
 }
