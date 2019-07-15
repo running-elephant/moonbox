@@ -61,17 +61,17 @@ Moonbox view, subject to Moonbox database, is similar to the "logical view" in r
 
 #### Multi-tenant System
 
-The concept of "Organization" is introduced into Moonbox for user space division. Three roles exist in Moonbox, namely ROOT, Admin and User.  
+The concept of "Organization" is introduced into Moonbox for user space division. Three roles exist in Moonbox, namely ROOT (System Adminiatrator), SA (Super Admin) and User.  
 
 - ROOT
 
-    As a built-in user, ROOT doesn't belong to any Organizations. It is used to create Organization or Admin in an Organization.  
-- Admin  
+    As a built-in user, ROOT doesn't belong to any Organizations. It is used to create Organization or SA in an Organization.  
+- SA  
 
-    Admin is created by ROOT and subject to Organization, in which one or more Admins exist. Admin is responsible for managing all the resources in the Organization it belongs to, creating Users and granting appropriate permissions to Users.  
+    SA is created by ROOT and subject to Organization, in which one or more SAs exist. SA is responsible for managing all the resources in the Organization it belongs to, creating Users and granting appropriate permissions to Users.  
 - User
 
-    User is created by Admin or other User with creating permission and belongs to the same Organization with the one that creates it. Moonbox abstracts 6 functionalities for User: Admin owns all the functionalities; different User roles could be created through free collocation of those functionalities.  
+    User is created by SA or other User with creating permission and belongs to the same Organization with the one that creates it. Moonbox abstracts 6 functionalities for User: SA owns all the functionalities; different User roles could be created through free collocation of those functionalities.  
 
 ![](https://raw.githubusercontent.com/edp963/moonbox/master/docs/img/guide-concept-users.png)
 
