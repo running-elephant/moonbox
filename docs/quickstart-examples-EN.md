@@ -14,7 +14,7 @@ Step 2: Create organization.
 ```
 create org org_test;
 ```
-Step 3: Create admin in the organization.
+Step 3: Create SA (super admin) in the organization.
 ```
 create sa sally in org org_test identified by 123456
 ```
@@ -22,7 +22,7 @@ Step 4: Log out "ROOT" account.
 ```
 exit
 ```
-System initialization is finished. The system contains a namespace called org_test, in which there is an admin named "sally" and a logical database named "default".
+System initialization is finished. The system contains a namespace called org_test, in which there is an SA named "sally" and a logical database named "default".
 
 
 #### Using Procedures
