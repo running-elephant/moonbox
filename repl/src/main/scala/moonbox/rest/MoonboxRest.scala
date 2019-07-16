@@ -41,7 +41,7 @@ object MoonboxRest {
 	private var name: Option[String] = None
 	private val config = new scala.collection.mutable.HashMap[String, String]
 
-	private var success = false
+	private var stopped = false
 
 	def main(args: Array[String]) {
 		parse(args.toList)
@@ -58,7 +58,7 @@ object MoonboxRest {
 
 		Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
 			override def run(): Unit = {
-				if (!success) {
+				if (!stopped) {
 					cancel(url + CANCEL_PATH, jobId)
 				}
 			}
@@ -102,10 +102,11 @@ object MoonboxRest {
 		while (true) {
 			val (state, message) = progress(url, jobId)
 			if (state == SUCCESS) {
-				success = true
+				stopped = true
 				System.exit(0)
 			} else if (FAILED.contains(state)) {
 				println("error message: " + message)
+				stopped = true
 				System.exit(-1)
 			} else {
 				Thread.sleep(interval)
@@ -126,7 +127,7 @@ object MoonboxRest {
 
 	private def readSqls(): Seq[String] = {
 		val source = Source.fromFile(path)
-		val sqls = source.getLines().mkString(" ").split(";").filterNot(s => s == "" || s == null)
+		val sqls = source.mkString.split(";").filterNot(s => s == "" || s == null)
 		source.close()
 		sqls
 	}
