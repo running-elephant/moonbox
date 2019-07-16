@@ -104,4 +104,15 @@ class MbUmsSuite extends FunSuite {
 		session.sql("select * from a").show()
 	}
 
+	test("ums") {
+		session.sql(
+			// ums_id_ string,ums_ts_ timestamp,ums_op_ string,ums_uid_ long,advance_rate string,advance_rate_desc string,advance_type string,bank_code string,bank_name string,create_time timestamp,enterprise_or_personal int,expire_period int,expire_period_unit int,id long,incr_amount decimal,interest_rule string,interest_time_desc string,left_quota decimal,min_amount decimal,name string,open_time timestamp,product_id long,product_type int,publish_quota decimal,publish_time timestamp,purchase_agreement string,quota decimal,remark string,return_rate decimal,sort_weight int,status int,update_time timestamp,valid int,withdrawal_agreement string
+			"""create table a(
+			  |ums_id_ long, ums_ts_ timestamp, ums_op_ string, ums_uid_ string, PREDICT_INCOME_ID long, LOAN_ID long, PLAN_ID long, LENDER_USER_ID long, PREDICT_INCOME_AMT decimal, PREDICT_INCOME_PRINCIPAL decimal, PREDICT_INCOME_INTEREST string, PREDICT_INCOME_PENALTY decimal, PREDICT_INCOME_OTHER decimal, ACTUAL_INCOME_AMT decimal, ACTUAL_INCOME_PRINCIPAL decimal, ACTUAL_INCOME_INTEREST decimal, ACTUAL_INCOME_PENALTY decimal, ACTUAL_INCOME_BREACH decimal, ACTUAL_INCOME_OTHER decimal, PERIOD_NUM long, PERIOD_START_TIME timestamp, PERIOD_END_TIME timestamp, STATUS string, INVALID string, LENDER_INCOME_FEE_ID long, PREDICT_GUARANTEE_FEE decimal, PREDICT_MANAGE_FEE decimal, ACTUAL_GUARANTEE_FEE decimal, ACTUAL_MANAGE_FEE decimal, PREDICT_SERVICE_FEE decimal, ACTUAL_SERVICE_FEE decimal , CREATE_DATE timestamp, UPDATE_DATE timestamp, CREDITOR_ACCOUNT_RELATION_ID string, APPLY_ID long
+			  |) using ums options(path '/Users/wanghao/moonbox_test_data/201907101522420200003', allowNumericLeadingZeros 'true')
+			""".stripMargin
+		)
+		session.sql("select * from a").foreach(row => println(row))
+	}
+
 }
