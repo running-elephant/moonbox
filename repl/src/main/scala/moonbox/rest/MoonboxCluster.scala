@@ -75,10 +75,10 @@ object MoonboxCluster {
 	private def printUsageAndExit(exitCode: Int): Unit = {
 		// scalastyle: off println
 		System.err.println(
-			"Usage: moonbox-cluster.sh [options]\n" +
+			"Usage: moonbox-cluster [options]\n" +
 				"options:\n" +
-				"   apps             list current running apps\n" +
-				"   workers          list current running workers.\n"
+				"   apps             List current running apps.\n" +
+				"   workers          List current running workers.\n"
 		)
 		System.exit(exitCode)
 	}
