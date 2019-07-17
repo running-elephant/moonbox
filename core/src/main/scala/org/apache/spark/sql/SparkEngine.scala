@@ -211,7 +211,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 	  * @param db database name
 	  */
 	def registerDatabase(db: String): Unit = {
-		if (sessionState.catalog.databaseExists(db)) {
+		if (!sessionState.catalog.databaseExists(db)) {
 			createDataFrame(s"create database if not exists ${db}")
 		}
 	}
@@ -350,19 +350,16 @@ object SparkEngine extends MbLogging {
 	private var sparkContext: SparkContext = _
 
 	private def getSparkContext(conf: MbConf): SparkContext = {
-		if (sparkContext != null) {
+		if (sparkContext == null) {
+			start(conf)
 			sparkContext
-		} else {
-			throw new IllegalStateException("SparkContext is uninitialized.")
-		}
+		} else sparkContext
 	}
 
 	def start(conf: MbConf): Unit = {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
-				val sparkConf = new SparkConf().setAll(conf.getAll.filter {
-					case (key, value) => key.startsWith("moonbox.mixcal.")
-				}.map { case (key, value) => (key.stripPrefix("moonbox.mixcal."), value) })
+				val sparkConf = new SparkConf().setAll(conf.getAll.filterKeys(_.startsWith("spark.")))
 
 				sparkContext = SparkContext.getOrCreate(sparkConf)
 				sparkConf.getOption("spark.loglevel").foreach(sparkContext.setLogLevel)

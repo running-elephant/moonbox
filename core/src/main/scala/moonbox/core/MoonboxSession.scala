@@ -94,7 +94,11 @@ class MoonboxSession(
 				engine.registerDatabase(db.name)
 			}
 		} else {
-			engine.registerDatabase(currentDb)
+			if (catalog.databaseExists(sessionEnv.organizationId, currentDb)) {
+				engine.registerDatabase(currentDb)
+			} else {
+				throw new NoSuchElementException(s"Database $currentDb doesn't exists.")
+			}
 		}
 		engine.sparkSession.catalog.setCurrentDatabase(currentDb)
 	}
