@@ -337,7 +337,7 @@ Moonbox内部集成了quartz提供定时任务服务,如需使用定时任务功
 </tr>
 </table>
 
-默认配置quartz Job没有进行持久化,如需要配置quartz job进行持久化,请参考以下配置将quart job持久化到mysql,更多用法请参考quartz官方文档。
+默认配置quartz Job没有进行持久化,如需要配置quartz job进行持久化,请参考以下配置将quartz job持久化到mysql,更多用法请参考quartz官方文档。
 需要注意的是,我们需要先手动在mysql中创建一些用于保存quartz元数据的库和表。例如我们先创建一个名为moonbox_quartz的数据库,然后使用mysql客户端运行位于$MOONBOX_HOME/bin目录下的quartz_tables_mysql.sql文件中的sql,在刚才创建的库中创建出所有表。
 
 <table class="table">
