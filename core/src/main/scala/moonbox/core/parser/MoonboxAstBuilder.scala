@@ -705,8 +705,8 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val insertMode = if (ctx.INTO() != null) InsertMode.Append
 		else if (ctx.OVERWRITE() != null) InsertMode.Overwrite
 		else InsertMode.Merge
-
-		InsertInto(tableIdentifier, query, partitionColumns, insertMode)
+		val num = Option(ctx.coalesceSpec()).map(_.num.getText.toInt)
+		InsertInto(tableIdentifier, query, partitionColumns, num, insertMode)
 	}
 
 	override def visitOtherStatement(ctx: OtherStatementContext): MbCommand = {

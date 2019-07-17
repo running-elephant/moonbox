@@ -624,19 +624,19 @@ class MbParserSuite extends FunSuite {
 
 	test("insert") {
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), insertMode = InsertMode.Append),
+			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), None, insertMode = InsertMode.Append),
 			"INSERT INTO db.table1 SELECT * FROM table",
 			"INSERT INTO TABLE db.table1 SELECT * FROM table"
 		)
 
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq("a", "b"), insertMode = InsertMode.Append),
-			"INSERT INTO db.table1 PARTITION(a, b) SELECT * FROM table",
-			"INSERT INTO TABLE db.table1 PARTITION(a, b) SELECT * FROM table"
+			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq("a", "b"), Some(10), insertMode = InsertMode.Append),
+			"INSERT INTO db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table",
+			"INSERT INTO TABLE db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table"
 		)
 
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), insertMode = InsertMode.Overwrite),
+			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), None, insertMode = InsertMode.Overwrite),
 			"INSERT OVERWRITE TABLE db.table1 SELECT * FROM table"
 		)
 	}

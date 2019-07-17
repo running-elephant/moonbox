@@ -42,9 +42,7 @@ case class UseDatabase(db: String) extends MbRunnableCommand with DML {
 		ctx.databaseId = currentDb.id.get
 		ctx.databaseName = currentDb.name
 		ctx.isLogical = currentDb.isLogical
-		if (!mbSession.engine.sparkSession.sessionState.catalog.databaseExists(currentDb.name)) {
-			mbSession.engine.createDataFrame(s"create database if not exists ${currentDb.name}")
-		}
+		mbSession.engine.registerDatabase(currentDb.name)
 		mbSession.engine.sparkSession.catalog.setCurrentDatabase(ctx.databaseName)
 		Seq.empty[Row]
 	}
@@ -642,6 +640,7 @@ case class InsertInto(
 	table: MbTableIdentifier,
 	query: String,
 	partitionColumns: Seq[String],
+	coalesce: Option[Int],
 	insertMode: InsertMode.Value
 ) extends MbCommand with DML
 

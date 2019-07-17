@@ -131,7 +131,7 @@ mql
     | REFRESH TABLE tableIdentifier                                                             # refreshTable
     | REFRESH path=.*?                                                                          #refreshResource
 
-    | INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? AS? query                 # insertInto
+    | INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? coalesceSpec? AS? query                 # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS? query             # createTemporaryView
     | query                                                                                     # mqlQuery
     | statement=.*?                                                                             # otherStatement
@@ -154,6 +154,10 @@ ctes
 
 partitionSpec
     : PARTITION '(' identifier (',' identifier)* ')'
+    ;
+
+coalesceSpec
+    : COALESCE num=INTEGER_VALUE
     ;
 
 dataType
@@ -299,6 +303,7 @@ COLUMNS: 'COLUMNS';
 COMMENT: 'COMMENT';
 CHANGE: 'CHANGE';
 CREATE: 'CREATE';
+COALESCE: 'COALESCE';
 CURRENT_USER: 'CURRENT_USER';
 DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';

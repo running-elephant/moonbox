@@ -31,11 +31,11 @@ object Main extends MbLogging {
 
 	def main(args: Array[String]) {
 		val conf = new MbConf()
-		val keyValues = for (i <- 0 until(args.length, 2)) yield (args(i), args(i+1))
+		val keyValues = for (i <- 0 until(args.length, 2)) yield (args(i), args(i + 1))
 		var username: String = null
 		var sqls: Seq[String] = null
 		keyValues.foreach {
-			case (k ,v) if k.equals("username") =>
+			case (k, v) if k.equals("username") =>
 				username = v
 			case (k, v) if k.equals("sqls") =>
 				sqls = v.split(";")
@@ -68,19 +68,26 @@ class Main(conf: MbConf, username: String, sqls: Seq[String]) {
 						df.createTempView(createTempView.name)
 					}
 
-				case insert @ InsertInto(MbTableIdentifier(table, database), query, colNames, insertMode) =>
+				case insert@InsertInto(MbTableIdentifier(table, database), query, colNames, num, insertMode) =>
 					val sinkCatalogTable = mbSession.getCatalogTable(table, database)
 					val options = sinkCatalogTable.properties
 					val format = DataSystem.lookupDataSource(options("type"))
 					val saveMode = if (insertMode == InsertMode.Overwrite) SaveMode.Overwrite else SaveMode.Append
 					val optimized = mbSession.optimizedPlan(query)
-					val dataFrame = mbSession.toDF(optimized)
-					val dataFrameWriter = TableInsertPrivilegeChecker
-						.intercept(mbSession, sinkCatalogTable, dataFrame)
+					val dataFrame = TableInsertPrivilegeChecker.intercept(
+						mbSession,
+						sinkCatalogTable,
+						mbSession.toDF(optimized))
+
+					val coalesceDataFrame = if (colNames.isEmpty && !options.contains("partitionColumnNames") && num.nonEmpty) {
+						dataFrame.coalesce(num.get)
+					} else dataFrame
+
+					val dataFrameWriter = coalesceDataFrame
 						.write
 						.format(format)
 						.options(options)
-						.partitionBy(colNames:_*)
+						.partitionBy(colNames: _*)
 						.mode(saveMode)
 					if (insertMode == InsertMode.Merge) {
 						dataFrameWriter.option("update", "true")

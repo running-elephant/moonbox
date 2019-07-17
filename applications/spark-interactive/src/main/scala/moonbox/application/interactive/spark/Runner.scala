@@ -90,8 +90,8 @@ class Runner(
 			case CreateTempView(table, query, isCache, replaceIfExists) =>
 				createTempView(table, query, isCache, replaceIfExists)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
-			case InsertInto(MbTableIdentifier(table, db), query, colNames, insertMode) =>
-				insert(table, db, query, colNames, insertMode)
+			case InsertInto(MbTableIdentifier(table, db), query, colNames, num, insertMode) =>
+				insert(table, db, query, colNames, num, insertMode)
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case MQLQuery(sql) =>
 				query(sql)
@@ -213,7 +213,7 @@ class Runner(
 		initCurrentData(dataFrame)
 	}
 
-	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], insertMode: InsertMode.Value): Unit = {
+	private def insert(table: String, db: Option[String], query: String, colNames: Seq[String], num: Option[Int], insertMode: InsertMode.Value): Unit = {
 		val sinkCatalogTable = mbSession.getCatalogTable(table, db)
 		val options = sinkCatalogTable.properties
 		val format = DataSystem.lookupDataSource(options("type"))
@@ -242,9 +242,16 @@ class Runner(
 					mbSession.pushdownPlan(optimized, pushdown = pushdownEnable)
 				}
 			}
-			val dataFrame = mbSession.toDF(pushdownPlan)
-			val dataFrameWriter = TableInsertPrivilegeChecker
-				.intercept(mbSession, sinkCatalogTable, dataFrame)
+			val dataFrame = TableInsertPrivilegeChecker.intercept(
+				mbSession,
+				sinkCatalogTable,
+				mbSession.toDF(pushdownPlan))
+
+			val coalesceDataFrame = if (colNames.isEmpty && !options.contains("partitionColumnNames") && num.nonEmpty) {
+				dataFrame.coalesce(num.get)
+			} else dataFrame
+
+			val dataFrameWriter = coalesceDataFrame
 				.write
 				.format(format)
 				.options(options)
