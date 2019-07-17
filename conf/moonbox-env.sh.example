@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
+export MOONBOX_SSH_OPTS="-p 22"
 export JAVA_HOME=path/to/installed/dir
 export SPARK_HOME=path/to/installed/dir
 export YARN_CONF_DIR=path/to/yarn/conf/dir
-export MOONBOX_SSH_OPTS="-p 22"
 export MOONBOX_HOME=path/to/installed/dir
-# export MOONBOX_LOCAL_HOSTNAME=localhost
 export MOONBOX_MASTER_HOST=localhost
 export MOONBOX_MASTER_PORT=2551
+# export MOONBOX_LOCAL_HOSTNAME=localhost
