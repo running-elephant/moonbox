@@ -290,14 +290,14 @@ We have listed a general format above. You can use any relational database the c
 
 ## Timer Properties
 
-Quartz is integrated in Moonbox to provide timed task service. Please set moonbox.deploy.timer.enable to "TURE" if you need timed task function.
+Quartz is integrated in Moonbox to provide time-scheduling event service. Please set moonbox.deploy.timer.enable to "TURE" if you need time-scheduling event function.
 <table class="table">
 <tr><th>Property Name</th><th>Default</th><th>Meaning</th></tr>
 <tr>
   <td><code>moonbox.deploy.timer.enable</code></td>
   <td>false</td>
   <td>
-    Whether to enable timed task function.  
+    Whether to enable time-scheduling event function.  
   </td>
 </tr>
 <tr>
@@ -347,7 +347,7 @@ Note: It is necessary to create some databases and tables by hand in MySQL for p
   <td><code>moonbox.deploy.timer.enable</code></td>
   <td>true</td>
   <td>
-    Whether to enable timed task function.  
+    Whether to enable time-scheduling event function.  
   </td>
 </tr>
 <tr>
