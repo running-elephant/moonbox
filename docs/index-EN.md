@@ -1,4 +1,9 @@
-# Moonbox Overview
+---
+layout: global
+displayTitle: Moonbox Overview
+title: Overview
+description: Moonbox MOONBOX_VERSION_SHORT documentation homepage
+---
 
 **Moonbox is a DVtaaS (Data Virtualization as a Service) Solution**
 
