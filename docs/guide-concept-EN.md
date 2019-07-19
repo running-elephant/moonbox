@@ -80,7 +80,7 @@ The concept of "Organization" is introduced into Moonbox for user space division
     Whether it can execute Account statement, such as creating/deleting User.  
   - DDL
 
-    Whether it can execute DDL statement, such as creating/deleting database, mount/umount Moonbox tables.  
+    Whether it can execute DDL statement, such as creating/deleting database, mount/unmount Moonbox tables.  
   - DCL
 
     Whether it can execute DCL statement, such as the authorization of a database, a table or some fields in a table to some Users.  
