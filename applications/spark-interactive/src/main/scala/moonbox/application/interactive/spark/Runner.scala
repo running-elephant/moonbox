@@ -61,20 +61,17 @@ class Runner(
 	private var currentCallback: Option[() => Unit] = _
 
 	private var currentRowId: Long = _
-	private var resultData: ArrayBuffer[Seq[Any]] = _
 
 	private val mbSession = new MoonboxSession(conf, username, database, sessionConfig = sessionConfig)
 
 	private implicit var userContext: SessionEnv = mbSession.sessionEnv
-
-	init()
 
 	def query(sqls: Seq[String], fetchSize: Int, maxRows: Int): QueryResult = {
 		this.fetchSize = fetchSize
 		this.maxRows = if (maxRows == Int.MinValue) {
 			10000
 		} else maxRows
-		this.resultData = new ArrayBuffer[Seq[Any]](fetchSize.toInt)
+
 		val commands = sqls.map(mbSession.parsedCommand)
 		if (commands.count(_.isInstanceOf[MQLQuery]) > 1) {
 			throw new Exception(s"Can only write an SELECT SQL statement at a time。")
@@ -179,6 +176,7 @@ class Runner(
 	}
 
 	private def query(sql: String): QueryResult = {
+		setGroup()
 		val analyzedPlan = mbSession.analyzedPlan(sql)
 		val limitedPlan = GlobalLimit(Literal(maxRows, IntegerType), LocalLimit(Literal(maxRows, IntegerType), analyzedPlan))
 		val optimized = mbSession.optimizedPlan(limitedPlan)
@@ -265,6 +263,7 @@ class Runner(
 				dataFrameWriter.partitionBy(options("partitionColumnNames").split(","): _*)
 			}
 			dataFrameWriter.save()
+			clearGroup()
 		}
 	}
 
@@ -283,8 +282,8 @@ class Runner(
 
 	def fetchResultData(): ResultData = {
 		logDebug(s"Fetching data from runner: fetchSize=$fetchSize, maxRows=$maxRows")
-		resultData.clear()
 		var rowCount = 0
+		val resultData = new ArrayBuffer[Seq[Any]](fetchSize)
 		while (hasNext && rowCount < fetchSize) {
 			resultData.append(currentData.next().toSeq)
 			currentRowId += 1
@@ -292,6 +291,8 @@ class Runner(
 		}
 
 		if (!hasNext) {
+			clearGroup()
+			currentData = null
 			currentCallback.foreach(close => close())
 			logInfo("close client connection in datatable.")
 		}
@@ -329,7 +330,11 @@ class Runner(
 
 	private def hasNext: Boolean = currentData.hasNext && currentRowId < maxRows
 
-	private def init(): Unit = {
+	private def setGroup(): Unit = {
 		mbSession.engine.setJobGroup(sessionId, username)
+	}
+
+	private def clearGroup(): Unit = {
+		mbSession.engine.clearJobGroup()
 	}
 }
