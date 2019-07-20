@@ -92,7 +92,7 @@ class Runner(
 				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
 			case MQLQuery(sql) =>
 				query(sql)
-			case other: OtherStatement =>
+			case other: Statement =>
 				otherStatement(other.sql)
 			case other =>
 				throw new Exception(s"Unsupport command $other")
