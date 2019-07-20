@@ -37,6 +37,7 @@ object MoonboxRest {
 	private var language: String = "mql"
 	private var database: Option[String] = _
 	private var path: String = _
+	private var ql: String = null
 	private var server: String = _
 	private var name: Option[String] = None
 	private val config = new scala.collection.mutable.HashMap[String, String]
@@ -126,14 +127,18 @@ object MoonboxRest {
 	}
 
 	private def readSqls(): Seq[String] = {
-		val source = Source.fromFile(path)
-		val sqls = source.mkString.split(";").filterNot(s => s == "" || s == null)
-		source.close()
-		sqls
+		if (path == null) {
+			ql.split(";")
+		} else {
+			val source = Source.fromFile(path)
+			val sqls = source.mkString.split(";").filterNot(s => s == "" || s == null)
+			source.close()
+			sqls
+		}
 	}
 
 	private def checkArgs(): Boolean = {
-		if (user == null || password == null || server == null || path == null) {
+		if (user == null || password == null || server == null || (path == null && ql == null)) {
 			false
 		} else {
 			true
@@ -160,6 +165,8 @@ object MoonboxRest {
 		case f :: tail if f.startsWith("-f") =>
 			path = f.stripPrefix("-f")
 			parse(tail)
+		case e :: tail if e.startsWith("-e") =>
+			ql = e.stripPrefix("-e")
 		case n :: tail if n.startsWith("-n") =>
 			name = Some(n.stripPrefix("-n"))
 			parse(tail)
@@ -184,7 +191,8 @@ object MoonboxRest {
 				"   -p            Password to use when connecting to server.\n" +
 				"   -l            Mql or hql to execute.\n" +
 				"   -d            Current database, optional.\n" +
-				"   -f            Mql or hql script file path.\n"
+				"   -f            MQL or HQL script file path.\n" +
+				"   -e 			  MQL"
 		)
 		System.exit(exitCode)
 	}
