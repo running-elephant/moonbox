@@ -100,6 +100,7 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
             column.permission.enable = true
             spark.sql.cbo.enabled = true
             spark.sql.constraintPropagation.enabled = false
+            spark.sql.catalogImplementation = "in-memory" # do not modify
 
             local = [{}]
             cluster = [{
