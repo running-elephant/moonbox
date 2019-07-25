@@ -33,7 +33,9 @@ Taking all aspects into consideration, data virtualization and compution serviti
 
 ## Architecture
 
-![Image text](https://github.com/edp963/moonbox/blob/master/docs/img/overview%E5%9B%BE.png)
+<p style="text-align: center;">
+  <img src="img/overview图.png" style="width:80%;" title="Moonbox Architecture" alt="Architecture" />
+</p>
 
 Generally speaking, Moonbox consists of four parts, namely Client, Access Layer, Grid and Storage/Computation Layer.
 
