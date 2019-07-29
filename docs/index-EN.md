@@ -86,6 +86,6 @@ Generally speaking, Moonbox consists of four parts, namely Client, Access Layer,
   Moonbox supports creating UDF/UDAF not only with JAR files, but also with Source Code, including Java and Scala, making the development and verification of UDF more convenient.
 
 - Timing Task Supported  
-  Moonbox provides timing task function. User defines timing task with DDL, defines scheduling strategy with crontab expression, and embeds quartz in the backend for task timing scheduling.   
+  Moonbox provides time-scheduling event function. User defines time-scheduling event with DDL, defines scheduling strategy with crontab expression, and embeds quartz in the backend for time-scheduling event.  
 
 
