@@ -29,8 +29,8 @@ Moonbox defines DCL to implement column permission control. System Administrator
 * Diversified UDF/UDAF  
 Moonbox supports creating UDF/UDAF not only with JAR files, but also with Source Code, including Java and Scala, making the development and verification of UDF more convenient.
 
-* Timing Task Supported  
-Moonbox provides timing task function. User defines timing task with DDL, defines scheduling strategy with crontab expression, and embeds quartz in the backend for task timing scheduling.    
+* Time-Scheduling Event Supported  
+Moonbox provides time-scheduling event function. User defines time-scheduling event with DDL, defines scheduling strategy with crontab expression, and embeds quartz in the backend for time-scheduling event.    
 
 # Latest Release
 Please download the latest [RELEASE](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
