@@ -82,8 +82,14 @@ object MoonboxRest {
 
 		val parameter = jsonObject.toString
 		val response = HttpClient.doPost(url, parameter, Charsets.UTF_8.name())
-		val jobId = new JSONObject(response).getString("jobId")
-		println(s"batch job submitted as $jobId, parameters is $parameter")
+		var jobId: String = null
+		try {
+			jobId = new JSONObject(response).getString("jobId")
+			println(s"batch job submitted as $jobId, parameters is $parameter")
+		} catch {
+			case e: Exception =>
+				println(s"batch job submit failed, error message is ${e.getMessage}")
+		}
 		jobId
 	}
 
@@ -167,6 +173,7 @@ object MoonboxRest {
 			parse(tail)
 		case e :: tail if e.startsWith("-e") =>
 			ql = e.stripPrefix("-e")
+			parse(tail)
 		case n :: tail if n.startsWith("-n") =>
 			name = Some(n.stripPrefix("-n"))
 			parse(tail)
@@ -192,7 +199,7 @@ object MoonboxRest {
 				"   -l            Mql or hql to execute.\n" +
 				"   -d            Current database, optional.\n" +
 				"   -f            MQL or HQL script file path.\n" +
-				"   -e 			  MQL"
+				"   -e 			  MQL with double quotes"
 		)
 		System.exit(exitCode)
 	}

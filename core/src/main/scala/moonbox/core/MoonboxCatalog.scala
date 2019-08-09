@@ -25,11 +25,11 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.datasys.DataSystem
 
-object CatalogContext {
+object MoonboxCatalog {
 	val DEFAULT_DATABASE = "default"
 }
 
-class CatalogContext(val conf: MbConf) extends MbLogging {
+class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 	private val catalog = new JdbcCatalog(conf)
 
 	def stop(): Unit = {

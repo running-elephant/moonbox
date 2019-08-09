@@ -48,7 +48,7 @@ object MoonboxShell {
 	private var password: String = _
 	private var fetchSize: Int = 1000
 	private var truncate: Int = 0
-	private var maxRowsToShow: Int = 1000
+	private var maxRowsToShow: Int = 50
 	private var extraOptions: String = ""
 	private var client: MoonboxClient = _
 	private var clientInited: Boolean = _
@@ -290,7 +290,7 @@ object MoonboxShell {
 			print(Utils.stringToShow(dataToShow, schema, maxRowsToShow))
 		} catch {
 			case e: BackendException =>
-				Console.err.println(s"Sql query error: ${e.message}")
+				Console.err.println(s"SQL ERROR: ${e.message}")
 		}
 	}
 
@@ -440,11 +440,11 @@ object MoonboxShell {
 	private def printUsageAndExit(exitCode: Int): Unit = {
 		// scalastyle: off println
 		System.err.println(
-			"Usage: moonbox-sh [options]\n" +
+			"Usage: moonbox-shell [options]\n" +
 				"options:\n" +
 				"   -h, --host            Connect to host.\n" +
 				"   -P, --port            Port num to ues for connecting to server.\n" +
-				"   -u, --user :          User for login.\n" +
+				"   -u, --user            User for login, org@user.\n" +
 				"   -p, --password        Password to use when connecting to server.\n" +
 				"   -r, --runtime         Run in local or in cluster.\n" +
 				"   -t, --timeout         The query timeout: seconds.\n" +

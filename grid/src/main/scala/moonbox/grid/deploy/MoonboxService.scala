@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
-private[deploy] class MbService(
+private[deploy] class MoonboxService(
 	conf: MbConf,
 	masterRef: ActorRef,
 	auditLogger: AuditLogger) extends MbLogging {
@@ -44,19 +44,9 @@ private[deploy] class MbService(
 
 	private val loginManager = new LoginManager(conf, this)
 
-	/*def login(username: String, password: String)(implicit connection: ConnectionInfo): LoginOutbound = {
+	def login(org: String, username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
 		auditLogger.log(username, "login")
-		loginManager.login(username, password) match {
-			case Some(token) =>
-				LoginOutbound(Some(token), None)
-			case None =>
-				LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
-		}
-	}
-*/
-	def login(username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
-		auditLogger.log(username, "login")
-		loginManager.login(username, password) match {
+		loginManager.login(org, username, password) match {
 			case Some(token) =>
 				loginManager.addTimeoutCallback(token, callback)
 				LoginOutbound(Some(token), None)
@@ -162,9 +152,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def batchQuery(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
+	def batchQuery(org: String, username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		auditLogger.log(username, "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config.mkString(", ")))
-		loginManager.login(username, password) match {
+		loginManager.login(org, username, password) match {
 			case Some(_) =>
 				askSync[JobSubmitResponse](JobSubmit(username, lang, sqls, config))(SHORT_TIMEOUT) match {
 					case Left(JobSubmitResponse(Some(jobId), _)) =>
@@ -179,9 +169,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def batchQueryCancel(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
+	def batchQueryCancel(org: String, username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		auditLogger.log(username, "batchQueryCancel", Map("jobId" -> jobId))
-		loginManager.login(username, password) match {
+		loginManager.login(org, username, password) match {
 			case Some(_) =>
 				askSync[BatchJobCancelResponse](BatchJobCancel(jobId))(SHORT_TIMEOUT) match {
 					case Left(BatchJobCancelResponse(id, true, _)) =>
@@ -196,9 +186,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def batchQueryProgress(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
+	def batchQueryProgress(org: String, username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
 		auditLogger.log(username, "batchQueryProgress", Map("jobId" -> jobId))
-		loginManager.login(username, password) match {
+		loginManager.login(org, username, password) match {
 			case Some(_) =>
 				askSync[JobProgressState](JobProgress(jobId))(SHORT_TIMEOUT) match {
 					case Left(JobProgressState(id, submitTime, state, message)) =>
@@ -215,9 +205,9 @@ private[deploy] class MbService(
 		loginManager.decode(token)
 	}
 
-	def sample(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SampleOutbound = {
+	def sample(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SampleOutbound = {
 		auditLogger.log(username, "sample", Map("sql" -> sql))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[SampleResponse](SampleRequest(username, sql, database))(LONG_TIMEOUT) match {
 					case Left(SampleSuccessed(schema, data)) =>
@@ -232,9 +222,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def verify(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
+	def verify(org: String, username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
 		auditLogger.log(username, "verify", Map("sqls" -> sqls.mkString(";")))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[VerifyResponse](VerifyRequest(username, sqls, database))(SHORT_TIMEOUT) match {
 					case Left(VerifyResponse(success, message, result)) =>
@@ -247,9 +237,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def translate(username: String, password: String, sql: String, database: Option[String])(implicit connectionInfo: ConnectionInfo): TranslationOutbound = {
+	def translate(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connectionInfo: ConnectionInfo): TranslationOutbound = {
 		auditLogger.log(username, "translation", Map("sql" -> sql))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[TranslateResponse](TranslateRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(TranslateResponse(success, message, res)) =>
@@ -262,9 +252,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def resources(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
+	def resources(org: String, username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
 		auditLogger.log(username, "resources", Map("sql" -> sqls.mkString("; ")))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[TableResourcesResponses](TableResourcesRequest(username, sqls, database))(SHORT_TIMEOUT) match {
 					case Left(TableResourcesResponses(success, sysmgs, result)) =>
@@ -290,9 +280,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def schema(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SchemaOutbound = {
+	def schema(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SchemaOutbound = {
 		auditLogger.log(username, "schema", Map("sql" -> sql))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[SchemaResponse](SchemaRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(SchemaSuccessed(schema)) =>
@@ -307,9 +297,9 @@ private[deploy] class MbService(
 		}
 	}
 
-	def lineage(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
+	def lineage(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
 		auditLogger.log(username, "lineage", Map("sql" -> sql))
-		loginManager.login(username, password, forget = true) match {
+		loginManager.login(org, username, password, forget = true) match {
 			case Some(_) =>
 				askSync[LineageResponse](LineageRequest(username, sql, database))(SHORT_TIMEOUT) match {
 					case Left(LineageSuccessed(lineage)) =>

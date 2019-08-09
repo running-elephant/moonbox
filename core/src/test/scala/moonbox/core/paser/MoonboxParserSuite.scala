@@ -27,7 +27,7 @@ import moonbox.core.parser.MoonboxParser
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
-class MbParserSuite extends FunSuite {
+class MoonboxParserSuite extends FunSuite {
 	private val parser = new MoonboxParser()
 
 	private def assertEquals(command: MbCommand, mql: String*) = {
@@ -643,7 +643,7 @@ class MbParserSuite extends FunSuite {
 
 	test("other statement") {
 		assertEquals(
-			OtherStatement("analyze table t1 compute statistics"),
+			Statement("analyze table t1 compute statistics"),
 			"analyze table t1 compute statistics"
 		)
 	}
@@ -664,42 +664,42 @@ class MbParserSuite extends FunSuite {
 
 	test("grant and revoke grant") {
 		assertEquals(
-			GrantGrantToUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("user1", "user2")),
+			GrantGrantToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("user1", "user2")),
 			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO USER user1, user2"
 		)
 		assertEquals(
-			GrantGrantToGroup(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("group1", "group2")),
+			GrantGrantToGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("group1", "group2")),
 			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO Group group1, group2"
 		)
 
 		assertEquals(
-			RevokeGrantFromUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("user1", "user2")),
+			RevokeGrantFromUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("user1", "user2")),
 			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER user1, user2"
 		)
 		assertEquals(
-			RevokeGrantFromGroup(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL, PrivilegeType.DCL), Seq("group1", "group2")),
+			RevokeGrantFromGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("group1", "group2")),
 			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM Group group1, group2"
 		)
 	}
 
 	test("grant and revoke privilege") {
 		assertEquals(
-			GrantPrivilegeToUser(Seq(PrivilegeType.ACCOUNT, PrivilegeType.DDL), Seq("user1", "user2")),
+			GrantPrivilegeToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL), Seq("user1", "user2")),
 			"GRANT ACCOUNT, DDL TO USER user1, user2"
 		)
 
 		assertEquals(
-			GrantPrivilegeToGroup(Seq(PrivilegeType.ACCOUNT), Seq("group1", "group2")),
+			GrantPrivilegeToGroup(Seq(RolePrivilege.ACCOUNT), Seq("group1", "group2")),
 			"GRANT ACCOUNT TO GROUP group1, group2"
 		)
 
 		assertEquals(
-			RevokePrivilegeFromUser(Seq(PrivilegeType.ACCOUNT), Seq("user1", "user2")),
+			RevokePrivilegeFromUser(Seq(RolePrivilege.ACCOUNT), Seq("user1", "user2")),
 			"REVOKE ACCOUNT FROM USER user1, user2"
 		)
 
 		assertEquals(
-			RevokePrivilegeFromGroup(Seq(PrivilegeType.ACCOUNT), Seq("group1", "group2")),
+			RevokePrivilegeFromGroup(Seq(RolePrivilege.ACCOUNT), Seq("group1", "group2")),
 			"REVOKE ACCOUNT FROM GROUP group1, group2"
 		)
 	}

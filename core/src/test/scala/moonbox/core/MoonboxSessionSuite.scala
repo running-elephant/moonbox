@@ -29,11 +29,10 @@ import org.apache.spark.sql.catalyst.rules.RuleExecutor
 import org.apache.spark.sql.optimizer.Pushdown
 import org.scalatest.FunSuite
 
-class MbSessionSuite extends FunSuite {
-	val conf = new MbConf()
-	conf.set("spark.master", "local[*]")
-	conf.set("spark.app.name", "test")
-	val mbParser = new MoonboxParser
+import scala.tools.nsc.interpreter.session
+
+class MoonboxSessionSuite extends FunSuite {
+
 	test("mbSession") {
 
 		val sql =
@@ -173,29 +172,36 @@ class MbSessionSuite extends FunSuite {
 			  |  (SELECT trans_id,
 			  |          trans_type,
 			  |          user_idcard
-			  |   FROM yrd_bs.fact_bjjrj_investment_detail) id ON concat(d.trans_id,t.trans_type_new,li.sid_card) = concat(id.trans_id,id.trans_type,id.user_idcard)
+			  |   FROM yrd_bs.aaaaaaaaaaaaaa) id ON concat(d.trans_id,t.trans_type_new,li.sid_card) = concat(id.trans_id,id.trans_type,id.user_idcard)
 			  |WHERE id.user_idcard IS NOT NULL
 			""".stripMargin
-		val session: MoonboxSession = new MoonboxSession(conf, "sally")
+
+
+		val spark: SparkSession = SparkSession.builder().appName("test").master("local[*]").getOrCreate()
 
 		class MbOptimizer extends RuleExecutor[LogicalPlan] {
 			override protected def batches: Seq[Batch] = {
 				Batch("pushdown", FixedPoint(20),
-					session.engine.sparkSession.sessionState.analyzer.CTESubstitution,
+					spark.sessionState.analyzer.CTESubstitution,
 					EliminateUnions
 				) :: Nil
 			}
 		}
 
-		val plan = session.parsedPlan(sql)
+		val plan = spark.sessionState.sqlParser.parsePlan(sql)
 		val cet = new MbOptimizer().execute(plan)
 			cet.resolveOperators {
 			case u@UnresolvedRelation(tableIdentifier) =>
 				println(tableIdentifier.quotedString)
 				u
 		}
-
 		println()
+
+		cet.collectLeaves().filter(_.isInstanceOf[UnresolvedRelation]).map {
+			case UnresolvedRelation(tableIdentifier) => tableIdentifier
+		}.foreach(println)
+
+		/*println()
 		cet.resolveOperators {
 			case p:LogicalPlan =>
 				p.transformExpressions {
@@ -206,6 +212,6 @@ class MbSessionSuite extends FunSuite {
 						println("----" + a)
 						a
 				}
-		}
+		}*/
 	}
 }
