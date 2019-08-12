@@ -22,6 +22,7 @@ package moonbox.application.batch.hive
 
 import java.util
 
+import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.JdbcCatalog
 import moonbox.common.MbConf
 import org.apache.hadoop.hive.ql.exec.DDLTask
@@ -43,10 +44,20 @@ class ExecutionHook extends ExecuteWithHookContext {
 				val rootTasks = queryPlan.getRootTasks
 
 				if (!rootTasks.head.isInstanceOf[DDLTask]) {
-					val username = hookContext.getUserName
+
+					val orguser = hookContext.getUserName.split("@")
+					val org = orguser(0)
+					val username = orguser(1)
+
+					implicit val user: User = {
+						val orgId = catalog.organizationId(org)
+						val userId = catalog.userId(orgId, username)
+						User(orgId, org, userId, username)
+					}
+
 					val dbToTable = new util.HashMap[String, util.Map[String, util.List[String]]]
 					val columnInfo = queryPlan.getColumnAccessInfo
-					catalog.getUserOption(username) match {
+					catalog.getUserOption(org, username) match {
 						case Some(catalogUser) =>
 							val tableToColumn = columnInfo.getTableToColumnAccessMap
 							tableToColumn.foreach { case (tableWithDb, columns) =>
@@ -62,15 +73,18 @@ class ExecutionHook extends ExecuteWithHookContext {
 								}
 							}
 							dbToTable.foreach { case (db, tables) =>
-								val database = catalog.getDatabase(catalogUser.organizationId, db)
-								val dbPrivilege = catalog.getDatabasePrivilege(catalogUser.id.get, database.id.get, "SELECT")
-								if (dbPrivilege.isEmpty) {
+								val dbPrivilege = catalog.getDatabasePrivilege(username, db)
+
+								if (!dbPrivilege.privileges.contains("SELECT")) {
 									tables.foreach { case (table, columns) =>
-										val tablePrivilege = catalog.getTablePrivilege(catalogUser.id.get, database.id.get, table, "SELECT")
-										if (tablePrivilege.isEmpty) {
-											val columnPrivileges = catalog.getColumnPrivilege(catalogUser.id.get, database.id.get, table, "SELECT")
-											val availableColumns = columnPrivileges.map(_.column)
-											if (!columns.forall(availableColumns.contains(_))) {
+										val tablePrivilege = catalog.getTablePrivilege(username, db, table)
+
+										if (!tablePrivilege.privileges.contains("SELECT")) {
+											val columnPrivileges = catalog.getColumnPrivilege(username, db, table).privilege
+
+											val availableColumns = columnPrivileges.filterKeys(key => columnPrivileges(key).contains("SELECT"))
+
+											if (!columns.forall(availableColumns.contains)) {
 												val unavailableColumns = columns.filter(!availableColumns.contains(_))
 												throw new Exception(s"Permission denied to user $username for columns ${unavailableColumns.mkString(",")}")
 											}

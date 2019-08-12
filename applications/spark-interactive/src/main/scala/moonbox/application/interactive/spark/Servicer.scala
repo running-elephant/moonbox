@@ -35,14 +35,15 @@ import org.apache.spark.sql.types.IntegerType
 import scala.collection.mutable.ArrayBuffer
 
 class Servicer(
+	org: String,
 	username: String,
 	database: Option[String],
 	conf: MbConf,
 	manager: ActorRef
 ) extends MbLogging {
 
-	private val mbSession = new MoonboxSession(conf, username, database, autoLoadDatabases = false)
-	private implicit var userContext: SessionEnv = mbSession.sessionEnv
+	private val mbSession = new MoonboxSession(conf, username, org, database)
+
 
 	private def iteratorToSeq(iter: Iterator[Row]): Seq[Row] = {
 		val buf = new ArrayBuffer[Row]()
@@ -52,33 +53,8 @@ class Servicer(
 
 	def sample(sql: String): SampleResponse = {
 		try {
-			val analyzedPlan = mbSession.analyzedPlan(sql)
-			val limitedPlan = GlobalLimit(Literal(20, IntegerType), LocalLimit(Literal(20, IntegerType), analyzedPlan))
-			val optimized = mbSession.optimizedPlan(limitedPlan)
-			try {
-				mbSession.pushdownPlan(optimized) match {
-					case WholePushdown(child, queryable) =>
-						val dataTable = mbSession.toDT(child, queryable)
-						SampleSuccessed(dataTable.schema.json, iteratorToSeq(dataTable.iterator).map(_.toSeq))
-					case plan =>
-						val dataFrame = mbSession.toDF(plan)
-						SampleSuccessed(dataFrame.schema.json, iteratorToSeq(dataFrame.collect().iterator).map(_.toSeq))
-				}
-			} catch {
-				case e: ColumnSelectPrivilegeException =>
-					SampleFailed(e.getMessage)
-				case e: Throwable if e.getMessage.contains("cancelled job") =>
-					SampleFailed(e.getMessage)
-				case e: Throwable =>
-					if (mbSession.pushdown) {
-						logWarning(s"Execute push down failed: ${e.getMessage}. Retry with out pushdown.")
-						val plan = mbSession.pushdownPlan(optimized, pushdown = false)
-						val dataFrame = mbSession.toDF(plan)
-						SampleSuccessed(dataFrame.schema.json, iteratorToSeq(dataFrame.collect().iterator).map(_.toSeq))
-					} else {
-						SampleFailed(e.getMessage)
-					}
-			}
+			val result = mbSession.sql(sql, 20)
+			SampleSuccessed(result._2.json, iteratorToSeq(result._1).map(_.toSeq))
 		} catch {
 			case e: Exception =>
 				SampleFailed(e.getMessage)
@@ -87,8 +63,9 @@ class Servicer(
 
 	def translate(sql: String): TranslateResponse = {
 		try {
-			val analyzedPlan = mbSession.analyzedPlan(sql)
-			val connectionUrl = analyzedPlan.collectLeaves().toList match {
+			val parsed = mbSession.engine.parsePlan(sql)
+			val analyzed = mbSession.engine.analyzePlan(parsed)
+			val connectionUrl = analyzed.collectLeaves().toList match {
 				case Nil => throw new Exception("leaves can not be empty.")
 				case head :: Nil =>
 					head.asInstanceOf[LogicalRelation].catalogTable.get.storage.properties("url")
@@ -103,7 +80,7 @@ class Servicer(
 						throw new Exception("tables are cross multiple database instance.")
 					}
 			}
-			val optimizedPlan = mbSession.optimizedPlan(analyzedPlan)
+			val optimizedPlan = mbSession.engine.optimizePlan(analyzed)
 			val resultSql = new MbSqlBuilder(optimizedPlan, MbDialect.get(connectionUrl)).toSQL
 			TranslateResponse(success = true, sql = Some(resultSql))
 		} catch {
@@ -116,13 +93,10 @@ class Servicer(
 	def verify(sqls: Seq[String]): VerifyResponse = {
 		val result = sqls.map { sql =>
 			try {
-				val analyzedPlan = mbSession.analyzedPlan(sql)
-				mbSession.engine.sparkSession.sessionState.analyzer.checkAnalysis(analyzedPlan)
-				mbSession.checkColumnPrivilege(analyzedPlan)
+				val parsed = mbSession.engine.parsePlan(sql)
+				mbSession.engine.analyzePlan(parsed)
 				(true, None)
 			} catch {
-				case e: ColumnSelectPrivilegeException =>
-					(false, Some(e.getMessage))
 				case e: Exception =>
 					(false, Some(e.getMessage))
 			}
@@ -133,14 +107,13 @@ class Servicer(
 	def resources(sqls: Seq[String]): TableResourcesResponses = {
 		val result = sqls.map { sql =>
 			try {
-				val parsedPlan: LogicalPlan = mbSession.parsedPlan(sql)
-				val (tables, functions) = mbSession.collectUnknownTablesAndFunctions(parsedPlan)
-				val (inputTables, outputTable) = if (parsedPlan.isInstanceOf[InsertIntoTable]) {
-					(tables.tail, Some(tables.head))
-				} else {
-					(tables, None)
-				}
-				TableResourcesSuccessed(inputTables.map(_.unquotedString), outputTable.map(_.unquotedString), functions.map(_.funcName))
+				val (output, inputs) = mbSession.engine.unresolvedTablesInSQL(sql)
+				val functions = mbSession.engine.unresolvedFunctionsInSQL(sql)
+
+				TableResourcesSuccessed(
+					inputs.map(_.unquotedString),
+					output.map(_.unquotedString),
+					functions.map(_.funcName))
 			} catch {
 				case e: Exception =>
 					TableResourcesFailed(e.getMessage)
@@ -151,9 +124,8 @@ class Servicer(
 
 	def schema(sql: String): SchemaResponse = {
 		try {
-			val analyzed = mbSession.analyzedPlan(sql)
-			mbSession.engine.sparkSession.sessionState.analyzer.checkAnalysis(analyzed)
-			SchemaSuccessed(analyzed.schema.json)
+			val schema = mbSession.sqlSchema(sql)
+			SchemaSuccessed(schema.json)
 		} catch {
 			case e: Exception =>
 				SchemaFailed(e.getMessage)

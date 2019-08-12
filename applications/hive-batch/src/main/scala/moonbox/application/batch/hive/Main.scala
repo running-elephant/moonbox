@@ -35,9 +35,12 @@ object Main extends MbLogging {
 		val conf = new MbConf()
 		val keyValues = for (i <- 0 until(args.length, 2)) yield (args(i), args(i+1))
 		var driverId: String = null
+		var org: String = null
 		var username: String = null
 		var sqls: Seq[String] = null
 		keyValues.foreach {
+			case (k ,v) if k.equals("org") =>
+				org = v
 			case (k ,v) if k.equals("username") =>
 				username = v
 			case (k, v) if k.equals("sqls") =>
@@ -47,11 +50,11 @@ object Main extends MbLogging {
 			case (k, v) =>
 				conf.set(k, v)
 		}
-		new Main(conf, driverId, username, sqls).runMain()
+		new Main(conf, driverId, org, username, sqls).runMain()
 	}
 }
 
-class Main(conf: MbConf, driverId: String, username: String, sqls: Seq[String]) {
+class Main(conf: MbConf, driverId: String, org: String, username: String, sqls: Seq[String]) {
 	import scala.collection.JavaConversions._
 	def runMain(): Unit = {
 
@@ -78,7 +81,7 @@ class Main(conf: MbConf, driverId: String, username: String, sqls: Seq[String]) 
 
 		hiveConf.set(HiveConf.ConfVars.PREEXECHOOKS.varname, "moonbox.application.hivenative.ExecutionHook")
 
-		val ss: SessionState = new SessionState(hiveConf, username)
+		val ss: SessionState = new SessionState(hiveConf, s"$org@$username")
 		ss.in = System.in
 
 		val out = new MbOutputStream()

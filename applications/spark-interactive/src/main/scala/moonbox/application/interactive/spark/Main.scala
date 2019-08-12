@@ -133,10 +133,10 @@ class Main(
 			changeMaster(masterRef, masterRef.path.address)
 			masterRef ! ApplicationStateResponse(driverId)
 
-		case open @ OpenSession(username, database, sessionConfig) =>
+		case open @ OpenSession(org, username, database, sessionConfig) =>
 			val requester = sender()
 			val sessionId = newSessionId
-			val f = Future(new Runner(sessionId, username, database, conf, sessionConfig, self))
+			val f = Future(new Runner(sessionId, org, username, database, conf, sessionConfig, self))
 			f.onComplete {
 				case Success(runner) =>
 					sessionIdToRunner.put(sessionId, runner)
@@ -233,10 +233,10 @@ class Main(
 				sender() ! UnregisterTimedEventFailed(message)
 			}
 
-		case sample @ SampleRequest(username, sql, database) =>
+		case sample @ SampleRequest(org, username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.sample(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -246,10 +246,10 @@ class Main(
 					requester ! SampleFailed(e.getMessage)
 			}
 
-		case translate @ TranslateRequest(username, sql, database) =>
+		case translate @ TranslateRequest(org, username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.translate(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -259,10 +259,10 @@ class Main(
 					requester ! SampleFailed(e.getMessage)
 			}
 
-		case verify @ VerifyRequest(username, sqls, database) =>
+		case verify @ VerifyRequest(org, username, sqls, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.verify(sqls)
 			}.onComplete {
 				case Success(response) =>
@@ -272,10 +272,10 @@ class Main(
 					requester ! VerifyResponse(success = false, message = Some(e.getMessage))
 			}
 
-		case resource @ TableResourcesRequest(username, sqls, database) =>
+		case resource @ TableResourcesRequest(org, username, sqls, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.resources(sqls)
 			}.onComplete {
 				case Success(response) =>
@@ -285,10 +285,10 @@ class Main(
 					requester ! TableResourcesResponses(success=false, message = Some(e.getMessage))
 			}
 
-		case schema @ SchemaRequest(username, sql, database) =>
+		case schema @ SchemaRequest(org, username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.schema(sql)
 			}.onComplete {
 				case Success(response) =>
@@ -298,10 +298,10 @@ class Main(
 					requester ! SchemaFailed(e.getMessage)
 			}
 
-		case lineage @ LineageRequest(username, sql, database) =>
+		case lineage @ LineageRequest(org, username, sql, database) =>
 			val requester = sender()
 			Future {
-				val servicer = new Servicer(username, database, conf, self)
+				val servicer = new Servicer(org, username, database, conf, self)
 				servicer.lineage(sql)
 			}.onComplete {
 				case Success(response) =>
