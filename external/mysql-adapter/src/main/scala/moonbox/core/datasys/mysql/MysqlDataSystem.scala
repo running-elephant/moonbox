@@ -144,7 +144,7 @@ class MysqlDataSystem(props: Map[String, String])
 		val sqlBuilder = new MbSqlBuilder(plan, new MbMySQLDialect)
 		val sql = sqlBuilder.toSQL
 		val schema = sqlBuilder.finalLogicalPlan.schema
-		logInfo(s"query sql: $sql")
+		logInfo(s"translate pushdown query sql: $sql")
 		val conn = getConnection()
 		val statement = conn.createStatement()
 		val resultSet = try {
@@ -174,8 +174,8 @@ class MysqlDataSystem(props: Map[String, String])
 			try {
 				if (null != conn) {
 					conn.close()
+					logInfo("closed connection")
 				}
-				logInfo("closed connection")
 			} catch {
 				case e: Exception => logWarning("Exception closing connection", e)
 			}

@@ -13,13 +13,13 @@
       "default.user": {
         "envName": null,
         "propertyName": "default.user",
-        "defaultValue": "sally",
+        "defaultValue": "org@user",
         "description": "The moonbox JDBC user name"
       },
       "default.password": {
         "envName": null,
         "propertyName": "default.password",
-        "defaultValue": "123456",
+        "defaultValue": "yourPassword",
         "description": "The moonbox JDBC user password"
       },
       "default.driver": {
@@ -37,7 +37,7 @@
       "default.max_count": {
         "envName": null,
         "propertyName": "default.max_count",
-        "defaultValue": "1000",
+        "defaultValue": "100",
         "description": "Max number of SQL result to display"
       },
       "default.timeout": {
