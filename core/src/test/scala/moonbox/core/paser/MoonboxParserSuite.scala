@@ -20,10 +20,10 @@
 
 package moonbox.core.paser
 
-import moonbox.catalog.{FunctionResource}
-import moonbox.core.{MbFunctionIdentifier, MbTableIdentifier}
+import moonbox.catalog.FunctionResource
 import moonbox.core.command._
 import moonbox.core.parser.MoonboxParser
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 
@@ -135,59 +135,6 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
-	test("group") {
-		assertEquals(
-			CreateGroup("group", Some("for testing"), ignoreIfExists = false),
-			"CREATE GROUP group COMMENT 'for testing'"
-		)
-
-		assertEquals(
-			CreateGroup("group", None, ignoreIfExists = true),
-			"CREATE GROUP IF NOT EXISTS group"
-		)
-
-		assertEquals(
-			AlterGroupSetName("group", "group1"),
-			"RENAME GROUP group TO group1",
-			"ALTER GROUP group RENAME TO group1"
-		)
-
-		assertEquals(
-			AlterGroupSetComment("group", "for testing"),
-			"ALTER GROUP group SET COMMENT 'for testing'"
-		)
-
-		assertEquals(
-			AlterGroupSetUser("group", Seq("user1", "user2"), Seq(), addFirst = true),
-			"ALTER GROUP group ADD USER user1, user2"
-		)
-
-		assertEquals(
-			AlterGroupSetUser("group", Seq(), Seq("user3"), addFirst = false),
-			"ALTER GROUP group REMOVE USER user3"
-		)
-
-		assertEquals(
-			AlterGroupSetUser("group", Seq("user1", "user2"), Seq("user3"), addFirst = true),
-			"ALTER GROUP group ADD USER user1, user2 REMOVE USER user3"
-		)
-
-		assertEquals(
-			AlterGroupSetUser("group", Seq("user1", "user2"), Seq("user3"), addFirst = false),
-			"ALTER GROUP group REMOVE USER user3 ADD USER user1, user2 "
-		)
-
-		assertEquals(
-			DropGroup("group", ignoreIfNotExists = false, cascade = false),
-			"DROP GROUP group"
-		)
-
-		assertEquals(
-			DropGroup("group", ignoreIfNotExists = true, cascade = true),
-			"DROP GROUP IF EXISTS group CASCADE"
-		)
-	}
-
 	test("database") {
 		assertEquals(
 			CreateDatabase("database", Some("for testing"), ignoreIfExists = true),
@@ -216,24 +163,24 @@ class MoonboxParserSuite extends FunSuite {
 		)
 
 		assertEquals(
-			UnmountDatabase("database", ignoreIfNotExists = false),
+			UnmountDatabase("database", ignoreIfNotExists = false, cascade = false),
 			"UNMOUNT DATABASE database"
 		)
 	}
 
 	test("table") {
 		assertEquals(
-			MountTable(MbTableIdentifier("table", None), None, Map("key" -> "value"), isStream = false, ignoreIfExists = false),
+			MountTable(TableIdentifier("table", None), None, Map("key" -> "value"), isStream = false, ignoreIfExists = false),
 			"MOUNT TABLE table OPTIONS(key 'value')"
 		)
 
 		assertEquals(
-			MountTable(MbTableIdentifier("table", Some("db")), None, Map("key" -> "value"), isStream = true, ignoreIfExists = true),
+			MountTable(TableIdentifier("table", Some("db")), None, Map("key" -> "value"), isStream = true, ignoreIfExists = true),
 			"MOUNT STREAM TABLE IF NOT EXISTS db.table OPTIONS(key 'value')"
 		)
 
 		assertEquals(
-			MountTable(MbTableIdentifier("table", None), Some(
+			MountTable(TableIdentifier("table", None), Some(
 				StructType(Seq(
 					StructField("name", StringType),
 					StructField("age", IntegerType)
@@ -243,31 +190,31 @@ class MoonboxParserSuite extends FunSuite {
 		)
 
 		assertEquals(
-			AlterTableSetName(MbTableIdentifier("table", None), MbTableIdentifier("table1", None)),
+			AlterTableSetName(TableIdentifier("table", None), TableIdentifier("table1", None)),
 			"RENAME TABLE table TO table1",
 			"ALTER TABLE table RENAME TO table1"
 		)
 
 		assertEquals(
-			AlterTableSetName(MbTableIdentifier("table", Some("db")), MbTableIdentifier("table1", Some("db"))),
+			AlterTableSetName(TableIdentifier("table", Some("db")), TableIdentifier("table1", Some("db"))),
 			"RENAME TABLE db.table TO db.table1",
 			"ALTER TABLE db.table RENAME TO db.table1"
 		)
 
 		assertEquals(
-			AlterTableSetOptions(MbTableIdentifier("table", Some("db")), Map("key" -> "value")),
+			AlterTableSetOptions(TableIdentifier("table", Some("db")), Map("key" -> "value")),
 			"ALTER TABLE db.table SET OPTIONS(key 'value')"
 		)
 
 		assertEquals(
-			UnmountTable(MbTableIdentifier("table", Some("db")), ignoreIfNotExists = true),
+			UnmountTable(TableIdentifier("table", Some("db")), ignoreIfNotExists = true),
 			"UNMOUNT TABLE IF EXISTS db.table"
 		)
 	}
 
 	test("function") {
 		assertEquals(
-			CreateFunction(MbFunctionIdentifier("func", Some("db")),
+			CreateFunction(FunctionIdentifier("func", Some("db")),
 				"edp.moonbox.Function",
 				None,
 				Seq(FunctionResource("jar", "/temp/udf.jar")),
@@ -276,7 +223,7 @@ class MoonboxParserSuite extends FunSuite {
 		)
 
 		assertEquals(
-			CreateFunction(MbFunctionIdentifier("func", Some("db")),
+			CreateFunction(FunctionIdentifier("func", Some("db")),
 				"edp.moonbox.Function",
 				Some("test"),
 				Seq(FunctionResource("jar", "/temp/udf.jar")),
@@ -285,11 +232,11 @@ class MoonboxParserSuite extends FunSuite {
 		)
 
 		assertEquals(
-			DropFunction(MbFunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
+			DropFunction(FunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
 			"DROP FUNCTION IF EXISTS db.func"
 		)
 		assertEquals(
-			CreateTempFunction(MbFunctionIdentifier("func", None),
+			CreateTempFunction(FunctionIdentifier("func", None),
 				"edp.moonbox.Function",
 				None,
 				Seq(FunctionResource("jar", "/temp/udf.jar")), ignoreIfExists = false),
@@ -297,7 +244,7 @@ class MoonboxParserSuite extends FunSuite {
 			"CREATE TEMPORARY FUNCTION func AS 'edp.moonbox.Function' USING JAR '/temp/udf.jar'"
 		)
 		assertEquals(
-			DropTempFunction(MbFunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
+			DropTempFunction(FunctionIdentifier("func", Some("db")), ignoreIfNotExists = true),
 			"DROP TEMP FUNCTION IF EXISTS db.func"
 		)
 
@@ -305,28 +252,17 @@ class MoonboxParserSuite extends FunSuite {
 
 	test("view") {
 		assertEquals(
-			CreateView(MbTableIdentifier("view", Some("db")), "SELECT * FROM table", Some("for testing"), replaceIfExists = true),
+			CreateView(TableIdentifier("view", Some("db")), "SELECT * FROM table", Some("for testing"), replaceIfExists = true),
 			"CREATE VIEW IF NOT EXISTS db.view COMMENT 'for testing' AS SELECT * FROM table"
 		)
 
 		assertEquals(
-			AlterViewSetName(MbTableIdentifier("view", Some("db")), MbTableIdentifier("view1", Some("db"))),
-			"RENAME VIEW db.view TO db.view1",
-			"ALTER VIEW db.view RENAME TO db.view1"
-		)
-
-		assertEquals(
-			AlterViewSetQuery(MbTableIdentifier("view", Some("db")), "SELECT * FROM table"),
+			AlterViewSetQuery(TableIdentifier("view", Some("db")), "SELECT * FROM table"),
 			"ALTER VIEW db.view AS SELECT * FROM table"
 		)
 
 		assertEquals(
-			AlterViewSetComment(MbTableIdentifier("view", Some("db")), "for testing"),
-			"ALTER VIEW db.view SET COMMENT 'for testing'"
-		)
-
-		assertEquals(
-			DropView(MbTableIdentifier("view", Some("db")), ignoreIfNotExists = true),
+			DropView(TableIdentifier("view", Some("db")), ignoreIfNotExists = true),
 			"DROP VIEW IF EXISTS db.view"
 		)
 	}
@@ -440,27 +376,6 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
-	test("show views") {
-		assertEquals(
-			ShowViews(None, None),
-			"SHOW VIEWS"
-		)
-		assertEquals(
-			ShowViews(Some("db"), None),
-			"SHOW VIEWS FROM db",
-			"SHOW VIEWS IN db"
-		)
-		assertEquals(
-			ShowViews(Some("db"), Some("abc%")),
-			"SHOW VIEWS FROM db LIKE 'abc%'",
-			"SHOW VIEWS IN db LIKE 'abc%'"
-		)
-		assertEquals(
-			ShowViews(None, Some("abc%")),
-			"SHOW VIEWS LIKE 'abc%'"
-		)
-	}
-
 	test("show functions") {
 		assertEquals(
 			ShowFunctions(None, None, true, true),
@@ -493,17 +408,6 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
-	test("show groups") {
-		assertEquals(
-			ShowGroups(None),
-			"SHOW GROUPS"
-		)
-		assertEquals(
-			ShowGroups(Some("abc%")),
-			"SHOW GROUPS LIKE 'abc%'"
-		)
-	}
-
 	test("show applications") {
 		assertEquals(
 			ShowProcedures(None),
@@ -525,53 +429,39 @@ class MoonboxParserSuite extends FunSuite {
 
 	test("desc table") {
 		assertEquals(
-			DescTable(MbTableIdentifier("table"), extended = false),
+			DescTable(TableIdentifier("table"), extended = false),
 			"DESC TABLE table",
 			"DESCRIBE TABLE table"
 		)
 
 		assertEquals(
-			DescTable(MbTableIdentifier("table", Some("db")), extended = false),
+			DescTable(TableIdentifier("table", Some("db")), extended = false),
 			"DESC TABLE db.table",
 			"DESCRIBE TABLE db.table"
 		)
 
 		assertEquals(
-			DescTable(MbTableIdentifier("table", Some("db")), extended = true),
+			DescTable(TableIdentifier("table", Some("db")), extended = true),
 			"DESC TABLE EXTENDED db.table",
 			"DESCRIBE TABLE EXTENDED db.table"
 		)
 	}
 
-	test("desc view") {
-		assertEquals(
-			DescView(MbTableIdentifier("view")),
-			"DESC VIEW view",
-			"DESCRIBE VIEW view"
-		)
-
-		assertEquals(
-			DescView(MbTableIdentifier("view", Some("db"))),
-			"DESC VIEW db.view",
-			"DESCRIBE VIEW db.view"
-		)
-	}
-
 	test("desc function") {
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func"), isExtended = false),
+			DescFunction(FunctionIdentifier("func"), isExtended = false),
 			"DESC FUNCTION func",
 			"DESCRIBE FUNCTION func"
 		)
 
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func", Some("db")), isExtended = false),
+			DescFunction(FunctionIdentifier("func", Some("db")), isExtended = false),
 			"DESC FUNCTION db.func",
 			"DESCRIBE FUNCTION db.func"
 		)
 
 		assertEquals(
-			DescFunction(MbFunctionIdentifier("func", Some("db")), isExtended = true),
+			DescFunction(FunctionIdentifier("func", Some("db")), isExtended = true),
 			"DESC FUNCTION EXTENDED db.func",
 			"DESCRIBE FUNCTION EXTENDED db.func"
 		)
@@ -585,63 +475,32 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
-	test("desc group") {
+	test("statement") {
 		assertEquals(
-			DescGroup("group"),
-			"DESC GROUP group",
-			"DESCRIBE GROUP group"
-		)
-	}
-
-	test("set configuration") {
-		assertEquals(
-			SetVariable("key", "value", isGlobal = false),
-			"SET key = 'value'",
-			"SET key 'value'"
-		)
-		assertEquals(
-			SetVariable("key", "value", isGlobal = false),
-			"SET SESSION key = 'value'",
-			"SET SESSION key 'value'"
-		)
-		assertEquals(
-			SetVariable("key", "value", isGlobal = true),
-			"SET GLOBAL key = 'value'",
-			"SET GLOBAL key 'value'"
-		)
-	}
-
-	test("query") {
-		assertEquals(
-			MQLQuery("SELECT id, name FROM table"),
+			Statement("SELECT id, name FROM table"),
 			"SELECT id, name FROM table"
 		)
 		assertEquals(
-			MQLQuery("WITH cte1 AS (SELECT * FROM table1), cte2 AS (SELECT * FROM table2) SELECT * FROM cte1 join cte2"),
+			Statement("WITH cte1 AS (SELECT * FROM table1), cte2 AS (SELECT * FROM table2) SELECT * FROM cte1 join cte2"),
 			"WITH cte1 AS (SELECT * FROM table1), cte2 AS (SELECT * FROM table2) SELECT * FROM cte1 join cte2"
 		)
-	}
 
-	test("insert") {
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), None, insertMode = InsertMode.Append),
-			"INSERT INTO db.table1 SELECT * FROM table",
+			Statement("INSERT INTO db.table1 SELECT * FROM table"),
+
 			"INSERT INTO TABLE db.table1 SELECT * FROM table"
 		)
 
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq("a", "b"), Some(10), insertMode = InsertMode.Append),
-			"INSERT INTO db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table",
-			"INSERT INTO TABLE db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table"
+			Statement("INSERT INTO db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table"),
+			"INSERT INTO db.table1 PARTITION(a, b) COALESCE 10 SELECT * FROM table"
 		)
 
 		assertEquals(
-			InsertInto(MbTableIdentifier("table1", Some("db")), "SELECT * FROM table", Seq(), None, insertMode = InsertMode.Overwrite),
+			Statement("INSERT OVERWRITE TABLE db.table1 SELECT * FROM table"),
 			"INSERT OVERWRITE TABLE db.table1 SELECT * FROM table"
 		)
-	}
 
-	test("other statement") {
 		assertEquals(
 			Statement("analyze table t1 compute statistics"),
 			"analyze table t1 compute statistics"
@@ -664,149 +523,84 @@ class MoonboxParserSuite extends FunSuite {
 
 	test("grant and revoke grant") {
 		assertEquals(
-			GrantGrantToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("user1", "user2")),
-			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO USER user1, user2"
-		)
-		assertEquals(
-			GrantGrantToGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("group1", "group2")),
-			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO Group group1, group2"
+			GrantGrantToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), "user1"),
+			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO user1"
 		)
 
+
 		assertEquals(
-			RevokeGrantFromUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("user1", "user2")),
-			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER user1, user2"
+			RevokeGrantFromUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), "user2"),
+			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM user2"
 		)
-		assertEquals(
-			RevokeGrantFromGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), Seq("group1", "group2")),
-			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM Group group1, group2"
-		)
+
 	}
 
 	test("grant and revoke privilege") {
 		assertEquals(
-			GrantPrivilegeToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL), Seq("user1", "user2")),
-			"GRANT ACCOUNT, DDL TO USER user1, user2"
+			GrantPrivilegeToUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL), "user1"),
+			"GRANT ACCOUNT, DDL TO user1"
 		)
 
-		assertEquals(
-			GrantPrivilegeToGroup(Seq(RolePrivilege.ACCOUNT), Seq("group1", "group2")),
-			"GRANT ACCOUNT TO GROUP group1, group2"
-		)
 
 		assertEquals(
-			RevokePrivilegeFromUser(Seq(RolePrivilege.ACCOUNT), Seq("user1", "user2")),
-			"REVOKE ACCOUNT FROM USER user1, user2"
+			RevokePrivilegeFromUser(Seq(RolePrivilege.ACCOUNT), "user2"),
+			"REVOKE ACCOUNT FROM USER user2"
 		)
 
-		assertEquals(
-			RevokePrivilegeFromGroup(Seq(RolePrivilege.ACCOUNT), Seq("group1", "group2")),
-			"REVOKE ACCOUNT FROM GROUP group1, group2"
-		)
 	}
 
 	test("grant resource to user") {
 		assertEquals(
-			GrantResourceToUser(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
-			"GRANT SELECT ON db.t1 TO USER user1, user2"
+			GrantResourceToUser(Seq(SelectPrivilege), TableIdentifier("t1", Some("db")), "user1"),
+			"GRANT SELECT ON db.t1 TO USER user1"
 		)
 
 		assertEquals(
-			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
-			"GRANT SELECT(id, name) ON db.t1 TO USER user1, user2"
+			GrantResourceToUser(Seq(ColumnSelectPrivilege(Seq("id", "name"))), TableIdentifier("t1", Some("db")), "user1"),
+			"GRANT SELECT(id, name) ON db.t1 TO USER user1"
 		)
 
 		assertEquals(
-			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
-			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO USER user1, user2"
+			GrantResourceToUser(Seq(ColumnSelectPrivilege(Seq("id", "name")), ColumnUpdatePrivilege(Seq("id", "name"))), TableIdentifier("*", Some("db")), "user2"),
+			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO USER user2"
 		)
 
 		assertEquals(
-			GrantResourceToUser(Seq(SelectPrivilege(Seq("id", "name")),
-				UpdatePrivilege(Seq("id", "name")),
+			GrantResourceToUser(Seq(ColumnSelectPrivilege(Seq("id", "name")),
+				ColumnUpdatePrivilege(Seq("id", "name")),
 				InsertPrivilege,
 				DeletePrivilege
 			),
-				MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
-			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO USER user1, user2"
+				TableIdentifier("*", Some("db")), "user1"),
+			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO user1"
 		)
 	}
 
 	test("revoke resource from user") {
 		assertEquals(
-			RevokeResourceFromUser(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
-			"REVOKE SELECT ON db.t1 FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(SelectPrivilege), TableIdentifier("t1", Some("db")), "user1"),
+			"REVOKE SELECT ON db.t1 FROM USER user1"
 		)
 
 		assertEquals(
-			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("user1", "user2")),
-			"REVOKE SELECT(id, name) ON db.t1 FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(ColumnSelectPrivilege(Seq("id", "name"))), TableIdentifier("t1", Some("db")), "user1"),
+			"REVOKE SELECT(id, name) ON db.t1 FROM user1"
 		)
 
 		assertEquals(
-			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
-			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM USER user1, user2"
+			RevokeResourceFromUser(Seq(ColumnSelectPrivilege(Seq("id", "name")), ColumnUpdatePrivilege(Seq("id", "name"))), TableIdentifier("*", Some("db")), "user1"),
+			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM user1"
 		)
 
 		assertEquals(
-			RevokeResourceFromUser(Seq(SelectPrivilege(Seq("id", "name")),
-				UpdatePrivilege(Seq("id", "name")),
+			RevokeResourceFromUser(Seq(ColumnSelectPrivilege(Seq("id", "name")),
+				ColumnUpdatePrivilege(Seq("id", "name")),
 				InsertPrivilege,
 				DeletePrivilege
 			),
-				MbTableIdentifier("*", Some("db")), Seq("user1", "user2")),
-			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM USER user1, user2"
+				TableIdentifier("*", Some("db")), "user1"),
+			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM USER user1"
 		)
 	}
 
-	test("grant resources to group") {
-		assertEquals(
-			GrantResourceToGroup(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
-			"GRANT SELECT ON db.t1 TO GROUP group1, group2"
-		)
-
-		assertEquals(
-			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
-			"GRANT SELECT(id, name) ON db.t1 TO GROUP group1, group2"
-		)
-
-		assertEquals(
-			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
-			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO GROUP group1, group2"
-		)
-
-		assertEquals(
-			GrantResourceToGroup(Seq(SelectPrivilege(Seq("id", "name")),
-				UpdatePrivilege(Seq("id", "name")),
-				InsertPrivilege,
-				DeletePrivilege
-			), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
-			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO GROUP group1, group2"
-		)
-	}
-
-	test("revoke resoruces from group") {
-		assertEquals(
-			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq())), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
-			"REVOKE SELECT ON db.t1 FROM GROUP group1, group2"
-		)
-
-		assertEquals(
-			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name"))), MbTableIdentifier("t1", Some("db")), Seq("group1", "group2")),
-			"REVOKE SELECT(id, name) ON db.t1 FROM GROUP group1, group2"
-		)
-
-		assertEquals(
-			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name")), UpdatePrivilege(Seq("id", "name"))), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
-			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM GROUP group1, group2"
-		)
-
-		assertEquals(
-			RevokeResourceFromGroup(Seq(SelectPrivilege(Seq("id", "name")),
-				UpdatePrivilege(Seq("id", "name")),
-				InsertPrivilege,
-				DeletePrivilege
-			), MbTableIdentifier("*", Some("db")), Seq("group1", "group2")),
-			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM GROUP group1, group2"
-		)
-	}
 }

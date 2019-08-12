@@ -20,21 +20,20 @@
 
 package moonbox.core.command
 
+
 object RolePrivilege extends Enumeration {
-	type PrivilegeType = Value
+	type RolePrivilege = Value
 	val DDL = Value
 	val DCL = Value
 	val ACCOUNT = Value
 
-	def apply(privilege: String): PrivilegeType = privilege match {
+	def apply(privilege: String): RolePrivilege = privilege match {
 		case "DDL" => DDL
 		case "DCL" => DCL
 		case "ACCOUNT" => ACCOUNT
 		case _ => throw new Exception(s"Unknown privilege type $privilege.")
 	}
 }
-
-
 
 
 trait ResourcePrivilege {

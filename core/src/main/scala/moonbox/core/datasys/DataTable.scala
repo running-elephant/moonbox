@@ -24,18 +24,26 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
 class DataTable(iter: Iterator[Row],
-								val schema: StructType,
-								closeIfNeed: () => Unit) {
+	val schema: StructType,
+	closeIfNeed: () => Unit) {
 
 	def iterator: Iterator[Row] = {
-		iter
+		new Iterator[Row] {
+			private var flag = true
+
+			override def hasNext: Boolean = {
+				val hasNext = iter.hasNext
+				if (flag && !hasNext) {
+					closeIfNeed()
+					flag = false
+				}
+				hasNext
+			}
+
+			override def next(): Row = {
+				iter.next()
+			}
+		}
 	}
 
-	def close(): Unit = {
-		closeIfNeed()
-	}
-
-	def write(): DataTableWriter = {
-		new DataTableWriter(this)
-	}
 }

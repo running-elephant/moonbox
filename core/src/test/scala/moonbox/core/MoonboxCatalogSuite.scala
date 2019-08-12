@@ -218,6 +218,7 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 		catalog.createTable(CatalogTable(
 			name = "table",
 			db = Some("db1"),
+			tableType = CatalogTableType.TABLE,
 			description = Some("for testing"),
 			properties = Map("key1" -> "value1"),
 			isStream = false,
@@ -235,6 +236,7 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 			catalog.createTable(CatalogTable(
 				name = "table",
 				db = Some("db1"),
+				tableType = CatalogTableType.TABLE,
 				description = Some("for testing"),
 				properties = Map("key1" -> "value1"),
 				isStream = false
@@ -261,6 +263,7 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 
 		catalog.createTable(CatalogTable(
 			name = "table2",
+			tableType = CatalogTableType.TABLE,
 			description = Some("for testing"),
 			db = Some("db1"),
 			properties = Map("key1" -> "value1"),
@@ -347,66 +350,6 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 		catalog.dropDatabase("db", ignoreIfNotExists = true, cascade = true)
 		assert(!catalog.databaseExists("db"))*/
 
-	}
-
-	test("view") {
-		catalog.createView(CatalogView(
-			name = "view",
-			db = Some("db"),
-			description = Some("for testing"),
-			sql = "SELECT * FROM table"
-		), replaceIfExists = true)
-		val view = catalog.getView("db", "view")
-		assert(view.name == "view")
-		assert(view.description.contains("for testing"))
-		assert(view.db.contains("db"))
-		assert(view.sql == "SELECT * FROM table")
-		assert(view.createBy.contains("sa"))
-
-		intercept[ViewExistsException] {
-			catalog.createView(CatalogView(
-				name = "view",
-				db = Some("db"),
-				description = Some("for testing"),
-				sql = "SELECT * FROM table"
-			), replaceIfExists = false)
-		}
-
-		catalog.renameView("db", "view", "view1")
-
-		intercept[NoSuchViewException] {
-			catalog.getView("db", "view")
-		}
-
-		val view1 = catalog.getView("db", "view1")
-		catalog.alterView(view1.copy(
-			description = Some("for fun"),
-			sql = "SELECT * FROM table WHERE id < 100"
-		))
-
-		assert(catalog.getView("db", "view1").description.contains("for fun"))
-		assert(catalog.getView("db", "view1").sql == "SELECT * FROM table WHERE id < 100")
-
-		intercept[NonEmptyException] {
-			catalog.dropDatabase("db", ignoreIfNotExists = true, cascade = false)
-		}
-		catalog.dropView("db", "view1", ignoreIfNotExists = true)
-
-		assert(!catalog.viewExists("db", "view1"))
-
-		intercept[NoSuchViewException] {
-			catalog.dropView("db", "view1", ignoreIfNotExists = false)
-		}
-
-		catalog.createView(CatalogView(
-			name = "view",
-			db = Some("db"),
-			description = Some("for testing"),
-			sql = "SELECT * FROM table"
-		), replaceIfExists = false)
-
-		catalog.dropDatabase("db", ignoreIfNotExists = true, cascade = true)
-		assert(!catalog.databaseExists("db"))
 	}
 
 	test("procedure") {

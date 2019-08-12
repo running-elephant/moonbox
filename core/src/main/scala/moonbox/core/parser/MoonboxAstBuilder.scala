@@ -24,12 +24,11 @@ import java.util
 import java.util.Locale
 
 import moonbox.catalog.FunctionResource
-import moonbox.core.command.PrivilegeType.{PrivilegeType, _}
-import moonbox.core.{MbColumnIdentifier, MbFunctionIdentifier, MbTableIdentifier}
+import moonbox.core.command.RolePrivilege.RolePrivilege
 import moonbox.core.command._
 import moonbox.core.parser.MqlBaseParser._
-import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.{ParseTree, TerminalNode}
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.types.{DecimalType, _}
 
 import scala.collection.JavaConversions._
@@ -44,15 +43,12 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		visit(ctx.mql()).asInstanceOf[MbCommand]
 	}
 
-	override def visitMqlQuery(ctx: MqlQueryContext): MbCommand = {
-		visitQuery(ctx.query())
-	}
-
 	override def visitCreateOrganization(ctx: CreateOrganizationContext): MbCommand = {
 		val name = ctx.name.getText
 		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
 		val ignoreIfExists = ctx.EXISTS() != null
-		CreateOrganization(name, desc, ignoreIfExists)
+		val config = Option(ctx.propertyList()).map(visitPropertyList).getOrElse(Map())
+		CreateOrganization(name, desc, config, ignoreIfExists)
 	}
 
 	override def visitRenameOrganization(ctx: RenameOrganizationContext): MbCommand = {
@@ -73,11 +69,28 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		AlterOrganizationSetComment(name, comment)
 	}
 
+
+	override def visitSetOrganizationOptions(ctx: SetOrganizationOptionsContext): MbCommand = {
+		val name = ctx.name.getText
+		val options = visitPropertyList(ctx.propertyList())
+		AlterOrganizationSetOptions(name, options)
+	}
+
 	override def visitDropOrganization(ctx: DropOrganizationContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
 		val cascade = ctx.CASCADE() != null
 		DropOrganization(name, ignoreIfNotExists, cascade)
+	}
+
+	override def visitShowOrgs(ctx: ShowOrgsContext): MbCommand = {
+		ShowOrganizations(Option(ctx.pattern).map(_.getText))
+	}
+
+
+	override def visitDescOrg(ctx: DescOrgContext): MbCommand = {
+		val name = ctx.name.getText
+		DescOrganization(name)
 	}
 
 	override def visitCreateSa(ctx: CreateSaContext): MbCommand = {
@@ -124,6 +137,10 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DropSa(name, organization, ignoreIfNotExists)
 	}
 
+	override def visitShowSas(ctx: ShowSasContext): MbCommand = {
+		ShowSas(Option(ctx.pattern).map(_.getText))
+	}
+
 	override def visitCreateUser(ctx: CreateUserContext): MbCommand = {
 		val name = ctx.name.getText
 		val password = ctx.pwd.getText
@@ -162,58 +179,6 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DropUser(name, ignoreIfNotExists)
 	}
 
-	override def visitCreateGroup(ctx: CreateGroupContext): MbCommand = {
-		val name = ctx.name.getText
-		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
-		val ignoreIfExists = ctx.EXISTS() != null
-		CreateGroup(name, desc, ignoreIfExists)
-	}
-
-	override def visitRenameGroup(ctx: RenameGroupContext): MbCommand = {
-		val name = ctx.name.getText
-		val newName = ctx.newName.getText
-		AlterGroupSetName(name, newName)
-	}
-
-	override def visitSetGroupName(ctx: SetGroupNameContext): MbCommand = {
-		val name = ctx.name.getText
-		val newName = ctx.newName.getText
-		AlterGroupSetName(name, newName)
-	}
-
-	override def visitSetGroupComment(ctx: SetGroupCommentContext): MbCommand = {
-		val name = ctx.name.getText
-		val desc = ParserUtils.tripQuotes(ctx.comment.getText)
-		AlterGroupSetComment(name, desc)
-	}
-
-	override def visitAddUsersToGroup(ctx: AddUsersToGroupContext): MbCommand = {
-		val name = ctx.name.getText
-		val addUsers = visitAddUser(ctx.addUser())
-		val removeUsers = Option(ctx.removeUser()).map(visitRemoveUser).getOrElse(Seq())
-		val addFirst = if (removeUsers.nonEmpty) {
-			ctx.addUser().start.getStartIndex < ctx.removeUser().start.getStartIndex
-		} else true
-		AlterGroupSetUser(name, addUsers, removeUsers, addFirst)
-	}
-
-	override def visitRemoveUsersFromGroup(ctx: RemoveUsersFromGroupContext): MbCommand = {
-		val name = ctx.name.getText
-		val addUsers = Option(ctx.addUser()).map(visitAddUser).getOrElse(Seq())
-		val removeUsers = visitRemoveUser(ctx.removeUser())
-		val addFirst = if (addUsers.nonEmpty) {
-			ctx.addUser().start.getStartIndex < ctx.removeUser().start.getStartIndex
-		} else false
-		AlterGroupSetUser(name, addUsers, removeUsers, addFirst)
-	}
-
-	override def visitDropGroup(ctx: DropGroupContext): MbCommand = {
-		val name = ctx.name.getText
-		val ignoreIfNotExists = ctx.EXISTS() != null
-		val cascade = ctx.CASCADE() != null
-		DropGroup(name, ignoreIfNotExists, cascade)
-	}
-
 	override def visitAddUser(ctx: AddUserContext): Seq[String] = {
 		visitIdentifierList(ctx.identifierList())
 	}
@@ -242,7 +207,13 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitUnmountDatabase(ctx: UnmountDatabaseContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		UnmountDatabase(name, ignoreIfNotExists)
+		UnmountDatabase(name, ignoreIfNotExists, cascade = true)
+	}
+
+
+	override def visitRefreshDatabase(ctx: RefreshDatabaseContext): MbCommand = {
+		val name = ctx.name.getText
+		RefreshDatabase(name)
 	}
 
 	override def visitPropertyList(ctx: PropertyListContext): Map[String, String] = {
@@ -395,10 +366,10 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		UnmountTable(tableIdentifier, ignoreIfNotExists)
 	}
 
-	override def visitTableIdentifier(ctx: TableIdentifierContext): MbTableIdentifier = {
+	override def visitTableIdentifier(ctx: TableIdentifierContext): TableIdentifier = {
 		val database = Option(ctx.db).map(_.getText).map(ParserUtils.tripQuotes)
 		val table = ParserUtils.tripQuotes(ctx.table.getText)
-		MbTableIdentifier(table, database)
+		TableIdentifier(table, database)
 	}
 
 	override def visitCreateView(ctx: CreateViewContext): MbCommand = {
@@ -409,7 +380,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateView(tableIdentifier, query, desc, replaceIfExists)
 	}
 
-	override def visitRenameView(ctx: RenameViewContext): MbCommand = {
+	/*override def visitRenameView(ctx: RenameViewContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
 		val newTableIdentifier = visitTableIdentifier(ctx.newName)
 		AlterViewSetName(tableIdentifier, newTableIdentifier)
@@ -425,7 +396,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
 		val desc = ParserUtils.tripQuotes(ctx.comment.getText)
 		AlterViewSetComment(tableIdentifier, desc)
-	}
+	}*/
 
 	override def visitSetViewQuery(ctx: SetViewQueryContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
@@ -477,10 +448,10 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		}
 	}
 
-	override def visitFuncIdentifier(ctx: FuncIdentifierContext): MbFunctionIdentifier = {
+	override def visitFuncIdentifier(ctx: FuncIdentifierContext): FunctionIdentifier = {
 		val function = ctx.func.getText
 		val database = Option(ctx.db).map(_.getText)
-		MbFunctionIdentifier(function, database)
+		FunctionIdentifier(function, database)
 	}
 
 	override def visitCreateProcedure(ctx: CreateProcedureContext): MbCommand = {
@@ -581,110 +552,84 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitGrantGrantToUser(ctx: GrantGrantToUserContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		GrantGrantToUser(grants, users)
+		GrantGrantToUser(grants, user)
 	}
 
-	override def visitGrantGrantToGroup(ctx: GrantGrantToGroupContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		GrantGrantToGroup(grants, groups)
-	}
 
 	override def visitRevokeGrantFromUser(ctx: RevokeGrantFromUserContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		RevokeGrantFromUser(grants, users)
+		RevokeGrantFromUser(grants, user)
 	}
 
-	override def visitRevokeGrantFromGroup(ctx: RevokeGrantFromGroupContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		RevokeGrantFromGroup(grants, groups)
-	}
 
-	override def visitGrantPrivilegeList(ctx: GrantPrivilegeListContext): Seq[PrivilegeType] = {
+	override def visitGrantPrivilegeList(ctx: GrantPrivilegeListContext): Seq[RolePrivilege] = {
 		ctx.grantPrivilege().map(visitGrantPrivilege)
 	}
 
-	override def visitGrantPrivilege(ctx: GrantPrivilegeContext): PrivilegeType = {
-		if (ctx.ACCOUNT() != null) PrivilegeType.ACCOUNT
-		else if (ctx.DDL() != null) PrivilegeType.DDL
-		else PrivilegeType.DCL
+	override def visitGrantPrivilege(ctx: GrantPrivilegeContext): RolePrivilege = {
+		if (ctx.ACCOUNT() != null) RolePrivilege.ACCOUNT
+		else if (ctx.DDL() != null) RolePrivilege.DDL
+		else RolePrivilege.DCL
 	}
 
 	override def visitGrantPrivilegeToUsers(ctx: GrantPrivilegeToUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		GrantPrivilegeToUser(privileges, users)
-	}
-
-	override def visitGrantPrivilegeToGroups(ctx: GrantPrivilegeToGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		GrantPrivilegeToGroup(privileges, groups)
+		GrantPrivilegeToUser(privileges, user)
 	}
 
 	override def visitRevokePrivilegeFromUsers(ctx: RevokePrivilegeFromUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		RevokePrivilegeFromUser(privileges, users)
+		RevokePrivilegeFromUser(privileges, user)
 	}
 
-	override def visitRevokePrivilegeFromGroups(ctx: RevokePrivilegeFromGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
-		RevokePrivilegeFromGroup(privileges, groups)
-	}
 
 	override def visitGrantResourcePrivilegeToUsers(ctx: GrantResourcePrivilegeToUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val resourcePrivileges = visitPrivileges(ctx.privileges())
 		val tableIdentifier = visitTableCollections(ctx.tableCollections())
-		GrantResourceToUser(resourcePrivileges, tableIdentifier, users)
-	}
-
-	override def visitGrantResourcePrivilegeToGroups(ctx: GrantResourcePrivilegeToGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val resourcePrivileges = visitPrivileges(ctx.privileges())
-		val tableIdentifier = visitTableCollections(ctx.tableCollections())
-		GrantResourceToGroup(resourcePrivileges, tableIdentifier, groups)
+		GrantResourceToUser(resourcePrivileges, tableIdentifier, user)
 	}
 
 	override def visitRevokeResourcePrivilegeFromUsers(ctx: RevokeResourcePrivilegeFromUsersContext): MbCommand = {
-		val users = visitIdentifierList(ctx.users).distinct
+		val user = ctx.user.getText
 		val resourcePrivileges = visitPrivileges(ctx.privileges())
 		val tableIdentifier = visitTableCollections(ctx.tableCollections())
-		RevokeResourceFromUser(resourcePrivileges, tableIdentifier, users)
+		RevokeResourceFromUser(resourcePrivileges, tableIdentifier, user)
 	}
 
-	override def visitRevokeResourcePrivilegeFromGroups(ctx: RevokeResourcePrivilegeFromGroupsContext): MbCommand = {
-		val groups = visitIdentifierList(ctx.groups).distinct
-		val resourcePrivileges = visitPrivileges(ctx.privileges())
-		val tableIdentifier = visitTableCollections(ctx.tableCollections())
-		RevokeResourceFromGroup(resourcePrivileges, tableIdentifier, groups)
-	}
 
 	override def visitPrivileges(ctx: PrivilegesContext): Seq[ResourcePrivilege] = {
-		ctx.privilege().map(visitPrivilege)
+		ctx.privilege().flatMap(visitPrivilege)
 	}
 
-	override def visitPrivilege(ctx: PrivilegeContext): ResourcePrivilege = {
+	override def visitPrivilege(ctx: PrivilegeContext): Seq[ResourcePrivilege] = {
 		if (ctx.SELECT() != null) {
-			val columns = Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers).getOrElse(Seq())
-			SelectPrivilege(columns)
+			Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers) match {
+				case Some(col) =>
+					Seq(ColumnSelectPrivilege(col))
+				case None =>
+					Seq(SelectPrivilege)
+			}
 		} else if (ctx.UPDATE() != null) {
-			val columns = Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers).getOrElse(Seq())
-			UpdatePrivilege(columns)
+			Option(ctx.columnIdentifiers()).map(visitColumnIdentifiers) match {
+				case Some(col) =>
+					Seq(ColumnUpdatePrivilege(col))
+				case None =>
+					Seq(UpdatePrivilege)
+			}
 		} else if (ctx.INSERT() != null) {
-			InsertPrivilege
+			Seq(InsertPrivilege)
 		} else if (ctx.DELETE() != null) {
-			DeletePrivilege
+			Seq(DeletePrivilege)
 		} else if (ctx.TRUNCATE() != null) {
-			TruncatePrivilege
+			Seq(TruncatePrivilege)
 		} else {
-			AllPrivilege
+			ResourcePrivilege.ALL
 		}
 	}
 
@@ -692,26 +637,15 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ctx.identifier().map(_.getText)
 	}
 
-	override def visitTableCollections(ctx: TableCollectionsContext): MbTableIdentifier = {
+	override def visitTableCollections(ctx: TableCollectionsContext): TableIdentifier = {
 		val database = Option(ctx.db).map(_.getText)
 		val table = ctx.table.getText
-		MbTableIdentifier(table, database)
+		TableIdentifier(table, database)
 	}
 
-	override def visitInsertInto(ctx: InsertIntoContext): MbCommand = {
-		val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
-		val query = visitQuery(ctx.query()).query
-		val partitionColumns = Option(ctx.partitionSpec()).map(_.identifier().map(_.getText).toSeq).getOrElse(Seq())
-		val insertMode = if (ctx.INTO() != null) InsertMode.Append
-		else if (ctx.OVERWRITE() != null) InsertMode.Overwrite
-		else InsertMode.Merge
-		val num = Option(ctx.coalesceSpec()).map(_.num.getText.toInt)
-		InsertInto(tableIdentifier, query, partitionColumns, num, insertMode)
-	}
-
-	override def visitOtherStatement(ctx: OtherStatementContext): MbCommand = {
-		val statment = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
-		OtherStatement(statment)
+	override def visitStatement(ctx: StatementContext): MbCommand = {
+		val statement = ctx.start.getInputStream.toString.substring(ctx.start.getStartIndex, ctx.stop.getStopIndex + 1)
+		Statement(statement)
 	}
 
 	override def visitShowSysInfo(ctx: ShowSysInfoContext): MbCommand = {
@@ -742,11 +676,6 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowTables(database, pattern)
 	}
 
-	override def visitShowViews(ctx: ShowViewsContext): MbCommand = {
-		val database = Option(ctx.db).map(_.getText)
-		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowViews(database, pattern)
-	}
 
 	override def visitShowFunctions(ctx: ShowFunctionsContext): MbCommand = {
 		val (user, system) = Option(ctx.scope).map(_.getText.toLowerCase(Locale.ROOT)) match {
@@ -765,19 +694,10 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		ShowUsers(pattern)
 	}
 
-	override def visitShowGroups(ctx: ShowGroupsContext): MbCommand = {
-		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowGroups(pattern)
-	}
 
 	override def visitShowProcedures(ctx: ShowProceduresContext): MbCommand = {
 		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
 		ShowProcedures(pattern)
-	}
-
-	override def visitShowVariable(ctx: ShowVariableContext): MbCommand = {
-		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
-		ShowVariables(pattern)
 	}
 
 	override def visitShowGrants(ctx: ShowGrantsContext): MbCommand = {
@@ -806,11 +726,6 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DescTable(table, extended)
 	}
 
-	override def visitDescView(ctx: DescViewContext): MbCommand = {
-		val view = visitTableIdentifier(ctx.tableIdentifier())
-		DescView(view)
-	}
-
 	override def visitDescFunction(ctx: DescFunctionContext): MbCommand = {
 		val function = visitFuncIdentifier(ctx.funcIdentifier())
 		val extended = ctx.EXTENDED() != null
@@ -820,11 +735,6 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitDescUser(ctx: DescUserContext): MbCommand = {
 		val user = ctx.name.getText
 		DescUser(user)
-	}
-
-	override def visitDescGroup(ctx: DescGroupContext): MbCommand = {
-		val group = ctx.name.getText
-		DescGroup(group)
 	}
 
 	override def visitDescEvent(ctx: DescEventContext): MbCommand = {
@@ -838,20 +748,6 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DescProcedure(proc)
 	}
 
-	override def visitSetVariable(ctx: SetVariableContext): MbCommand = {
-		val key = ctx.key.getText
-		// val value = Option(ctx.value.getText).orNull
-		val stream = ctx.key.stop.getInputStream
-
-		val start = Option(ctx.EQ()).map(_.getSymbol.getStopIndex + 1).getOrElse {
-			ctx.key.stop.getStopIndex + 1
-		}
-		val interval = Interval.of(start, stream.size())
-		val value = stream.getText(interval).trim
-
-		SetVariable(key, value, ctx.GLOBAL() != null)
-	}
-
 	override def visitExplain(ctx: ExplainContext): MbCommand = {
 		val query = visitQuery(ctx.query())
 		if (ctx.EXTENDED() != null) {
@@ -861,18 +757,4 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		}
 	}
 
-	override def visitRefreshTable(ctx: RefreshTableContext): MbCommand = {
-		val table = visitTableIdentifier(ctx.tableIdentifier())
-		RefreshTable(table)
-	}
-
-	override def visitRefreshResource(ctx: RefreshResourceContext): MbCommand = {
-		val path = Option(ctx.path).map(_.getText).map(ParserUtils.tripQuotes)
-		path match {
-			case Some(s) =>
-				RefreshResource(s)
-			case None =>
-				throw new Exception("Resource paths cannot be empty in REFRESH statements. Use / to match everything")
-		}
-	}
 }

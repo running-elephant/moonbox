@@ -21,40 +21,58 @@
 package org.apache.spark.sql
 
 
-import moonbox.common.{MbConf, MbLogging}
+import java.io.File
+
+import moonbox.catalog.{CatalogTableType => TableType}
 import moonbox.catalog._
-import org.apache.spark.sql.optimizer.MbOptimizer
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import moonbox.core.udf.UdfUtils
+import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.MoonboxCatalog
 import moonbox.core.datasys.DataSystem
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
-import org.apache.spark.sql.catalyst.rules.Rule
+import moonbox.core.udf.UdfUtils
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.analyze.MbAnalyzer
+import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
+import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
+import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, InsertIntoTable, LocalLimit, LogicalPlan}
+import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
+import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
+import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.execution.datasources.{FindDataSourceTable, PreWriteCheck, ResolveSQLOnFile}
 import org.apache.spark.sql.hive._
+import org.apache.spark.sql.internal.StaticSQLConf
+import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
+import org.apache.spark.sql.types.{IntegerType, StructType}
+import org.apache.spark.{SparkConf, SparkContext}
 
 
-class SparkEngine(conf: MbConf) extends MbLogging {
+class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
 	import SparkEngine._
 
-	val sparkSession: SparkSession = createSparkSession()
+	private val sparkSession: SparkSession = createSparkSession()
 
 	import sparkSession.sessionState
 
+	private val mbAnalyzer = createColumnAnalyzer()
 	private val mbOptimizer = new MbOptimizer(sparkSession)
 
 	/**
 	  * create sparkSession with inject hive rules and strategies for hive tables
+	  *
 	  * @return SparkSession
 	  */
 	private def createSparkSession(): SparkSession = {
 		SparkSession.clearDefaultSession()
 		SparkSession.clearActiveSession()
 		val builder = SparkSession.builder().sparkContext(getSparkContext(conf))
+
+		builder.config(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
+		builder.config(StaticSQLConf.WAREHOUSE_PATH.key,
+			StaticSQLConf.WAREHOUSE_PATH.defaultValueString +
+				File.separator +
+				mbCatalog.getCurrentOrg)
+
 		injectResolutionRule(builder)
 		injectPostHocResolutionRule(builder)
 		injectCheckRule(builder)
@@ -64,6 +82,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * inject resolution rules
+	  *
 	  * @param builder SparkSession.Builder
 	  */
 	private def injectResolutionRule(builder: SparkSession.Builder): Unit = {
@@ -74,6 +93,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * inject post hoc resolution rules
+	  *
 	  * @param builder SparkSession.Builder
 	  */
 	private def injectPostHocResolutionRule(builder: SparkSession.Builder): Unit = {
@@ -84,6 +104,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * inject check rules
+	  *
 	  * @param builder SparkSession.Builder
 	  */
 	private def injectCheckRule(builder: SparkSession.Builder): Unit = {
@@ -94,6 +115,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * inject planner strategies
+	  *
 	  * @param builder SparkSession.Builder
 	  */
 	private def injectPlannerStrategy(builder: SparkSession.Builder): Unit = {
@@ -102,47 +124,319 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 		}
 	}
 
+	private def createColumnAnalyzer(): Option[MbAnalyzer] = {
+		mbCatalog.catalogOrg.config.get("spark.sql.permission") match {
+			case Some(v) if v.equalsIgnoreCase("true") =>
+				Some(new MbAnalyzer(mbCatalog))
+			case None => None
+		}
+	}
+
 	/**
 	  * parse sql text to unresolved logical plan
+	  *
 	  * @param sql origin sql
 	  * @return unresolved logical plan
 	  */
-	def parsedLogicalPlan(sql: String): LogicalPlan = {
+	def parsePlan(sql: String): LogicalPlan = {
 		sessionState.sqlParser.parsePlan(sql)
 	}
 
 	/**
 	  * translate unresolved logical plan to resolved logical plan
+	  *
 	  * @param plan unresolved logical plan
 	  * @return resolved logical plan
 	  */
-	def analyzedLogicalPlan(plan: LogicalPlan): LogicalPlan = {
+	def analyzePlan(plan: LogicalPlan): LogicalPlan = {
 		sessionState.analyzer.execute(plan)
 	}
 
 	/**
+	  * check all column is granted
+	  * @param plan analyzed plan
+	  * @return
+	  */
+	def checkColumns(plan: LogicalPlan): LogicalPlan = {
+		mbAnalyzer.map(_.execute(plan)).getOrElse(plan)
+	}
+
+	/**
 	  * translate resolved logical plan to optimized logical plan
+	  *
 	  * @param plan resolved logical plan
 	  * @return optimized logical plan
 	  */
-	def optimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = {
+	def optimizePlan(plan: LogicalPlan): LogicalPlan = {
 		sessionState.optimizer.execute(plan)
 	}
 
 	/**
 	  * optimize logical plan using pushdown rule
+	  *
 	  * @param plan optimized logical plan
 	  * @return optimized logical plan
 	  */
-	def furtherOptimizedLogicalPlan(plan: LogicalPlan): LogicalPlan = {
+	def pushdownPlan(plan: LogicalPlan): LogicalPlan = {
 		mbOptimizer.execute(plan)
 	}
 
 	/**
+	  * rewrite logical plan, to collect unresolved relation and function
+	  *
+	  * @param plan parsed logical plan
+	  * @return logical plan with CTE Substituted
+	  */
+	private def rewrite(plan: LogicalPlan): LogicalPlan = {
+		new RuleExecutor[LogicalPlan] {
+			override def batches: Seq[Batch] = {
+				Batch("CTESubstitution", FixedPoint(100),
+					sparkSession.sessionState.analyzer.CTESubstitution
+				) :: Nil
+			}
+		}.execute(plan)
+	}
+
+	/**
+	  * get schema for table
+	  *
+	  * @param table    table name
+	  * @param database database
+	  * @return schema
+	  */
+	def tableSchema(table: String, database: Option[String]): StructType = {
+		val tb = UnresolvedRelation(TableIdentifier(table, database))
+		injectTableFunctions(tb)
+		analyzePlan(tb).schema
+	}
+
+	/**
+	  * get schema for view
+	  *
+	  * @param view     view name
+	  * @param database database
+	  * @param viewText view logical, sql text
+	  * @return schema
+	  */
+	def viewSchema(view: String, database: Option[String], viewText: String): StructType = {
+		val parsedPlan = parsePlan(viewText)
+		injectTableFunctions(parsedPlan)
+		analyzePlan(parsedPlan).schema
+	}
+
+	/**
+	  * get schema of sql result
+	  *
+	  * @param sql sql
+	  * @return schema
+	  */
+	def sqlSchema(sql: String): StructType = {
+		val parsedPlan = parsePlan(sql)
+		injectTableFunctions(parsedPlan)
+		analyzePlan(parsedPlan).schema
+	}
+
+	/**
+	  * execute spark sql
+	  *
+	  * @param sql     sql text
+	  * @param maxRows max rows return to client
+	  * @return data and schema
+	  */
+
+	// TODO if less then 2000 collect or else collectAsIterator
+	def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
+		val parsedPlan = parsePlan(sql)
+		parsedPlan match {
+			case runnable: RunnableCommand =>
+				val dataFrame = createDataFrame(runnable)
+				(dataFrame.collect().toIterator, dataFrame.schema)
+			case other =>
+				injectTableFunctions(parsedPlan)
+				val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
+				val limitPlan = parsedPlan match {
+					case insert: InsertIntoTable =>
+						analyzedPlan
+					case _ =>
+						GlobalLimit(
+							Literal(maxRows, IntegerType),
+							LocalLimit(Literal(maxRows, IntegerType),
+								analyzedPlan))
+				}
+
+				val optimizedPlan = optimizePlan(limitPlan)
+
+				if (pushdownEnable) {
+					try {
+						pushdownPlan(optimizedPlan) match {
+							case WholePushdown(child, queryable) =>
+								val qe = sparkSession.sessionState.executePlan(child)
+								qe.assertAnalyzed()
+								val dataTable = queryable.buildQuery(child, sparkSession)
+								(dataTable.iterator, dataTable.schema)
+							case plan =>
+								val dataFrame = createDataFrame(plan)
+								(dataFrame.collect().toIterator, dataFrame.schema)
+						}
+					} catch {
+						case e: Exception if e.getMessage.contains("cancelled") =>
+							throw e
+						case e: Exception if pushdownEnable =>
+							logError("Execute pushdown failed, Retry without pushdown optimize.", e)
+							val dataFrame = createDataFrame(optimizedPlan)
+							(dataFrame.collect().toIterator, dataFrame.schema)
+					}
+				} else {
+					val dataFrame = createDataFrame(optimizedPlan)
+					(dataFrame.collect().toIterator, dataFrame.schema)
+				}
+
+		}
+	}
+
+	/**
+	  * if pushdown enable
+	  *
+	  * @return
+	  */
+	private def pushdownEnable: Boolean = {
+		sparkSession.conf
+			.getOption("spark.sql.optimize.pushdown")
+			.exists(_.equalsIgnoreCase("true"))
+	}
+
+	/**
+	  * register tables and function to spark session catalog
+	  *
+	  * @param plan logical plan
+	  */
+	private def injectTableFunctions(plan: LogicalPlan): Unit = {
+		val rewritePlan = rewrite(plan)
+		val tables = unresolvedTables(rewritePlan)
+		val functions = unresolvedFunctions(rewritePlan)
+
+		(tables.map(_.database) ++ functions.map(_.database)).foreach {
+			case Some(db) => registerDatabase(db) // create database
+			case None => // do nothing
+		}
+
+		tables.filterNot(sessionState.catalog.tableExists).foreach(registerTable)
+		functions.filterNot(sessionState.catalog.functionExists).foreach(registerFunction)
+	}
+
+	/**
+	  * find tables in sql
+	  *
+	  * @param sql sql
+	  * @return output table, input tables
+	  */
+	def unresolvedTablesInSQL(sql: String): (Option[TableIdentifier], Seq[TableIdentifier]) = {
+		rewrite(parsePlan(sql)) match {
+			case insert: InsertIntoTable =>
+				val table = insert.table.asInstanceOf[UnresolvedRelation].tableIdentifier
+				(Some(table),
+					unresolvedTablesInSelect(insert.query))
+			case plan =>
+				(None, unresolvedTablesInSelect(plan))
+		}
+	}
+
+	def unresolvedFunctionsInSQL(sql: String): Seq[FunctionIdentifier] = {
+		val functions = new scala.collection.mutable.HashSet[FunctionIdentifier]()
+		rewrite(parsePlan(sql)).resolveOperators {
+			case u =>
+				u.resolveExpressions {
+					case func: UnresolvedFunction =>
+						functions.add(func.name)
+						func
+				}
+		}
+		functions.toSeq
+	}
+
+	/**
+	  * find tables in sql
+	  *
+	  * @param plan unresolved logical plan
+	  * @return tables
+	  */
+	private def unresolvedTables(plan: LogicalPlan): Seq[TableIdentifier] = {
+		plan match {
+			// TODO other statement
+			case insert: InsertIntoTable =>
+				val table = insert.table.asInstanceOf[UnresolvedRelation].tableIdentifier
+				table +: unresolvedTablesInSelect(insert.query)
+			case _ =>
+				unresolvedTablesInSelect(plan)
+		}
+	}
+
+	/**
+	  * find tables in select clause
+	  *
+	  * @param plan unresolved logical plan
+	  * @return tables
+	  */
+	private def unresolvedTablesInSelect(plan: LogicalPlan): Seq[TableIdentifier] = {
+		plan.collectLeaves().filter(_.isInstanceOf[UnresolvedRelation]).map {
+			case u: UnresolvedRelation => u.tableIdentifier
+		}.distinct
+	}
+
+	/**
+	  * find functions in sql
+	  *
+	  * @param plan unresolved logical plan
+	  * @return functions
+	  */
+	private def unresolvedFunctions(plan: LogicalPlan): Seq[FunctionIdentifier] = {
+		val functions = new scala.collection.mutable.HashSet[FunctionIdentifier]()
+		plan.resolveOperators {
+			case u =>
+				u.resolveExpressions {
+					case func: UnresolvedFunction =>
+						functions.add(func.name)
+						func
+				}
+		}
+		functions.toSeq
+	}
+
+	/**
 	  * create empty dataFrame
+	  *
 	  * @return empty dataFrame
 	  */
 	def emptyDataFrame: DataFrame = sparkSession.emptyDataFrame
+
+	/**
+	  * set current database
+	  *
+	  * @param currentDb
+	  */
+	def setCurrentDatabase(currentDb: String): Unit = {
+		sessionState.catalog.setCurrentDatabase(currentDb)
+	}
+
+	/**
+	  * drop database from spark session
+	  *
+	  * @param db
+	  * @param ignoreIfNotExists
+	  * @param cascade
+	  */
+	def dropDatabase(db: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
+		sessionState.catalog.dropDatabase(db, ignoreIfNotExists, cascade)
+	}
+
+	/**
+	  * spark session catalog
+	  *
+	  * @return
+	  */
+	def catalog: SessionCatalog = {
+		sessionState.catalog
+	}
 
 	/**
 	  * clear catalog
@@ -154,6 +448,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * set job group for identifying user's job
+	  *
 	  * @param group group identifier, sessionId
 	  */
 	def setJobGroup(group: String, desc: String = ""): Unit = {
@@ -171,6 +466,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * cancel jobs
+	  *
 	  * @param group group identifier
 	  */
 	def cancelJobGroup(group: String): Unit = {
@@ -180,6 +476,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * create dataFrame from sql
+	  *
 	  * @param sql sql text
 	  * @return DataFrame
 	  */
@@ -189,6 +486,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * create dataFrame from logical plan
+	  *
 	  * @param tree logical plan
 	  * @return DataFrame
 	  */
@@ -198,7 +496,8 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * create dataFrame from RDD
-	  * @param rdd RDD
+	  *
+	  * @param rdd    RDD
 	  * @param schema the schema describe the RDD
 	  * @return DataFrame
 	  */
@@ -207,19 +506,49 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 	}
 
 	/**
+	  * register table or view in spark session
+	  *
+	  * @param table table identifier
+	  */
+	private def registerTable(table: TableIdentifier): Unit = {
+		val currentDb = mbCatalog.getCurrentDb
+		val db = table.database.getOrElse(currentDb)
+		val catalogTable = mbCatalog.getTable(db, table.table)
+		if (catalogTable.tableType == TableType.VIEW) {
+			injectTableFunctions(parsePlan(catalogTable.viewText.get))
+			registerView(table, catalogTable.viewText.get)
+		} else {
+			registerTable(table, catalogTable.properties)
+		}
+	}
+
+	/**
+	  * register user defined function to spark session
+	  *
+	  * @param function
+	  */
+	private def registerFunction(function: FunctionIdentifier): Unit = {
+		val db = function.database.getOrElse(mbCatalog.getCurrentDb)
+		val catalogFunction = mbCatalog.getFunction(db, function.funcName)
+		registerFunction(catalogFunction)
+	}
+
+	/**
 	  * register database to catalog in sparkSession
+	  *
 	  * @param db database name
 	  */
 	def registerDatabase(db: String): Unit = {
 		if (!sessionState.catalog.databaseExists(db)) {
-			createDataFrame(s"create database if not exists ${db}")
+			createDataFrame(s"create database ${db}")
 		}
 	}
 
 	/**
 	  * register table to catalog in sparkSession
+	  *
 	  * @param tableIdentifier table name and database
-	  * @param props connection or other parameters
+	  * @param props           connection or other parameters
 	  */
 	def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
 		if (props("type") == "hive") {
@@ -231,6 +560,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * register datasource table
+	  *
 	  * @param table table name and database
 	  * @param props connection or other parameters
 	  */
@@ -248,6 +578,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * register hive table
+	  *
 	  * @param table table name and database
 	  * @param props connection or other parameters
 	  */
@@ -260,6 +591,7 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 			provider = Some("hive"),
 			properties = hiveCatalogTable.properties ++ props
 		), ignoreIfExists = true)
+		// TODO modify storage.uri
 		sessionState.catalog.createPartitions(
 			table,
 			hiveClient.getPartitions(hiveCatalogTable),
@@ -269,8 +601,9 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * register view to catalog in sparkSession
+	  *
 	  * @param tableIdentifier table name and database
-	  * @param sqlText sql
+	  * @param sqlText         sql
 	  */
 	def registerView(tableIdentifier: TableIdentifier, sqlText: String): Unit = {
 		val createViewSql =
@@ -283,11 +616,11 @@ class SparkEngine(conf: MbConf) extends MbLogging {
 
 	/**
 	  * register function to catalog in sparkSession
-	  * @param db
+	  *
 	  * @param func
 	  */
-	def registerFunction(db: String, func: CatalogFunction): Unit = {
-		val funcName = s"$db.${func.name}"
+	def registerFunction(func: CatalogFunction): Unit = {
+		val funcName = s"${func.database}.${func.name}"
 		val (nonSourceResources, sourceResources) = func.resources.partition { resource =>
 			resource.resourceType match {
 				case _: NonSourceResource => true

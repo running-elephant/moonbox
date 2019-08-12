@@ -20,21 +20,15 @@
 
 package moonbox.core
 
-import moonbox.common.MbConf
-import moonbox.core.parser.MoonboxParser
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.analysis.{EliminateUnions, UnresolvedFunction, UnresolvedRelation}
+import org.apache.spark.sql.catalyst.analysis.{EliminateUnions, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.rules.RuleExecutor
-import org.apache.spark.sql.optimizer.Pushdown
 import org.scalatest.FunSuite
-
-import scala.tools.nsc.interpreter.session
 
 class MoonboxSessionSuite extends FunSuite {
 
 	test("mbSession") {
-
 		val sql =
 			"""
 			  |WITH tmp_invest_detail as

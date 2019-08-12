@@ -20,7 +20,7 @@
 
 package moonbox.core
 
-sealed trait IdentifiersWithDatabase {
+/*sealed trait IdentifiersWithDatabase {
 	def database: Option[String]
 }
 
@@ -40,11 +40,11 @@ case class MbFunctionIdentifier(func: String, database: Option[String])
 
 object MbFunctionIdentifier {
 	def apply(func: String): MbFunctionIdentifier = new MbFunctionIdentifier(func)
-}
+}*/
 
-case class MbColumnIdentifier(
+case class ColumnIdentifier(
 	column: String,
 	table: String,
-	database: Option[String]) extends IdentifiersWithDatabase {
+	database: Option[String]) {
 	def this(column: String, table: String) = this(column, table, None)
 }

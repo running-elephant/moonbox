@@ -1,5 +1,3 @@
 package org.apache.spark.sql.analyze
 
-class ColumnAnalysisException {
-
-}
+class ColumnAnalysisException(message: String) extends Exception(message)

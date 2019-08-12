@@ -34,7 +34,7 @@ object Pushdown {
 	def apply(sparkSession: SparkSession): Pushdown = new Pushdown(sparkSession)
 }
 
-class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
+class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan] {
 	override def apply(plan: LogicalPlan): LogicalPlan = {
 		val graph = buildDataSystemTree(plan)
 		val (whole, partial) = findReplacePoint(graph)
@@ -64,15 +64,15 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 
 		if (parents.isEmpty && !graph.dataSystem.isInstanceOf[SparkDataSystem] && graph.dataSystem.isInstanceOf[Pushdownable]
 			&& (graph.plan.find(l => graph.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined ||
-				graph.dataSystem.asInstanceOf[Pushdownable].isSupportAll)
+			graph.dataSystem.asInstanceOf[Pushdownable].isSupportAll)
 			&& !graph.dataSystem.isInstanceOf[SparkDataSystem]
 		) {
 			(Some(graph), mutable.HashSet[MbTreeNode]())
 		} else {
 			val partial = parents.filter(n => n.dataSystem.isInstanceOf[Pushdownable] && (
-					n.dataSystem.asInstanceOf[Pushdownable].isSupportAll ||
+				n.dataSystem.asInstanceOf[Pushdownable].isSupportAll ||
 					n.plan.find(l => n.dataSystem.asInstanceOf[Pushdownable].isGoodAt(l.getClass)).isDefined)
-				)
+			)
 			(None, partial)
 		}
 	}
@@ -93,7 +93,7 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 				newAttrs.zip(oldAttrs).foreach(elem => newIdToOldId += (elem._1.exprId -> elem._2.exprId))
 				plan2.transformExpressions {
 					case a: AttributeReference =>
-						if (newIdToOldId.contains(a.exprId)){
+						if (newIdToOldId.contains(a.exprId)) {
 							a.copy()(exprId = newIdToOldId(a.exprId), a.qualifier, a.isGenerated)
 						} else a
 				}
@@ -142,7 +142,7 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 						MbTreeNode(
 							join,
 							new SparkDataSystem(),
-							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)})
+							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map { case (n, f) => f(n) })
 				}
 			case binary: BinaryNode =>
 				val left = childrenTreeNode.head.dataSystem
@@ -160,7 +160,7 @@ class Pushdown(sparkSession: SparkSession) extends Rule[LogicalPlan]{
 						MbTreeNode(
 							binary,
 							new SparkDataSystem(),
-							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map {case (n, f) => f(n)}
+							childrenTreeNode.zip(Seq(leftDependency, rightDependency)).map { case (n, f) => f(n) }
 						)
 				}
 			case union@Union(children) =>

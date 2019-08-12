@@ -20,7 +20,7 @@
 
 package moonbox.core.command
 
-import moonbox.core.{MoonboxSession, SessionEnv}
+import moonbox.core.MoonboxSession
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.types.{StructField, StructType}
@@ -30,5 +30,5 @@ trait MbRunnableCommand extends MbCommand {
 		StructType(output.map(a => StructField(a.name, a.dataType, a.nullable, a.metadata))).json
 	}
 	def output: Seq[Attribute] = Seq.empty
-	def run(mbSession: MoonboxSession)(implicit ctx: SessionEnv): Seq[Row]
+	def run(mbSession: MoonboxSession): Seq[Row]
 }

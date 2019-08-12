@@ -180,7 +180,7 @@ object TextInputJsonDataSource extends JsonDataSource {
 
 	private def getPayloadData(text: Text, requiredSchema: StructType): Iterator[String] = {
 		val mapper = new ObjectMapper()
-		// mapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS, true)
+
 		val ums = mapper.readTree(text.toString)
 		val payload = ums.get(UMSProtocol.PAYLOAD).iterator()
 		val nameTypeIndex = ums.get(UMSProtocol.SCHEMA).get(UMSProtocol.FIELDS).toSeq.zipWithIndex.map { case (node, index) =>

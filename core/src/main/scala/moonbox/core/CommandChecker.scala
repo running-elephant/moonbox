@@ -25,62 +25,68 @@ import moonbox.core.command._
 
 object CommandChecker extends MbLogging {
 
+	private def require(condition: Boolean, message: String): Unit = {
+		if (!condition) throw new Exception(message)
+	}
+
 	def check(cmd: MbCommand, catalog: MoonboxCatalog): Unit = {
 		cmd match {
 			case org: Organization =>
-				require(catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"Only ROOT can do this command.")
-			case account: Account =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
+				require(isRoot, "Only ROOT can do this command.")
+			case other =>
+				require(!isRoot,
 					"ROOT can only do organization relative commands.")
-				require(catalog.catalogUser.account, "Permission denied.")
-
-			case ddl: DDL => catalog.catalogUser.ddl
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"ROOT can only do organization relative commands.")
-				require(catalog.catalogUser.ddl, "Permission denied.")
-
-			case dml: DML =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-				"ROOT can only do organization relative commands.")
-
-			case GrantResourceToUser(_, _, _)
-				 | RevokeResourceFromUser(_, _, _) =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"ROOT can only do organization relative commands.")
-				require(catalog.catalogUser.dcl, "Permission denied.")
-
-			case GrantGrantToUser(_, _)
-				 | RevokeGrantFromUser(_, _) =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"ROOT can only do organization relative commands.")
-				require(catalog.catalogUser.isSA, "Permission denied.")
-
-			case GrantPrivilegeToUser(privileges, _) =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"ROOT can only do organization relative commands.")
-				require(
-					privileges.map {
-						case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
-						case RolePrivilege.DDL => catalog.catalogUser.grantDdl
-						case RolePrivilege.DCL => catalog.catalogUser.grantDcl
-					}.forall(_ == true),
-					"Permission denied."
-				)
-
-			case RevokePrivilegeFromUser(privileges, _) =>
-				require(!catalog.currentUser.equalsIgnoreCase("ROOT"),
-					"ROOT can only do organization relative commands.")
-				require(
-					privileges.map {
-						case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
-						case RolePrivilege.DDL => catalog.catalogUser.grantDdl
-						case RolePrivilege.DCL => catalog.catalogUser.grantDcl
-					}.forall(_ == true),
-					"Permission denied."
-				)
-
+				notOrganization(other, catalog)
 		}
+
+		def isRoot: Boolean = {
+			catalog.getCurrentOrg.equalsIgnoreCase("SYSTEM") &&
+				catalog.getCurrentUser.equalsIgnoreCase("ROOT")
+		}
+	}
+
+	private def notOrganization(cmd: MbCommand, catalog: MoonboxCatalog): Unit = cmd match {
+		case account: Account =>
+			require(catalog.catalogUser.account, "Permission denied.")
+
+		case ddl: DDL =>
+			require(catalog.catalogUser.ddl, "Permission denied.")
+
+		case dml: DML =>
+
+		case GrantResourceToUser(_, _, _)
+			 | RevokeResourceFromUser(_, _, _) =>
+
+			require(catalog.catalogUser.dcl, "Permission denied.")
+
+		case GrantGrantToUser(_, _)
+			 | RevokeGrantFromUser(_, _) =>
+
+			require(catalog.catalogUser.isSA, "Permission denied.")
+
+		case GrantPrivilegeToUser(privileges, _) =>
+
+			require(
+				privileges.map {
+					case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
+					case RolePrivilege.DDL => catalog.catalogUser.grantDdl
+					case RolePrivilege.DCL => catalog.catalogUser.grantDcl
+				}.forall(_ == true),
+				"Permission denied."
+			)
+
+		case RevokePrivilegeFromUser(privileges, _) =>
+
+			require(
+				privileges.map {
+					case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
+					case RolePrivilege.DDL => catalog.catalogUser.grantDdl
+					case RolePrivilege.DCL => catalog.catalogUser.grantDcl
+				}.forall(_ == true),
+				"Permission denied."
+			)
+
+		case _ =>
 	}
 
 }

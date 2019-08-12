@@ -20,518 +20,410 @@
 
 package moonbox.core
 
-import moonbox.catalog._
-import moonbox.common.util.Utils
-import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.datasys.DataSystem
+import java.util.Locale
 
-object MoonboxCatalog {
-	val DEFAULT_DATABASE = "default"
-}
+import moonbox.catalog.AbstractCatalog.User
+import moonbox.catalog._
+import moonbox.common.{MbConf, MbLogging}
+
 
 class MoonboxCatalog(val conf: MbConf) extends MbLogging {
-	private val catalog = new JdbcCatalog(conf)
+	
+	private val jdbcCatalog = new JdbcCatalog(conf)
 
-	def stop(): Unit = {
-		catalog.close()
+	private implicit var userInSession: User = _
+
+	var catalogUser: CatalogUser = _
+
+	var catalogOrg: CatalogOrganization = _
+
+	private var currentDb = formatDatabaseName(jdbcCatalog.defauleDb)
+
+	private def formatDatabaseName(db: String): String = {
+		db.toLowerCase(Locale.ROOT)
 	}
 
-	def addListener(listener: CatalogEventListener): Unit = {
-		catalog.addListener(listener)
+	def setCurrentUser(org: String, user: String): this.type = synchronized {
+		userInSession = {
+			val orgId = jdbcCatalog.organizationId(org)
+			val userId = jdbcCatalog.userId(orgId, user)
+			User(orgId, org, userId, user)
+		}
+		catalogOrg = getOrganization(org)
+		catalogUser = getUser(org, user)
+		this
 	}
 
-	def isSa(userId: Long): Boolean = {
-		catalog.getUser(userId).isSA
+	def setCurrentDb(db: String): Unit = synchronized {
+		if (jdbcCatalog.databaseExists(db)) {
+			currentDb = formatDatabaseName(db)
+		} else {
+			throw new NoSuchDatabaseException(db)
+		}
 	}
 
-	def canDml(userId: Long): Boolean = true
+	def getCurrentDb: String = synchronized { currentDb }
 
-	def canDdl(userId: Long): Boolean = {
-		catalog.getUser(userId).ddl
-	}
+	def getCurrentOrg: String = synchronized { catalogOrg.name }
 
-	def canDcl(userId: Long): Boolean = {
-		catalog.getUser(userId).dcl
-	}
+	def getCurrentUser: String = synchronized { catalogUser.name }
 
-	def canAccount(userId: Long): Boolean = {
-		catalog.getUser(userId).account
-	}
-
-	def canGrantAccount(userId: Long): Boolean = {
-		catalog.getUser(userId).grantAccount
-	}
-
-	def canGrantDdl(userId: Long): Boolean = {
-		catalog.getUser(userId).grantDdl
-	}
-
-	def canGrantDcl(userId: Long): Boolean = {
-		catalog.getUser(userId).grantDcl
-	}
 
 	def createOrganization(
 		orgDefinition: CatalogOrganization,
 		ignoreIfExists: Boolean): Unit = {
-		catalog.createOrganization(orgDefinition, ignoreIfExists)
+		jdbcCatalog.createOrganization(orgDefinition, ignoreIfExists)
 	}
 
 	def alterOrganization(orgDefinition: CatalogOrganization): Unit = {
-		catalog.alterOrganization(orgDefinition)
+		jdbcCatalog.alterOrganization(orgDefinition)
 	}
 
-	def renameOrganization(org: String, newOrg: String, updateBy: Long): Unit = {
-		catalog.renameOrganization(org, newOrg, updateBy)
+	def renameOrganization(org: String, newOrg: String): Unit = {
+		jdbcCatalog.renameOrganization(org, newOrg)
 	}
 
 	def dropOrganization(name: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		catalog.dropOrganization(name, ignoreIfNotExists, cascade)
+		jdbcCatalog.dropOrganization(name, ignoreIfNotExists, cascade)
 	}
 
 	def getOrganization(name: String): CatalogOrganization = {
-		catalog.getOrganization(name)
-	}
-
-	def getOrganization(organizationId: Long): CatalogOrganization = {
-		catalog.getOrganization(organizationId)
+		jdbcCatalog.getOrganization(name)
 	}
 
 	def organizationExists(name: String): Boolean = {
-		catalog.organizationExists(name)
+		jdbcCatalog.organizationExists(name)
 	}
 
 	def listOrganizations(): Seq[CatalogOrganization] = {
-		catalog.listOrganizations()
+		jdbcCatalog.listOrganizations()
 	}
 
 	def listOrganizations(pattern: String): Seq[CatalogOrganization] = {
-		catalog.listOrganizations(pattern)
+		jdbcCatalog.listOrganizations(pattern)
 	}
 
-	def createUser(userDefinition: CatalogUser, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createUser(userDefinition, organization, ignoreIfExists)
+	def createUser(userDefinition: CatalogUser, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createUser(userDefinition, ignoreIfExists)
 	}
 
-	def renameUser(organizationId: Long, organization: String, user: String, newUser: String, updateBy: Long): Unit = {
-		catalog.renameUser(organizationId, organization,  user, newUser, updateBy)
+	def renameUser(org: String, user: String, newUser: String): Unit = {
+		jdbcCatalog.renameUser(org, user, newUser)
 	}
 
 	def alterUser(userDefinition: CatalogUser): Unit = {
-		catalog.alterUser(userDefinition)
+		jdbcCatalog.alterUser(userDefinition)
 	}
 
-	def dropUser(organizationId: Long, organization: String, name: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropUser(organizationId, organization, name, ignoreIfNotExists)
+	def dropUser(org: String, name: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropUser(org, name, ignoreIfNotExists)
 	}
 
-	def getUser(organizationId: Long, user: String): CatalogUser = {
-		catalog.getUser(organizationId, user)
+	def userExists(org: String, user: String): Boolean = {
+		jdbcCatalog.userExists(org, user)
 	}
 
-	def userExists(organizationId: Long, user: String): Boolean = {
-		catalog.userExists(organizationId, user)
+	def getUser(org: String, user: String): CatalogUser = {
+		jdbcCatalog.getUser(org, user)
 	}
 
-	def getUser(userId: Long): CatalogUser = {
-		catalog.getUser(userId)
+	def getUserOption(org: String, username: String): Option[CatalogUser] = {
+		jdbcCatalog.getUserOption(org, username)
 	}
 
-	def getUserOption(username: String): Option[CatalogUser] = {
-		catalog.getUserOption(username)
+	def listUsers(org: String): Seq[CatalogUser] = {
+		jdbcCatalog.listUsers(org)
 	}
 
-	def getUsers(organizationId: Long, users: Seq[String]): Seq[CatalogUser] = {
-		catalog.getUsers(organizationId, users)
+	def listUsers(org: String, pattern: String): Seq[CatalogUser] = {
+		jdbcCatalog.listUsers(org, pattern)
 	}
 
-	def getUsers(userIds: Seq[Long]): Seq[CatalogUser] = {
-		catalog.getUsers(userIds)
+	def listUsers(org: String, pattern: Option[String]): Seq[CatalogUser] = {
+		pattern match {
+			case Some(p) => jdbcCatalog.listUsers(org, p)
+			case None => jdbcCatalog.listUsers(org)
+		}
 	}
 
-	def listUsers(organizationId: Long): Seq[CatalogUser] = {
-		catalog.listUsers(organizationId)
+	def listSas(): Seq[CatalogUser] = {
+		jdbcCatalog.listSas()
 	}
 
-	def listUsers(organizationId: Long, pattern: String): Seq[CatalogUser] = {
-		catalog.listUsers(organizationId, pattern)
+	def listSas(pattern: String): Seq[CatalogUser] = {
+		jdbcCatalog.listSas(pattern)
 	}
 
-	def createGroup(groupDefinition: CatalogGroup, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createGroup(groupDefinition, organization, ignoreIfExists)
+	def createDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createDatabase(dbDefinition, ignoreIfExists)
 	}
 
-	def renameGroup(organizationId: Long, organization: String, group: String, newGroup: String, updateBy: Long): Unit = {
-		catalog.renameGroup(organizationId, organization, group, newGroup, updateBy)
-	}
-
-	def alterGroup(groupDefinition: CatalogGroup): Unit = {
-		catalog.alterGroup(groupDefinition)
-	}
-
-	def groupExists(organizationId: Long, group: String): Boolean = {
-		catalog.groupExists(organizationId, group)
-	}
-
-	def dropGroup(organizationId: Long, organization: String, group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		catalog.dropGroup(organizationId, organization, group, ignoreIfNotExists, cascade)
-	}
-
-	def getGroup(organizationId: Long, group: String): CatalogGroup = {
-		catalog.getGroup(organizationId, group)
-	}
-
-	def getGroups(organizationId: Long, groups: Seq[String]): Seq[CatalogGroup] = {
-		catalog.getGroups(organizationId, groups)
-	}
-
-	def listGroups(organizationId: Long): Seq[CatalogGroup] = {
-		catalog.listGroups(organizationId)
-	}
-
-	def listGroups(organizationId: Long, pattern: String): Seq[CatalogGroup] = {
-		catalog.listGroups(organizationId, pattern)
-	}
-
-	def createDatabase(dbDefinition: CatalogDatabase, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createDatabase(dbDefinition, organization, ignoreIfExists)
-	}
-
-	def renameDatabase(organizationId: Long, organization: String, db: String, newDb: String, updateBy: Long): Unit = {
-		catalog.renameDatabase(organizationId, organization, db, newDb, updateBy)
+	def renameDatabase(db: String, newDb: String): Unit = {
+		jdbcCatalog.renameDatabase(db, newDb)
 	}
 
 	def alterDatabase(dbDefinition: CatalogDatabase): Unit = {
-		catalog.alterDatabase(dbDefinition)
+		jdbcCatalog.alterDatabase(dbDefinition)
 	}
 
-	def databaseExists(organizationId: Long, db: String): Boolean = {
-		catalog.databaseExists(organizationId, db)
+	def databaseExists(db: String): Boolean = {
+		jdbcCatalog.databaseExists(db)
 	}
 
-	def dropDatabase(organizationId: Long, organization: String, database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		catalog.dropDatabase(organizationId, organization, database, ignoreIfNotExists, cascade)
+	def dropDatabase(database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
+		jdbcCatalog.dropDatabase(database, ignoreIfNotExists, cascade)
 	}
 
-	def getDatabase(organizationId: Long, database: String): CatalogDatabase = {
-		catalog.getDatabase(organizationId, database)
+	def getDatabase(database: String): CatalogDatabase = {
+		jdbcCatalog.getDatabase(database)
 	}
 
-	def getDatabase(databaseId: Long): CatalogDatabase = {
-		catalog.getDatabase(databaseId)
+	def listDatabase(): Seq[CatalogDatabase] = {
+		jdbcCatalog.listDatabases()
 	}
 
-	def listDatabase(organizationId: Long): Seq[CatalogDatabase] = {
-		catalog.listDatabases(organizationId)
+	def listDatabase(pattern: String): Seq[CatalogDatabase] = {
+		jdbcCatalog.listDatabases(pattern)
 	}
 
-	def listDatabase(organizationId: Long, pattern: String): Seq[CatalogDatabase] = {
-		catalog.listDatabases(organizationId, pattern)
+	def listDatabase(pattern: Option[String]): Seq[CatalogDatabase] = {
+		pattern match {
+			case Some(p) => listDatabase(p)
+			case None => listDatabase()
+		}
 	}
 
-	def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createTable(tableDefinition, organization, db, ignoreIfExists)
+	def createTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createTable(tableDefinition, ignoreIfExists)
 	}
 
 	def alterTable(tableDefinition: CatalogTable): Unit = {
-		catalog.alterTable(tableDefinition)
+		jdbcCatalog.alterTable(tableDefinition)
 	}
 
-	def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long) = {
-		catalog.renameTable(databaseId, organization, db, table, newTable, updateBy)
+	def renameTable(db: String, table: String, newTable: String) = {
+		jdbcCatalog.renameTable(db, table, newTable)
 	}
 
-	def dropTable(databaseId: Long, organization: String, db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropTable(databaseId, organization, db, table, ignoreIfNotExists)
+	def dropTable(db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropTable(db, table, ignoreIfNotExists)
 	}
 
-	def getTable(organizationId: Long, database: String, table: String): CatalogTable = {
-		val catalogDatabase = catalog.getDatabase(organizationId, database)
-		getTable(catalogDatabase.id.get, table)
+	def getTable(database: String, table: String): CatalogTable = {
+		jdbcCatalog.getTable(database, table)
 	}
 
-	def getTable(databaseId: Long, table: String): CatalogTable = {
-		val database  = catalog.getDatabase(databaseId)
-		if (database.isLogical) {
-			catalog.getTable(databaseId, table)
-		} else {
-			// TODO table exists
-			val datasys = DataSystem.lookupDataSystem(database.properties)
-			CatalogTable(
-				name = table,
-				description = None,
-				databaseId = database.id.get,
-				properties = datasys.tableProperties(table),
-				createBy = database.createBy,
-				createTime = database.createTime,
-				updateBy = database.updateBy,
-				updateTime = database.updateTime
-			)
+	def getTableOption(database: String, table: String): Option[CatalogTable] = {
+		jdbcCatalog.getTableOption(database, table)
+	}
+
+	def tableExists(database: String, table: String): Boolean = {
+		jdbcCatalog.tableExists(database, table)
+	}
+
+	def listTables(database: String): Seq[CatalogTable] = {
+		jdbcCatalog.listTables(database)
+	}
+
+	def listTables(database: String, pattern: String): Seq[CatalogTable] = {
+		jdbcCatalog.listTables(database, pattern)
+	}
+
+	def listTables(database: String, pattern: Option[String]): Seq[CatalogTable] = {
+		pattern match {
+			case Some(p) => listTables(database, p)
+			case None => listTables(database)
 		}
 	}
 
-	def tableExists(databaseId: Long, table: String): Boolean = {
-		val database  = catalog.getDatabase(databaseId)
-		if (database.isLogical) {
-			catalog.tableExists(databaseId, table)
-		} else {
-			DataSystem.lookupDataSystem(database.properties).tableNames().exists(_.equalsIgnoreCase(table))
+	def createFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createFunction(funcDefinition, ignoreIfExists)
+	}
+
+	def renameFunction(database: String, func: String, newFunc: String): Unit = {
+		jdbcCatalog.renameFunction(database, func, newFunc)
+	}
+
+	def functionExists(database: String, function: String): Boolean = {
+		jdbcCatalog.functionExists(database, function)
+	}
+
+	def dropFunction(db: String, function: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropFunction(db, function, ignoreIfNotExists)
+	}
+
+	def getFunction(database: String, function: String): CatalogFunction = {
+		jdbcCatalog.getFunction(database, function)
+	}
+
+	def getFunctionOption(database: String, function: String): Option[CatalogFunction] = {
+		jdbcCatalog.getFunctionOption(database, function)
+	}
+
+
+	def listFunctions(database: String): Seq[CatalogFunction] = {
+		jdbcCatalog.listFunctions(database)
+	}
+
+	def listFunctions(database: String, pattern: String): Seq[CatalogFunction] = {
+		jdbcCatalog.listFunctions(database, pattern)
+	}
+
+	/*def alterView(viewDefinition: CatalogView): Unit = {
+		jdbcCatalog.alterView(viewDefinition)
+	}
+
+	def viewExists(database: String, view: String): Boolean = {
+		jdbcCatalog.viewExists(database, view)
+	}
+
+	def dropView(db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropView(db, view, ignoreIfNotExists)
+	}
+
+	def getView(database: String, view: String): CatalogView = {
+		jdbcCatalog.getView(database, view)
+	}
+
+	def getViewOption(database: String, view: String): Option[CatalogView] = {
+		jdbcCatalog.getViewOption(database, view)
+	}
+
+	def listViews(database: String, pattern: String): Seq[CatalogView] = {
+		jdbcCatalog.listViews(database, pattern)
+	}
+
+	def listViews(database: String): Seq[CatalogView] = {
+		jdbcCatalog.listViews(database)
+	}
+
+	def listViews(database: String, pattern: Option[String]): Seq[CatalogView] = {
+		pattern match {
+			case Some(p) => listViews(database, p)
+			case None => listViews(database)
 		}
+	}*/
 
+	def createProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createProcedure(procDefinition, ignoreIfExists)
 	}
 
-	def tableExists(organizationId: Long, database: String, table: String): Boolean = {
-		val catalogDatabase  = catalog.getDatabase(organizationId, database)
-		tableExists(catalogDatabase.id.get, table)
-	}
-
-	def listTables(databaseId: Long): Seq[CatalogTable] = {
-		val database = catalog.getDatabase(databaseId)
-		if (database.isLogical) {
-			catalog.listTables(databaseId)
-		} else {
-			val datasys = DataSystem.lookupDataSystem(database.properties)
-			val tableNames: Seq[String] = datasys.tableNames()
-			tableNames.map { name =>
-				CatalogTable(
-					name = name,
-					description = None,
-					databaseId = database.id.get,
-					properties = datasys.tableProperties(name),
-					createBy = database.createBy,
-					createTime = database.createTime,
-					updateBy = database.updateBy,
-					updateTime = database.updateTime
-				)
-			}
-		}
-	}
-
-	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable] = {
-		val database = catalog.getDatabase(databaseId)
-		if (database.isLogical) {
-			catalog.listTables(databaseId, pattern)
-		} else {
-			val datasys = DataSystem.lookupDataSystem(database.properties)
-			val tableNames: Seq[String] = datasys.tableNames()
-			Utils.filterPattern(tableNames, Utils.escapeLikeRegex(pattern))
-			.map { name =>
-				CatalogTable(
-					name = name,
-					description = None,
-					databaseId = database.id.get,
-					properties = datasys.tableProperties(name),
-					createBy = database.createBy,
-					createTime = database.createTime,
-					updateBy = database.updateBy,
-					updateTime = database.updateTime
-				)
-			}
-		}
-	}
-
-	def createFunction(funcDefinition: CatalogFunction, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createFunction(funcDefinition, organization, db, ignoreIfExists)
-	}
-
-	def renameFunction(databaseId: Long, organization: String, database: String, func: String, newFunc: String, updateBy: Long): Unit = {
-		catalog.renameFunction(databaseId, organization, database, func, newFunc, updateBy)
-	}
-
-	def functionExists(databaseId: Long, function: String): Boolean = {
-		catalog.functionExists(databaseId, function)
-	}
-
-	def dropFunction(databaseId: Long, organization: String, db: String, function: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropFunction(databaseId, organization, db, function, ignoreIfNotExists)
-	}
-
-	def getFunction(databaseId: Long, function: String): CatalogFunction = {
-		catalog.getFunction(databaseId, function)
-	}
-
-	def listFunctions(databaseId: Long): Seq[CatalogFunction] = {
-		catalog.listFunctions(databaseId)
-	}
-
-	def listFunctions(databaseId: Long, pattern: String): Seq[CatalogFunction] = {
-		catalog.listFunctions(databaseId, pattern)
-	}
-
-	def createView(viewDefinition: CatalogView, organization: String, db: String, replaceIfExists: Boolean): Unit = {
-		catalog.createView(viewDefinition, organization, db, replaceIfExists)
-	}
-
-	def renameView(databaseId: Long, organization: String, db: String, view: String, newView: String, updateBy: Long): Unit = {
-		catalog.renameView(databaseId, organization, db, view, newView, updateBy)
-	}
-
-	def alterView(viewDefinition: CatalogView): Unit = {
-		catalog.alterView(viewDefinition)
-	}
-
-	def viewExists(databaseId: Long, view: String): Boolean = {
-		catalog.viewExists(databaseId, view)
-	}
-
-	def viewExists(organizationId: Long, database: String, view: String): Boolean = {
-		val catalogDatabase = catalog.getDatabase(organizationId, database)
-		catalog.viewExists(catalogDatabase.id.get, view)
-	}
-
-	def dropView(databaseId: Long, organization: String, db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropView(databaseId, organization, db, view, ignoreIfNotExists)
-	}
-
-	def getView(databaseId: Long, view: String): CatalogView = {
-		catalog.getView(databaseId, view)
-	}
-
-	def getView(organizationId: Long, database: String, view: String): CatalogView = {
-		val catalogDatabase = catalog.getDatabase(organizationId, database)
-		catalog.getView(catalogDatabase.id.get, view)
-	}
-
-	def listViews(databaseId: Long): Seq[CatalogView] = {
-		catalog.listViews(databaseId)
-	}
-
-	def listViews(databaseId: Long, pattern: String): Seq[CatalogView] = {
-		catalog.listViews(databaseId, pattern)
-	}
-
-	def createProcedure(procDefinition: CatalogProcedure, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createProcedure(procDefinition, organization, ignoreIfExists)
-	}
-
-	def renameProcedure(organizationId: Long, organization: String, proc: String, newproc: String, updateBy: Long): Unit = {
-		catalog.renameProcedure(organizationId, organization, proc, newproc, updateBy)
+	def renameProcedure(proc: String, newProc: String): Unit = {
+		jdbcCatalog.renameProcedure(proc, newProc)
 	}
 
 	def alterProcedure(procDefinition: CatalogProcedure): Unit = {
-		catalog.alterProcedure(procDefinition)
+		jdbcCatalog.alterProcedure(procDefinition)
 	}
 
-	def procedureExists(organizationId: Long, proc: String): Boolean = {
-		catalog.procedureExists(organizationId, proc)
+	def procedureExists(proc: String): Boolean = {
+		jdbcCatalog.procedureExists(proc)
 	}
 
-	def dropProcedure(organizationId: Long, organization: String, proc: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropProcedure(organizationId, organization, proc, ignoreIfNotExists)
+	def dropProcedure(proc: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropProcedure(proc, ignoreIfNotExists)
 	}
 
-	def getProcedure(organizationId: Long, proc: String): CatalogProcedure = {
-		catalog.getProcedure(organizationId, proc)
+	def getProcedure(proc: String): CatalogProcedure = {
+		jdbcCatalog.getProcedure(proc)
 	}
 
-	def getProcedure(procId: Long): CatalogProcedure = {
-		catalog.getProcedure(procId)
+	def listProcedures(): Seq[CatalogProcedure] = {
+		jdbcCatalog.listProcedures()
 	}
 
-	def listProcedures(organizationId: Long): Seq[CatalogProcedure] = {
-		catalog.listProcedures(organizationId)
+	def listProcedures(pattern: String): Seq[CatalogProcedure] = {
+		jdbcCatalog.listProcedures(pattern)
 	}
 
-	def listProcedures(organizationId: Long, pattern: String): Seq[CatalogProcedure] = {
-		catalog.listProcedures(organizationId, pattern)
+	def listProcedures(pattern: Option[String]): Seq[CatalogProcedure] = {
+		pattern match {
+			case Some(p) => jdbcCatalog.listProcedures(p)
+			case None => jdbcCatalog.listProcedures()
+		}
 	}
 
-	def createTimedEvent(eventDefinition: CatalogTimedEvent, organization: String, ignoreIfExists: Boolean): Unit = {
-		catalog.createTimedEvent(eventDefinition, organization, ignoreIfExists)
+	def createTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createTimedEvent(eventDefinition, ignoreIfExists)
 	}
 
-	def renameTimedEvent(organizationId: Long, organization: String, event: String, newEvent: String, updateBy: Long): Unit = {
-		catalog.renameTimedEvent(organizationId, organization, event, newEvent, updateBy)
+	def renameTimedEvent(event: String, newEvent: String): Unit = {
+		jdbcCatalog.renameTimedEvent(event, newEvent)
 	}
 
 	def alterTimedEvent(eventDefinition: CatalogTimedEvent): Unit = {
-		catalog.alterTimedEvent(eventDefinition)
+		jdbcCatalog.alterTimedEvent(eventDefinition)
 	}
 
-	def timedEventExists(organizationId: Long, event: String): Boolean = {
-		catalog.timedEventExists(organizationId, event)
+	def timedEventExists(event: String): Boolean = {
+		jdbcCatalog.timedEventExists(event)
 	}
 
-	def dropTimedEvent(organizationId: Long, organization: String, event: String, ignoreIfNotExists: Boolean): Unit = {
-		catalog.dropTimedEvent(organizationId, organization, event, ignoreIfNotExists)
+	def dropTimedEvent(event: String, ignoreIfNotExists: Boolean): Unit = {
+		jdbcCatalog.dropTimedEvent(event, ignoreIfNotExists)
 	}
 
-	def getTimedEvent(organizationId: Long, event: String): CatalogTimedEvent = {
-		catalog.getTimedEvent(organizationId, event)
+	def getTimedEvent(event: String): CatalogTimedEvent = {
+		jdbcCatalog.getTimedEvent(event)
 	}
 
-	def listTimedEvents(organizationId: Long): Seq[CatalogTimedEvent] = {
-		catalog.listTimedEvents(organizationId)
+	def listTimedEvents(): Seq[CatalogTimedEvent] = {
+		jdbcCatalog.listTimedEvents()
 	}
 
-	def listTimedEvents(organizationId: Long, pattern: String): Seq[CatalogTimedEvent] = {
-		catalog.listTimedEvents(organizationId, pattern)
+	def listTimedEvents(pattern: String): Seq[CatalogTimedEvent] = {
+		jdbcCatalog.listTimedEvents(pattern)
 	}
 
-	def createUserGroupRel(userGroupRels: Seq[CatalogUserGroupRel], organization: String, group: String, users: Seq[String]): Unit = {
-		catalog.createUserGroupRel(userGroupRels:_*)(organization, group, users)
+	def listTimedEvents(pattern: Option[String]): Seq[CatalogTimedEvent] = {
+		pattern match {
+			case Some(p) => jdbcCatalog.listTimedEvents(p)
+			case None => jdbcCatalog.listTimedEvents()
+		}
 	}
 
-	def dropUserGroupRel(groupId: Long, userIds: Seq[Long], organization: String, group: String, users: Seq[String]): Unit = {
-		catalog.dropUserGroupRel(groupId, userIds, organization, group, users)
+	def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege): Unit = {
+		jdbcCatalog.createDatabasePrivilege(dbPrivilege)
 	}
 
-	def getUserGroupRelsByGroup(groupId: Long): Seq[CatalogUserGroupRel] = {
-		catalog.getUserGroupRelsByGroup(groupId)
+	def dropDatabasePrivilege(user: String, database: String, privileges: Seq[String]): Unit = {
+		jdbcCatalog.dropDatabasePrivilege(user, database, privileges)
 	}
 
-	def createDatabasePrivilege(dbPrivileges: Seq[CatalogDatabasePrivilege], user: String, organization: String, db: String): Unit = {
-		catalog.createDatabasePrivilege(dbPrivileges:_*)(user, organization, db)
+	def getDatabasePrivilege(user: String, database: String): CatalogDatabasePrivilege = {
+		jdbcCatalog.getDatabasePrivilege(user, database)
 	}
 
-	def dropDatabasePrivilege(userId: Long, databaseId: Long, privileges: Seq[String], user: String, organization: String, database: String): Unit = {
-		catalog.dropDatabasePrivilege(userId, databaseId, privileges:_*)(user, organization, database)
+	def createTablePrivilege(tablePrivilege: CatalogTablePrivilege): Unit = {
+		jdbcCatalog.createTablePrivilege(tablePrivilege)
 	}
 
-	def getDatabasePrivilege(userId: Long, databaseId: Long, privilege: String): Option[CatalogDatabasePrivilege] = {
-		catalog.getDatabasePrivilege(userId, databaseId, privilege)
+	def dropTablePrivilege(user: String, database: String, table: String, privileges: Seq[String]): Unit = {
+		jdbcCatalog.dropTablePrivilege(user, database, table, privileges)
 	}
 
-	def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege] = {
-		catalog.getDatabasePrivilege(userId, databaseId)
+	def getTablePrivilege(user: String, database: String, table: String): CatalogTablePrivilege = {
+		jdbcCatalog.getTablePrivilege(user, database, table)
 	}
 
-	def getDatabasePrivilege(userId: Long): Seq[CatalogDatabasePrivilege] = {
-		catalog.getDatabasePrivilege(userId)
+	def createColumnPrivilege(columnPrivilege: CatalogColumnPrivilege): Unit = {
+		jdbcCatalog.createColumnPrivilege(columnPrivilege)
 	}
 
-	def createTablePrivilege(tablePrivileges: Seq[CatalogTablePrivilege], user: String, organization: String, db: String, table: String): Unit = {
-		catalog.createTablePrivilege(tablePrivileges:_*)(user, organization, db, table)
+	def dropColumnPrivilege(user: String, database: String, table: String, privileges: Seq[(String, Seq[String])]): Unit = {
+		jdbcCatalog.dropColumnPrivilege(user, database, table, privileges)
 	}
 
-	def dropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[String], user: String, organization: String, database: String): Unit = {
-		catalog.dropTablePrivilege(userId, databaseId, table, privileges:_*)(user, organization, database)
+	def getColumnPrivilege(user: String, database: String, table: String): CatalogColumnPrivilege = {
+		jdbcCatalog.getColumnPrivilege(user, database, table)
 	}
 
-	def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege] = {
-		catalog.getTablePrivilege(userId, databaseId, table, privilege)
+	def stop(): Unit = {
+		jdbcCatalog.close()
 	}
 
-	def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege] = {
-		catalog.getTablePrivilege(userId, databaseId, table)
+	def addListener(listener: CatalogEventListener): Unit = {
+		jdbcCatalog.addListener(listener)
 	}
 
-	def getTablePrivilege(userId: Long): Seq[CatalogTablePrivilege] = {
-		catalog.getTablePrivilege(userId)
-	}
-
-	def createColumnPrivilege(columnPrivileges: Seq[CatalogColumnPrivilege], user: String, organization: String, db: String, table: String): Unit = {
-		catalog.createColumnPrivilege(columnPrivileges:_*)(user, organization, db, table)
-	}
-
-	def dropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])], user: String, organization: String, database: String): Unit = {
-		catalog.dropColumnPrivilege(userId, databaseId, table, privileges)(user, organization, database)
-	}
-
-	def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege] = {
-		catalog.getColumnPrivilege(userId, databaseId, table, privilege)
-	}
-
-	def getColumnPrivilege(userId: Long): Seq[CatalogColumnPrivilege] = {
-		catalog.getColumnPrivilege(userId)
-	}
 }
