@@ -33,10 +33,10 @@ import io.netty.handler.codec.protobuf.{ProtobufDecoder, ProtobufEncoder, Protob
 import io.netty.util.concurrent.DefaultThreadFactory
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
-import moonbox.grid.deploy.MbService
+import moonbox.grid.deploy.MoonboxService
 import moonbox.message.protobuf.ProtoMessage
 
-private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbService: MbService) extends MbLogging {
+private[deploy] class TransportServer(host: String, port: Int, conf: MbConf, mbService: MoonboxService) extends MbLogging {
 
 	private val maxRetries: Int = conf.get(PORT_MAX_RETRIES)
 	private val channelToToken = new ConcurrentHashMap[Channel, String]()

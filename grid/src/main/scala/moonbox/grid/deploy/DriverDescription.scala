@@ -112,6 +112,7 @@ case class SparkClusterDriverDescription(
 }
 
 case class SparkBatchDriverDescription(
+	org: String,
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
@@ -128,6 +129,7 @@ case class SparkBatchDriverDescription(
 	override def toAppArgs: Seq[String] = {
 		(config.filterKeys(key => !key.startsWith("spark."))
 			++ Map(
+			"org" -> org,
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
 		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
@@ -146,6 +148,7 @@ case class SparkBatchDriverDescription(
 
 case class HiveBatchDriverDescription(
 	driverId: String,
+	org: String,
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
@@ -162,6 +165,7 @@ case class HiveBatchDriverDescription(
 	override def toAppArgs: Seq[String] = {
 		Map(
 			"driverId" -> driverId,
+			"org" -> org,
 			"username" -> username,
 			"sqls" -> sqls.mkString(";")
 		).toSeq.flatMap { case (k, v) => Seq(k, v) }

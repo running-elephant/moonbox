@@ -25,11 +25,11 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.common.util.{ThreadUtils, Utils}
 import moonbox.grid.config._
-import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
+import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
 
 import scala.collection.JavaConversions._
 
-class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
+class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
 	private val tokenEncoder = new TokenEncoder(conf)
 
 	private val loginType = conf.get(LOGIN_IMPLEMENTATION)
@@ -69,9 +69,9 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 		timeoutCatalogSessionCallback.put(token, callback)
 	}
 
-	def login(username: String, password: String, forget: Boolean = false): Option[String] = {
-		if (loginImpl.doLogin(username, password)) {
-			val token = tokenEncoder.encode(username)
+	def login(org: String, username: String, password: String, forget: Boolean = false): Option[String] = {
+		if (loginImpl.doLogin(org, username, password)) {
+			val token = tokenEncoder.encode(org, username)
 			if (!forget) {
 				tokenToLastActiveTime.put(token, System.currentTimeMillis())
 			}
@@ -83,14 +83,14 @@ class LoginManager(conf: MbConf, mbService: MbService) extends MbLogging {
 		tokenToLastActiveTime.remove(token)
 	}
 
-	def isLogin(token: String): Option[String] = {
+	def isLogin(token: String): Option[(String, String)] = {
 		if (tokenToLastActiveTime.containsKey(token)) {
 			tokenToLastActiveTime.update(token, System.currentTimeMillis())
 			tokenEncoder.decode(token)
 		} else None
 	}
 
-	def decode(token: String): Option[String] = {
+	def decode(token: String): Option[(String, String)] = {
 		tokenEncoder.decode(token)
 	}
 

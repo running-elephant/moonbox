@@ -23,5 +23,5 @@ package moonbox.grid.deploy.security
 import moonbox.common.MbLogging
 
 trait Login extends MbLogging {
-	def doLogin(username: String, password: String): Boolean
+	def doLogin(org: String, username: String, password: String): Boolean
 }

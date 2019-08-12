@@ -30,13 +30,7 @@ import scala.collection.mutable.ArrayBuffer
 
 trait AuditLogger {
 
-	def log(user: String, action: String, param: Map[String, String])(implicit connectionInfo: ConnectionInfo): Unit
-
-	def log(user: Option[String], action: String, param: Map[String, String])(implicit connectionInfo: ConnectionInfo): Unit
-
-	def log(user: Option[String], action: String)(implicit connectionInfo: ConnectionInfo): Unit
-
-	def log(user: String, action: String)(implicit connectionInfo: ConnectionInfo): Unit
+	def log(user: String, action: String, param: Map[String, String] = Map())(implicit connectionInfo: ConnectionInfo): Unit
 
 }
 abstract class AbstractAuditLogger(conf: MbConf) extends AuditLogger {
@@ -60,21 +54,10 @@ abstract class AbstractAuditLogger(conf: MbConf) extends AuditLogger {
 		}
 	}, 0, 30, TimeUnit.SECONDS)
 
-	override def log(user: String, action: String, param: Map[String, String])(implicit connectionInfo: ConnectionInfo): Unit = {
+	override def log(user: String, action: String, param: Map[String, String] = Map())(implicit connectionInfo: ConnectionInfo): Unit = {
 		log(AuditEvent(user, action, param, connectionInfo))
 	}
 
-	override def log(user: Option[String], action: String, param: Map[String, String])(implicit connectionInfo: ConnectionInfo): Unit = {
-		log(user.getOrElse("unknown"), action, param)
-	}
-
-	override def log(user: Option[String], action: String)(implicit connectionInfo: ConnectionInfo): Unit = {
-		log(user.getOrElse("unknown"), action)
-	}
-
-	override def log(user: String, action: String)(implicit connectionInfo: ConnectionInfo): Unit = {
-		log(user, action, Map.empty[String, String])
-	}
 
 	private def log(event: AuditEvent)(implicit connectionInfo: ConnectionInfo): Unit = {
 		eventQueue.add(event)

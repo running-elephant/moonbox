@@ -50,5 +50,5 @@ class LdapLogin(conf: MbConf) extends Login {
 		(throw new NoSuchElementException(LOGIN_LDAP_CONNECT_POOL.key)): Boolean
 	)
 
-	def doLogin(username: String, password: String): Boolean = true
+	def doLogin(org: String, username: String, password: String): Boolean = true
 }

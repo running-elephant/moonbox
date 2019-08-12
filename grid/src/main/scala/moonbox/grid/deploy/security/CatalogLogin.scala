@@ -34,8 +34,8 @@ class CatalogLogin(conf: MbConf) extends Login {
 		}
 	}))
 
-	override def doLogin(username: String, password: String): Boolean = {
-		catalog.getUserOption(username) match {
+	override def doLogin(org: String, username: String, password: String): Boolean = {
+		catalog.getUserOption(org, username) match {
 			case Some(user) if user.password == PasswordEncryptor.encryptSHA(password) => true
 			case _ => false
 		}

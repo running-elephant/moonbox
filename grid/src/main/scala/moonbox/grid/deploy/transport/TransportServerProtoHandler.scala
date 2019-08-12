@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.util.ReferenceCountUtil
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
+import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
 import moonbox.grid.deploy.Interface._
 import moonbox.message.protobuf
 import moonbox.message.protobuf.ProtoMessage
@@ -40,7 +40,7 @@ import scala.util.{Failure, Success}
 
 class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, String],
 	channelToSessionId: ConcurrentHashMap[Channel, String],
-	mbService: MbService)
+	mbService: MoonboxService)
 	extends ChannelInboundHandlerAdapter with MbLogging {
 
 	override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) = {

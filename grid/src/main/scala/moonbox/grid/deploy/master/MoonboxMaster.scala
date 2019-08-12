@@ -32,7 +32,7 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{DriverDescription, HiveBatchDriverDescription, MbService, SparkBatchDriverDescription}
+import moonbox.grid.deploy.{DriverDescription, HiveBatchDriverDescription, MoonboxService, SparkBatchDriverDescription}
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.DriverState.DriverState
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
@@ -64,7 +64,7 @@ class MoonboxMaster(
 
 	private var state = RecoveryState.STANDBY
 
-	private var mbService: MbService = _
+	private var mbService: MoonboxService = _
 
 	private val idToWorker = new mutable.HashMap[String, WorkerInfo]
 	private val addressToWorker = new mutable.HashMap[Address, WorkerInfo]
@@ -132,7 +132,7 @@ class MoonboxMaster(
 
 		// TODO
 		 try {
-			mbService = new MbService(conf, self, new BlackHoleAuditLogger)
+			mbService = new MoonboxService(conf, self, new BlackHoleAuditLogger)
 		} catch {
 			case e: Exception =>
 				logError("Could not start catalog.", e)
@@ -404,7 +404,7 @@ class MoonboxMaster(
 
 	private def handleJobMessage: Receive = {
 
-		case JobSubmit(username, lang, sqls, userConfig) =>
+		case JobSubmit(org, username, lang, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
 				sender() ! JobSubmitResponse(None, msg)
@@ -414,9 +414,9 @@ class MoonboxMaster(
 				val submitDate = new Date()
 				val driverId = newDriverId(submitDate) + userConfig.get(EventEntity.NAME).map("-"+_).getOrElse("")
 				val driverDesc = if (lang == "hql") {
-					HiveBatchDriverDescription(driverId, username, sqls, config)
+					HiveBatchDriverDescription(driverId, org, username, sqls, config)
 				} else {
-					SparkBatchDriverDescription(username, sqls, config)
+					SparkBatchDriverDescription(org, username, sqls, config)
 				}
 				val driver = createDriver(driverDesc, driverId, submitDate)
 				persistenceEngine.addDriver(driver)
@@ -475,7 +475,7 @@ class MoonboxMaster(
 				}
 			}
 
-		case open @ OpenSession(_, _, config) =>
+		case open @ OpenSession(_, _, _, config) =>
 			val requester = sender()
 			val centralized = config.get("islocal").exists(_.equalsIgnoreCase("true"))
 			val candidate = selectApplication(centralized)

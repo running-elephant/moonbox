@@ -26,13 +26,14 @@ import org.quartz.{Job, JobExecutionContext}
 class EventJob extends Job with MbLogging {
 	override def execute(ctx: JobExecutionContext): Unit = {
 		val dataMap = ctx.getMergedJobDataMap
-		val definer = dataMap.getString(EventEntity.DEFINER)
+		val org = dataMap.getString(EventEntity.DEFINER_ORG)
+		val definer = dataMap.getString(EventEntity.DEFINER_NAME)
 		val name = dataMap.getString(EventEntity.NAME)
 		val lang = dataMap.getString(EventEntity.LANG)
 		val sqls = dataMap.get(EventEntity.SQLS).asInstanceOf[Seq[String]]
 		val config = dataMap.get(EventEntity.CONFIG).asInstanceOf[Map[String, String]]
 		val func = dataMap.get(EventEntity.HANDLER).asInstanceOf[EventHandler]
 		logInfo(s"""Timed event fire as user '$definer' run sqls (${sqls.mkString(", ")})""")
-		func(definer, lang, sqls, config + (EventEntity.NAME -> name))
+		func(org, definer, lang, sqls, config + (EventEntity.NAME -> name))
 	}
 }

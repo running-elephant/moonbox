@@ -70,7 +70,8 @@ class TimedEventServiceImpl(conf: MbConf, handle: EventHandler) extends TimedEve
 
 	override def addTimedEvent(event: EventEntity): Unit = {
 		val jobDataMap = new JobDataMap()
-		jobDataMap.put(EventEntity.DEFINER, event.definer)
+		jobDataMap.put(EventEntity.DEFINER_ORG, event.org)
+		jobDataMap.put(EventEntity.DEFINER_NAME, event.definer)
 		jobDataMap.put(EventEntity.NAME, event.name)
 		jobDataMap.put(EventEntity.LANG, event.lang)
 		jobDataMap.put(EventEntity.SQLS, event.sqls)

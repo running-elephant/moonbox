@@ -29,7 +29,7 @@ import akka.stream.ActorMaterializer
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
-import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MbService}
+import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
 import moonbox.grid.deploy.Interface._
 import org.json4s.jackson.Serialization
 import org.json4s.{CustomSerializer, DefaultFormats, JInt, JString, Serializer}
@@ -38,7 +38,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class RestServer(host: String, port: Int, conf: MbConf, mbService: MbService,
+class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxService,
 	implicit val akkaSystem: ActorSystem) extends JsonSerializer with MbLogging {
 
 	private val maxRetries: Int = conf.get(PORT_MAX_RETRIES)

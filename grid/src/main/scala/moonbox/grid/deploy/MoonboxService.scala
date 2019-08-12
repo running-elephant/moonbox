@@ -44,18 +44,26 @@ private[deploy] class MoonboxService(
 
 	private val loginManager = new LoginManager(conf, this)
 
-	def login(org: String, username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
+
+
+	def login(username: String, password: String, callback: () => Unit)(implicit connection: ConnectionInfo): LoginOutbound = {
 		auditLogger.log(username, "login")
-		loginManager.login(org, username, password) match {
-			case Some(token) =>
-				loginManager.addTimeoutCallback(token, callback)
-				LoginOutbound(Some(token), None)
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password) match {
+					case Some(token) =>
+						loginManager.addTimeoutCallback(token, callback)
+						LoginOutbound(Some(token), None)
+					case None =>
+						LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
+				}
 			case None =>
-				LoginOutbound(None, Some(s"User '$username' does not exist or password is incorrect."))
+				LoginOutbound(None, Some(s"User format is org@user, but it is '$username'"))
 		}
+
 	}
 
-	def isLogin(token: String): Option[String] = {
+	def isLogin(token: String): Option[(String, String)] = {
 		loginManager.isLogin(token)
 	}
 
@@ -68,8 +76,8 @@ private[deploy] class MoonboxService(
 	def openSession(token: String, database: Option[String], config: Map[String, String])(implicit connection: ConnectionInfo): OpenSessionOutbound = {
 		auditLogger.log(decodeToken(token), "openSession")
 		isLogin(token) match {
-			case Some(username) =>
-				askSync[OpenSessionResponse](OpenSession(username, database, config))(SHORT_TIMEOUT) match {
+			case Some((org, username)) =>
+				askSync[OpenSessionResponse](OpenSession(org, username, database, config))(SHORT_TIMEOUT) match {
 					case Left(OpenSessionResponse(Some(sessionId), workerHost, workerPort, message)) =>
 						loginManager.putSession(token, sessionId)
 						OpenSessionOutbound(Some(sessionId), workerHost, workerPort, None)
@@ -121,7 +129,7 @@ private[deploy] class MoonboxService(
 	def interactiveQueryCancel(token: String, sessionId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
 		auditLogger.log(decodeToken(token), "interactiveQueryCancel", Map("sessionId" -> sessionId))
 		isLogin(token) match {
-			case Some(username) =>
+			case Some(_) =>
 				askSync[InteractiveJobCancelResponse](InteractiveJobCancel(sessionId))(SHORT_TIMEOUT) match {
 					case Left(InteractiveJobCancelResponse(true, _)) =>
 						CancelQueryOutbound()
@@ -136,9 +144,10 @@ private[deploy] class MoonboxService(
 	}
 
 	def interactiveNextResult(token: String, sessionId: String)(implicit connection: ConnectionInfo): InteractiveNextResultOutbound = {
+
 		auditLogger.log(decodeToken(token), "interactiveNextResult", Map("sessionId" -> sessionId))
 		isLogin(token) match {
-			case Some(username) =>
+			case Some(_) =>
 				askSync[JobQueryNextResultResponse](JobQueryNextResult(sessionId))(SHORT_TIMEOUT) match {
 					case Left(JobQueryNextResultResponse(true, schema, data, hasNext, _)) =>
 						InteractiveNextResultOutbound(data = Some(ResultData(sessionId, schema, data, hasNext)))
@@ -152,165 +161,221 @@ private[deploy] class MoonboxService(
 		}
 	}
 
-	def batchQuery(org: String, username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
+	def batchQuery(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchQueryOutbound = {
 		auditLogger.log(username, "batchQuery", Map("sqls" -> sqls.mkString(";"), "config" -> config.mkString(", ")))
-		loginManager.login(org, username, password) match {
-			case Some(_) =>
-				askSync[JobSubmitResponse](JobSubmit(username, lang, sqls, config))(SHORT_TIMEOUT) match {
-					case Left(JobSubmitResponse(Some(jobId), _)) =>
-						BatchQueryOutbound(jobId = Some(jobId))
-					case Left(JobSubmitResponse(None, message)) =>
-						BatchQueryOutbound(error = Some(message))
-					case Right(message) =>
-						BatchQueryOutbound(error = Some(message))
-				}
-			case None =>
-				BatchQueryOutbound(error = Some("Login failed. Please check your username and password."))
-		}
-	}
-
-	def batchQueryCancel(org: String, username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
-		auditLogger.log(username, "batchQueryCancel", Map("jobId" -> jobId))
-		loginManager.login(org, username, password) match {
-			case Some(_) =>
-				askSync[BatchJobCancelResponse](BatchJobCancel(jobId))(SHORT_TIMEOUT) match {
-					case Left(BatchJobCancelResponse(id, true, _)) =>
-						CancelQueryOutbound()
-					case Left(BatchJobCancelResponse(id, false, message)) =>
-						CancelQueryOutbound(error = Some(message))
-					case Right(message) =>
-						CancelQueryOutbound(error = Some(message))
-				}
-			case None =>
-				CancelQueryOutbound(error = Some("Login failed. Please check your username and password."))
-		}
-	}
-
-	def batchQueryProgress(org: String, username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
-		auditLogger.log(username, "batchQueryProgress", Map("jobId" -> jobId))
-		loginManager.login(org, username, password) match {
-			case Some(_) =>
-				askSync[JobProgressState](JobProgress(jobId))(SHORT_TIMEOUT) match {
-					case Left(JobProgressState(id, submitTime, state, message)) =>
-						BatchQueryProgressOutbound(message, Some(state))
-					case Right(message) =>
-						BatchQueryProgressOutbound(message, None)
-				}
-			case None =>
-				BatchQueryProgressOutbound("Please check your username and password.", None)
-		}
-	}
-
-	def decodeToken(token: String): Option[String] = {
-		loginManager.decode(token)
-	}
-
-	def sample(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SampleOutbound = {
-		auditLogger.log(username, "sample", Map("sql" -> sql))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[SampleResponse](SampleRequest(username, sql, database))(LONG_TIMEOUT) match {
-					case Left(SampleSuccessed(schema, data)) =>
-						SampleOutbound(success = true, schema = Some(schema), data = Some(data))
-					case Left(SampleFailed(message)) =>
-						SampleOutbound(success = false, message = Some(message))
-					case Right(message) =>
-						SampleOutbound(success = false, message = Some(message))
-				}
-			case None =>
-				SampleOutbound(success = false, message = Some("Please check your username and password."))
-		}
-	}
-
-	def verify(org: String, username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
-		auditLogger.log(username, "verify", Map("sqls" -> sqls.mkString(";")))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[VerifyResponse](VerifyRequest(username, sqls, database))(SHORT_TIMEOUT) match {
-					case Left(VerifyResponse(success, message, result)) =>
-						VerifyOutbound(success, message, result.map(_.map { case (s, m) => VerifyResult(s, m) }))
-					case Right(message) =>
-						VerifyOutbound(success = false, message = Some(message))
-				}
-			case None =>
-				VerifyOutbound(success = false, message = Some("Please check your username and password."))
-		}
-	}
-
-	def translate(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connectionInfo: ConnectionInfo): TranslationOutbound = {
-		auditLogger.log(username, "translation", Map("sql" -> sql))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[TranslateResponse](TranslateRequest(username, sql, database))(SHORT_TIMEOUT) match {
-					case Left(TranslateResponse(success, message, res)) =>
-						TranslationOutbound(success, message = message, sql = res)
-					case Right(message) =>
-						TranslationOutbound(success = false, message = Some(message))
-				}
-			case None =>
-				TranslationOutbound(success = false, message = Some("Please check your username and password."))
-		}
-	}
-
-	def resources(org: String, username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
-		auditLogger.log(username, "resources", Map("sql" -> sqls.mkString("; ")))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[TableResourcesResponses](TableResourcesRequest(username, sqls, database))(SHORT_TIMEOUT) match {
-					case Left(TableResourcesResponses(success, sysmgs, result)) =>
-						if (success) {
-							val res = result.map { r =>
-								r.map {
-									case TableResourcesFailed(message) =>
-										ResourceResult(success=false, message=Some(message))
-									case TableResourcesSuccessed(inputTables, outputTable, functions) =>
-										ResourceResult(success=true, inputTables=Some(inputTables), outputTable=outputTable, functions=Some(functions))
-								}
-							}
-							TableResourceOutbound(success = true, result = res)
-						} else {
-							TableResourceOutbound(success = false, message = sysmgs)
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password) match {
+					case Some(_) =>
+						askSync[JobSubmitResponse](JobSubmit(org, user, lang, sqls, config))(SHORT_TIMEOUT) match {
+							case Left(JobSubmitResponse(Some(jobId), _)) =>
+								BatchQueryOutbound(jobId = Some(jobId))
+							case Left(JobSubmitResponse(None, message)) =>
+								BatchQueryOutbound(error = Some(message))
+							case Right(message) =>
+								BatchQueryOutbound(error = Some(message))
 						}
-
-					case Right(message) =>
-						TableResourceOutbound(success = false, message = Some(message))
+					case None =>
+						BatchQueryOutbound(error = Some("Login failed. Please check your username and password."))
 				}
 			case None =>
-				TableResourceOutbound(success = false, message = Some("Please check your username and password."))
+				BatchQueryOutbound(error = Some(s"User format is org@user, but it is '$username'"))
+		}
+
+
+	}
+
+	def batchQueryCancel(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
+		auditLogger.log(username, "batchQueryCancel", Map("jobId" -> jobId))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password) match {
+					case Some(_) =>
+						askSync[BatchJobCancelResponse](BatchJobCancel(jobId))(SHORT_TIMEOUT) match {
+							case Left(BatchJobCancelResponse(id, true, _)) =>
+								CancelQueryOutbound()
+							case Left(BatchJobCancelResponse(id, false, message)) =>
+								CancelQueryOutbound(error = Some(message))
+							case Right(message) =>
+								CancelQueryOutbound(error = Some(message))
+						}
+					case None =>
+						CancelQueryOutbound(error = Some("Login failed. Please check your username and password."))
+				}
+			case None =>
+				CancelQueryOutbound(error = Some(s"User format is org@user, but it is '$username'"))
+		}
+
+
+
+	}
+
+	def batchQueryProgress(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
+		auditLogger.log(username, "batchQueryProgress", Map("jobId" -> jobId))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password) match {
+					case Some(_) =>
+						askSync[JobProgressState](JobProgress(jobId))(SHORT_TIMEOUT) match {
+							case Left(JobProgressState(id, submitTime, state, message)) =>
+								BatchQueryProgressOutbound(message, Some(state))
+							case Right(message) =>
+								BatchQueryProgressOutbound(message, None)
+						}
+					case None =>
+						BatchQueryProgressOutbound("Please check your username and password.", None)
+				}
+			case None =>
+				BatchQueryProgressOutbound(s"User format is org@user, but it is '$username'", None)
+		}
+
+	}
+
+	def decodeToken(token: String): String = {
+		loginManager.decode(token) match {
+			case Some((org, user)) => org + "@" + user
+			case None => "unknown@unknown"
 		}
 	}
 
-	def schema(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SchemaOutbound = {
+	def sample(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SampleOutbound = {
+		auditLogger.log(username, "sample", Map("sql" -> sql))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[SampleResponse](SampleRequest(org, user, sql, database))(LONG_TIMEOUT) match {
+							case Left(SampleSuccessed(schema, data)) =>
+								SampleOutbound(success = true, schema = Some(schema), data = Some(data))
+							case Left(SampleFailed(message)) =>
+								SampleOutbound(success = false, message = Some(message))
+							case Right(message) =>
+								SampleOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						SampleOutbound(success = false, message = Some("Please check your username and password."))
+				}
+			case None =>
+				SampleOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
+		}
+
+	}
+
+	def verify(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): VerifyOutbound = {
+		auditLogger.log(username, "verify", Map("sqls" -> sqls.mkString(";")))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[VerifyResponse](VerifyRequest(org, user, sqls, database))(SHORT_TIMEOUT) match {
+							case Left(VerifyResponse(success, message, result)) =>
+								VerifyOutbound(success, message, result.map(_.map { case (s, m) => VerifyResult(s, m) }))
+							case Right(message) =>
+								VerifyOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						VerifyOutbound(success = false, message = Some("Please check your username and password."))
+				}
+			case None =>
+				VerifyOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
+		}
+	}
+
+	def translate(username: String, password: String, sql: String, database: Option[String])(implicit connectionInfo: ConnectionInfo): TranslationOutbound = {
+		auditLogger.log(username, "translation", Map("sql" -> sql))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[TranslateResponse](TranslateRequest(org, user, sql, database))(SHORT_TIMEOUT) match {
+							case Left(TranslateResponse(success, message, res)) =>
+								TranslationOutbound(success, message = message, sql = res)
+							case Right(message) =>
+								TranslationOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						TranslationOutbound(success = false, message = Some("Please check your username and password."))
+				}
+			case None =>
+				TranslationOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
+		}
+	}
+
+	def resources(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): TableResourceOutbound = {
+		auditLogger.log(username, "resources", Map("sql" -> sqls.mkString("; ")))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[TableResourcesResponses](TableResourcesRequest(org, user, sqls, database))(SHORT_TIMEOUT) match {
+							case Left(TableResourcesResponses(success, sysmgs, result)) =>
+								if (success) {
+									val res = result.map { r =>
+										r.map {
+											case TableResourcesFailed(message) =>
+												ResourceResult(success=false, message=Some(message))
+											case TableResourcesSuccessed(inputTables, outputTable, functions) =>
+												ResourceResult(success=true, inputTables=Some(inputTables), outputTable=outputTable, functions=Some(functions))
+										}
+									}
+									TableResourceOutbound(success = true, result = res)
+								} else {
+									TableResourceOutbound(success = false, message = sysmgs)
+								}
+							case Right(message) =>
+								TableResourceOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						TableResourceOutbound(success = false, message = Some("Please check your username and password."))
+				}
+			case None =>
+				TableResourceOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
+		}
+
+	}
+
+	def schema(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): SchemaOutbound = {
 		auditLogger.log(username, "schema", Map("sql" -> sql))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[SchemaResponse](SchemaRequest(username, sql, database))(SHORT_TIMEOUT) match {
-					case Left(SchemaSuccessed(schema)) =>
-						SchemaOutbound(success = true, schema = Some(schema))
-					case Left(SchemaFailed(message)) =>
-						SchemaOutbound(success = false, message = Some(message))
-					case Right(message) =>
-						SchemaOutbound(success = false, message = Some(message))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[SchemaResponse](SchemaRequest(org, user, sql, database))(SHORT_TIMEOUT) match {
+							case Left(SchemaSuccessed(schema)) =>
+								SchemaOutbound(success = true, schema = Some(schema))
+							case Left(SchemaFailed(message)) =>
+								SchemaOutbound(success = false, message = Some(message))
+							case Right(message) =>
+								SchemaOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						SchemaOutbound(success = false, message = Some("Please check your username and password."))
 				}
 			case None =>
-				SchemaOutbound(success = false, message = Some("Please check your username and password."))
+				SchemaOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
 		}
+
 	}
 
-	def lineage(org: String, username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
+	def lineage(username: String, password: String, sql: String, database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
 		auditLogger.log(username, "lineage", Map("sql" -> sql))
-		loginManager.login(org, username, password, forget = true) match {
-			case Some(_) =>
-				askSync[LineageResponse](LineageRequest(username, sql, database))(SHORT_TIMEOUT) match {
-					case Left(LineageSuccessed(lineage)) =>
-						LineageOutbound(success = true, lineage = Some(lineage))
-					case Left(LineageFailed(message)) =>
-						LineageOutbound(success = false, message = Some(message))
-					case Right(message) =>
-						LineageOutbound(success = false, message = Some(message))
+		parseUsername(username) match {
+			case Some((org, user)) =>
+				loginManager.login(org, user, password, forget = true) match {
+					case Some(_) =>
+						askSync[LineageResponse](LineageRequest(org, user, sql, database))(SHORT_TIMEOUT) match {
+							case Left(LineageSuccessed(lineage)) =>
+								LineageOutbound(success = true, lineage = Some(lineage))
+							case Left(LineageFailed(message)) =>
+								LineageOutbound(success = false, message = Some(message))
+							case Right(message) =>
+								LineageOutbound(success = false, message = Some(message))
+						}
+					case None =>
+						LineageOutbound(success = false, message = Some("Please check your username and password."))
 				}
 			case None =>
-				LineageOutbound(success = false, message = Some("Please check your username and password."))
+				LineageOutbound(success = false, message = Some(s"User format is org@user, but it is '$username'"))
 		}
 	}
 
@@ -332,6 +397,16 @@ private[deploy] class MoonboxService(
 		}
 	}
 
+	private def parseUsername(user: String): Option[(String, String)] = {
+		if (user.equalsIgnoreCase("ROOT")) Some(("SYSTEM", "ROOT"))
+		else {
+			val split: Array[String] = user.split("@")
+			if (split.length == 2) {
+				Some((split(0), split(1)))
+			} else None
+		}
+	}
+
 	private def askSync[T: ClassTag](message: Message)(timeout: FiniteDuration): Either[T, String] = {
 		try {
 			val future = askAsync(masterRef, message)(Timeout(timeout))
@@ -347,6 +422,5 @@ private[deploy] class MoonboxService(
 	private def askAsync(actorRef: ActorRef, message: Message)(implicit timeout: Timeout): Future[Message] = {
 		(actorRef ask message).mapTo[Message]
 	}
-
 
 }

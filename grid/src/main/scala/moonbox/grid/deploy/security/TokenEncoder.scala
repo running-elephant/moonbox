@@ -36,21 +36,21 @@ private[deploy] class TokenEncoder(conf: MbConf) {
 
 	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 
-	def encode(username: String): String = {
-		val jwtClaim: JwtClaim = JwtClaim() + ("username", username) + ("seed", UUID.randomUUID().toString)
+	def encode(org: String, username: String): String = {
+		val jwtClaim: JwtClaim = JwtClaim() + ("org", org) + ("username", username) + ("seed", UUID.randomUUID().toString)
 		Jwt.encode(jwtHeader, jwtClaim, _JWT_SECRET)
 	}
 
-	def decode(token: String): Option[String] = {
+	def decode(token: String): Option[(String, String)] = {
 		implicit val formats = DefaultFormats
 		Jwt.decodeRaw(token, _JWT_SECRET, JwtAlgorithm.allHmac()).map { decoded =>
 			Some(parse(decoded).extract[Username])
-		}.getOrElse(None).map(_.username)
+		}.getOrElse(None).map(u => (u.org, u.username))
 	}
 
 	def isvalid(token: String): Boolean = {
 		Jwt.isValid(token, _JWT_SECRET, JwtAlgorithm.allHmac())
 	}
 
-	private case class Username(username: String, seed: String)
+	private case class Username(org: String, username: String, seed: String)
 }
