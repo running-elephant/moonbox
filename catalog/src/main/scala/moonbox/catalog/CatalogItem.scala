@@ -20,66 +20,62 @@
 
 package moonbox.catalog
 
-import moonbox.common.util.Utils
 
 trait CatalogItem
 
 case class CatalogDatabase(
-	id: Option[Long] = None,
 	name: String,
 	description: Option[String] = None,
-	organizationId: Long,
 	properties: Map[String, String],
 	isLogical: Boolean,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	createBy: Option[String] = None
+) extends CatalogItem
+
+
+case class CatalogTableType(name: String)
+object CatalogTableType {
+	val TABLE = new CatalogTableType("TABLE")
+	val VIEW = new CatalogTableType("VIEW")
+}
 
 case class CatalogTable(
-	id: Option[Long] = None,
 	name: String,
+	db: Option[String],
+	tableType: CatalogTableType,
 	description: Option[String] = None,
-	databaseId: Long,
-	properties: Map[String, String],
+	properties: Map[String, String] = Map.empty,
+	viewText: Option[String] = None,
 	isStream: Boolean = false,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	tableSize: Option[Long] = None,
+	owner: Option[String] = None
+) extends CatalogItem {
 
-case class CatalogView(
-	id: Option[Long] = None,
+	def database: String = db.getOrElse{
+		throw new Exception(s"table $name did not specify database")
+	}
+}
+
+/*case class CatalogView(
 	name: String,
-	databaseId: Long,
+	db: Option[String],
 	description: Option[String],
-	cmd: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	sql: String,
+	createBy: Option[String] = None
+) extends CatalogItem {
+
+	def database: String = db.getOrElse{
+		throw new Exception(s"view $name did not specify database")
+	}
+
+}*/
 
 case class CatalogOrganization(
-	id: Option[Long] = None,
 	name: String,
-	description: Option[String] = None,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogGroup(
-	id: Option[Long] = None,
-	name: String,
-	description: Option[String] = None,
-	organizationId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	config: Map[String, String],
+	description: Option[String] = None) extends CatalogItem
 
 case class CatalogUser(
-	id: Option[Long] = None,
+	org: String,
 	name: String,
 	password: String,
 	account: Boolean = false,
@@ -89,121 +85,76 @@ case class CatalogUser(
 	grantDdl: Boolean = false,
 	grantDcl: Boolean = false,
 	isSA: Boolean = false,
-	organizationId: Long,
 	configuration: Map[String, String] = Map(),
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	createBy: Option[String] = None
+) extends CatalogItem
 
 case class CatalogFunction(
-	id: Option[Long] = None,
 	name: String,
-	databaseId: Long,
+	db: Option[String],
 	description: Option[String],
 	className: String,
 	methodName: Option[String],
 	resources: Seq[FunctionResource],
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	createBy: Option[String] = None
+) extends CatalogItem {
+
+	def database: String = db.getOrElse{
+		throw new Exception(s"function $name did not specify database")
+	}
+
+}
 
 case class CatalogFunctionResource(
-	id: Option[Long] = None,
-	funcId: Long,
+	func: String,
+	db: Option[String],
 	resourceType: String,
-	resource: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	resource: String) extends CatalogItem {
+
+	def database: String = db.getOrElse{
+		throw new Exception(s"function resource $func did not specify database")
+	}
+
+}
 
 case class CatalogProcedure(
-	id: Option[Long] = None,
 	name: String,
-	cmds: Seq[String],
+	sqls: Seq[String],
 	lang: String,
-	organizationId: Long,
 	description: Option[String] = None,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	createBy: Option[String] = None
+) extends CatalogItem
 
 case class CatalogTimedEvent(
-	id: Option[Long] = None,
 	name: String,
-	organizationId: Long,
-	definer: Long,
+	definer: String,
 	schedule: String,
 	enable: Boolean,
 	description: Option[String] = None,
-	procedure: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogColumn(
-	id: Option[Long] = None,
-	name: String,
-	dataType: String,
-	databaseId: Long,
-	table: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	procedure: String,
+	createBy: Option[String] = None
+) extends CatalogItem
 
 case class CatalogDatabasePrivilege(
-	id: Option[Long] = None,
-	userId: Long,
-	databaseId: Long,
-	privilegeType: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	user: String,
+	database: String,
+	privileges: Seq[String]) extends CatalogItem
 
 case class CatalogTablePrivilege(
-	id: Option[Long] = None,
-	userId: Long,
-	databaseId: Long,
+	user: String,
+	database: String,
 	table: String,
-	privilegeType: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	privileges: Seq[String]
+	) extends CatalogItem
 
 case class CatalogColumnPrivilege(
-	id: Option[Long] = None,
-	userId: Long,
-	databaseId: Long,
+	user: String,
+	database: String,
 	table: String,
-	column: String,
-	privilegeType: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogUserGroupRel(
-	id: Option[Long] = None,
-	groupId: Long,
-	userId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	privilege: Map[String, Seq[String]] // (column, Seq(privilegeType))
+	) extends CatalogItem
 
 case class CatalogVariable(
-	id: Option[Long] = None,
+	user: String,
 	name: String,
-	value: String,
-	userId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	value: String) extends CatalogItem

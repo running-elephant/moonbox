@@ -22,9 +22,9 @@ package moonbox.catalog.jdbc
 
 import moonbox.common.util.Utils
 
-trait CatalogItem
+trait CatalogEntity
 
-case class CatalogDatabase(
+case class DatabaseEntity(
 	id: Option[Long] = None,
 	name: String,
 	description: Option[String] = None,
@@ -34,21 +34,24 @@ case class CatalogDatabase(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogTable(
+case class TableEntity(
 	id: Option[Long] = None,
 	name: String,
+	tableType: String,
 	description: Option[String] = None,
 	databaseId: Long,
 	properties: Map[String, String],
+	viewText: Option[String],
 	isStream: Boolean = false,
+	tableSize: Option[Long] = None,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogView(
+/*case class ViewEntity(
 	id: Option[Long] = None,
 	name: String,
 	databaseId: Long,
@@ -57,28 +60,19 @@ case class CatalogView(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity*/
 
-case class CatalogOrganization(
+case class OrganizationEntity(
 	id: Option[Long] = None,
 	name: String,
+	config: Map[String, String],
 	description: Option[String] = None,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogGroup(
-	id: Option[Long] = None,
-	name: String,
-	description: Option[String] = None,
-	organizationId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogUser(
+case class UserEntity(
 	id: Option[Long] = None,
 	name: String,
 	password: String,
@@ -94,22 +88,21 @@ case class CatalogUser(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogFunction(
+case class FunctionEntity(
 	id: Option[Long] = None,
 	name: String,
 	databaseId: Long,
 	description: Option[String],
 	className: String,
 	methodName: Option[String],
-	resources: Seq[FunctionResource],
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogFunctionResource(
+case class FunctionResourceEntity(
 	id: Option[Long] = None,
 	funcId: Long,
 	resourceType: String,
@@ -117,9 +110,9 @@ case class CatalogFunctionResource(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogProcedure(
+case class ProcedureEntity(
 	id: Option[Long] = None,
 	name: String,
 	cmds: Seq[String],
@@ -129,9 +122,9 @@ case class CatalogProcedure(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogTimedEvent(
+case class TimedEventEntity(
 	id: Option[Long] = None,
 	name: String,
 	organizationId: Long,
@@ -143,7 +136,7 @@ case class CatalogTimedEvent(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
 case class CatalogColumn(
 	id: Option[Long] = None,
@@ -154,9 +147,9 @@ case class CatalogColumn(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogDatabasePrivilege(
+case class DatabasePrivilegeEntity(
 	id: Option[Long] = None,
 	userId: Long,
 	databaseId: Long,
@@ -164,41 +157,32 @@ case class CatalogDatabasePrivilege(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogTablePrivilege(
+case class TablePrivilegeEntity(
 	id: Option[Long] = None,
 	userId: Long,
 	databaseId: Long,
-	table: String,
+	tableId: Long,
 	privilegeType: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogColumnPrivilege(
+case class ColumnPrivilegeEntity(
 	id: Option[Long] = None,
 	userId: Long,
 	databaseId: Long,
-	table: String,
+	tableId: Long,
 	column: String,
 	privilegeType: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity
 
-case class CatalogUserGroupRel(
-	id: Option[Long] = None,
-	groupId: Long,
-	userId: Long,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
-
-case class CatalogVariable(
+case class VariableEntity(
 	id: Option[Long] = None,
 	name: String,
 	value: String,
@@ -206,4 +190,4 @@ case class CatalogVariable(
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogItem
+	updateTime: Long = Utils.now) extends CatalogEntity

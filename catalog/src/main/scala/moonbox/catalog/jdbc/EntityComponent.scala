@@ -26,6 +26,10 @@ import moonbox.catalog._
 import moonbox.common.util.ParseUtils
 import slick.lifted.ProvenShape
 
+
+/**
+  *
+  */
 trait EntityComponent extends DatabaseComponent {
 	import profile.api._
 
@@ -52,38 +56,32 @@ trait EntityComponent extends DatabaseComponent {
 		ParseUtils.parseProperties(_).map { case (resourceType, uri) => FunctionResource(resourceType, uri) }
 	)
 
-	protected final val catalogDatabases = TableQuery[CatalogDatabaseTable]
-	protected final val catalogTables = TableQuery[CatalogTableTable]
-	protected final val catalogOrganizations = TableQuery[CatalogOrganizationTable]
-	protected final val catalogGroups = TableQuery[CatalogGroupTable]
-	protected final val catalogUsers = TableQuery[CatalogUserTable]
-	protected final val catalogFunctions = TableQuery[CatalogFunctionTable]
-	protected final val catalogFunctionResources = TableQuery[CatalogFunctionResourceTable]
-	protected final val catalogViews = TableQuery[CatalogViewTable]
-	protected final val catalogProcedures = TableQuery[CatalogProcedureTable]
-	protected final val catalogTimedEvents = TableQuery[CatalogTimedEventTable]
-	protected final val catalogDatabasePrivileges = TableQuery[CatalogDatabasePrivilegeTable]
-	protected final val catalogTablePrivileges = TableQuery[CatalogTablePrivilegeTable]
-	protected final val catalogColumnPrivileges = TableQuery[CatalogColumnPrivilegeTable]
-	protected final val catalogUserGroupRels = TableQuery[CatalogUserGroupRelTable]
-	protected final val catalogVariables = TableQuery[CatalogVariableTable]
+	protected final val databases = TableQuery[DatabaseEntityTable]
+	protected final val tables = TableQuery[TableEntityTable]
+	protected final val organizations = TableQuery[OrganizationEntityTable]
+	protected final val users = TableQuery[UserEntityTable]
+	protected final val functions = TableQuery[FunctionEntityTable]
+	protected final val functionResources = TableQuery[FunctionResourceEntityTable]
+	protected final val procedures = TableQuery[ProcedureEntityTable]
+	protected final val timedEvents = TableQuery[TimedEventEntityTable]
+	protected final val databasePrivileges = TableQuery[DatabasePrivilegeEntityTable]
+	protected final val tablePrivileges = TableQuery[TablePrivilegeEntityTable]
+	protected final val columnPrivileges = TableQuery[ColumnPrivilegeEntityTable]
+	protected final val variables = TableQuery[VariableEntityTable]
 
 	protected final val tableQueries = Seq(
-		catalogDatabases,
-		catalogTables,
-		catalogOrganizations,
-		catalogGroups,
-		catalogUsers,
-		catalogFunctions,
-		catalogFunctionResources,
-		catalogViews,
-		catalogProcedures,
-		catalogTimedEvents,
-		catalogDatabasePrivileges,
-		catalogTablePrivileges,
-		catalogColumnPrivileges,
-		catalogUserGroupRels,
-		catalogVariables
+		databases,
+		tables,
+		organizations,
+		users,
+		functions,
+		functionResources,
+		procedures,
+		timedEvents,
+		databasePrivileges,
+		tablePrivileges,
+		columnPrivileges,
+		variables
 	)
 
 	abstract class BaseTable[T](tag: Tag, desc: String) extends Table[T](tag, desc) {
@@ -100,42 +98,38 @@ trait EntityComponent extends DatabaseComponent {
 
 	}
 
-	class CatalogDatabaseTable(tag: Tag) extends BaseTable[CatalogDatabase](tag, "databases") {
+	class DatabaseEntityTable(tag: Tag) extends BaseTable[DatabaseEntity](tag, "databases") {
 		def name = column[String]("name")
 		def description = column[Option[String]]("description")
 		def organizationId = column[Long]("organizationId")
 		def properties = column[Map[String, String]]("properties")
 		def isLogical = column[Boolean]("isLogical")
 		override def * = (id.?, name, description, organizationId, properties, isLogical, createBy, createTime,
-			updateBy, updateTime) <> (CatalogDatabase.tupled, CatalogDatabase.unapply)
+			updateBy, updateTime) <> (DatabaseEntity.tupled, DatabaseEntity.unapply)
 	}
 
-	class CatalogTableTable(tag: Tag) extends BaseTable[CatalogTable](tag, "tables") {
+	class TableEntityTable(tag: Tag) extends BaseTable[TableEntity](tag, "tables") {
 		def name = column[String]("name")
+		def tableType = column[String]("tableType")
 		def description = column[Option[String]]("description")
 		def databaseId = column[Long]("databaseId")
 		def properties = column[Map[String, String]]("properties")
+		def viewText = column[Option[String]]("viewText")
 		def isStream = column[Boolean]("isStream")
-		override def * = (id.?, name, description, databaseId, properties,
-			isStream, createBy, createTime, updateBy, updateTime) <> (CatalogTable.tupled, CatalogTable.unapply)
+		def tableSize = column[Option[Long]]("tableSize")
+		override def * = (id.?, name, tableType, description, databaseId, properties, viewText,
+			isStream, tableSize, createBy, createTime, updateBy, updateTime) <> (TableEntity.tupled, TableEntity.unapply)
 	}
 
-	class CatalogOrganizationTable(tag: Tag) extends BaseTable[CatalogOrganization](tag, "organizations") {
+	class OrganizationEntityTable(tag: Tag) extends BaseTable[OrganizationEntity](tag, "organizations") {
 		def name = column[String]("name")
+		def config = column[Map[String, String]]("config")
 		def description = column[Option[String]]("description")
-		override def * = (id.?, name, description, createBy, createTime,
-			updateBy, updateTime) <> (CatalogOrganization.tupled, CatalogOrganization.unapply)
+		override def * = (id.?, name, config, description, createBy, createTime,
+			updateBy, updateTime) <> (OrganizationEntity.tupled, OrganizationEntity.unapply)
 	}
 
-	class CatalogGroupTable(tag: Tag) extends BaseTable[CatalogGroup](tag, "groups") {
-		def name = column[String]("name")
-		def description = column[Option[String]]("description")
-		def organizationId = column[Long]("organizationId")
-		override def * = (id.?, name, description, organizationId, createBy,
-			createTime, updateBy, updateTime) <> (CatalogGroup.tupled, CatalogGroup.unapply)
-	}
-
-	class CatalogUserTable(tag: Tag) extends BaseTable[CatalogUser](tag, "users") {
+	class UserEntityTable(tag: Tag) extends BaseTable[UserEntity](tag, "users") {
 		def name = column[String]("name")
 		def password = column[String]("password")
 		def account = column[Boolean]("account_privilege")
@@ -149,10 +143,10 @@ trait EntityComponent extends DatabaseComponent {
 		def configuration = column[Map[String, String]]("configuration")
 		override def * = (id.?, name, password, account, ddl, dcl, grantAccount,
 			grantDdl, grantDcl, isSA, organizationId, configuration, createBy, createTime,
-			updateBy, updateTime) <> (CatalogUser.tupled, CatalogUser.unapply)
+			updateBy, updateTime) <> (UserEntity.tupled, UserEntity.unapply)
 	}
 
-	class CatalogFunctionTable(tag: Tag) extends BaseTable[CatalogFunction](tag, "functions") {
+	class FunctionEntityTable(tag: Tag) extends BaseTable[FunctionEntity](tag, "functions") {
 		def name = column[String]("name")
 		def databaseId = column[Long]("databaseId")
 		def description = column[Option[String]]("description")
@@ -163,8 +157,8 @@ trait EntityComponent extends DatabaseComponent {
 			(id.?, name, databaseId, description, className, methodName,
 				createBy, createTime, updateBy, updateTime
 				) <> ({ case (id, name, databaseId, description, className, methodName, createBy, createTime, updateBy, updateTime) =>
-				CatalogFunction(id, name, databaseId, description, className, methodName, Seq(), createBy, createTime, updateBy, updateTime)}
-				, { function: CatalogFunction =>
+				FunctionEntity(id, name, databaseId, description, className, methodName, createBy, createTime, updateBy, updateTime)}
+				, { function: FunctionEntity =>
 				Some(
 					(function.id, function.name, function.databaseId, function.description, function.className, function.methodName,
 					function.createBy, function.createTime, function.updateBy, function.updateTime)
@@ -173,26 +167,17 @@ trait EntityComponent extends DatabaseComponent {
 		}
 	}
 
-	class CatalogFunctionResourceTable(tag: Tag) extends BaseTable[CatalogFunctionResource](tag, "function_resource") {
+	class FunctionResourceEntityTable(tag: Tag) extends BaseTable[FunctionResourceEntity](tag, "function_resource") {
 		def funcId = column[Long]("funcId")
 		def resourceType = column[String]("resourceType")
 		def resource = column[String]("resource")
-		override def * : ProvenShape[CatalogFunctionResource] = {
+		override def * : ProvenShape[FunctionResourceEntity] = {
 			(id.?, funcId, resourceType, resource, createBy, createTime, updateBy, updateTime) <>
-				(CatalogFunctionResource.tupled, CatalogFunctionResource.unapply)
+				(FunctionResourceEntity.tupled, FunctionResourceEntity.unapply)
 		}
 	}
 
-	class CatalogViewTable(tag: Tag) extends BaseTable[CatalogView](tag, "views") {
-		def name = column[String]("name")
-		def databaseId = column[Long]("databaseId")
-		def description = column[Option[String]]("description")
-		def cmds = column[String]("cmds")
-		override def * = (id.?, name, databaseId, description, cmds,
-			createBy, createTime, updateBy, updateTime) <> (CatalogView.tupled, CatalogView.unapply)
-	}
-
-	class CatalogProcedureTable(tag: Tag) extends BaseTable[CatalogProcedure](tag, "procedures") {
+	class ProcedureEntityTable(tag: Tag) extends BaseTable[ProcedureEntity](tag, "procedures") {
 
 		implicit val seqColumnType = MappedColumnType.base[Seq[String], String](
 			// Seq to String
@@ -207,10 +192,10 @@ trait EntityComponent extends DatabaseComponent {
 		def organizationId = column[Long]("organizationId")
 		def description = column[Option[String]]("description")
 		override def * = (id.?, name, cmds, lang, organizationId, description, createBy,
-			createTime, updateBy, updateTime) <> (CatalogProcedure.tupled, CatalogProcedure.unapply)
+			createTime, updateBy, updateTime) <> (ProcedureEntity.tupled, ProcedureEntity.unapply)
 	}
 
-	class CatalogTimedEventTable(tag: Tag) extends BaseTable[CatalogTimedEvent](tag, "events") {
+	class TimedEventEntityTable(tag: Tag) extends BaseTable[TimedEventEntity](tag, "events") {
 		def name = column[String]("name")
 		def organizationId = column[Long]("organizationId")
 		def definer = column[Long]("definer")
@@ -219,48 +204,41 @@ trait EntityComponent extends DatabaseComponent {
 		def description = column[Option[String]]("description")
 		def procedure = column[Long]("procedure")
 		override def * = (id.?, name, organizationId, definer, schedule, enable, description, procedure, createBy,
-			createTime, updateBy, updateTime) <> (CatalogTimedEvent.tupled, CatalogTimedEvent.unapply)
+			createTime, updateBy, updateTime) <> (TimedEventEntity.tupled, TimedEventEntity.unapply)
 	}
 
-	class CatalogDatabasePrivilegeTable(tag: Tag) extends BaseTable[CatalogDatabasePrivilege](tag, "database_privileges") {
+	class DatabasePrivilegeEntityTable(tag: Tag) extends BaseTable[DatabasePrivilegeEntity](tag, "database_privileges") {
 		def userId = column[Long]("userId")
 		def databaseId = column[Long]("databaseId")
 		def privilegeType = column[String]("privilege_type")
 		override def *  = (id.?, userId, databaseId, privilegeType,
-			createBy, createTime, updateBy, updateTime) <> (CatalogDatabasePrivilege.tupled, CatalogDatabasePrivilege.unapply)
+			createBy, createTime, updateBy, updateTime) <> (DatabasePrivilegeEntity.tupled, DatabasePrivilegeEntity.unapply)
 	}
 
-	class CatalogTablePrivilegeTable(tag: Tag) extends BaseTable[CatalogTablePrivilege](tag, "table_privileges") {
+	class TablePrivilegeEntityTable(tag: Tag) extends BaseTable[TablePrivilegeEntity](tag, "table_privileges") {
 		def userId = column[Long]("userId")
 		def databaseId = column[Long]("databaseId")
-		def table = column[String]("table")
+		def tableId = column[Long]("tableId")
 		def privilegeType = column[String]("privilege_type")
-		override def * = (id.?, userId, databaseId, table, privilegeType,
-			createBy, createTime, updateBy, updateTime) <> (CatalogTablePrivilege.tupled, CatalogTablePrivilege.unapply)
+		override def * = (id.?, userId, databaseId, tableId, privilegeType,
+			createBy, createTime, updateBy, updateTime) <> (TablePrivilegeEntity.tupled, TablePrivilegeEntity.unapply)
 	}
 
-	class CatalogColumnPrivilegeTable(tag: Tag) extends BaseTable[CatalogColumnPrivilege](tag, "column_privileges") {
+	class ColumnPrivilegeEntityTable(tag: Tag) extends BaseTable[ColumnPrivilegeEntity](tag, "column_privileges") {
 		def userId = column[Long]("userId")
 		def databaseId = column[Long]("databaseId")
-		def table = column[String]("table")
+		def tableId = column[Long]("tableId")
 		def columnName = column[String]("column")
 		def privilegeType = column[String]("privilege_type")
-		override def * = (id.?, userId, databaseId, table, columnName, privilegeType,
-			createBy, createTime, updateBy, updateTime) <> (CatalogColumnPrivilege.tupled, CatalogColumnPrivilege.unapply)
+		override def * = (id.?, userId, databaseId, tableId, columnName, privilegeType,
+			createBy, createTime, updateBy, updateTime) <> (ColumnPrivilegeEntity.tupled, ColumnPrivilegeEntity.unapply)
 	}
 
-	class CatalogUserGroupRelTable(tag: Tag) extends BaseTable[CatalogUserGroupRel](tag, "user_group_rel") {
-		def groupId = column[Long]("groupId")
-		def userId = column[Long]("userId")
-		override def * = (id.?, groupId, userId, createBy, createTime,
-			updateBy, updateTime) <> (CatalogUserGroupRel.tupled, CatalogUserGroupRel.unapply)
-	}
-
-	class CatalogVariableTable(tag: Tag) extends BaseTable[CatalogVariable](tag, "variables") {
+	class VariableEntityTable(tag: Tag) extends BaseTable[VariableEntity](tag, "variables") {
 		def name = column[String]("name")
 		def value = column[String]("value")
 		def userId = column[Long]("userId")
-		override def *  = (id.?, name, value, userId, createBy, createTime, updateBy, updateTime) <> (CatalogVariable.tupled, CatalogVariable.unapply)
+		override def *  = (id.?, name, value, userId, createBy, createTime, updateBy, updateTime) <> (VariableEntity.tupled, VariableEntity.unapply)
 	}
 }
 

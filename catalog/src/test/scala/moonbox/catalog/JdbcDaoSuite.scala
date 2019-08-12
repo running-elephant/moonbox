@@ -20,7 +20,7 @@
 
 package moonbox.catalog
 
-import moonbox.catalog.jdbc.JdbcDao
+import moonbox.catalog.jdbc._
 import moonbox.catalog.config._
 import moonbox.common.MbConf
 import org.scalatest.FunSuite
@@ -45,18 +45,46 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 	def action[R](act: DBIOAction[R, NoStream, Nothing]): Future[R] = jdbcDao.action(act)
 
 	test("organization") {
+
+		// SYSTEM org create by system
 		whenReady(
 			action(
-				createOrganization(CatalogOrganization(name = "moonboxTest1", createBy = 1, updateBy = 1))
+				getOrganization("SYSTEM")
 			)
-		)(id => assert(id == 1) )
+		)(org =>
+			assert(org.contains(
+				OrganizationEntity(
+					Some(1),
+					"SYSTEM",
+					Map(),
+					None,
+					-1,
+					org.get.createTime,
+					-1,
+					org.get.updateTime
+				)))
+		)
 
 		whenReady(
 			action(
-				createOrganization(CatalogOrganization(name = "moonboxTest2", createBy = 1, updateBy = 1))
+				createOrganization(OrganizationEntity(
+					name = "moonboxTest1",
+					config = Map(),
+					createBy = 1,
+					updateBy = 1))
 			)
-
 		)(id => assert(id == 2) )
+
+		whenReady(
+			action(
+				createOrganization(OrganizationEntity(
+					name = "moonboxTest2",
+					config = Map("a" -> "b"),
+					createBy = 1,
+					updateBy = 1))
+			)
+
+		)(id => assert(id == 3) )
 
 		whenReady(
 			action(
@@ -66,79 +94,40 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(
 			action(
-				getOrganization(1)
+				getOrganization(3)
 			)
 		)(org => {
 			assert(org.contains(
-				CatalogOrganization(Some(1), "mbTest", None, 1, org.get.createTime, 1, org.get.updateTime)))
+				OrganizationEntity(Some(3), "moonboxTest2", Map("a" -> "b"), None, 1, org.get.createTime, 1, org.get.updateTime)))
 		})
 
 		whenReady(action(getOrganization("mbTest")))(org => {
 			assert(org.contains(
-				CatalogOrganization(Some(1), "mbTest", None, 1, org.get.createTime, 1, org.get.updateTime)))
+				OrganizationEntity(Some(2), "mbTest", Map(), None, 1, org.get.createTime, 1, org.get.updateTime)))
 		})
 
 		whenReady(action(organizationExists("mbTest")))(exists => assert(exists))
 
-		whenReady(action(listOrganizations()))(orgs => assert(orgs.length == 2))
+		whenReady(action(listOrganizations()))(orgs => assert(orgs.length == 3))
 
 		whenReady(action(deleteOrganization(1)))(affect => assert(affect == 1))
 
 		whenReady(action(deleteOrganization("moonboxTest2")))(affect => assert(affect == 1))
 	}
 
-	test("group") {
-		whenReady(
-			action(
-				createGroup(CatalogGroup(name = "group", description = Some("for testing"), organizationId = 1, createBy = 1, updateBy = 1))
-			)
-		)(id => assert(id == 1))
-
-		whenReady(
-			action(
-				createGroup(CatalogGroup(name = "group2", organizationId = 1, createBy = 1, updateBy = 1))
-			)
-		)(id => assert(id == 2))
-
-		whenReady(
-			action(
-				renameGroup(1, "group", "group1")(1)
-			)
-		)(affect => assert(affect == 1))
-
-		whenReady(action(getGroup(1)))(group =>
-			assert(group.contains(
-				CatalogGroup(Some(1), "group1", Some("for testing"), 1, 1, group.get.createTime, 1, group.get.updateTime)
-			)
-			)
-		)
-
-		whenReady(action(getGroup(1, "group2")))(group =>
-			assert(group.contains(
-				CatalogGroup(Some(2), "group2", None, 1, 1, group.get.createTime, 1, group.get.updateTime)
-			))
-		)
-
-		whenReady(action(groupExists(1, "group1")))(exists => assert(exists))
-
-		whenReady(action(listGroups(1)))(groups => assert(groups.size == 2))
-
-		whenReady(action(listGroups(1, "group%")))(groups => assert(groups.size == 2))
-
-		whenReady(action(listGroups(1, "group1")))(groups => assert(groups.size == 1))
-
-		whenReady(action(deleteGroup(1)))(affect => assert(affect == 1))
-
-		whenReady(action(deleteGroup(1, "group2")))(affect => assert(affect == 1))
-	}
-
 	test("user") {
 		whenReady(
 			action(
-				createUser(CatalogUser(
+				getUser(1, "ROOT")
+			)
+		)(user => assert(user.isDefined))
+
+		whenReady(
+			action(
+				createUser(UserEntity(
 					name = "user1",
 					password = "123456",
-					organizationId = 1,
+					organizationId = 2,
 					createBy = 1,
 					updateBy = 1)
 				)
@@ -147,10 +136,10 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(
 			action(
-				createUser(CatalogUser(
+				createUser(UserEntity(
 					name = "user2",
 					password = "123456",
-					organizationId = 2,
+					organizationId = 3,
 					createBy = 1,
 					updateBy = 1)
 				)
@@ -160,11 +149,11 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 		whenReady(
 			action(
 				updateUser(
-					CatalogUser(
+					UserEntity(
 						id = Some(2),
 						name = "user1",
 						password = "abcdefg",
-						organizationId = 1,
+						organizationId = 2,
 						createBy = 1,
 						updateBy = 2)
 				)
@@ -173,105 +162,33 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(getUser(2)))(user =>
 			assert(user.contains(
-				CatalogUser(Some(2), "user1", "abcdefg", organizationId = 1,
+				UserEntity(Some(2), "user1", "abcdefg", organizationId = 2,
 					createBy = 1, createTime = user.get.createTime, updateBy = 2, updateTime = user.get.updateTime)
 			))
 		)
 
-		whenReady(action(userExists(1, "user1")))(exists => assert(exists))
+		whenReady(action(userExists(2, "user1")))(exists => assert(exists))
 
-		whenReady(action(userExists("user1")))(exists => assert(exists))
+		whenReady(action(listUsers(2)))(users => assert(users.size == 1))
 
-		whenReady(action(listUsers(1)))(users => assert(users.size == 1))
+		whenReady(action(listUsers(3, "user%")))(users => assert(users.size == 1))
 
-		whenReady(action(listUsers(2, "user%")))(users => assert(users.size == 1))
-
-		whenReady(action(deleteUser("user1")))(affect => assert(affect == 1))
+		whenReady(action(deleteUser(2, "user1")))(affect => assert(affect == 1))
 
 		whenReady(action(deleteUser(3)))(affect => assert(affect == 1))
 	}
-
-	/*test("datasource") {
-		whenReady(
-			action(
-				createDatasource(CatalogDatasource(
-					name = "datasource1",
-					properties = Map("key" -> "value"),
-					description = Some("for testing"),
-					organizationId = 1,
-					createBy = 1,
-					updateBy = 1
-				))
-			)
-		)(id => assert(id == 1))
-
-		whenReady(
-			action(
-				createDatasource(CatalogDatasource(
-					name = "datasource2",
-					properties = Map("key" -> "value"),
-					description = Some("for testing"),
-					organizationId = 1,
-					createBy = 1,
-					updateBy = 1
-				))
-			)
-		)(id => assert(id == 2))
-
-		whenReady(action(getDatasource(1)))(ds =>
-			assert(ds.contains(
-				CatalogDatasource(
-					id = Some(1),
-					name = "datasource1",
-					properties = Map("key" -> "value"),
-					description = Some("for testing"),
-					organizationId = 1,
-					createBy = 1,
-					createTime = ds.get.createTime,
-					updateBy = 1,
-					updateTime = ds.get.updateTime
-				)
-			))
-		)
-
-		whenReady(action(renameDatasource(1, "datasource1", "datasource")(2)))(affect => assert(affect == 1))
-
-		whenReady(action(getDatasource(1, "datasource")))(ds =>
-			assert(ds.contains(
-				CatalogDatasource(
-					id = Some(1),
-					name = "datasource",
-					properties = Map("key" -> "value"),
-					description = Some("for testing"),
-					organizationId = 1,
-					createBy = 1,
-					createTime = ds.get.createTime,
-					updateBy = 2,
-					updateTime = ds.get.updateTime
-				)
-			))
-		)
-
-		whenReady(action(datasourceExists(1, "datasource")))(exists => assert(exists))
-
-		whenReady(action(listDatasources(1)))(dss => assert(dss.size == 2))
-
-		whenReady(action(listDatasources(1, "datasource_")))(dss => assert(dss.size == 1))
-
-		whenReady(action(deleteDatasource(1, "datasource")))(affect => assert(affect == 1))
-
-		whenReady(action(deleteDatasource(2)))(affect => assert(affect == 1))
-	}*/
 
 	test("table") {
 		whenReady(
 			action(
 				createTable(
-					CatalogTable(
+					TableEntity(
 						name = "table1",
+						tableType = "TABLE",
 						description = Some("for testing"),
 						databaseId = 1,
 						properties = Map("key" -> "value"),
+						viewText = None,
 						isStream = false,
 						createBy = 1,
 						updateBy = 1
@@ -282,11 +199,13 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(
 			createTable(
-				CatalogTable(
+				TableEntity(
 					name = "table2",
+					tableType = "TABLE",
 					description = Some("for testing"),
 					databaseId = 1,
 					properties = Map("key" -> "value"),
+					viewText = None,
 					isStream = true,
 					createBy = 1,
 					updateBy = 1
@@ -298,12 +217,14 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(getTable(1, "table")))(table =>
 			assert(table.contains(
-				CatalogTable(
+				TableEntity(
 					id = Some(1),
 					name = "table",
+					tableType = "TABLE",
 					description = Some("for testing"),
 					databaseId = 1,
 					properties = Map("key" -> "value"),
+					viewText = None,
 					isStream = false,
 					createBy = 1,
 					createTime = table.get.createTime,
@@ -315,12 +236,14 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(getTable(2)))(table =>
 			assert(table.contains(
-				CatalogTable(
+				TableEntity(
 					id = Some(2),
 					name = "table2",
+					tableType = "TABLE",
 					description = Some("for testing"),
 					databaseId = 1,
 					properties = Map("key" -> "value"),
+					viewText = None,
 					isStream = true,
 					createBy = 1,
 					createTime = table.get.createTime,
@@ -332,12 +255,14 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(
 			updateTable(
-				CatalogTable(
+				TableEntity(
 					id = Some(2),
 					name = "table2",
+					tableType = "TABLE",
 					description = Some("for testing"),
 					databaseId = 1,
 					properties = Map("key1" -> "value"),
+					viewText = None,
 					isStream = true,
 					createBy = 1,
 					updateBy = 1
@@ -355,13 +280,12 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 	}
 
 	test("function") {
-		whenReady(action(createFunction(CatalogFunction(
+		whenReady(action(createFunction(FunctionEntity(
 						name = "function",
 						databaseId = 1,
 						description = Some("for testing"),
 						className = "className",
 						methodName = None,
-						resources = Seq(),
 						createBy = 1,
 						updateBy = 1
 					)
@@ -370,14 +294,13 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 		)(id => assert(id == 1))
 		whenReady(action(getFunction(1, "function")))(func => assert(
 			func.contains(
-				CatalogFunction(
+				FunctionEntity(
 					id = Some(1),
 					name = "function",
 					databaseId = 1,
 					description = Some("for testing"),
 					className = "className",
 					methodName = None,
-					resources = Seq(),
 					createBy = 1,
 					createTime = func.get.createTime,
 					updateBy = 1,
@@ -385,15 +308,29 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 				)
 			)
 		))
+
+		whenReady(action(
+			createFunctionResources(
+				FunctionResourceEntity(
+					funcId = 1,
+					resourceType = "jar",
+					resource = "xxx.jar",
+					createBy = 1,
+					updateBy = 1
+				)
+			)
+		))(id => assert(id.contains(1)))
+
 		whenReady(action(functionExists(1, "function")))(exists => assert(exists))
 		whenReady(action(renameFunction(1, "function", "function1")(1)))(affect => assert(affect == 1))
-		whenReady(action(listFunctions(1)))(funcs => assert(funcs.size == 1))
+		whenReady(action(listFunctions(1)))(funcs =>
+			assert(funcs.size == 1))
 	}
 
 	test("database") {
 		whenReady(action(
 			createDatabase(
-				CatalogDatabase(
+				DatabaseEntity(
 					name = "database",
 					description = Some("for testing"),
 					organizationId = 1,
@@ -407,7 +344,7 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 
 		whenReady(action(
 			createDatabase(
-				CatalogDatabase(
+				DatabaseEntity(
 					name = "database2",
 					description = Some("for testing"),
 					organizationId = 1,

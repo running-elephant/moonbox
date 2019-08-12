@@ -22,542 +22,378 @@ package moonbox.catalog
 
 import moonbox.common.util.ListenerBus
 
+
+object AbstractCatalog {
+	case class User(orgId: Long, org: String, userId: Long, user: String)
+}
+
+
 abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, CatalogEvent] {
 
+	import AbstractCatalog._
 	// ----------------------------------------------------------------------------
 	// Organization
 	// ----------------------------------------------------------------------------
 
-	final def createOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean): Unit = {
+	final def createOrganization(
+		orgDefinition: CatalogOrganization, ignoreIfExists: Boolean)(implicit by: User): Unit = {
 		val org = orgDefinition.name
 		postToAll(CreateOrganizationPreEvent(org))
 		doCreateOrganization(orgDefinition, ignoreIfExists)
 		postToAll(CreateOrganizationEvent(org))
 	}
 
-	final def dropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
+	final def dropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = {
 		postToAll(DropOrganizationPreEvent(org))
 		doDropOrganization(org, ignoreIfNotExists, cascade)
 		postToAll(DropOrganizationEvent(org))
 	}
 
-	final def renameOrganization(org: String, newOrg: String, updateBy: Long): Unit = {
+	final def renameOrganization(org: String, newOrg: String)(implicit by: User): Unit = {
 		postToAll(RenameOrganizationPreEvent(org, newOrg))
-		doRenameOrganization(org, newOrg, updateBy)
+		doRenameOrganization(org, newOrg)
 		postToAll(RenameOrganizationEvent(org, newOrg))
 	}
 
-	protected def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean): Unit
+	protected def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	protected def doDropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit
+	protected def doDropOrganization(org: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit
 
-	protected def doRenameOrganization(org: String, newOrg: String, updateBy: Long): Unit
+	protected def doRenameOrganization(org: String, newOrg: String)(implicit by: User): Unit
 
-	def organizationName(organizationId: Long): String = getOrganization(organizationId).name
+	def alterOrganization(orgDefinition: CatalogOrganization)(implicit by: User): Unit
 
-	def alterOrganization(orgDefinition: CatalogOrganization): Unit
+	def getOrganization(org: String)(implicit by: User): CatalogOrganization
 
-	def getOrganization(org: String): CatalogOrganization
+	def getOrganizationOption(org: String)(implicit by: User): Option[CatalogOrganization]
 
-	def getOrganization(org: Long): CatalogOrganization
+	def organizationExists(org: String)(implicit by: User): Boolean
 
-	def getOrganizationOption(org: String): Option[CatalogOrganization]
+	def listOrganizations()(implicit by: User): Seq[CatalogOrganization]
 
-	def getOrganizationOption(org: Long): Option[CatalogOrganization]
-
-	def organizationExists(org: String): Boolean
-
-	def listOrganizations(): Seq[CatalogOrganization]
-
-	def listOrganizations(pattern: String): Seq[CatalogOrganization]
-
-	// ----------------------------------------------------------------------------
-	// Group -- belong to organization
-	// ----------------------------------------------------------------------------
-
-	final def createGroup(groupDefinition: CatalogGroup, organization: String, ignoreIfExists: Boolean): Unit = {
-		val group = groupDefinition.name
-		postToAll(CreateGroupPreEvent(organization, group))
-		doCreateGroup(groupDefinition, ignoreIfExists)
-		postToAll(CreateGroupEvent(organization, group))
-	}
-
-	protected def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean): Unit
-
-	final def dropGroup(organizationId: Long, organization: String , group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		postToAll(DropGroupPreEvent(organization, group))
-		doDropGroup(organizationId, group, ignoreIfNotExists, cascade)
-		postToAll(DropGroupEvent(organization, group))
-	}
-
-	protected def doDropGroup(organizationId: Long, group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit
-
-	final def renameGroup(organizationId: Long, organization: String, group: String, newGroup: String, updateBy: Long): Unit = {
-		postToAll(RenameGroupPreEvent(organization, group, newGroup))
-		doRenameGroup(organizationId, group, newGroup, updateBy)
-		postToAll(RenameGroupEvent(organization, group, newGroup))
-	}
-
-	protected def doRenameGroup(organizationId: Long, group: String, newGroup: String, updateBy: Long): Unit
-
-	def groupName(groupId: Long): String = getGroup(groupId).name
-
-	def alterGroup(groupDefinition: CatalogGroup): Unit
-
-	def getGroup(organizationId: Long, group: String): CatalogGroup
-
-	def getGroup(groupId: Long): CatalogGroup
-
-	def getGroups(organizationId: Long, groups: Seq[String]): Seq[CatalogGroup]
-
-	def getGroupOption(organizationId: Long, group: String): Option[CatalogGroup]
-
-	def getGroupOption(groupId: Long): Option[CatalogGroup]
-
-	def groupExists(organizationId: Long, group: String): Boolean
-
-	def listGroups(organizationId: Long): Seq[CatalogGroup]
-
-	def listGroups(organizationId: Long, pattern: String): Seq[CatalogGroup]
+	def listOrganizations(pattern: String)(implicit by: User): Seq[CatalogOrganization]
 
 	// ----------------------------------------------------------------------------
 	// User -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	final def createUser(userDefinition: CatalogUser, organization: String, ignoreIfExists: Boolean): Unit = {
-		val user = userDefinition.name
-		postToAll(CreateUserPreEvent(organization, user))
+	final def createUser(
+		userDefinition: CatalogUser, ignoreIfExists: Boolean)(implicit by: User): Unit = {
+		postToAll(CreateUserPreEvent(userDefinition.org, userDefinition.name))
 		doCreateUser(userDefinition, ignoreIfExists)
-		postToAll(CreateUserEvent(organization, user))
+		postToAll(CreateUserEvent(userDefinition.org, userDefinition.name))
 	}
 
-	protected def doCreateUser(userDefinition: CatalogUser, ignoreIfExists: Boolean): Unit
+	protected def doCreateUser(userDefinition: CatalogUser, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def dropUser(organizationId: Long, organization: String, user: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropUserPreEvent(organization, user))
-		doDropUser(organizationId, organization, user, ignoreIfNotExists)
-		postToAll(DropUserEvent(organization, user))
+	final def dropUser(org: String, user: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropUserPreEvent(org, user))
+		doDropUser(org, user, ignoreIfNotExists)
+		postToAll(DropUserEvent(org, user))
 	}
 
-	protected def doDropUser(organizationId: Long, organization: String, user: String, ignoreIfNotExists: Boolean): Unit
+	protected def doDropUser(org: String, user: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
-	final def renameUser(organizationId: Long, organization: String, user: String, newUser: String, updateBy: Long): Unit = {
-		postToAll(RenameUserPreEvent(organization, user, newUser))
-		doRenameUser(organizationId, user, newUser, updateBy)
-		postToAll(RenameUserEvent(organization, user, newUser))
+	final def renameUser(org: String, user: String, newUser: String)(implicit by: User): Unit = {
+		postToAll(RenameUserPreEvent(org, user, newUser))
+		doRenameUser(org, user, newUser)
+		postToAll(RenameUserEvent(org, user, newUser))
 	}
 
-	protected def doRenameUser(organizationId: Long, user: String, newUser: String, updateBy: Long): Unit
+	protected def doRenameUser(org: String, user: String, newUser: String)(implicit by: User): Unit
 
-	def alterUser(userDefinition: CatalogUser): Unit
+	def alterUser(userDefinition: CatalogUser)(implicit by: User): Unit
 
-	def getUser(organizationId: Long, user: String): CatalogUser
+	def getUser(org: String, user: String): CatalogUser
 
-	def getUsers(organizationId: Long, users: Seq[String]): Seq[CatalogUser]
+	def getUserOption(org: String, user: String): Option[CatalogUser]
 
-	def getUsers(userIds: Seq[Long]): Seq[CatalogUser]
+	def userExists(org: String, user: String): Boolean
 
-	def getUser(user: Long): CatalogUser
+	def listUsers(org: String): Seq[CatalogUser]
 
-	def getUserOption(username: String): Option[CatalogUser]
+	def listUsers(org: String, pattern: String): Seq[CatalogUser]
 
-	def getUserOption(organizationId: Long, user: String): Option[CatalogUser]
+	def listSas(): Seq[CatalogUser]
 
-	def getUserOption(user: Long): Option[CatalogUser]
-
-	def userExists(organizationId: Long, user: String): Boolean
-
-	def listUsers(organizationId: Long): Seq[CatalogUser]
-
-	def listUsers(organizationId: Long, pattern: String): Seq[CatalogUser]
-
-
-
-	// ----------------------------------------------------------------------------
-	// Procedure -- belong to organization
-	// ----------------------------------------------------------------------------
-
-	final def createProcedure(procDefinition: CatalogProcedure, organization: String, ignoreIfExists: Boolean): Unit = {
-		val proc = procDefinition.name
-		postToAll(CreateProcedurePreEvent(organization, proc))
-		doCreateProcedure(procDefinition, ignoreIfExists)
-		postToAll(CreateProcedureEvent(organization, proc))
-	}
-
-	protected def doCreateProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean): Unit
-
-	final def dropProcedure(organizationId: Long, organization: String, proc: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropProcedurePreEvent(organization, proc))
-		doDropProcedure(organizationId, proc, ignoreIfNotExists)
-		postToAll(DropProcedureEvent(organization, proc))
-	}
-
-	protected def doDropProcedure(organizationId: Long, proc: String, ignoreIfNotExists: Boolean): Unit
-
-	final def renameProcedure(organizationId: Long, organization: String, proc: String, newProc: String, updateBy: Long): Unit = {
-		postToAll(RenameProcedurePreEvent(organization, proc, newProc))
-		doRenameProcedure(organizationId, proc, newProc, updateBy)
-		postToAll(RenameProcedureEvent(organization, proc, newProc))
-	}
-
-	protected def doRenameProcedure(organizationId: Long, proc: String, newProc: String, updateBy: Long): Unit
-
-	def alterProcedure(procDefinition: CatalogProcedure): Unit
-
-	def getProcedure(organizationId: Long, proc: String): CatalogProcedure
-
-	def getProcedure(proc: Long): CatalogProcedure
-
-	def getProcedureOption(organizationId: Long, proc: String): Option[CatalogProcedure]
-
-	def getProcedureOption(proc: Long): Option[CatalogProcedure]
-
-	def procedureExists(organizationId: Long, proc: String): Boolean
-
-	def listProcedures(organizationId: Long): Seq[CatalogProcedure]
-
-	def listProcedures(organizationId: Long, pattern: String): Seq[CatalogProcedure]
-
-	// ----------------------------------------------------------------------------
-	// timedevent -- belong to organization
-	// ----------------------------------------------------------------------------
-	final def createTimedEvent(eventDefinition: CatalogTimedEvent, organization: String, ignoreIfExists: Boolean): Unit = {
-		val event = eventDefinition.name
-		postToAll(CreateTimedEventPreEvent(organization, event))
-		doCreateTimedEvent(eventDefinition, ignoreIfExists)
-		postToAll(CreateTimedEventEvent(organization, event))
-	}
-	protected def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean): Unit
-
-	final def renameTimedEvent(organizationId: Long, organization: String, event: String, newEvent: String, updateBy: Long): Unit = {
-		postToAll(RenameTimedEventPreEvent(organization, event))
-		doRenameTimedEvent(organizationId, event, newEvent, updateBy)
-		postToAll(RenameTimedEventEvent(organization, event))
-	}
-
-	protected def doRenameTimedEvent(organizationId: Long, event: String, newEvent: String, updateBy: Long): Unit
-
-	final def dropTimedEvent(organizationId: Long, organization: String, event: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropTimedEventPreEvent(organization, event))
-		doDropTimedEvent(organizationId, event, ignoreIfNotExists)
-		postToAll(DropTimedEventEvent(organization, event))
-	}
-
-	protected def doDropTimedEvent(organizationId: Long, event: String, ignoreIfNotExists: Boolean): Unit
-
-	def alterTimedEvent(eventDefinition: CatalogTimedEvent): Unit
-
-	def timedEventExists(organizationId: Long, event: String): Boolean
-
-	def getTimedEvent(organizationId: Long, event: String): CatalogTimedEvent
-
-	def listTimedEvents(organizationId: Long): Seq[CatalogTimedEvent]
-
-	def listTimedEvents(organizationId: Long, pattern: String): Seq[CatalogTimedEvent]
-
+	def listSas(pattern: String): Seq[CatalogUser]
 
 
 	// ----------------------------------------------------------------------------
 	// Database -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	final def createDatabase(dbDefinition: CatalogDatabase, organization: String, ignoreIfExists: Boolean): Unit = {
-		val db = dbDefinition.name
-		postToAll(CreateDatabasePreEvent(organization, db))
+	final def createDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean)(implicit by: User): Unit = {
+		postToAll(CreateDatabasePreEvent(by.org, dbDefinition.name))
 		doCreateDatabase(dbDefinition, ignoreIfExists)
-		postToAll(CreateDatabaseEvent(organization, db))
+		postToAll(CreateDatabaseEvent(by.org, dbDefinition.name))
 	}
 
-	protected def doCreateDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean): Unit
+	protected def doCreateDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def dropDatabase(organizationId: Long, organization: String, db: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		postToAll(DropDatabasePreEvent(organization, db))
-		doDropDatabase(organizationId, db, ignoreIfNotExists, cascade)
-		postToAll(DropDatabaseEvent(organization, db))
+	final def dropDatabase(db: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = {
+		postToAll(DropDatabasePreEvent(by.org, db))
+		doDropDatabase(db, ignoreIfNotExists, cascade)
+		postToAll(DropDatabaseEvent(by.org, db))
 	}
 
-	protected def doDropDatabase(organizationId: Long, db: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit
+	protected def doDropDatabase(db: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit
 
-	final def renameDatabase(organizationId: Long, organization: String, db: String, newDb: String, updateBy: Long): Unit = {
-		postToAll(RenameDatabasePreEvent(organization, db, newDb))
-		doRenameDatabase(organizationId, db, newDb, updateBy)
-		postToAll(RenameDatabaseEvent(organization, db, newDb))
+	final def renameDatabase(db: String, newDb: String)(implicit by: User): Unit = {
+		postToAll(RenameDatabasePreEvent(by.org, db, newDb))
+		doRenameDatabase(db, newDb)
+		postToAll(RenameDatabaseEvent(by.org, db, newDb))
 	}
 
-	protected def doRenameDatabase(organizationId: Long, db: String, newDb: String, updateBy: Long): Unit
+	protected def doRenameDatabase(db: String, newDb: String)(implicit by: User): Unit
 
-	def databaseName(databaseId: Long): String = getDatabase(databaseId).name
+	def alterDatabase(dbDefinition: CatalogDatabase)(implicit by: User): Unit
 
-	def databaseOrganization(databaseId: Long): Long = getDatabase(databaseId).organizationId
+	def getDatabase(db: String)(implicit by: User): CatalogDatabase
 
-	def alterDatabase(dbDefinition: CatalogDatabase): Unit
+	def getDatabaseOption(db: String)(implicit by: User): Option[CatalogDatabase]
 
-	def getDatabase(organizationId: Long, db: String): CatalogDatabase
+	def databaseExists(db: String)(implicit by: User): Boolean
 
-	def getDatabase(id: Long): CatalogDatabase
+	def listDatabases()(implicit by: User): Seq[CatalogDatabase]
 
-	def getDatabaseOption(organizationId: Long, db: String): Option[CatalogDatabase]
+	def listDatabases(pattern: String)(implicit by: User): Seq[CatalogDatabase]
 
-	def getDatabaseOption(id: Long): Option[CatalogDatabase]
-
-	def databaseExists(organizationId: Long, db: String): Boolean
-
-	def listDatabases(organizationId: Long): Seq[CatalogDatabase]
-
-	def listDatabases(organizationId: Long, pattern: String): Seq[CatalogDatabase]
 
 	// ----------------------------------------------------------------------------
 	// Table -- belong to database
 	// ----------------------------------------------------------------------------
 
-	final def createTable(tableDefinition: CatalogTable, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
-		val table = tableDefinition.name
-		postToAll(CreateTablePreEvent(organization, db, table))
+	final def createTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean)(implicit by: User): Unit = {
+		postToAll(CreateTablePreEvent(
+			by.org, tableDefinition.database, tableDefinition.name))
 		doCreateTable(tableDefinition, ignoreIfExists)
-		postToAll(CreateTableEvent(organization, db, table))
-	}
-	protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean): Unit
-
-	final def dropTable(databaseId: Long, organization: String, db: String, table: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropTablePreEvent(organization, db, table))
-		doDropTable(databaseId, table, ignoreIfNotExists)
-		postToAll(DropTableEvent(organization, db, table))
+		postToAll(CreateTableEvent(
+			by.org, tableDefinition.database, tableDefinition.name))
 	}
 
-	protected def doDropTable(databaseId: Long, table: String, ignoreIfNotExists: Boolean): Unit
+	protected def doCreateTable(tableDefinition: CatalogTable, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def renameTable(databaseId: Long, organization: String, db: String, table: String, newTable: String, updateBy: Long): Unit = {
-		postToAll(RenameTablePreEvent(organization, db, table, newTable))
-		doRenameTable(databaseId, table, newTable, updateBy)
-		postToAll(RenameTableEvent(organization, db, table, newTable))
+	final def dropTable(
+		db: String, table: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropTablePreEvent(by.org, db, table))
+		doDropTable(db, table, ignoreIfNotExists)
+		postToAll(DropTableEvent(by.org, db, table))
 	}
 
-	protected def doRenameTable(databaseId: Long, table: String, newTable: String, updateBy: Long): Unit
+	protected def doDropTable(database: String, table: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
-	def alterTable(tableDefinition: CatalogTable): Unit
+	final def renameTable(database: String, table: String, newTable: String)(implicit by: User): Unit = {
+		postToAll(RenameTablePreEvent(by.org, database, table, newTable))
+		doRenameTable(database, table, newTable)
+		postToAll(RenameTableEvent(by.org, database, table, newTable))
+	}
 
-	def getTable(databaseId: Long, table: String): CatalogTable
+	protected def doRenameTable(database: String, table: String, newTable: String)(implicit by: User): Unit
 
-	def getTable(table: Long): CatalogTable
+	def alterTable(tableDefinition: CatalogTable)(implicit by: User): Unit
 
-	def getTableOption(databaseId: Long, table: String): Option[CatalogTable]
+	def getTable(database: String, table: String)(implicit by: User): CatalogTable
 
-	def getTableOption(table: Long): Option[CatalogTable]
+	def getTableOption(database: String, table: String)(implicit by: User): Option[CatalogTable]
 
-	def tableExists(databaseId: Long, table: String): Boolean
+	def tableExists(database: String, table: String)(implicit by: User): Boolean
 
-	def listTables(databaseId: Long): Seq[CatalogTable]
+	def listTables(database: String)(implicit by: User): Seq[CatalogTable]
 
-	def listTables(databaseId: Long, pattern: String): Seq[CatalogTable]
+	def listTables(database: String, pattern: String)(implicit by: User): Seq[CatalogTable]
+
 
 	// ----------------------------------------------------------------------------
 	// Function -- belong to database
 	// ----------------------------------------------------------------------------
 
-	final def createFunction(funcDefinition: CatalogFunction, organization: String, db: String, ignoreIfExists: Boolean): Unit = {
+	final def createFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean)(implicit by: User): Unit = {
 		val function = funcDefinition.name
-		postToAll(CreateFunctionPreEvent(organization, db, function))
+		postToAll(CreateFunctionPreEvent(by.org, funcDefinition.database, function))
 		doCreateFunction(funcDefinition, ignoreIfExists)
-		postToAll(CreateFunctionEvent(organization, db, function))
+		postToAll(CreateFunctionEvent(by.org, funcDefinition.database, function))
 	}
 
-	protected def doCreateFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean): Unit
+	protected def doCreateFunction(funcDefinition: CatalogFunction, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def dropFunction(databaseId: Long, organization: String, db: String, func: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropFunctionPreEvent(organization, db, func))
-		doDropFunction(databaseId, func, ignoreIfNotExists)
-		postToAll(DropFunctionEvent(organization, db, func))
+	final def dropFunction(database: String, func: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropFunctionPreEvent(by.org, database, func))
+		doDropFunction(database, func, ignoreIfNotExists)
+		postToAll(DropFunctionEvent(by.org, database, func))
 	}
 
-	protected def doDropFunction(databaseId: Long, func: String, ignoreIfNotExists: Boolean): Unit
+	protected def doDropFunction(database: String, func: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
-	final def renameFunction(databaseId: Long, organization: String, db: String, func: String, newFunc: String, updateBy: Long): Unit = {
-		postToAll(RenameFunctionPreEvent(organization, db, func, newFunc))
-		doRenameFunction(databaseId, func, newFunc, updateBy)
-		postToAll(RenameFunctionEvent(organization, db, func, newFunc))
+	final def renameFunction(database: String, func: String, newFunc: String)(implicit by: User): Unit = {
+		postToAll(RenameFunctionPreEvent(by.org, database, func, newFunc))
+		doRenameFunction(database, func, newFunc)
+		postToAll(RenameFunctionEvent(by.org, database, func, newFunc))
 	}
 
-	protected def doRenameFunction(databaseId: Long, func: String, newFunc: String, updateBy: Long): Unit
+	protected def doRenameFunction(database: String, func: String, newFunc: String)(implicit by: User): Unit
 
-	//def alterFunction(funcDefinition: CatalogFunction): Unit
+	def getFunction(database: String, func: String)(implicit by: User): CatalogFunction
 
-	def getFunction(databaseId: Long, func: String): CatalogFunction
+	def getFunctionOption(database: String, func: String)(implicit by: User): Option[CatalogFunction]
 
-	/*def getFunction(func: Long): CatalogFunction
+	def functionExists(database: String, func: String)(implicit by: User): Boolean
 
-	def getFunctionOption(databaseId: Long, func: String): Option[CatalogFunction]
+	def listFunctions(database: String)(implicit by: User): Seq[CatalogFunction]
 
-	def getFunctionOption(func: Long): Option[CatalogFunction]*/
-
-	def functionExists(databaseId: Long, func: String): Boolean
-
-	def listFunctions(databaseId: Long): Seq[CatalogFunction]
-
-	def listFunctions(databaseId: Long, pattern: String): Seq[CatalogFunction]
+	def listFunctions(database: String, pattern: String)(implicit by: User): Seq[CatalogFunction]
 
 	// ----------------------------------------------------------------------------
-	// View -- belong to database
+	// Procedure -- belong to organization
 	// ----------------------------------------------------------------------------
 
-	final def createView(viewDefinition: CatalogView, organization: String, db: String, replaceIfExists: Boolean): Unit = {
-		val view = viewDefinition.name
-		postToAll(CreateViewPreEvent(organization, db, view))
-		doCreateView(viewDefinition, replaceIfExists)
-		postToAll(CreateViewEvent(organization, db, view))
+	final def createProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean)(implicit by: User): Unit = {
+		postToAll(CreateProcedurePreEvent(by.org, procDefinition.name))
+		doCreateProcedure(procDefinition, ignoreIfExists)
+		postToAll(CreateProcedureEvent(by.org, procDefinition.name))
 	}
 
-	protected def doCreateView(viewDefinition: CatalogView, replaceIfExists: Boolean): Unit
+	protected def doCreateProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def dropView(databaseId: Long, organization: String, db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
-		postToAll(DropViewPreEvent(organization, db, view))
-		doDropView(databaseId, view, ignoreIfNotExists)
-		postToAll(DropViewEvent(organization, db, view))
+	final def dropProcedure(proc: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropProcedurePreEvent(by.org, proc))
+		doDropProcedure(proc, ignoreIfNotExists)
+		postToAll(DropProcedureEvent(by.org, proc))
 	}
 
-	protected def doDropView(databaseId: Long, view: String, ignoreIfNotExists: Boolean): Unit
+	protected def doDropProcedure(proc: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
-	final def renameView(databaseId: Long, organization: String, db: String, view: String, newView: String, updateBy: Long): Unit = {
-		postToAll(RenameViewPreEvent(organization, db, view, newView))
-		doRenameView(databaseId, view, newView, updateBy)
-		postToAll(RenameViewEvent(organization, db, view, newView))
+	final def renameProcedure(proc: String, newProc: String)(implicit by: User): Unit = {
+		postToAll(RenameProcedurePreEvent(by.org, proc, newProc))
+		doRenameProcedure(proc, newProc)
+		postToAll(RenameProcedureEvent(by.org, proc, newProc))
 	}
 
-	protected def doRenameView(databaseId: Long, view: String, newView: String, updateBy: Long): Unit
+	protected def doRenameProcedure(proc: String, newProc: String)(implicit by: User): Unit
 
-	def alterView(viewDefinition: CatalogView): Unit
+	def alterProcedure(procDefinition: CatalogProcedure)(implicit by: User): Unit
 
-	def getView(databaseId: Long, view: String): CatalogView
+	def getProcedure(proc: String)(implicit by: User): CatalogProcedure
 
-	def getView(view: Long): CatalogView
+	def getProcedureOption(proc: String)(implicit by: User): Option[CatalogProcedure]
 
-	def getViewOption(databaseId: Long, view: String): Option[CatalogView]
+	def procedureExists(proc: String)(implicit by: User): Boolean
 
-	def getViewOption(view: Long): Option[CatalogView]
+	def listProcedures()(implicit by: User): Seq[CatalogProcedure]
 
-	def viewExists(databaseId: Long, view: String): Boolean
+	def listProcedures(pattern: String)(implicit by: User): Seq[CatalogProcedure]
 
-	def listViews(databaseId: Long): Seq[CatalogView]
-
-	def listViews(databaseId: Long, pattern: String): Seq[CatalogView]
 
 	// ----------------------------------------------------------------------------
-	// UserGroupRel --   the relation of user - group
+	// timedEvent -- belong to organization
 	// ----------------------------------------------------------------------------
-
-	final def createUserGroupRel(userGroupRels: CatalogUserGroupRel*)(organization: String, group: String, users: Seq[String]): Unit = {
-		postToAll(CreateUserGroupRelPreEvent(organization, group, users))
-		doCreateUserGroupRel(userGroupRels:_*)
-		postToAll(CreateUserGroupRelEvent(organization, group, users))
+	final def createTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean)(implicit by: User): Unit = {
+		postToAll(CreateTimedEventPreEvent(by.org, eventDefinition.name))
+		doCreateTimedEvent(eventDefinition, ignoreIfExists)
+		postToAll(CreateTimedEventEvent(by.org, eventDefinition.name))
 	}
 
-	protected def doCreateUserGroupRel(userGroupRels: CatalogUserGroupRel*): Unit
+	protected def doCreateTimedEvent(eventDefinition: CatalogTimedEvent, ignoreIfExists: Boolean)(implicit by: User): Unit
 
-	final def dropUserGroupRelByGroup(groupId: Long, organization: String, group: String, users: Seq[String]): Unit = {
-		postToAll(DropUserGroupRelByGroupPreEvent(organization, group, users))
-		doDropUserGroupRelByGroup(groupId)
-		postToAll(DropUserGroupRelByGroupEvent(organization, group, users))
+	final def renameTimedEvent(event: String, newEvent: String)(implicit by: User): Unit = {
+		postToAll(RenameTimedEventPreEvent(by.org, event))
+		doRenameTimedEvent(event, newEvent)
+		postToAll(RenameTimedEventEvent(by.org, event))
 	}
 
-	protected def doDropUserGroupRelByGroup(groupId: Long): Unit
+	protected def doRenameTimedEvent(event: String, newEvent: String)(implicit by: User): Unit
 
-	final def dropUserGroupRelByUser(userId: Long, organization: String, user: String, groups: Seq[String]): Unit = {
-		postToAll(DropUserGroupRelByUserPreEvent(organization, user, groups))
-		doDropUserGroupRelByUser(userId)
-		postToAll(DropUserGroupRelByUserEvent(organization, user, groups))
+	final def dropTimedEvent(event: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropTimedEventPreEvent(by.org, event))
+		doDropTimedEvent(event, ignoreIfNotExists)
+		postToAll(DropTimedEventEvent(by.org, event))
 	}
 
-	protected def doDropUserGroupRelByUser(userId: Long): Unit
+	protected def doDropTimedEvent(event: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
-	final def dropUserGroupRel(groupId: Long, userIds: Seq[Long], organization: String, group: String, users: Seq[String]): Unit = {
-		postToAll(DropUserGroupRelPreEvent(organization, group, users))
-		doDropUserGroupRel(groupId, userIds)
-		postToAll(DropUserGroupRelPreEvent(organization, group, users))
-	}
+	def alterTimedEvent(eventDefinition: CatalogTimedEvent)(implicit by: User): Unit
 
-	protected def doDropUserGroupRel(groupId: Long, userIds: Seq[Long]): Unit
+	def getTimedEvent(event: String)(implicit by: User): CatalogTimedEvent
 
-	def getUserGroupRelsByGroup(groupId: Long): Seq[CatalogUserGroupRel]
+	def getTimedEventOption(event: String)(implicit by: User): Option[CatalogTimedEvent]
 
-	def getUserGroupRelsByUser(userId: Long): Seq[CatalogUserGroupRel]
+	def timedEventExists(event: String)(implicit by: User): Boolean
+
+	def listTimedEvents()(implicit by: User): Seq[CatalogTimedEvent]
+
+	def listTimedEvents(pattern: String)(implicit by: User): Seq[CatalogTimedEvent]
 
 
 	// ----------------------------------------------------------------------------
 	// database privilege --   the privilege relation of user - database
 	// ----------------------------------------------------------------------------
-	final def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*)
-		(user: String, organization: String, db: String): Unit = {
-		val privileges = dbPrivilege.map(_.privilegeType)
-		postToAll(CreateDatabasePrivilegePreEvent(organization, user, db, privileges))
-		doCreateDatabasePrivilege(dbPrivilege:_*)
-		postToAll(CreateDatabasePrivilegeEvent(organization, user, db, privileges))
+	final def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege)(implicit by: User): Unit = {
+		postToAll(CreateDatabasePrivilegePreEvent(
+			by.org, dbPrivilege.user, dbPrivilege.database, dbPrivilege.privileges))
+		doCreateDatabasePrivilege(dbPrivilege)
+		postToAll(CreateDatabasePrivilegeEvent(
+			by.org, dbPrivilege.user, dbPrivilege.database, dbPrivilege.privileges))
 	}
-	protected def doCreateDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*): Unit
 
-	final def dropDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*)
-		(user: String, organization: String, database: String): Unit = {
-		postToAll(DropDatabasePrivilegePreEvent(organization, user, database, privileges))
-		doDropDatabasePrivilege(userId, databaseId, privileges:_*)
-		postToAll(DropDatabasePrivilegeEvent(organization, user, database, privileges))
+	protected def doCreateDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege)(implicit by: User): Unit
+
+	final def dropDatabasePrivilege(user: String, database: String, privileges: Seq[String])(implicit by: User): Unit = {
+		postToAll(DropDatabasePrivilegePreEvent(by.org, user, database, privileges))
+		doDropDatabasePrivilege(user, database, privileges)
+		postToAll(DropDatabasePrivilegeEvent(by.org, user, database, privileges))
 	}
-	protected def doDropDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*): Unit
 
-	protected def getDatabasePrivilege(userId: Long, databaseId: Long, privilege: String): Option[CatalogDatabasePrivilege]
+	protected def doDropDatabasePrivilege(user: String, database: String, privileges: Seq[String])(implicit by: User): Unit
 
-	protected def getDatabasePrivilege(userId: Long, databaseId: Long): Seq[CatalogDatabasePrivilege]
+	protected def getDatabasePrivilege(user: String, database: String)(implicit by: User): CatalogDatabasePrivilege
 
-	protected def getDatabasePrivilege(userId: Long): Seq[CatalogDatabasePrivilege]
 
 	// ----------------------------------------------------------------------------
 	// table privilege --   the privilege relation of user - table
 	// ----------------------------------------------------------------------------
-	final def createTablePrivilege(tablePrivilege: CatalogTablePrivilege*)
-		(user: String, organization: String, db: String, table: String): Unit = {
-		val privileges = tablePrivilege.map(_.privilegeType)
-		postToAll(CreateTablePrivilegePreEvent(organization, user, db, table, privileges))
-		doCreateTablePrivilege(tablePrivilege:_*)
-		postToAll(CreateTablePrivilegeEvent(organization, user, db, table, privileges))
+	final def createTablePrivilege(tablePrivilege: CatalogTablePrivilege)(implicit by: User): Unit = {
+		postToAll(CreateTablePrivilegePreEvent(
+			by.org, tablePrivilege.user, tablePrivilege.database, tablePrivilege.table, tablePrivilege.privileges))
+		doCreateTablePrivilege(tablePrivilege)
+		postToAll(CreateTablePrivilegeEvent(
+			by.org, tablePrivilege.user, tablePrivilege.database, tablePrivilege.table, tablePrivilege.privileges))
 	}
-	protected def doCreateTablePrivilege(tablePrivilege: CatalogTablePrivilege*): Unit
 
-	final def dropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*)
-		(user: String, organization: String, database: String): Unit = {
-		postToAll(DropTablePrivilegePreEvent(organization, user, database, table, privileges))
-		doDropTablePrivilege(userId, databaseId, table, privileges:_*)
-		postToAll(DropTablePrivilegeEvent(organization, user, database, table, privileges))
+	protected def doCreateTablePrivilege(tablePrivilege: CatalogTablePrivilege)(implicit by: User): Unit
+
+	final def dropTablePrivilege(user: String, database: String, table: String, privileges: Seq[String])(implicit by: User): Unit = {
+		postToAll(DropTablePrivilegePreEvent(by.org, user, database, table, privileges))
+		doDropTablePrivilege(user, database, table, privileges)
+		postToAll(DropTablePrivilegeEvent(by.org, user, database, table, privileges))
 	}
-	protected def doDropTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*): Unit
 
-	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Option[CatalogTablePrivilege]
+	protected def doDropTablePrivilege(user: String, database: String, table: String, privileges: Seq[String])(implicit by: User): Unit
 
-	protected def getTablePrivilege(userId: Long, databaseId: Long, table: String): Seq[CatalogTablePrivilege]
+	protected def getTablePrivilege(user: String, database: String, table: String)(implicit by: User): CatalogTablePrivilege
 
-	protected def getTablePrivilege(userId: Long): Seq[CatalogTablePrivilege]
 
 	// ----------------------------------------------------------------------------
 	// column privilege --   the privilege relation of user - table - column
 	// ----------------------------------------------------------------------------
-	final def createColumnPrivilege(tablePrivilege: CatalogColumnPrivilege*)
-		(user: String, organization: String, db: String, table: String): Unit = {
-		val privileges = tablePrivilege.groupBy(_.privilegeType).map { case (k, v) =>
-			(k, v.map(_.column))
-		}.toSeq
-		postToAll(CreateColumnPrivilegePreEvent(organization, user, db, table, privileges))
-		doCreateColumnPrivilege(tablePrivilege:_*)
-		postToAll(CreateColumnPrivilegeEvent(organization, user, db, table, privileges))
+	final def createColumnPrivilege(columnPrivilege: CatalogColumnPrivilege)(implicit by: User): Unit = {
+		postToAll(CreateColumnPrivilegePreEvent(
+			by.org, columnPrivilege.user, columnPrivilege.database, columnPrivilege.table, columnPrivilege.privilege))
+		doCreateColumnPrivilege(columnPrivilege)
+		postToAll(CreateColumnPrivilegeEvent(
+			by.org, columnPrivilege.user, columnPrivilege.database, columnPrivilege.table, columnPrivilege.privilege))
 	}
-	protected def doCreateColumnPrivilege(columnPrivilege: CatalogColumnPrivilege*): Unit
 
-	final def dropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])])
-		(user: String, organization: String, database: String): Unit = {
-		postToAll(DropColumnPrivilegePreEvent(organization, user, database, table, privileges))
-		doDropColumnPrivilege(userId, databaseId, table, privileges)
-		postToAll(DropColumnPrivilegeEvent(organization, user, database, table, privileges))
+	protected def doCreateColumnPrivilege(columnPrivilege: CatalogColumnPrivilege)(implicit by: User): Unit
+
+	final def dropColumnPrivilege(user: String, database: String, table: String, privileges: Seq[(String, Seq[String])])(implicit by: User): Unit = {
+		postToAll(DropColumnPrivilegePreEvent(by.org, user, database, table, privileges))
+		doDropColumnPrivilege(user, database, table, privileges)
+		postToAll(DropColumnPrivilegeEvent(by.org, user, database, table, privileges))
 	}
-	protected def doDropColumnPrivilege(userId: Long, databaseId: Long, table: String, privileges: Seq[(String, Seq[String])]): Unit
 
-	protected def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilege: String): Seq[CatalogColumnPrivilege]
+	protected def doDropColumnPrivilege(user: String, database: String, table: String, privileges: Seq[(String, Seq[String])])(implicit by: User): Unit
 
-	protected def getColumnPrivilege(userId: Long): Seq[CatalogColumnPrivilege]
+	protected def getColumnPrivilege(user: String, database: String, table: String)(implicit by: User): CatalogColumnPrivilege
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)

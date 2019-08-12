@@ -26,5 +26,11 @@
             <groupId>com.typesafe.slick</groupId>
             <artifactId>slick-hikaricp_2.11</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.4.194</version>
+            <scope>test</scope>
+        </dependency>
 </dependencies>
 </project>

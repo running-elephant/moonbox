@@ -121,23 +121,41 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 				tableQuery.schema.create
 			}
 			action(DBIO.seq(create:_*)).flatMap { res =>
-				action(getUser("ROOT")).flatMap {
-					case Some(user) => Future(true)
+				action(getOrganization("SYSTEM")).flatMap {
+					case Some(org) =>
+						Future(org.id.get)
 					case None =>
-						action(createUser(CatalogUser(
-							name = "ROOT",
-							password = PasswordEncryptor.encryptSHA("123456"),
-							account = true,
-							ddl = true,
-							dcl = true,
-							grantAccount = true,
-							grantDdl = true,
-							grantDcl = true,
-							isSA = true,
-							organizationId = -1,
+						action(createOrganization(OrganizationEntity(
+							name = "SYSTEM",
+							config = Map(),
 							createBy = -1,
 							updateBy = -1
-						))).map(_ => true)
+						)))
+				}.flatMap { id =>
+					action(getDatabase(id, "default")).flatMap {
+						case Some(db) => Future(true)
+						case None =>
+							action(createDatabase(DatabaseEntity(
+								name = "default",
+								organizationId = id,
+								properties = Map(),
+								isLogical = true,
+								createBy = -1,
+								updateBy = -1
+							))).map(_ => true)
+					}.flatMap { _ =>
+						action(getUser(id, "ROOT")).flatMap {
+							case Some(user) => Future(true)
+							case None =>
+								action(createUser(UserEntity(
+									name = "ROOT",
+									password = PasswordEncryptor.encryptSHA("123456"),
+									organizationId = id,
+									createBy = -1,
+									updateBy = -1
+								))).map(_ => true)
+						}
+					}
 				}
 			}
 		}
@@ -147,368 +165,297 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	// Organization
 	// -----------------------------------------------------------------
 
-	def createOrganization(organization: CatalogOrganization) = {
-		insert(organization, catalogOrganizations)
+	def createOrganization(organization: OrganizationEntity) = {
+		insert(organization, organizations)
 	}
 
 	def deleteOrganization(organizationId: Long) = {
-		delete[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations, _.id === organizationId)
+		delete[OrganizationEntity, OrganizationEntityTable](organizations, _.id === organizationId)
 	}
 
 	def deleteOrganization(organization: String) = {
-		delete[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations, _.name === organization)
+		delete[OrganizationEntity, OrganizationEntityTable](organizations, _.name === organization)
 	}
 
 	def renameOrganization(organization: String, newOrganization: String)(updateBy: Long) = {
-		update[CatalogOrganization, CatalogOrganizationTable,
+		update[OrganizationEntity, OrganizationEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogOrganizations, _.name === organization,
+			organizations, _.name === organization,
 			t => (t.name, t.updateBy, t.updateTime), (newOrganization, updateBy, Utils.now))
 	}
 
-	def updateOrganization(organizationDefinition: CatalogOrganization) = {
-		updateEntity[CatalogOrganization, CatalogOrganizationTable](
-			catalogOrganizations, _.id === organizationDefinition.id.get,
+	def updateOrganization(organizationDefinition: OrganizationEntity) = {
+		updateEntity[OrganizationEntity, OrganizationEntityTable](
+			organizations, _.id === organizationDefinition.id.get,
 			organizationDefinition
 		)
 	}
 
 	def getOrganization(organizationId: Long) = {
-		queryOneOption[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations, _.id === organizationId)
+		queryOneOption[OrganizationEntity, OrganizationEntityTable](organizations, _.id === organizationId)
 	}
 
 	def getOrganization(organization: String) = {
-		queryOneOption[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations, _.name === organization)
+		queryOneOption[OrganizationEntity, OrganizationEntityTable](organizations, _.name === organization)
 	}
 
 	def organizationExists(organization: String) = {
-		exists[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations, _.name === organization)
+		exists[OrganizationEntity, OrganizationEntityTable](organizations, _.name === organization)
 	}
 
 	def listOrganizations() = {
-		list[CatalogOrganization, CatalogOrganizationTable](catalogOrganizations)
+		list[OrganizationEntity, OrganizationEntityTable](organizations)
 	}
 
 	def listOrganizations(pattern: String) = {
-		query[CatalogOrganization, CatalogOrganizationTable](
-			catalogOrganizations, _.name.like(pattern)
+		query[OrganizationEntity, OrganizationEntityTable](
+			organizations, _.name.like(pattern)
 		)
-	}
-
-	// -----------------------------------------------------------------
-	// Group
-	// -----------------------------------------------------------------
-
-	def createGroup(group: CatalogGroup) = {
-		insert(group, catalogGroups)
-	}
-
-	def deleteGroup(groupId: Long) = {
-		delete[CatalogGroup, CatalogGroupTable](catalogGroups, _.id === groupId)
-	}
-
-	def deleteGroup(organizationId: Long, group: String) = {
-		delete[CatalogGroup, CatalogGroupTable](catalogGroups, t => t.organizationId === organizationId && t.name === group)
-	}
-
-	def deleteGroups(organizationId: Long) = {
-		delete[CatalogGroup, CatalogGroupTable](catalogGroups, t => t.organizationId === organizationId)
-	}
-
-	def renameGroup(organizationId: Long, group: String, newGroup: String)(updateBy: Long) = {
-		update[CatalogGroup, CatalogGroupTable,
-			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
-			(String, Long, Long)](
-			catalogGroups, t => t.organizationId === organizationId && t.name === group,
-			t => (t.name, t.updateBy, t.updateTime), (newGroup, updateBy, Utils.now))
-	}
-
-	def updateGroup(groupDefinition: CatalogGroup) = {
-		updateEntity[CatalogGroup, CatalogGroupTable](
-			catalogGroups, _.id === groupDefinition.id.get,
-			groupDefinition
-		)
-	}
-
-	def getGroup(groupId: Long) = {
-		queryOneOption[CatalogGroup, CatalogGroupTable](catalogGroups, _.id === groupId)
-	}
-
-	def getGroup(organizationId: Long, group: String) = {
-		queryOneOption[CatalogGroup, CatalogGroupTable](catalogGroups,t =>  t.organizationId === organizationId && t.name === group)
-	}
-
-	def getGroups(organizationId: Long, groups: Seq[String]) = {
-		query[CatalogGroup, CatalogGroupTable](
-			catalogGroups, g => g.organizationId === organizationId && g.name.inSet(groups)
-		)
-	}
-
-	def groupExists(organizationId: Long, group: String) = {
-		exists[CatalogGroup, CatalogGroupTable](catalogGroups, t => t.organizationId === organizationId && t.name === group)
-	}
-
-	def listGroups(organizationId: Long) = {
-		query[CatalogGroup, CatalogGroupTable](catalogGroups, _.organizationId === organizationId)
-	}
-
-	def listGroups(organizationId: Long, pattern: String) = {
-		query[CatalogGroup, CatalogGroupTable](catalogGroups, t => t.organizationId === organizationId && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
 	// User
 	// -----------------------------------------------------------------
 
-	def createUser(user: CatalogUser) = {
-		insert(user, catalogUsers)
+	def createUser(user: UserEntity) = {
+		insert(user, users)
 	}
 
 	def deleteUser(userId: Long) = {
-		delete[CatalogUser, CatalogUserTable](catalogUsers, _.id === userId)
+		delete[UserEntity, UserEntityTable](users, _.id === userId)
 	}
 
-	def deleteUser(user: String) = {
-		delete[CatalogUser, CatalogUserTable](catalogUsers, _.name === user)
+	def deleteUser(organizationId: Long, user: String) = {
+		delete[UserEntity, UserEntityTable](users,
+			t => t.organizationId === organizationId && t.name === user)
 	}
 
 	def deleteUsers(organizationId: Long) = {
-		delete[CatalogUser, CatalogUserTable](catalogUsers, _.organizationId === organizationId)
+		delete[UserEntity, UserEntityTable](users, _.organizationId === organizationId)
 	}
 
-	def updateUser(user: CatalogUser) = {
-		updateEntity[CatalogUser, CatalogUserTable](catalogUsers, _.id === user.id.get, user)
+	def updateUser(user: UserEntity) = {
+		updateEntity[UserEntity, UserEntityTable](users, _.id === user.id.get, user)
 	}
 
 	def renameUser(user: String, newUser: String)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+		update[UserEntity, UserEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogUsers, _.name === user,
+			users, _.name === user,
 			t => (t.name, t.updateBy, t.updateTime), (newUser, updateBy, Utils.now))
 	}
 
 	def changePassword(user: String, newPassword: String)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+		update[UserEntity, UserEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogUsers, _.name === user,
+			users, _.name === user,
 			t => (t.password, t.updateBy, t.updateTime),
 			(newPassword, updateBy, Utils.now))
 	}
 
-	def setUserAccount(account: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserAccount(account: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.account, t.updateBy, t.updateTime),
 			(account, updateBy, Utils.now))
 	}
 
-	def setUserDdl(ddl: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserDdl(ddl: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.ddl, t.updateBy, t.updateTime),
 			(ddl, updateBy, Utils.now))
 	}
 
-	def setUserDcl(dcl: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserDcl(dcl: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.dcl, t.updateBy, t.updateTime),
 			(dcl, updateBy, Utils.now))
 	}
 
-	def setUserGrantAccount(grantAccount: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserGrantAccount(grantAccount: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.grantAccount, t.updateBy, t.updateTime),
 			(grantAccount, updateBy, Utils.now))
 	}
 
-	def setUserGrantDdl(grantDdl: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserGrantDdl(grantDdl: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.grantDdl, t.updateBy, t.updateTime),
 			(grantDdl, updateBy, Utils.now))
 	}
 
-	def setUserGrantDcl(grantDcl: Boolean, users: Long*)(updateBy: Long) = {
-		update[CatalogUser, CatalogUserTable,
+	def setUserGrantDcl(grantDcl: Boolean, userIds: Long*)(updateBy: Long) = {
+		update[UserEntity, UserEntityTable,
 			(Rep[Boolean], Rep[Long], Rep[Long]), (Rep[Boolean], Rep[Long], Rep[Long]),
 			(Boolean, Long, Long)](
-			catalogUsers, _.id inSet users,
+			users, _.id inSet userIds,
 			t => (t.grantDcl, t.updateBy, t.updateTime),
 			(grantDcl, updateBy, Utils.now))
 	}
 
 	def getUser(userId: Long) = {
-		queryOneOption[CatalogUser, CatalogUserTable](catalogUsers, _.id === userId)
-	}
-
-	def getUser(userName: String) = {
-		queryOneOption[CatalogUser, CatalogUserTable](catalogUsers, _.name === userName)
+		queryOneOption[UserEntity, UserEntityTable](users, _.id === userId)
 	}
 
 	def getUser(organizationId: Long, user: String) = {
-		queryOneOption[CatalogUser, CatalogUserTable](
-			catalogUsers, t => t.organizationId === organizationId && t.name === user)
-	}
-
-	def getUsers(organizationId: Long, users: Seq[String]) = {
-		query[CatalogUser, CatalogUserTable](
-			catalogUsers, t => t.organizationId === organizationId && t.name.inSet(users)
-		)
-	}
-
-	def getUsers(userIds: Seq[Long]) = {
-		query[CatalogUser, CatalogUserTable](
-			catalogUsers, t =>  t.id.inSet(userIds)
-		)
-	}
-
-	def userExists(user: String) = {
-		exists[CatalogUser, CatalogUserTable](catalogUsers, _.name === user)
+		queryOneOption[UserEntity, UserEntityTable](
+			users, t => t.organizationId === organizationId && t.name === user)
 	}
 
 	def userExists(organizationId: Long, user: String) = {
-		exists[CatalogUser, CatalogUserTable](
-			catalogUsers, t => t.organizationId === organizationId && t.name === user)
+		exists[UserEntity, UserEntityTable](
+			users, t => t.organizationId === organizationId && t.name === user)
 	}
 
 	def listUsers(organizationId: Long) = {
-		query[CatalogUser, CatalogUserTable](catalogUsers,  _.organizationId === organizationId)
+		query[UserEntity, UserEntityTable](users,  _.organizationId === organizationId)
 	}
 
 	def listUsers(organizationId: Long, pattern: String) = {
-		query[CatalogUser, CatalogUserTable](
-			catalogUsers,  t => t.organizationId === organizationId && t.name.like(pattern))
+		query[UserEntity, UserEntityTable](
+			users,  t => t.organizationId === organizationId && t.name.like(pattern))
+	}
+
+	def listSas() = {
+		query[UserEntity, UserEntityTable](users,  _.isSA === true)
+	}
+
+	def listSas(pattern: String) = {
+		query[UserEntity, UserEntityTable](
+			users,  t => t.isSA === true && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
 	// Procedure
 	// -----------------------------------------------------------------
 
-	def createProcedure(procedure: CatalogProcedure) = {
-		insert[CatalogProcedure, CatalogProcedureTable](procedure, catalogProcedures)
+	def createProcedure(procedure: ProcedureEntity) = {
+		insert[ProcedureEntity, ProcedureEntityTable](procedure, procedures)
 	}
 
 	def deleteProcedure(procedureId: Long) = {
-		delete[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.id === procedureId)
+		delete[ProcedureEntity, ProcedureEntityTable](procedures, _.id === procedureId)
 	}
 
 	def deleteProcedure(organizationId: Long, procedure: String) = {
-		delete[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
+		delete[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
 	def deleteProcedures(organizationId: Long) = {
-		delete[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, _.organizationId === organizationId
+		delete[ProcedureEntity, ProcedureEntityTable](
+			procedures, _.organizationId === organizationId
 		)
 	}
 
 	def renameProcedure(organizationId: Long, procedure: String, newProcedure: String)(updateBy: Long) = {
-		update[CatalogProcedure, CatalogProcedureTable,
+		update[ProcedureEntity, ProcedureEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure,
+			procedures, t => t.organizationId === organizationId && t.name === procedure,
 			t => (t.name, t.updateBy, t.updateTime), (newProcedure, updateBy, Utils.now))
 	}
 
-	def updateProcedure(procDefinition: CatalogProcedure) = {
-		updateEntity[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, t => t.id === procDefinition.id.get, procDefinition
+	def updateProcedure(procDefinition: ProcedureEntity) = {
+		updateEntity[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.id === procDefinition.id.get, procDefinition
 		)
 	}
 
 	def getProcedure(procedureId: Long) = {
-		queryOneOption[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.id === procedureId)
+		queryOneOption[ProcedureEntity, ProcedureEntityTable](procedures, _.id === procedureId)
 	}
 
 	def getProcedure(organizationId: Long, procedure: String) = {
-		queryOneOption[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
+		queryOneOption[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
 	def procedureExists(organizationId: Long, procedure: String) = {
-		exists[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, t => t.organizationId === organizationId && t.name === procedure)
+		exists[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.organizationId === organizationId && t.name === procedure)
 	}
 
 	def listProcedures(organizationId: Long) = {
-		query[CatalogProcedure, CatalogProcedureTable](catalogProcedures, _.organizationId === organizationId)
+		query[ProcedureEntity, ProcedureEntityTable](procedures, _.organizationId === organizationId)
 	}
 
 	def listProcedures(organizationId: Long, pattern: String) = {
-		query[CatalogProcedure, CatalogProcedureTable](
-			catalogProcedures, t => t.organizationId === organizationId && t.name.like(pattern))
+		query[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.organizationId === organizationId && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
 	// timedevent
 	// -----------------------------------------------------------------
-	def createTimedEvent(event: CatalogTimedEvent) = {
-		insert(event, catalogTimedEvents)
+	def createTimedEvent(event: TimedEventEntity) = {
+		insert(event, timedEvents)
 	}
 
 	def deleteTimedEvent(eventId: Long) = {
-		delete[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, _.id === eventId
+		delete[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, _.id === eventId
 		)
 	}
 
 	def deleteTimedEvent(organizationId: Long, event: String) = {
-		delete[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
+		delete[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
 	def renameTimedEvent(organizationId: Long, event: String, newEvent: String)(updateBy: Long) = {
-		update[CatalogTimedEvent, CatalogTimedEventTable,
+		update[TimedEventEntity, TimedEventEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event,
+			timedEvents, t => t.organizationId === organizationId && t.name === event,
 			t => (t.name, t.updateBy, t.updateTime), (newEvent, updateBy, Utils.now))
 	}
 
-	def updateTimedEvent(eventDefinition: CatalogTimedEvent) = {
-		updateEntity[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.id === eventDefinition.id.get, eventDefinition
+	def updateTimedEvent(eventDefinition: TimedEventEntity) = {
+		updateEntity[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.id === eventDefinition.id.get, eventDefinition
 		)
 	}
 
 	def getTimedEvent(organizationId: Long, event: String) = {
-		queryOneOption[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
+		queryOneOption[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
 	def timedEventExists(organizationId: Long, event: String) = {
-		exists[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.organizationId === organizationId && t.name === event
+		exists[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId && t.name === event
 		)
 	}
 
 	def listTimedEvents(organizationId: Long) = {
-		query[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.organizationId === organizationId
+		query[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId
 		)
 	}
 
 	def listTimedEvents(organizationId: Long, pattern: String) = {
-		query[CatalogTimedEvent, CatalogTimedEventTable](
-			catalogTimedEvents, t => t.organizationId === organizationId && t.name.like(pattern)
+		query[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId && t.name.like(pattern)
 		)
 	}
 
@@ -516,337 +463,335 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	// Database
 	// -----------------------------------------------------------------
 
-	def createDatabase(database: CatalogDatabase) = {
-		insert(database, catalogDatabases)
+	def createDatabase(database: DatabaseEntity) = {
+		insert(database, databases)
 	}
 
 	def deleteDatabase(databaseId: Long) = {
-		delete[CatalogDatabase, CatalogDatabaseTable](catalogDatabases, _.id === databaseId)
+		delete[DatabaseEntity, DatabaseEntityTable](databases, _.id === databaseId)
 	}
 
 	def deleteDatabase(organizationId: Long, database: String) = {
-		delete[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.organizationId === organizationId && t.name === database)
+		delete[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId && t.name === database)
 	}
 
 	def deleteDatabases(organizationId: Long) = {
-		delete[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.organizationId === organizationId)
+		delete[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId)
 	}
 
 	def renameDatabase(organizationId: Long, database: String, newDatabase: String)(updateBy: Long) = {
-		update[CatalogDatabase, CatalogDatabaseTable,
+		update[DatabaseEntity, DatabaseEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogDatabases, t => t.organizationId === organizationId && t.name === database,
+			databases, t => t.organizationId === organizationId && t.name === database,
 			t => (t.name, t.updateBy, t.updateTime), (newDatabase, updateBy, Utils.now))
 	}
 
-	def updateDatabase(dbDefinition: CatalogDatabase) = {
-		updateEntity[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.id === dbDefinition.id.get, dbDefinition
+	def updateDatabase(dbDefinition: DatabaseEntity) = {
+		updateEntity[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.id === dbDefinition.id.get, dbDefinition
 		)
 	}
 
 	def getDatabase(databaseId: Long) = {
-		queryOneOption[CatalogDatabase, CatalogDatabaseTable](catalogDatabases, _.id === databaseId)
+		queryOneOption[DatabaseEntity, DatabaseEntityTable](databases, _.id === databaseId)
 	}
 
 	def getDatabase(organizationId: Long, database: String) = {
-		queryOneOption[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.organizationId === organizationId && t.name === database)
+		queryOneOption[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId && t.name === database)
+	}
+
+	def databaseExists(databaseId: Long) = {
+		exists[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.id === databaseId)
 	}
 
 	def databaseExists(organizationId: Long, database: String) = {
-		exists[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.organizationId === organizationId && t.name === database)
+		exists[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId && t.name === database)
 	}
 
 	def listDatabases(organizationId: Long) = {
-		query[CatalogDatabase, CatalogDatabaseTable](catalogDatabases, _.organizationId === organizationId)
+		query[DatabaseEntity, DatabaseEntityTable](databases, _.organizationId === organizationId)
 	}
 
 	def listDatabases(organizationId: Long, pattern: String) = {
-		query[CatalogDatabase, CatalogDatabaseTable](
-			catalogDatabases, t => t.organizationId === organizationId && t.name.like(pattern))
+		query[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
 	// Table
 	// -----------------------------------------------------------------
 
-	def createTable(table: CatalogTable) = {
-		insert[CatalogTable, CatalogTableTable](table, catalogTables)
+	def createTable(table: TableEntity) = {
+		insert[TableEntity, TableEntityTable](table, tables)
 	}
 
 	def deleteTables(databaseId: Long) = {
-		delete[CatalogTable, CatalogTableTable](
-			catalogTables, _.databaseId === databaseId
+		delete[TableEntity, TableEntityTable](
+			tables, _.databaseId === databaseId
 		)
 	}
 
 	def deleteTable(tableId: Long) = {
-		delete[CatalogTable, CatalogTableTable](catalogTables, _.id === tableId)
+		delete[TableEntity, TableEntityTable](tables, _.id === tableId)
 	}
 
 	def deleteTable(databaseId: Long, table: String) = {
-		delete[CatalogTable, CatalogTableTable](catalogTables, t => t.databaseId === databaseId && t.name === table)
+		delete[TableEntity, TableEntityTable](tables, t => t.databaseId === databaseId && t.name === table)
 	}
 
-	def updateTable(table: CatalogTable) = {
-		updateEntity[CatalogTable, CatalogTableTable](
-			catalogTables, t => t.id === table.id.get, table
+	def updateTable(table: TableEntity) = {
+		updateEntity[TableEntity, TableEntityTable](
+			tables, t => t.id === table.id.get, table
 		)
 	}
 
 	def renameTable(databaseId: Long, table: String, newTable: String)(updateBy: Long) = {
-		update[CatalogTable, CatalogTableTable,
+		update[TableEntity, TableEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogTables, t => t.databaseId === databaseId && t.name === table,
+			tables, t => t.databaseId === databaseId && t.name === table,
 			t => (t.name, t.updateBy, t.updateTime), (newTable, updateBy, Utils.now))
 	}
 
 	def getTable(tableId: Long) = {
-		queryOneOption[CatalogTable, CatalogTableTable](catalogTables, _.id === tableId)
+		queryOneOption[TableEntity, TableEntityTable](tables, _.id === tableId)
 	}
 
 	def getTable(databaseId: Long, table: String) = {
-		queryOneOption[CatalogTable, CatalogTableTable](
-			catalogTables, t => t.databaseId === databaseId && t.name === table)
+		queryOneOption[TableEntity, TableEntityTable](
+			tables, t => t.databaseId === databaseId && t.name === table)
 	}
 
 	def tableExists(databaseId: Long, table: String) = {
-		exists[CatalogTable, CatalogTableTable](
-			catalogTables, t => t.databaseId === databaseId && t.name === table
+		exists[TableEntity, TableEntityTable](
+			tables, t => t.databaseId === databaseId && t.name === table
 		)
 	}
 
 	def listTables(databaseId: Long) = {
-		query[CatalogTable, CatalogTableTable](catalogTables, _.databaseId === databaseId)
+		query[TableEntity, TableEntityTable](tables, _.databaseId === databaseId)
 	}
 
 	def listTables(databaseId: Long, pattern: String) = {
-		query[CatalogTable, CatalogTableTable](
-			catalogTables, t => t.databaseId === databaseId && t.name.like(pattern))
+		query[TableEntity, TableEntityTable](
+			tables, t => t.databaseId === databaseId && t.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
 	// Function
 	// -----------------------------------------------------------------
 
-	def createFunction(function: CatalogFunction) = {
-		insert[CatalogFunction, CatalogFunctionTable](
-			function, catalogFunctions)
+	def createFunction(function: FunctionEntity) = {
+		insert[FunctionEntity, FunctionEntityTable](
+			function, functions)
 	}
 
 	def deleteFunction(functionId: Long) = {
-		delete[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, _.id === functionId
+		delete[FunctionEntity, FunctionEntityTable](
+			functions, _.id === functionId
 		)
 	}
 
 	def deleteFunction(databaseId: Long, function: String) = {
-		delete[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, t => t.databaseId === databaseId && t.name === function
+		delete[FunctionEntity, FunctionEntityTable](
+			functions, t => t.databaseId === databaseId && t.name === function
 		)
 	}
 
 	def deleteFunctions(databaseId: Long) = {
-		delete[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, _.databaseId === databaseId
+		delete[FunctionEntity, FunctionEntityTable](
+			functions, _.databaseId === databaseId
 		)
 	}
 
 	def renameFunction(databaseId: Long, func: String, newFunc: String)(updateBy: Long) = {
-		update[CatalogFunction, CatalogFunctionTable,
+		update[FunctionEntity, FunctionEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogFunctions, t => t.databaseId === databaseId && t.name === func,
+			functions, t => t.databaseId === databaseId && t.name === func,
 			t => (t.name, t.updateBy, t.updateTime), (newFunc, updateBy, Utils.now))
 	}
 
-	/*def updateFunction(funcDefinition: CatalogFunction) = {
-		updateEntity[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, t => t.id === funcDefinition.id.get, funcDefinition
-		)
-	}*/
-
 	def getFunction(functionId: Long) = {
-		queryOneOption[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, _.id === functionId
+		queryOneOption[FunctionEntity, FunctionEntityTable](
+			functions, _.id === functionId
 		)
 	}
 
 	def getFunction(databaseId: Long, function: String) = {
-		queryOneOption[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, t => t.databaseId === databaseId && t.name === function
+		queryOneOption[FunctionEntity, FunctionEntityTable](
+			functions, t => t.databaseId === databaseId && t.name === function
 		)
 	}
 
 	def functionExists(databaseId: Long, function: String) = {
-		exists[CatalogFunction, CatalogFunctionTable](
-			catalogFunctions, t => t.databaseId === databaseId && t.name === function
+		exists[FunctionEntity, FunctionEntityTable](
+			functions, t => t.databaseId === databaseId && t.name === function
 		)
 	}
 
 	def listFunctions(databaseId: Long) = {
-		catalogFunctions.filter(_.databaseId === databaseId).join(catalogFunctionResources).on {
+		functions.filter(_.databaseId === databaseId).join(functionResources).on {
 			case (func, resource) => func.id === resource.funcId
 		}.result
 	}
 
 	def listFunctions(databaseId: Long, pattern: String) = {
-		catalogFunctions.filter(t => t.databaseId === databaseId && t.name.like(pattern)).join(catalogFunctionResources).on {
+		functions.filter(t => t.databaseId === databaseId && t.name.like(pattern)).join(functionResources).on {
 			case (func, resource) => func.id === resource.funcId
 		}.result
 	}
 
-	def createFunctionResources(functionResources: CatalogFunctionResource*) ={
-		insertMultiple[CatalogFunctionResource, CatalogFunctionResourceTable](
-			functionResources,
-			catalogFunctionResources
+	def createFunctionResources(resources: FunctionResourceEntity*) ={
+		insertMultiple[FunctionResourceEntity, FunctionResourceEntityTable](
+			resources,
+			functionResources
 		)
 	}
 
 	def deleteFunctionResources(funcId: Long) = {
-		delete[CatalogFunctionResource, CatalogFunctionResourceTable](
-			catalogFunctionResources, _.funcId === funcId
+		delete[FunctionResourceEntity, FunctionResourceEntityTable](
+			functionResources, _.funcId === funcId
 		)
 	}
 
 	def listFunctionResources(funcId: Long) = {
-		query[CatalogFunctionResource, CatalogFunctionResourceTable](
-			catalogFunctionResources, _.funcId === funcId
+		query[FunctionResourceEntity, FunctionResourceEntityTable](
+			functionResources, _.funcId === funcId
 		)
 	}
 
-
-	// -----------------------------------------------------------------
+	/*// -----------------------------------------------------------------
 	// View
 	// -----------------------------------------------------------------
 
-	def createView(view: CatalogView) = {
-		insert[CatalogView, CatalogViewTable](
-			view, catalogViews)
+	def createView(view: ViewEntity) = {
+		insert[ViewEntity, ViewEntityTable](
+			view, views)
 	}
 
 	def deleteView(viewId: Long) = {
-		delete[CatalogView, CatalogViewTable](
-			catalogViews, _.id === viewId
+		delete[ViewEntity, ViewEntityTable](
+			views, _.id === viewId
 		)
 	}
 
 	def deleteView(databaseId: Long, view: String) = {
-		delete[CatalogView, CatalogViewTable](
-			catalogViews, t => t.databaseId === databaseId && t.name === view
+		delete[ViewEntity, ViewEntityTable](
+			views, t => t.databaseId === databaseId && t.name === view
 		)
 	}
 
 	def deleteViews(databaseId: Long) = {
-		delete[CatalogView, CatalogViewTable](
-			catalogViews, _.databaseId === databaseId
+		delete[ViewEntity, ViewEntityTable](
+			views, _.databaseId === databaseId
 		)
 	}
 
 	def renameView(databaseId: Long, view: String, newView: String)(updateBy: Long) = {
-		update[CatalogView, CatalogViewTable,
+		update[ViewEntity, ViewEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
 			(String, Long, Long)](
-			catalogViews, t => t.databaseId === databaseId && t.name === view,
+			views, t => t.databaseId === databaseId && t.name === view,
 			t => (t.name, t.updateBy, t.updateTime), (newView, updateBy, Utils.now))
 	}
 
-	def updateView(viewDefinition: CatalogView) = {
-		updateEntity[CatalogView, CatalogViewTable](
-			catalogViews, t => t.id === viewDefinition.id.get, viewDefinition
+	def updateView(viewDefinition: ViewEntity) = {
+		updateEntity[ViewEntity, ViewEntityTable](
+			views, t => t.id === viewDefinition.id.get, viewDefinition
 		)
 	}
 
 	def getView(viewId: Long) = {
-		queryOneOption[CatalogView, CatalogViewTable](
-			catalogViews, _.id === viewId
+		queryOneOption[ViewEntity, ViewEntityTable](
+			views, _.id === viewId
 		)
 	}
 
 	def getView(databaseId: Long, view: String) = {
-		queryOneOption[CatalogView, CatalogViewTable](
-			catalogViews, t => t.databaseId === databaseId && t.name === view
+		queryOneOption[ViewEntity, ViewEntityTable](
+			views, t => t.databaseId === databaseId && t.name === view
 		)
 	}
 
 	def viewExists(databaseId: Long, view: String) = {
-		exists[CatalogView, CatalogViewTable](
-			catalogViews, t => t.databaseId === databaseId && t.name === view
+		exists[ViewEntity, ViewEntityTable](
+			views, t => t.databaseId === databaseId && t.name === view
 		)
 	}
 
 	def listViews(databaseId: Long) = {
-		query[CatalogView, CatalogViewTable](
-			catalogViews, _.databaseId === databaseId
+		query[ViewEntity, ViewEntityTable](
+			views, _.databaseId === databaseId
 		)
 	}
 
 	def listViews(databaseId: Long, pattern: String) = {
-		query[CatalogView, CatalogViewTable](
-			catalogViews, t => t.databaseId === databaseId && t.name.like(pattern)
+		query[ViewEntity, ViewEntityTable](
+			views, t => t.databaseId === databaseId && t.name.like(pattern)
 		)
-	}
+	}*/
 
 	// -----------------------------------------------------------------
 	// database privileges
 	// -----------------------------------------------------------------
-	def createDatabasePrivilege(dbPrivilege: CatalogDatabasePrivilege*) = {
-		insertMultiple[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			dbPrivilege, catalogDatabasePrivileges
+	def createDatabasePrivilege(dbPrivilege: DatabasePrivilegeEntity*) = {
+		insertMultiple[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			dbPrivilege, databasePrivileges
 		)
 	}
 
 	def deleteDatabasePrivilege(userId: Long, databaseId: Long, privileges: String*) = {
-		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		delete[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t => t.userId === userId && t.databaseId === databaseId && t.privilegeType.inSet(privileges)
 		)
 	}
 
 	def deleteDatabasePrivilege(userId: Long, databaseId: Long) = {
-		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		delete[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t => t.userId === userId && t.databaseId === databaseId
 		)
 	}
 
 	def deleteDatabasePrivilege(databaseId: Long) = {
-		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		delete[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t =>  t.databaseId === databaseId
 		)
 	}
 
 	def deleteDatabasePrivilegeByUser(userId: Long) = {
-		delete[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		delete[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t =>  t.userId === userId
 		)
 	}
 
 	def getDatabasePrivilege(userId: Long, databaseId: Long, privilegeType: String) = {
-		queryOneOption[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		queryOneOption[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t =>  t.userId === userId && t.databaseId === databaseId && t.privilegeType === privilegeType
 		)
 	}
 
 	def getDatabasePrivilege(userId: Long, databaseId: Long) = {
-		query[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		query[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t =>  t.userId === userId && t.databaseId === databaseId
 		)
 	}
 
 	def getDatabasePrivilege(userId: Long) = {
-		query[CatalogDatabasePrivilege, CatalogDatabasePrivilegeTable](
-			catalogDatabasePrivileges,
+		query[DatabasePrivilegeEntity, DatabasePrivilegeEntityTable](
+			databasePrivileges,
 			t =>  t.userId === userId
 		)
 	}
@@ -854,65 +799,65 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	// -----------------------------------------------------------------
 	// table privileges
 	// -----------------------------------------------------------------
-	def createTablePrivilege(tablePrivilege: CatalogTablePrivilege*) = {
-		insertMultiple[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			tablePrivilege, catalogTablePrivileges
+	def createTablePrivilege(tablePrivilege: TablePrivilegeEntity*) = {
+		insertMultiple[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivilege, tablePrivileges
 		)
 	}
 
-	def deleteTablePrivilege(userId: Long, databaseId: Long, table: String, privileges: String*) = {
-		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
-			t => t.userId === userId && t.databaseId === databaseId && t.table === table &&
+	def deleteTablePrivilege(userId: Long, databaseId: Long, tableId: Long, privileges: Seq[String]) = {
+		delete[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.tableId === tableId &&
 				t.privilegeType.inSet(privileges)
 		)
 	}
 
-	def deleteTablePrivilege(userId: Long, databaseId: Long, table: String) = {
-		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
-			t => t.userId === userId && t.databaseId === databaseId && t.table === table
+	def deleteTablePrivilege(userId: Long, databaseId: Long, tableId: Long) = {
+		delete[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.tableId === tableId
 		)
 	}
 
-	def deleteTablePrivilege(databaseId: Long, table: String) = {
-		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
-			t =>  t.databaseId === databaseId && t.table === table
+	def deleteTablePrivilege(databaseId: Long, tableId: Long) = {
+		delete[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
+			t =>  t.databaseId === databaseId && t.tableId === tableId
 		)
 	}
 
 	def deleteTablePrivilege(databaseId: Long) = {
-		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
+		delete[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
 			t =>  t.databaseId === databaseId
 		)
 	}
 
 	def deleteTablePrivilegeByUser(userId: Long) = {
-		delete[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
+		delete[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
 			t =>  t.userId === userId
 		)
 	}
 
-	def getTablePrivilege(userId: Long, databaseId: Long, table: String, privilegeType: String) = {
-		queryOneOption[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
-			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table && t.privilegeType === privilegeType
+	def getTablePrivilege(userId: Long, databaseId: Long, tableId: Long, privilegeType: String) = {
+		queryOneOption[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.tableId === tableId && t.privilegeType === privilegeType
 		)
 	}
 
-	def getTablePrivilege(userId: Long, databaseId: Long, table: String) = {
-		query[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
-			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table
+	def getTablePrivilege(userId: Long, databaseId: Long, tableId: Long) = {
+		query[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.tableId === tableId
 		)
 	}
 
 	def getTablePrivilege(userId: Long) = {
-		query[CatalogTablePrivilege, CatalogTablePrivilegeTable](
-			catalogTablePrivileges,
+		query[TablePrivilegeEntity, TablePrivilegeEntityTable](
+			tablePrivileges,
 			t =>  t.userId === userId
 		)
 	}
@@ -920,108 +865,66 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	// -----------------------------------------------------------------
 	// column privileges
 	// -----------------------------------------------------------------
-	def createColumnPrivilege(columnPrivilege: CatalogColumnPrivilege*) = {
-		insertMultiple[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			columnPrivilege, catalogColumnPrivileges
+	def createColumnPrivilege(columnPrivilege: ColumnPrivilegeEntity*) = {
+		insertMultiple[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivilege, columnPrivileges
 		)
 	}
 
-	def deleteColumnPrivilege(userId: Long, databaseId: Long, table: String, columns: Seq[String], privilege: String) = {
-		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
-			t => t.userId === userId && t.databaseId === databaseId && t.table === table &&
+	def deleteColumnPrivilege(userId: Long, databaseId: Long, tableId: Long, columns: Seq[String], privilege: String) = {
+		delete[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.tableId === tableId &&
 				t.privilegeType === privilege && t.columnName.inSet(columns)
 		)
 	}
 
-	def deleteColumnPrivilege(userId: Long, databaseId: Long, table: String, column: String) = {
-		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
-			t => t.userId === userId && t.databaseId === databaseId && t.table === table && t.columnName === column
+	def deleteColumnPrivilege(userId: Long, databaseId: Long, tableId: Long, column: String) = {
+		delete[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
+			t => t.userId === userId && t.databaseId === databaseId && t.tableId === tableId && t.columnName === column
 		)
 	}
 
-	def deleteColumnPrivilege(databaseId: Long, table: String) = {
-		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
-			t =>  t.databaseId === databaseId && t.table === table
+	def deleteColumnPrivilege(databaseId: Long, tableId: Long) = {
+		delete[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
+			t =>  t.databaseId === databaseId && t.tableId === tableId
 		)
 	}
 
 	def deleteColumnPrivilege(databaseId: Long) = {
-		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
+		delete[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
 			t =>  t.databaseId === databaseId
 		)
 	}
 
 	def deleteColumnPrivilegeByUser(userId: Long) = {
-		delete[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
+		delete[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
 			t =>  t.userId === userId
 		)
 	}
 
-	def getColumnPrivilege(userId: Long, databaseId: Long, table: String, privilegeType: String) = {
-		query[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
-			t =>  t.userId === userId && t.databaseId === databaseId && t.table === table && t.privilegeType === privilegeType
+	def getColumnPrivilege(userId: Long, databaseId: Long, tableId: Long, privilegeType: String) = {
+		query[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.tableId === tableId && t.privilegeType === privilegeType
+		)
+	}
+
+	def getColumnPrivilege(userId: Long, databaseId: Long, tableId: Long) = {
+		query[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
+			t =>  t.userId === userId && t.databaseId === databaseId && t.tableId === tableId
 		)
 	}
 
 	def getColumnPrivilege(userId: Long) = {
-		query[CatalogColumnPrivilege, CatalogColumnPrivilegeTable](
-			catalogColumnPrivileges,
+		query[ColumnPrivilegeEntity, ColumnPrivilegeEntityTable](
+			columnPrivileges,
 			t =>  t.userId === userId
-		)
-	}
-
-	// -----------------------------------------------------------------
-	// UserGroupRel
-	// -----------------------------------------------------------------
-
-	def createUserGroupRel(rels: CatalogUserGroupRel*) = {
-		insertMultiple[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			rels, catalogUserGroupRels
-		)
-	}
-
-	// use for removing users from group
-	def deleteUserGroupRel(groupId: Long, users: Seq[Long]) = {
-		delete[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, t => t.groupId === groupId && t.userId.inSet(users)
-		)
-	}
-
-	// use for dropping user
-	def deleteUserGroupRelByUser(userId: Long) = {
-		delete[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, _.userId === userId
-		)
-	}
-
-	// use for dropping group
-	def deleteUserGroupRelByGroup(groupId: Long) = {
-		delete[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, _.groupId === groupId
-		)
-	}
-
-	def getUserGroupRelByGroup(groupId: Long) = {
-		query[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, _.groupId === groupId
-		)
-	}
-
-	def getUserGroupRelByUser(userId: Long) = {
-		query[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, _.userId === userId
-		)
-	}
-
-	def userGroupRelExists(groupId: Long) = {
-		exists[CatalogUserGroupRel, CatalogUserGroupRelTable](
-			catalogUserGroupRels, _.id === groupId
 		)
 	}
 

@@ -34,11 +34,6 @@ trait FunctionResourceType {
 trait SourceResource
 trait NonSourceResource
 
-/*object JarResource extends FunctionResourceType("jar") with NonSourceResource
-object FileResource extends FunctionResourceType("file") with NonSourceResource
-object ArchiveResource extends FunctionResourceType("archive") with NonSourceResource
-object JavaResource extends FunctionResourceType("java") with SourceResource
-object ScalaResource extends FunctionResourceType("scala") with SourceResource*/
 case object JarResource extends FunctionResourceType with NonSourceResource {
 	override val `type`: String = "jar"
 }
