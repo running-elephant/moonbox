@@ -22,6 +22,7 @@ package moonbox.grid.deploy.security
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
+import moonbox.catalog.JdbcCatalog
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.common.util.{ThreadUtils, Utils}
 import moonbox.grid.config._
@@ -30,6 +31,7 @@ import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
 import scala.collection.JavaConversions._
 
 class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
+	private val catalog = new JdbcCatalog(conf)
 	private val tokenEncoder = new TokenEncoder(conf)
 
 	private val loginType = conf.get(LOGIN_IMPLEMENTATION)
@@ -103,7 +105,7 @@ class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
 
 	private def createLogin(loginType: String): Login = loginType.toUpperCase match {
 		case "LDAP" => new LdapLogin(conf)
-		case _ => new CatalogLogin(conf)
+		case _ => new CatalogLogin(conf, catalog)
 	}
 
 	def putSession(token: String, sessionId: String): Unit = {
@@ -112,5 +114,10 @@ class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
 
 	def removeSession(token: String): Unit = {
 		tokenToSessionId.remove(token)
+	}
+
+	def getUserConfig(org: String, user: String): Map[String, String] = {
+		catalog.getUser(org, user).configuration ++
+			catalog.getOrganization(org).config
 	}
 }

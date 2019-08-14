@@ -26,6 +26,7 @@ import akka.actor.Address
 private[deploy] class ApplicationInfo(
 	val startTime: Long,
 	val id: String,
+	val label: String,
 	val host: String,
 	val port: Int,
 	val address: Address,
@@ -50,6 +51,7 @@ private[deploy] class ApplicationInfo(
 	override def toString: String = {
 		s"""startTime: $startTime
 		   |id: $id
+		   |label: $label
 		   |host: $host
 		   |port: $port
 		   |address: $address

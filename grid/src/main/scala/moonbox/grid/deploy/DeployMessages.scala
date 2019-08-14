@@ -83,6 +83,7 @@ object DeployMessages {
 
 	case class RegisterApplication(
 		id: String,
+		label: String,
 		host: String,
 		port: Int,
 		endpoint: ActorRef,

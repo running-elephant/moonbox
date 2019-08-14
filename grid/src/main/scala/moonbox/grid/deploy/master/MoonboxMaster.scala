@@ -299,7 +299,7 @@ class MoonboxMaster(
 					logWarning("Worker state from unknown worker: " + workerId)
 			}
 
-		case RegisterApplication(id, appHost, appPort, appRef, appAddress, dataPort, appType) =>
+		case RegisterApplication(id, appLabel, appHost, appPort, appRef, appAddress, dataPort, appType) =>
 			logInfo(s"Application $id try registering: $appAddress")
 			if (state == RecoveryState.STANDBY) {
 				appRef ! MasterInStandby
@@ -307,7 +307,7 @@ class MoonboxMaster(
 				appRef ! RegisterApplicationFailed(s"Duplicate application ID $id")
 			} else {
 				val app = new ApplicationInfo(
-					System.currentTimeMillis(), id, appHost, appPort, appAddress, dataPort, appRef, appType)
+					System.currentTimeMillis(), id, appLabel, appHost, appPort, appAddress, dataPort, appRef, appType)
 				if (registerApplication(app)) {
 					persistenceEngine.addApplication(app)
 					appRef ! RegisteredApplication(self)
@@ -478,7 +478,8 @@ class MoonboxMaster(
 		case open @ OpenSession(_, _, _, config) =>
 			val requester = sender()
 			val centralized = config.get("islocal").exists(_.equalsIgnoreCase("true"))
-			val candidate = selectApplication(centralized)
+			val appLabel = config.getOrElse("spark.app.label", "common")
+			val candidate = selectApplication(centralized, appLabel)
 			candidate match {
 				case Some(app) =>
 					logInfo(s"Try asking application ${app.id} to open session.")
@@ -690,12 +691,12 @@ class MoonboxMaster(
 		if (state == RecoveryState.RECOVERING && canCompleteRecovery) { completeRecovery() }
 	}
 
-	private def selectApplication(centralized: Boolean): Option[ApplicationInfo] = {
+	private def selectApplication(centralized: Boolean, label: String = "common"): Option[ApplicationInfo] = {
 		val activeApps = apps.filter(_.state == ApplicationState.RUNNING).toSeq
 		val typedApps = if (centralized) {
-			activeApps.filter(_.appType == ApplicationType.CENTRALIZED)
+			activeApps.filter(app =>app.appType == ApplicationType.CENTRALIZED && app.label.equals(label))
 		} else {
-			activeApps.filter(_.appType == ApplicationType.DISTRIBUTED)
+			activeApps.filter(app => app.appType == ApplicationType.DISTRIBUTED && app.label.equals(label))
 		}
 		Random.shuffle(typedApps).headOption
 	}

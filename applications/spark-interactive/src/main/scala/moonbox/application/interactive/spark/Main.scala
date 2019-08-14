@@ -50,6 +50,7 @@ object Main extends MbLogging {
 		val driverId = conf.get("driverId").getOrElse(throw new NoSuchElementException("driverId"))
 		val masters = conf.get("masters").map(_.split(";")).getOrElse(throw new NoSuchElementException("masters"))
 		val appType = conf.get("applicationType").getOrElse(throw new NoSuchElementException("applicationType"))
+		val appLabel = conf.get("appLabel").getOrElse("common")
 
 		val akkaConfig = Map(
 			"akka.jvm-exit-on-fatal-error" -> "true",
@@ -64,7 +65,7 @@ object Main extends MbLogging {
 
 		try {
 			system.actorOf(Props(
-				classOf[Main], driverId, masters, conf, ApplicationType.apply(appType)
+				classOf[Main], driverId, appLabel, masters, conf, ApplicationType.apply(appType)
 			), name = "interactive")
 		} catch {
 			case e: Exception =>
@@ -77,6 +78,7 @@ object Main extends MbLogging {
 
 class Main(
 	driverId: String,
+	appLabel: String,
 	masterAddresses: Array[String],
 	val conf: MbConf,
 	appType: ApplicationType
@@ -141,6 +143,7 @@ class Main(
 				case Success(runner) =>
 					sessionIdToRunner.put(sessionId, runner)
 					logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
+					logInfo(s"Current ${sessionIdToRunner.size} users online.")
 					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
 				case Failure(e) =>
 					logError("open session error", e)
@@ -155,6 +158,7 @@ class Main(
 					}
 					val msg = s"Close session successfully $sessionId"
 					logInfo(msg)
+					logInfo(s"Current ${sessionIdToRunner.size} users online.")
 					sender() ! CloseSessionResponse(sessionId, success = true, msg)
 				case None =>
 					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
@@ -381,6 +385,7 @@ class Main(
 		logInfo(s"Try registering with master $masterRpcAddress.")
 		context.system.actorSelection(masterRpcAddress).tell(RegisterApplication(
 			driverId,
+			appLabel,
 			host,
 			port,
 			self,

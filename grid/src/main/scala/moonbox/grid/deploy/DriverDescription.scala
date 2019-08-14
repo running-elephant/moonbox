@@ -38,6 +38,7 @@ trait OnceRunDriverDescription extends DriverDescription
 
 case class SparkLocalDriverDescription(
 	driverId: String,
+	label: String,
 	masters: Array[String],
 	config: Map[String, String]) extends LongRunDriverDescription {
 
@@ -58,6 +59,7 @@ case class SparkLocalDriverDescription(
 		(config.filterKeys(key => !key.startsWith("spark."))
 			++ Map(
 			"driverId" -> driverId,
+			"appLabel" -> label,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "CENTRALIZED"
 		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
@@ -78,6 +80,7 @@ case class SparkLocalDriverDescription(
 
 case class SparkClusterDriverDescription(
 	driverId: String,
+	label: String,
 	masters: Array[String],
 	config: Map[String, String]) extends LongRunDriverDescription {
 
@@ -93,6 +96,7 @@ case class SparkClusterDriverDescription(
 		(config.filterKeys(key => !key.startsWith("spark."))
 			++ Map(
 			"driverId" -> driverId,
+			"appLabel" -> label,
 			"masters" -> masters.mkString(";"),
 			"applicationType" -> "DISTRIBUTED"
 		)).toSeq.flatMap { case (k, v) => Seq(k, v)}

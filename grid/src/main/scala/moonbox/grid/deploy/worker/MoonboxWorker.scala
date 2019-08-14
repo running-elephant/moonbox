@@ -297,14 +297,16 @@ class MoonboxWorker(
 			val local = LaunchUtils.getLocalDriverConfigs(conf)
 			local.foreach { config =>
 				val driverId = newDriverId("local")
-				val driverDesc = new SparkLocalDriverDescription(driverId, masterAddresses, config)
+				val label = config.getOrElse("spark.app.label", "common")
+				val driverDesc = new SparkLocalDriverDescription(driverId, label, masterAddresses, config)
 				driverIdToDriverDesc.put(driverId, driverDesc)
 				self ! LaunchDriver(driverId, driverDesc)
 			}
 			val cluster = LaunchUtils.getClusterDriverConfigs(conf)
 			cluster.foreach { config =>
 				val driverId = newDriverId("cluster")
-				val driverDesc = new SparkClusterDriverDescription(driverId, masterAddresses, config)
+				val label = config.getOrElse("spark.app.label", "common")
+				val driverDesc = new SparkClusterDriverDescription(driverId, label, masterAddresses, config)
 				driverIdToDriverDesc.put(driverId, driverDesc)
 				self ! LaunchDriver(driverId, driverDesc)
 			}

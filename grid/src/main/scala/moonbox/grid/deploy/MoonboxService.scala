@@ -73,10 +73,11 @@ private[deploy] class MoonboxService(
 		LogoutOutbound(None)
 	}
 
-	def openSession(token: String, database: Option[String], config: Map[String, String])(implicit connection: ConnectionInfo): OpenSessionOutbound = {
+	def openSession(token: String, database: Option[String], sessionConfig: Map[String, String])(implicit connection: ConnectionInfo): OpenSessionOutbound = {
 		auditLogger.log(decodeToken(token), "openSession")
 		isLogin(token) match {
 			case Some((org, username)) =>
+				val config = loginManager.getUserConfig(org, username) ++ sessionConfig
 				askSync[OpenSessionResponse](OpenSession(org, username, database, config))(SHORT_TIMEOUT) match {
 					case Left(OpenSessionResponse(Some(sessionId), workerHost, workerPort, message)) =>
 						loginManager.putSession(token, sessionId)

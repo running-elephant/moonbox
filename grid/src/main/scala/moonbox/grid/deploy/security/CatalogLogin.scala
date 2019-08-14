@@ -23,8 +23,7 @@ package moonbox.grid.deploy.security
 import moonbox.catalog.{JdbcCatalog, PasswordEncryptor}
 import moonbox.common.MbConf
 
-class CatalogLogin(conf: MbConf) extends Login {
-	private val catalog = new JdbcCatalog(conf)
+class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login {
 
 	Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
 		override def run(): Unit = {
