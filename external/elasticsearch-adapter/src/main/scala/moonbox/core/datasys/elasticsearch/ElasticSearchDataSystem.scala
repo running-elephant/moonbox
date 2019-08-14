@@ -127,7 +127,7 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 			1,
 			getProperties,
 			executor.context.limitSize,
-			(schema, rs) => SparkUtil.resultListToJdbcRow(schema, rs))
+			(schema, rs) => SparkUtil.resultListToRow(schema, rs))
 		sparkSession.createDataFrame(rdd, plan.schema)
 	}
 
@@ -135,7 +135,12 @@ class ElasticSearchDataSystem(@transient val props: Map[String, String])
 		val prop: Properties = getProperties
 		val executor = new EsCatalystQueryExecutor(prop)
 		val schema = plan.schema
-		val (iter, index2SqlType, columnLabel2Index) = executor.execute4Jdbc(plan)
+		val json = executor.translate(plan).head
+		val mapping: Seq[(String, String)] = executor.getColumnMapping() //alias name : column name
+		logInfo(json)
+
+		val iter = executor.execute(json, schema, mapping, executor.context.limitSize,
+			(schema, rs) => SparkUtil.resultListToRow(schema, rs))
 		new DataTable(iter, schema, () => executor.close())
 
 	}
