@@ -250,7 +250,7 @@ case class MountTable(
 
 		if (!database.isLogical) {
 			throw new UnsupportedOperationException(
-				s"Can't mount table in physical database $database")
+				s"Can't mount table in physical database ${database.name}")
 		} else {
 			// for verifying options, may throw failed exception
 			DataSystem.lookupDataSystem(props).test()

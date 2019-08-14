@@ -173,39 +173,14 @@ class MoonboxSessionSuite extends FunSuite {
 
 		val spark: SparkSession = SparkSession.builder().appName("test").master("local[*]").getOrCreate()
 
-		class MbOptimizer extends RuleExecutor[LogicalPlan] {
-			override protected def batches: Seq[Batch] = {
-				Batch("pushdown", FixedPoint(20),
-					spark.sessionState.analyzer.CTESubstitution,
-					EliminateUnions
-				) :: Nil
-			}
-		}
+		spark.sql("create table parquet(id int, day string) using parquet options(path '/tmp/ccc') PARTITIONED BY (day)")
 
-		val plan = spark.sessionState.sqlParser.parsePlan(sql)
-		val cet = new MbOptimizer().execute(plan)
-			cet.resolveOperators {
-			case u@UnresolvedRelation(tableIdentifier) =>
-				println(tableIdentifier.quotedString)
-				u
-		}
-		println()
+		spark.sql("insert into parquet partition(day='2019-08-13-12-00-00') select 1 as id")
+		spark.sql("insert into parquet partition(day='2017-08-13-12-00-00') select 2 as id")
+		spark.sql("insert into parquet partition(day='2018-08-13-12-00-00') select 3 as id")
 
-		cet.collectLeaves().filter(_.isInstanceOf[UnresolvedRelation]).map {
-			case UnresolvedRelation(tableIdentifier) => tableIdentifier
-		}.foreach(println)
+		spark.sql("select id from parquet where day='2017'").show()
 
-		/*println()
-		cet.resolveOperators {
-			case p:LogicalPlan =>
-				p.transformExpressions {
-					case u @ UnresolvedFunction(name, _, _) =>
-						println(name.quotedString)
-						u
-					case a =>
-						println("----" + a)
-						a
-				}
-		}*/
+		print()
 	}
 }

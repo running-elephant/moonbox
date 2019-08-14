@@ -42,6 +42,7 @@ import org.apache.spark.sql.execution.datasources.{FindDataSourceTable, PreWrite
 import org.apache.spark.sql.hive._
 import org.apache.spark.sql.internal.StaticSQLConf
 import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
+import org.apache.spark.sql.rewrite.CTESubstitution
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -65,6 +66,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	private def createSparkSession(): SparkSession = {
 		SparkSession.clearDefaultSession()
 		SparkSession.clearActiveSession()
+
 		val builder = SparkSession.builder().sparkContext(getSparkContext(conf))
 
 		builder.config(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
@@ -190,8 +192,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	private def rewrite(plan: LogicalPlan): LogicalPlan = {
 		new RuleExecutor[LogicalPlan] {
 			override def batches: Seq[Batch] = {
-				Batch("CTESubstitution", FixedPoint(100),
-					sparkSession.sessionState.analyzer.CTESubstitution
+				Batch("CTESubstitution", Once,
+					CTESubstitution
 				) :: Nil
 			}
 		}.execute(plan)
@@ -300,9 +302,9 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  * @return
 	  */
 	private def pushdownEnable: Boolean = {
-		sparkSession.conf
+		!sparkSession.conf
 			.getOption("spark.sql.optimize.pushdown")
-			.exists(_.equalsIgnoreCase("true"))
+			.exists(_.equalsIgnoreCase("false"))
 	}
 
 	/**
@@ -567,11 +569,13 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	private def registerDatasourceTable(table: TableIdentifier, props: Map[String, String]): Unit = {
 		val options = props.map { case (k, v) => s"'$k' '$v'" }.mkString(",")
 		val schema = props.get("schema").map(s => s"($s)").getOrElse("")
+		val partition = props.get("partitionColumns").map(s => s"PARTITIONED BY ($s)").getOrElse("")
 		val sql =
 			s"""
 			   |create table if not exists ${table.quotedString}$schema
 			   |using ${DataSystem.lookupDataSource(props("type"))}
 			   |options($options)
+			   |$partition
 			 """.stripMargin
 		createDataFrame(sql)
 	}
