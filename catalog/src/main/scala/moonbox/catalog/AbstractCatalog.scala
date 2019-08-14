@@ -63,15 +63,15 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def alterOrganization(orgDefinition: CatalogOrganization)(implicit by: User): Unit
 
-	def getOrganization(org: String)(implicit by: User): CatalogOrganization
+	def getOrganization(org: String): CatalogOrganization
 
-	def getOrganizationOption(org: String)(implicit by: User): Option[CatalogOrganization]
+	def getOrganizationOption(org: String): Option[CatalogOrganization]
 
-	def organizationExists(org: String)(implicit by: User): Boolean
+	def organizationExists(org: String): Boolean
 
-	def listOrganizations()(implicit by: User): Seq[CatalogOrganization]
+	def listOrganizations(): Seq[CatalogOrganization]
 
-	def listOrganizations(pattern: String)(implicit by: User): Seq[CatalogOrganization]
+	def listOrganizations(pattern: String): Seq[CatalogOrganization]
 
 	// ----------------------------------------------------------------------------
 	// User -- belong to organization

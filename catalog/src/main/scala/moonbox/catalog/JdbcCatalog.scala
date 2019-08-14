@@ -222,7 +222,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 
 	}
 
-	override def getOrganization(org: String)(implicit by: User): CatalogOrganization = await {
+	override def getOrganization(org: String): CatalogOrganization = await {
 		jdbcDao.action(jdbcDao.getOrganization(org)).map {
 			case Some(catalogEntity) =>
 				CatalogOrganization(
@@ -235,7 +235,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	}
 
 
-	override def getOrganizationOption(org: String)(implicit by: User): Option[CatalogOrganization] = await {
+	override def getOrganizationOption(org: String): Option[CatalogOrganization] = await {
 		jdbcDao.action(jdbcDao.getOrganization(org)).map { _.map { catalogEntity =>
 				CatalogOrganization(
 					name = catalogEntity.name,
@@ -246,11 +246,11 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		}
 	}
 
-	override def organizationExists(org: String)(implicit by: User): Boolean = await {
+	override def organizationExists(org: String): Boolean = await {
 		jdbcDao.action(jdbcDao.organizationExists(org))
 	}
 
-	override def listOrganizations()(implicit by: User): Seq[CatalogOrganization] = await {
+	override def listOrganizations(): Seq[CatalogOrganization] = await {
 		jdbcDao.action(jdbcDao.listOrganizations()).map(_.map { catalogEntity =>
 			CatalogOrganization(
 				name = catalogEntity.name,
@@ -260,7 +260,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		})
 	}
 
-	override def listOrganizations(pattern: String)(implicit by: User): Seq[CatalogOrganization] = await {
+	override def listOrganizations(pattern: String): Seq[CatalogOrganization] = await {
 		jdbcDao.action(jdbcDao.listOrganizations(pattern)).map(_.map { catalogEntity =>
 			CatalogOrganization(
 				name = catalogEntity.name,
