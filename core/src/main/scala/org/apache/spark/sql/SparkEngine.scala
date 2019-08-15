@@ -38,8 +38,9 @@ import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, InsertIntoTable
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
 import org.apache.spark.sql.execution.command.RunnableCommand
-import org.apache.spark.sql.execution.datasources.{FindDataSourceTable, PreWriteCheck, ResolveSQLOnFile}
+import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive._
+import org.apache.spark.sql.hive.execution.InsertIntoHiveTable
 import org.apache.spark.sql.internal.StaticSQLConf
 import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
 import org.apache.spark.sql.rewrite.CTESubstitution
@@ -51,7 +52,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
 	import SparkEngine._
 
-	private val sparkSession: SparkSession = createSparkSession()
+	val sparkSession: SparkSession = createSparkSession()
 
 	import sparkSession.sessionState
 
@@ -255,10 +256,15 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 				(dataFrame.collect().toIterator, dataFrame.schema)
 			case other =>
 				injectTableFunctions(parsedPlan)
+				// may throw ColumnAnalysisException
 				val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
 				val limitPlan = parsedPlan match {
-					case insert: InsertIntoTable =>
-						analyzedPlan
+					case insert: InsertIntoDataSourceCommand =>
+						insert.query
+					case insert: InsertIntoHadoopFsRelationCommand =>
+						insert.query
+					case insert: InsertIntoHiveTable =>
+						insert.query
 					case _ =>
 						GlobalLimit(
 							Literal(maxRows, IntegerType),
@@ -285,11 +291,13 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 							throw e
 						case e: Exception if pushdownEnable =>
 							logError("Execute pushdown failed, Retry without pushdown optimize.", e)
-							val dataFrame = createDataFrame(optimizedPlan)
+							// using sql instead of logical plan to create dataFrame.
+							// because in some case will throw exception that spark.sql.execution.id is already set.
+							val dataFrame = createDataFrame(sql)
 							(dataFrame.collect().toIterator, dataFrame.schema)
 					}
 				} else {
-					val dataFrame = createDataFrame(optimizedPlan)
+					val dataFrame = createDataFrame(sql)
 					(dataFrame.collect().toIterator, dataFrame.schema)
 				}
 
@@ -322,8 +330,23 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 			case None => // do nothing
 		}
 
-		tables.filterNot(sessionState.catalog.tableExists).foreach(registerTable)
-		functions.filterNot(sessionState.catalog.functionExists).foreach(registerFunction)
+		tables.filterNot { identifier =>
+			identifier.database match {
+				case Some(db) =>
+					sparkSession.catalog.tableExists(db, identifier.table)
+				case None =>
+					sparkSession.catalog.tableExists(identifier.table)
+			}
+		}.foreach(registerTable)
+
+		functions.filterNot { identifier =>
+			identifier.database match {
+				case Some(db) =>
+					sparkSession.catalog.functionExists(db, identifier.funcName)
+				case None =>
+					sparkSession.catalog.tableExists(identifier.funcName)
+			}
+		}.foreach(registerFunction)
 	}
 
 	/**
@@ -482,7 +505,10 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  * @param sql sql text
 	  * @return DataFrame
 	  */
-	def createDataFrame(sql: String): DataFrame = {
+	def createDataFrame(sql: String, prepared: Boolean = true): DataFrame = {
+		if (!prepared) {
+			injectTableFunctions(parsePlan(sql))
+		}
 		sparkSession.sql(sql)
 	}
 

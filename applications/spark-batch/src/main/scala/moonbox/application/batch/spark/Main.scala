@@ -61,7 +61,7 @@ class Main(conf: MbConf, org: String, username: String, sqls: Seq[String]) {
 					runnable.run(mbSession)
 
 				case CreateTempView(name, query, isCache, replaceIfExists) =>
-					val df = mbSession.engine.createDataFrame(query)
+					val df = mbSession.engine.createDataFrame(query, prepared = false)
 					if (isCache) {
 						df.cache()
 					}

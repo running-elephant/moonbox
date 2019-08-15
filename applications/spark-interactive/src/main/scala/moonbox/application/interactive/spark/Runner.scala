@@ -171,7 +171,7 @@ class Runner(
 
 
 	private def createTempView(table: String, query: String, isCache: Boolean, replaceIfExists: Boolean): Unit = {
-		val df = mbSession.engine.createDataFrame(query)
+		val df = mbSession.engine.createDataFrame(query, prepared = false)
 		if (isCache) {
 			df.cache()
 		}

@@ -20,6 +20,7 @@
 
 package moonbox.core
 
+import moonbox.common.MbConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.analysis.{EliminateUnions, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -171,16 +172,14 @@ class MoonboxSessionSuite extends FunSuite {
 			""".stripMargin
 
 
-		val spark: SparkSession = SparkSession.builder().appName("test").master("local[*]").getOrCreate()
+		// val spark: SparkSession = SparkSession.builder().appName("test").master("local[*]").getOrCreate()
 
-		spark.sql("create table parquet(id int, day string) using parquet options(path '/tmp/ccc') PARTITIONED BY (day)")
+		/*spark.sql("create table parquet(id int, day string) using parquet options(path '/tmp/ccc') PARTITIONED BY (day)")
 
 		spark.sql("insert into parquet partition(day='2019-08-13-12-00-00') select 1 as id")
 		spark.sql("insert into parquet partition(day='2017-08-13-12-00-00') select 2 as id")
 		spark.sql("insert into parquet partition(day='2018-08-13-12-00-00') select 3 as id")
 
-		spark.sql("select id from parquet where day='2017'").show()
-
-		print()
+		spark.sql("select id from parquet where day='2017'").show()*/
 	}
 }
