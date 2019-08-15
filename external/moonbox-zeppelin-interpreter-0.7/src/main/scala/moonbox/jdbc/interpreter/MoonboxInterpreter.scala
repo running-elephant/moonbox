@@ -45,8 +45,8 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
   val TIMEOUT_KEY = "timeout"
   val MAX_CONCURRENCY_KEY = "maxConcurrency"
 
-  val DEFAULT_MAX_CONCURRENCY = 10
-  var DEFAULT_MAX_RESULT_LINE = 1000
+  val DEFAULT_MAX_CONCURRENCY = 5
+  var DEFAULT_MAX_RESULT_LINE = 100
   var timeout = 60 * 30 // time unit: s
 
   val baseProps = new Properties()
