@@ -94,7 +94,8 @@ case class RefreshDatabase(name: String) extends MbRunnableCommand with DDL {
 					name = t,
 					db = Some(name),
 					tableType =  CatalogTableType.TABLE,
-					properties = dataSystem.tableProperties(t)
+					properties = dataSystem.tableProperties(t),
+					owner = catalogDatabase.createBy
 				), ignoreIfExists = true
 			)
 		}
