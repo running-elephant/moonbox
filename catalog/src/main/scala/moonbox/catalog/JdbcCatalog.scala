@@ -95,7 +95,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 		} else await {
 			jdbcDao.action(jdbcDao.getUser(userId)).map {
 				case Some(userEntity) => userEntity.name
-				case None => throw new IllegalStateException(s"Id $userId")
+				case None => throw new IllegalStateException(s"user is deleted.")
 			}
 		}
 	}
@@ -110,7 +110,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	private def procedureName(procId: Long): String = await {
 		jdbcDao.action(jdbcDao.getProcedure(procId)).map {
 			case Some(procIdEntity) => procIdEntity.name
-			case None => throw new IllegalStateException(s"Id: $procId")
+			case None => throw new IllegalStateException(s"procedure is deleted.")
 		}
 	}
 	
