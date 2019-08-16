@@ -341,7 +341,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 				case Some(db) =>
 					sparkSession.catalog.functionExists(db, identifier.funcName)
 				case None =>
-					sparkSession.catalog.tableExists(identifier.funcName)
+					sparkSession.catalog.functionExists(identifier.funcName)
 			}
 		}.foreach(registerFunction)
 	}
