@@ -421,6 +421,12 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 		)
 	}
 
+	def deleteTimedEvents(organizationId: Long) = {
+		delete[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId
+		)
+	}
+
 	def renameTimedEvent(organizationId: Long, event: String, newEvent: String)(updateBy: Long) = {
 		update[TimedEventEntity, TimedEventEntityTable,
 			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),

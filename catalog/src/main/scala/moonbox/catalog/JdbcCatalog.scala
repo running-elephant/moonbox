@@ -158,14 +158,25 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 				if (cascade) {
 					jdbcDao.actionTransactionally(
 						for (
+							// delete tables and functions in database
+							_ <- jdbcDao.listDatabases(catalogOrganization.id.get).map { _.map { dbEntity =>
+									jdbcDao.deleteTables(dbEntity.id.get)
+									jdbcDao.deleteFunctions(dbEntity.id.get)
+								}
+							};
+							// delete databases in organization
 							_ <- jdbcDao.deleteDatabases(catalogOrganization.id.get);
+						    // delete users  in organization
 							_ <- jdbcDao.deleteUsers(catalogOrganization.id.get);
+							// delete timed events  in organization
+							_ <- jdbcDao.deleteTimedEvents(catalogOrganization.id.get);
+						    // delete procedures in organization
 							_ <- jdbcDao.deleteProcedures(catalogOrganization.id.get);
+							// delete organization
 							_ <- jdbcDao.deleteOrganization(org)
 						) yield ()
 					)
 				} else {
-					// TODO event
 					jdbcDao.action(
 						for (
 							databases <- jdbcDao.listDatabases(catalogOrganization.id.get);
