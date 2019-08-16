@@ -103,6 +103,11 @@ object Utils extends MbLogging {
 			.map(key => (key, System.getProperty(key))).toMap
 	}
 
+	def getMoonboxHome: String = {
+		sys.env.getOrElse[String]("MOONBOX_HOME",
+			throw new Exception("MOONBOX_HOME does not config."))
+	}
+
 	def getDefaultLogConfig(env: Map[String, String] = sys.env): Option[String] = {
 		val configDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME")
 			.map {t => s"$t${File.separator}conf"})
@@ -259,7 +264,6 @@ object Utils extends MbLogging {
 		simpleFormat.format(date)
 	}
 
-	// copy from spark
 	def escapeLikeRegex(pattern: String): String = {
 		val in = pattern.toIterator
 		val out = new StringBuilder()

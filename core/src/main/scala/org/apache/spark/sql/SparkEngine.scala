@@ -25,6 +25,7 @@ import java.io.File
 
 import moonbox.catalog.{CatalogTableType => TableType}
 import moonbox.catalog._
+import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core.MoonboxCatalog
 import moonbox.core.datasys.DataSystem
@@ -41,7 +42,7 @@ import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive._
 import org.apache.spark.sql.hive.execution.InsertIntoHiveTable
-import org.apache.spark.sql.internal.StaticSQLConf
+import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
 import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
 import org.apache.spark.sql.rewrite.CTESubstitution
 import org.apache.spark.sql.types.{IntegerType, StructType}
@@ -69,13 +70,9 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 		SparkSession.clearActiveSession()
 
 		val builder = SparkSession.builder().sparkContext(getSparkContext(conf))
-
-		builder.config(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
 		builder.config(StaticSQLConf.WAREHOUSE_PATH.key,
-			StaticSQLConf.WAREHOUSE_PATH.defaultValueString +
-				File.separator +
-				mbCatalog.getCurrentOrg)
-
+			Utils.getMoonboxHome + File.separator +
+				"spark-warehouse" + File.separator + mbCatalog.getCurrentOrg)
 		injectResolutionRule(builder)
 		injectPostHocResolutionRule(builder)
 		injectCheckRule(builder)
@@ -723,7 +720,11 @@ object SparkEngine extends MbLogging {
 		synchronized {
 			if (sparkContext == null || sparkContext.isStopped) {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filterKeys(_.startsWith("spark.")))
-
+				sparkConf.set(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
+				sparkConf.set(StaticSQLConf.WAREHOUSE_PATH.key,
+					Utils.getMoonboxHome + File.separator + "spark-warehouse")
+				sparkConf.set(SQLConf.CONSTRAINT_PROPAGATION_ENABLED.key, "false")
+				sparkConf.set(SQLConf.HIVE_MANAGE_FILESOURCE_PARTITIONS.key, "false")
 				sparkContext = SparkContext.getOrCreate(sparkConf)
 				sparkConf.getOption("spark.loglevel").foreach(sparkContext.setLogLevel)
 				// val toUpperCased =
