@@ -191,7 +191,7 @@ object MoonboxRest {
 	private def printUsageAndExit(exitCode: Int): Unit = {
 		// scalastyle: off println
 		System.err.println(
-			"Usage: moonbox [options]\n" +
+			"Usage: moonbox-submit [options]\n" +
 				"options:\n" +
 				"   -s            Connect to host:port.\n" +
 				"   -u            User for login.\n" +
