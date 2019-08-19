@@ -71,7 +71,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
 		val builder = SparkSession.builder().sparkContext(getSparkContext(conf))
 		builder.config(StaticSQLConf.WAREHOUSE_PATH.key,
-			Utils.getMoonboxHome + File.separator +
+			"file://" + Utils.getMoonboxHome + File.separator +
 				"spark-warehouse" + File.separator + mbCatalog.getCurrentOrg)
 		injectResolutionRule(builder)
 		injectPostHocResolutionRule(builder)
@@ -317,7 +317,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  *
 	  * @param plan logical plan
 	  */
-	private def injectTableFunctions(plan: LogicalPlan): Unit = {
+	def injectTableFunctions(plan: LogicalPlan): Unit = {
 		val rewritePlan = rewrite(plan)
 		val tables = unresolvedTables(rewritePlan)
 		val functions = unresolvedFunctions(rewritePlan)
@@ -722,7 +722,7 @@ object SparkEngine extends MbLogging {
 				val sparkConf = new SparkConf().setAll(conf.getAll.filterKeys(_.startsWith("spark.")))
 				sparkConf.set(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
 				sparkConf.set(StaticSQLConf.WAREHOUSE_PATH.key,
-					Utils.getMoonboxHome + File.separator + "spark-warehouse")
+					"file://" + Utils.getMoonboxHome + File.separator + "spark-warehouse")
 				sparkConf.set(SQLConf.CONSTRAINT_PROPAGATION_ENABLED.key, "false")
 				sparkConf.set(SQLConf.HIVE_MANAGE_FILESOURCE_PARTITIONS.key, "false")
 				sparkContext = SparkContext.getOrCreate(sparkConf)
