@@ -84,7 +84,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitShowOrgs(ctx: ShowOrgsContext): MbCommand = {
-		ShowOrganizations(Option(ctx.pattern).map(_.getText))
+		ShowOrganizations(Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes))
 	}
 
 
@@ -138,7 +138,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	}
 
 	override def visitShowSas(ctx: ShowSasContext): MbCommand = {
-		ShowSas(Option(ctx.pattern).map(_.getText))
+		ShowSas(Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes))
 	}
 
 	override def visitCreateUser(ctx: CreateUserContext): MbCommand = {
