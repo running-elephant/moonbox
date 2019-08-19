@@ -425,7 +425,9 @@ case class Explain(query: String, extended: Boolean = false) extends MbRunnableC
 	// TODO
 	override def run(mbSession: MoonboxSession): Seq[Row] = try {
 		import mbSession.engine._
-		val logicalPlan = pushdownPlan(optimizePlan(analyzePlan(parsePlan(query))))
+		val parsedPlan = parsePlan(query)
+		injectTableFunctions(parsedPlan)
+		val logicalPlan = pushdownPlan(optimizePlan(analyzePlan(parsedPlan)))
 		val outputString = logicalPlan match {
 			case w@WholePushdown(child, _) =>
 				val executedPlan = createDataFrame(child).queryExecution.executedPlan

@@ -321,10 +321,6 @@ case class AlterTableSetOptions(
 		import mbSession.catalog._
 
 		val database = mbSession.catalog.getDatabase(table.database.getOrElse(getCurrentDb))
-		if (!database.isLogical) {
-			throw new UnsupportedOperationException(
-				"Can't alter table options in physical database.")
-		}
 
 		val existTable = mbSession.catalog.getTable(database.name, table.table)
 
