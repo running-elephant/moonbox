@@ -186,7 +186,7 @@ class Main(
 								case error =>
 									Option(error.getMessage).getOrElse(error.getStackTrace.mkString("\n"))
 							}
-							logError(errorMessage)
+							logError("Query execute error", throwable)
 							requester ! JobQueryResponse(
 								success = false,
 								schema = SchemaUtil.emptyJsonSchema,
