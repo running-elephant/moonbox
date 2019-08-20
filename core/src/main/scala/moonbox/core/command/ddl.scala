@@ -148,7 +148,6 @@ case class UnmountDatabase(
 				cascade)
 		}
 
-		// TODO if current db
 		Seq.empty[Row]
 	}
 }
@@ -356,19 +355,22 @@ case class UnmountTable(
 
 		import mbSession.catalog._
 
-		val database = mbSession.catalog.getDatabase(table.database.getOrElse(getCurrentDb))
+		val dbName = table.database.getOrElse(getCurrentDb)
+		val database = mbSession.catalog.getDatabase(dbName)
 
 		if (!database.isLogical) {
 			throw new UnsupportedOperationException(
 				"Can't unmount table in physical database.")
 		}
 		mbSession.catalog.dropTable(
-			database.name,
+			dbName,
 			table.table,
 			ignoreIfNotExists)
 
-		mbSession.engine.catalog
-			.dropTable(table, ignoreIfNotExists = true, purge = true)
+		if (mbSession.engine.catalog.databaseExists(dbName)) {
+			mbSession.engine.catalog
+				.dropTable(table, ignoreIfNotExists = true, purge = true)
+		}
 
 		Seq.empty[Row]
 	}
