@@ -128,7 +128,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 		mbCatalog.catalogOrg.config.get("spark.sql.permission") match {
 			case Some(v) if v.equalsIgnoreCase("true") =>
 				Some(new MbAnalyzer(mbCatalog))
-			case None => None
+			case _ => None
 		}
 	}
 
