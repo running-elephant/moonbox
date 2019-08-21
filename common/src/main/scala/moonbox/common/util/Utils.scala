@@ -108,6 +108,10 @@ object Utils extends MbLogging {
 			throw new Exception("MOONBOX_HOME does not config."))
 	}
 
+	def getMoonboxHomeOption: Option[String] = {
+		sys.env.get("MOONBOX_HOME")
+	}
+
 	def getDefaultLogConfig(env: Map[String, String] = sys.env): Option[String] = {
 		val configDir: Option[String] = env.get("MOONBOX_CONF_DIR").orElse(env.get("MOONBOX_HOME")
 			.map {t => s"$t${File.separator}conf"})
