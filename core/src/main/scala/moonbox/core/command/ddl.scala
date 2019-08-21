@@ -293,18 +293,19 @@ case class AlterTableSetName(
 			newTable.table)
 
 		// update table in engine catalog
-
-		mbSession.engine.catalog.getTableMetadataOption(table)
-			.foreach { catalogTable =>
-				// drop table first
-				mbSession.engine.catalog.dropTable(
-					table, ignoreIfNotExists = true, purge = true)
-				// then create it
-				mbSession.engine.catalog.createTable(
-					catalogTable.copy(
-						identifier = catalogTable.identifier.copy(table = newTable.table)
-					), ignoreIfExists = true
-				)
+		if (mbSession.engine.catalog.databaseExists(database.name) && mbSession.engine.catalog.tableExists(table)) {
+			mbSession.engine.catalog.getTableMetadataOption(table)
+				.foreach { catalogTable =>
+					// drop table first
+					mbSession.engine.catalog.dropTable(
+						table, ignoreIfNotExists = true, purge = true)
+					// then create it
+					mbSession.engine.catalog.createTable(
+						catalogTable.copy(
+							identifier = catalogTable.identifier.copy(table = newTable.table)
+						), ignoreIfExists = true
+					)
+				}
 		}
 
 		Seq.empty[Row]
@@ -319,9 +320,9 @@ case class AlterTableSetOptions(
 
 		import mbSession.catalog._
 
-		val database = mbSession.catalog.getDatabase(table.database.getOrElse(getCurrentDb))
+		val dbName = table.database.getOrElse(getCurrentDb)
 
-		val existTable = mbSession.catalog.getTable(database.name, table.table)
+		val existTable = mbSession.catalog.getTable(dbName, table.table)
 
 		if (existTable.tableType != CatalogTableType.TABLE) {
 			throw new Exception(s"${existTable.name} is not a table.")
@@ -333,14 +334,16 @@ case class AlterTableSetOptions(
 			)
 		)
 
-		mbSession.engine.catalog.getTableMetadataOption(table).foreach { catalogTable =>
-			mbSession.engine.catalog.alterTable(
-				catalogTable.copy(
-					storage = catalogTable.storage.copy(
-						properties = catalogTable.storage.properties ++ props
+		if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
+			mbSession.engine.catalog.getTableMetadataOption(table).foreach { catalogTable =>
+				mbSession.engine.catalog.alterTable(
+					catalogTable.copy(
+						storage = catalogTable.storage.copy(
+							properties = catalogTable.storage.properties ++ props
+						)
 					)
 				)
-			)
+			}
 		}
 
 		Seq.empty[Row]
@@ -444,58 +447,36 @@ case class CreateView(
 		// TODO for checking sql syntax
 		// mbSession.engine.sqlSchema(query)
 
-		mbSession.catalog.createTable(CatalogTable(
-			db = Some(database.name),
-			name = view.table,
-			tableType = CatalogTableType.VIEW,
-			description = comment,
-			viewText = Some(query)
-		), replaceIfExists)
+		if (mbSession.catalog.tableExists(database.name, view.table) && replaceIfExists) {
+			val exists = mbSession.catalog.getTable(database.name, view.table)
 
-		Seq.empty[Row]
-	}
-}
+			if (exists.tableType != CatalogTableType.VIEW) {
+				throw new UnsupportedOperationException(
+					s"Can't replace table ${view.table} to view.")
+			}
 
-/*case class AlterViewSetName(
-	view: TableIdentifier,
-	newView: TableIdentifier) extends MbRunnableCommand with DDL {
-	override def run(mbSession: MoonboxSession): Seq[Row] = {
-
-		import mbSession.catalog._
-
-		val database = mbSession.catalog.getDatabase(view.database.getOrElse(getCurrentDb))
-
-		require(view.database == newView.database, s"Rename view cant not rename database")
-
-		mbSession.catalog.renameTable(
-			database.name,
-			view.table,
-			newView.table)
-
-		Seq.empty[Row]
-	}
-}
-
-case class AlterViewSetComment(
-	view: TableIdentifier,
-	comment: String) extends MbRunnableCommand with DDL {
-
-	override def run(mbSession: MoonboxSession): Seq[Row] = {
-
-		import mbSession.catalog._
-
-		val database = mbSession.catalog.getDatabase(view.database.getOrElse(getCurrentDb))
-
-		val existView = mbSession.catalog.getTable(database.name, view.table)
-		mbSession.catalog.alterTable(
-			existView.copy(
-				description = Some(comment)
+			mbSession.catalog.alterTable(
+				exists.copy(
+					viewText = Some(query),
+					description = comment match {
+						case Some(_) => comment
+						case None => exists.description
+					}
+				)
 			)
-		)
+		} else {
+			mbSession.catalog.createTable(CatalogTable(
+				db = Some(database.name),
+				name = view.table,
+				tableType = CatalogTableType.VIEW,
+				description = comment,
+				viewText = Some(query)
+			), ignoreIfExists = false)
+		}
 
 		Seq.empty[Row]
 	}
-}*/
+}
 
 case class AlterViewSetQuery(
 	view: TableIdentifier,
