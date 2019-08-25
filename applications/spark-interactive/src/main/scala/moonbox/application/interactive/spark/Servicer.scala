@@ -42,7 +42,7 @@ class Servicer(
 	manager: ActorRef
 ) extends MbLogging {
 
-	private val mbSession = new MoonboxSession(conf, username, org, database)
+	private val mbSession = new MoonboxSession(conf, org, username, database)
 
 
 	private def iteratorToSeq(iter: Iterator[Row]): Seq[Row] = {
