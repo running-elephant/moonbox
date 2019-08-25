@@ -565,7 +565,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  */
 	def registerDatabase(db: String): Unit = {
 		if (!sessionState.catalog.databaseExists(db)) {
-			createDataFrame(s"create database ${db}")
+			createDataFrame(s"create database if not exists ${db}")
 		}
 	}
 
