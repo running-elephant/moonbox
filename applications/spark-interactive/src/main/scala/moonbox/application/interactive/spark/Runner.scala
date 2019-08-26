@@ -110,8 +110,8 @@ class Runner(
 	private def alterTimedEvent(event: AlterTimedEventSetEnable, target: ActorRef): QueryResult = {
 		val (schema, data) = if (event.enable) {
 			val existsEvent = mbSession.catalog.getTimedEvent(event.name)
-			val catalogUser = mbSession.catalog.getUser(mbSession.catalog.getCurrentUser, existsEvent.definer)
 			val org = mbSession.catalog.getCurrentOrg
+			val catalogUser = mbSession.catalog.getUser(org, existsEvent.definer)
 			val procedure = mbSession.catalog.getProcedure(existsEvent.procedure)
 			val sqls = procedure.sqls
 			val lang = procedure.lang
