@@ -592,7 +592,11 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	private def registerDatasourceTable(table: TableIdentifier, props: Map[String, String]): Unit = {
 		val options = props.map { case (k, v) => s"'$k' '$v'" }.mkString(",")
 		val schema = props.get("schema").map(s => s"($s)").getOrElse("")
-		val partition = props.get("partitionColumns").map(s => s"PARTITIONED BY ($s)").getOrElse("")
+
+		// for compatibility
+		val partition = props.get("partitionColumns").orElse(
+			props.get("partitionColumnNames")).map(s => s"PARTITIONED BY ($s)").getOrElse("")
+		// val partition = props.get("partitionColumns").map(s => s"PARTITIONED BY ($s)").getOrElse("")
 		val sql =
 			s"""
 			   |create table if not exists ${table.quotedString}$schema
