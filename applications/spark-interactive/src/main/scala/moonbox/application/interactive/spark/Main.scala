@@ -187,6 +187,7 @@ class Main(
 									Option(error.getMessage).getOrElse(error.getStackTrace.mkString("\n"))
 							}
 							logError("Query execute error", throwable)
+							logError(throwable.getStackTrace.mkString("\n"))
 							requester ! JobQueryResponse(
 								success = false,
 								schema = SchemaUtil.emptyJsonSchema,
