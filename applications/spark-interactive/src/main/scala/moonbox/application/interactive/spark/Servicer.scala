@@ -64,6 +64,7 @@ class Servicer(
 	def translate(sql: String): TranslateResponse = {
 		try {
 			val parsed = mbSession.engine.parsePlan(sql)
+			mbSession.engine.injectTableFunctions(parsed)
 			val analyzed = mbSession.engine.analyzePlan(parsed)
 			val connectionUrl = analyzed.collectLeaves().toList match {
 				case Nil => throw new Exception("leaves can not be empty.")
@@ -94,7 +95,8 @@ class Servicer(
 		val result = sqls.map { sql =>
 			try {
 				val parsed = mbSession.engine.parsePlan(sql)
-				mbSession.engine.analyzePlan(parsed)
+				mbSession.engine.injectTableFunctions(parsed)
+				mbSession.engine.checkColumns(mbSession.engine.analyzePlan(parsed))
 				(true, None)
 			} catch {
 				case e: Exception =>
