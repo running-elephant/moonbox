@@ -42,7 +42,7 @@ object Main extends MbLogging {
 			case (k, v) if k.equals("org") =>
 				org = v
 			case (k, v) if k.equals("sqls") =>
-				sqls = v.split(";")
+				sqls = v.trim.stripSuffix(";").split(";")
 			case (k, v) =>
 				conf.set(k, v)
 		}
