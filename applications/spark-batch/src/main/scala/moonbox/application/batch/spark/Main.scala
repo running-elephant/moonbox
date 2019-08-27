@@ -73,6 +73,7 @@ class Main(conf: MbConf, org: String, username: String, sqls: Seq[String]) {
 
 				case Statement(s) =>
 					mbSession.sql(s, 0)
+
 				case _ =>
 					throw new Exception("Unsupport command in batch mode")
 			}
