@@ -198,6 +198,7 @@ object ExpressionUtils {
 
   def buildInListPredicate(colSchema: ColumnSchema, list: Seq[Expression]): KuduPredicate = {
     val values = list.map {
+		case Literal(value, StringType) if value.isInstanceOf[UTF8String] => value.toString
       case Literal(value, _) => value
       case other => throw new Exception(s"Invalid value[$other] in list.")
     }
