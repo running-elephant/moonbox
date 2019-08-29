@@ -49,7 +49,8 @@ private[deploy] class DriverRunner(
 					val launcher = new AppLauncher()
 					// redirect log
 					LaunchUtils.getLogsDirectory.foreach { dir =>
-						launcher.redirectOutput(new File(dir + File.separator + driverId + ".log"))
+						launcher.redirectOutput(
+							ProcessBuilder.Redirect.appendTo(new File(dir + File.separator + driverId + ".log")))
 					}
 					launcher.setAppName(driverId)
 
