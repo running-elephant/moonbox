@@ -39,7 +39,7 @@ package org.apache.spark.sql.execution.datasources.ums
 
 import java.io.InputStream
 
-import com.fasterxml.jackson.core.{JsonFactory, JsonParser}
+import com.fasterxml.jackson.core.{JsonFactory, JsonParseException, JsonParser}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.io.ByteStreams
 import org.apache.hadoop.conf.Configuration
@@ -59,6 +59,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{AnalysisException, Dataset, Encoders, SparkSession}
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.util.Utils
+
 import scala.collection.JavaConversions._
 
 /**
@@ -174,7 +175,13 @@ object TextInputJsonDataSource extends JsonDataSource {
 			requiredSchema,
 			parser.options.columnNameOfCorruptRecord)
 		linesReader.flatMap { elem =>
-			getPayloadData(elem, requiredSchema).flatMap(data => safeParser.parse(new Text(data)))
+			try {
+				getPayloadData(elem, requiredSchema).flatMap(data => safeParser.parse(new Text(data)))
+			} catch {
+				// for non complete json record
+				case e: JsonParseException =>
+					Iterator.empty
+			}
 		}
 	}
 

@@ -106,13 +106,19 @@ class MbUmsSuite extends FunSuite {
 
 	test("ums") {
 		session.sql(
-			// ums_id_ long, ums_ts_ timestamp, ums_op_ string, ums_uid_ string, PREDICT_INCOME_ID long, LOAN_ID long, PLAN_ID long, LENDER_USER_ID long, PREDICT_INCOME_AMT decimal, PREDICT_INCOME_PRINCIPAL decimal, PREDICT_INCOME_INTEREST string, PREDICT_INCOME_PENALTY decimal, PREDICT_INCOME_OTHER decimal, ACTUAL_INCOME_AMT decimal, ACTUAL_INCOME_PRINCIPAL decimal, ACTUAL_INCOME_INTEREST decimal, ACTUAL_INCOME_PENALTY decimal, ACTUAL_INCOME_BREACH decimal, ACTUAL_INCOME_OTHER decimal, PERIOD_NUM long, PERIOD_START_TIME timestamp, PERIOD_END_TIME timestamp, STATUS string, INVALID string, LENDER_INCOME_FEE_ID long, PREDICT_GUARANTEE_FEE decimal, PREDICT_MANAGE_FEE decimal, ACTUAL_GUARANTEE_FEE decimal, ACTUAL_MANAGE_FEE decimal, PREDICT_SERVICE_FEE decimal, ACTUAL_SERVICE_FEE decimal , CREATE_DATE timestamp, UPDATE_DATE timestamp, CREDITOR_ACCOUNT_RELATION_ID string, APPLY_ID long
 			"""create table a(
-			  |ums_id_ long, ums_ts_ timestamp, ums_op_ string, ums_uid_ string, PREDICT_INCOME_ID long, LOAN_ID long, PLAN_ID long, LENDER_USER_ID long, PREDICT_INCOME_AMT decimal, PREDICT_INCOME_PRINCIPAL decimal, PREDICT_INCOME_INTEREST decimal, PREDICT_INCOME_PENALTY decimal, PREDICT_INCOME_OTHER decimal, ACTUAL_INCOME_AMT decimal, ACTUAL_INCOME_PRINCIPAL decimal, ACTUAL_INCOME_INTEREST decimal, ACTUAL_INCOME_PENALTY decimal, ACTUAL_INCOME_BREACH decimal, ACTUAL_INCOME_OTHER decimal, PERIOD_NUM long, PERIOD_START_TIME timestamp, PERIOD_END_TIME timestamp, STATUS string, INVALID string, LENDER_INCOME_FEE_ID long, PREDICT_GUARANTEE_FEE decimal, PREDICT_MANAGE_FEE decimal, ACTUAL_GUARANTEE_FEE decimal, ACTUAL_MANAGE_FEE decimal, PREDICT_SERVICE_FEE decimal, ACTUAL_SERVICE_FEE decimal , CREATE_DATE timestamp, UPDATE_DATE timestamp, CREDITOR_ACCOUNT_RELATION_ID string, APPLY_ID long
-			  |) using ums options(path '/Users/wanghao/moonbox_test_data/201907151140057670000', allowNumericLeadingZeros 'true')
+			  |ums_id_ long,
+			  |ums_ts_ timestamp,
+			  |ums_op_ string,
+			  |ums_uid_ string,
+			  |ID long,
+			  |ACC_TYPE_ID string,
+			  |USER_ID long,
+			  |ACC_ID string
+			  |) using ums options(path '/tmp/user_account_new.txt', allowNumericLeadingZeros 'true')
 			""".stripMargin
 		)
-		session.sql("select * from a where ums_id_ is null").show()
+		session.sql("select count(*) from a").show(1000000)
 	}
 
 }
