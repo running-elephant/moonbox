@@ -367,16 +367,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	}
 
 	def unresolvedFunctionsInSQL(sql: String): Seq[FunctionIdentifier] = {
-		val functions = new scala.collection.mutable.HashSet[FunctionIdentifier]()
-		rewrite(parsePlan(sql)).resolveOperators {
-			case u =>
-				u.resolveExpressions {
-					case func: UnresolvedFunction =>
-						functions.add(func.name)
-						func
-				}
-		}
-		functions.toSeq
+		unresolvedFunctions(rewrite(parsePlan(sql)))
 	}
 
 	/**
