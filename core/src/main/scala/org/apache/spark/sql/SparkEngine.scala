@@ -34,7 +34,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.analyze.MbAnalyzer
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
-import org.apache.spark.sql.catalyst.expressions.Literal
+import org.apache.spark.sql.catalyst.expressions.{Literal, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, InsertIntoTable, LocalLimit, LogicalPlan}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
@@ -47,6 +47,9 @@ import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
 import org.apache.spark.sql.rewrite.CTESubstitution
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
+
+import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 
 
 class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
@@ -400,9 +403,23 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  * @return tables
 	  */
 	private def unresolvedTablesInSelect(plan: LogicalPlan): Seq[TableIdentifier] = {
-		plan.collectLeaves().filter(_.isInstanceOf[UnresolvedRelation]).map {
-			case u: UnresolvedRelation => u.tableIdentifier
-		}.distinct
+		val tables = new ArrayBuffer[TableIdentifier]()
+
+		def findUnresolvedTables(plan: LogicalPlan): Unit = {
+			plan.foreach {
+				case u: UnresolvedRelation =>
+					tables.append(u.tableIdentifier)
+				case u =>
+					u.transformExpressions {
+						case subExpr: SubqueryExpression =>
+							findUnresolvedTables(subExpr.plan)
+							subExpr
+					}
+			}
+		}
+
+		findUnresolvedTables(plan)
+		tables.distinct
 	}
 
 	/**
@@ -412,16 +429,24 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  * @return functions
 	  */
 	private def unresolvedFunctions(plan: LogicalPlan): Seq[FunctionIdentifier] = {
-		val functions = new scala.collection.mutable.HashSet[FunctionIdentifier]()
-		plan.resolveOperators {
-			case u =>
-				u.resolveExpressions {
-					case func: UnresolvedFunction =>
-						functions.add(func.name)
-						func
-				}
+		val functions = new ArrayBuffer[FunctionIdentifier]()
+
+		def findUnresolvedFunctions(plan: LogicalPlan): Unit = {
+			plan.foreach {
+				case u =>
+					u.transformAllExpressions {
+						case func: UnresolvedFunction =>
+							functions.append(func.name)
+							func
+						case subExpr: SubqueryExpression =>
+							findUnresolvedFunctions(subExpr.plan)
+							subExpr
+					}
+			}
 		}
-		functions.toSeq
+
+		findUnresolvedFunctions(plan)
+		functions.distinct
 	}
 
 	/**
