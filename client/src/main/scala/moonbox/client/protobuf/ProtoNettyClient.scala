@@ -52,21 +52,26 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   import ProtoNettyClient._
 
   def this(host: String, port: Int, timeout: Int) = this(ClientOptions.builder().host(host).port(port).timeout(timeout).build())
+
   def this(host: String, port: Int) = this(ClientOptions.builder().host(host).port(port).build())
+
   def this(host: String) = this(ClientOptions.builder().host(host).build())
+
   def this() = this(ClientOptions.builder().build())
 
   /* val */
   private val host = clientOptions.host
   private val port = clientOptions.port
-  private val CONNECTION_TIMEOUT_MILLIS = 1000 * 10 // ms
+  private val CONNECTION_TIMEOUT_MILLIS = 1000 * 10
+  // ms
   private val promises = new ConcurrentHashMap[Long, ChannelPromise]
   private val responses = new ConcurrentHashMap[Long, ProtoMessage]
   private val callbacks = new ConcurrentHashMap[Long, ProtoMessage => Any]
   /* var */
   private var channel: Channel = _
   private var connected: Boolean = false
-  private var readTimeout: Int = 1000 * clientOptions.timeout // time unit: ms
+  private var readTimeout: Int = 1000 * clientOptions.timeout
+  // time unit: ms
   private var dataFetchClient: ProtoNettyClient = _
 
   @throws(classOf[Exception])
@@ -106,14 +111,17 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
   override def setReadTimeout(milliseconds: Int): Unit = {
     readTimeout = milliseconds
   }
+
   /* time unit: ms */
   override def getReadTimeout(): Int = readTimeout
+
   override def getRemoteAddress(): SocketAddress = {
     if (channel != null && isConnected) channel.remoteAddress()
     else throw new ChannelException("Channel unestablished")
   }
 
   def genMessageId: Long = math.abs(UUID.randomUUID.getLeastSignificantBits)
+
   def sendWithCallback(msg: Any, callback: Any => Any) = {
     msg match {
       case in: ProtoMessage =>
@@ -123,6 +131,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       case other => throw new Exception(s"Unsupported message: $other")
     }
   }
+
   @throws(classOf[Exception])
   def sendMessageSync(message: Any, timeout: Int = readTimeout): ProtoMessage = {
     message match {
@@ -135,6 +144,16 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
           if (timeout == 0) {
             promise.await()
           } else if (!promise.await(timeout)) {
+            if (in.hasInteractiveQueryInbound) {
+              try {
+                val interactiveQuery = in.getInteractiveQueryInbound
+                this.cancelInteractiveQuery(interactiveQuery.getToken, interactiveQuery.getSessionId)
+              } catch {
+                case ex: Exception =>
+                  throw new Exception(s"No response within $timeout ms, ${ex.getMessage}")
+              }
+              throw new Exception(s"No response within $timeout ms, cancel query success")
+            }
             throw new Exception(s"No response within $timeout ms")
           }
           if (!promise.isSuccess) {
@@ -145,17 +164,22 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       case other => throw new Exception(s"Unsupported message: $other")
     }
   }
+
   @throws(classOf[Exception]) def sendMessage(message: Any): ChannelFuture = {
     if (isActive()) {
       channel.writeAndFlush(message)
     } else throw new Exception("Channel is not active.")
   }
+
   def isConnected(): Boolean = this.connected
+
   def isActive(): Boolean = channel != null && channel.isActive
+
   def close(): Unit = {
     /* EventLoopGroup should not be shutdown */
     if (channel != null) channel.close()
   }
+
   private def release(key: Long): Unit = {
     promises.remove(key)
     responses.remove(key)
@@ -167,6 +191,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       case other => throw new Exception(s"DataFetchClient type should be consistent with ${this.getClass.getTypeName}, but got ${other.getClass.getTypeName}")
     }
   }
+
   override def login(username: String, password: String): String = {
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
@@ -181,6 +206,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       }
     } else throw new Exception(s"Invalid message format: $resp")
   }
+
   override def logout(token: String): Boolean = {
     val msg = ProtoMessage.newBuilder()
       .setMessageId(genMessageId)
@@ -259,7 +285,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setBatchQueryProgressInbound(ProtoInboundMessageBuilder.batchQueryProgressInbound(username, password, jobId))
       .build()
     val resp = sendMessageSync(msg)
-    if (resp.hasBatchQueryProgressOutbound){
+    if (resp.hasBatchQueryProgressOutbound) {
       val out = resp.getBatchQueryProgressOutbound
       JobState(out.getMessage, out.getState)
     } else throw new Exception(s"Unknown message: $resp")
@@ -321,7 +347,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       .setInteractiveNextResultInbound(ProtoInboundMessageBuilder.interactiveNextResultInbound(token, sessionId))
       .build()
     val resp = dataFetchClient.sendMessageSync(msg, timeout)
-    if (resp.hasInteractiveNextResultOutbound){
+    if (resp.hasInteractiveNextResultOutbound) {
       val out = resp.getInteractiveNextResultOutbound
       out.getError match {
         case "" | null => out.getData
@@ -339,7 +365,9 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     val dataTypeSchema = schemaToDataType(schema)
     val rowIterator = new Iterator[MoonboxRow] {
       var internalIter = rowsInData(resultData.getData, dataTypeSchema).toIterator
+
       override def hasNext: Boolean = internalIter.hasNext || resultData.getHasNext
+
       override def next(): MoonboxRow = {
         if (internalIter.hasNext) {
           new MoonboxRow(internalIter.next().toArray)
@@ -352,7 +380,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     }
     new MoonboxRowSet(rowIterator.asJava, schema)
   }
-  
+
   private def schemaToDataType(schema: String): Array[DataType] = {
     val parsed = SchemaUtil.parse(schema)
     SchemaUtil.schemaToDataType(parsed).map(_._2)
@@ -363,23 +391,24 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
       row.getCellList.asScala.zipWithIndex.map(cell => cellConvert(cell._1, schema(cell._2)))
     }
   }
+
   private def cellConvert(cell: Cell, dataType: DataType): Any = {
-	  if (cell.getObjectsCase.getNumber == 0) return null
+    if (cell.getObjectsCase.getNumber == 0) return null
 
     dataType match {
-      case DECIMAL => toJavaBigDecimal(cell.getBigDecimal)  /* proto.BDecimal => java.math.BigDecimal */
+      case DECIMAL => toJavaBigDecimal(cell.getBigDecimal) /* proto.BDecimal => java.math.BigDecimal */
       case BINARY => cell.getByteArray.toByteArray
       case BOOLEAN => cell.getBooleanValue
       case VARCHAR | STRING => cell.getStringValue
-      case TIMESTAMP => new java.sql.Timestamp(cell.getLongValue)  /* long => java.sql.timestamp */
+      case TIMESTAMP => new java.sql.Timestamp(cell.getLongValue) /* long => java.sql.timestamp */
       case DOUBLE => cell.getDoubleValue
       case FLOAT => cell.getFloatValue
       case INTEGER => cell.getIntValue
       case LONG => cell.getLongValue
-      case SHORT => cell.getIntValue.toShort  /* int => short */
-      case BYTE => cell.getIntValue.toByte  /* int => byte */
-      case DATE => new java.sql.Date(cell.getLongValue)  /* long => java.sql.Date */
-      case _ => JavaSerializer.deserialize[Object](cell.getByteArray.toByteArray)  /* other types => java.lang.Object deserialized by java serializer */
+      case SHORT => cell.getIntValue.toShort /* int => short */
+      case BYTE => cell.getIntValue.toByte /* int => byte */
+      case DATE => new java.sql.Date(cell.getLongValue) /* long => java.sql.Date */
+      case _ => JavaSerializer.deserialize[Object](cell.getByteArray.toByteArray) /* other types => java.lang.Object deserialized by java serializer */
       // case CHAR =>
       // case NULL =>
       // case OBJECT =>
@@ -389,7 +418,7 @@ private[client] class ProtoNettyClient(clientOptions: ClientOptions) extends Cli
     }
   }
 
-  private def toJavaBigDecimal(decimal: BDecimal): java.math.BigDecimal ={
+  private def toJavaBigDecimal(decimal: BDecimal): java.math.BigDecimal = {
     val intVal = new java.math.BigInteger(decimal.getIntVal.getValue.toByteArray)
     val scale = decimal.getScale
     new java.math.BigDecimal(intVal, scale)
