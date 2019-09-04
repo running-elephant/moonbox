@@ -247,7 +247,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	  * @return data and schema
 	  */
 
-	// TODO if less then 2000 collect or else collectAsIterator
 	def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
 		val parsedPlan = parsePlan(sql)
 		parsedPlan match {
@@ -294,11 +293,11 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 							// using sql instead of logical plan to create dataFrame.
 							// because in some case will throw exception that spark.sql.execution.id is already set.
 							val dataFrame = createDataFrame(sql)
-							(dataFrame.collect().toIterator, dataFrame.schema)
+							(dataFrame.take(maxRows).toIterator, dataFrame.schema)
 					}
 				} else {
 					val dataFrame = createDataFrame(sql)
-					(dataFrame.collect().toIterator, dataFrame.schema)
+					(dataFrame.take(maxRows).toIterator, dataFrame.schema)
 				}
 
 		}
