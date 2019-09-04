@@ -287,7 +287,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 								(dataFrame.collect().toIterator, dataFrame.schema)
 						}
 					} catch {
-						case e: Exception if e.getMessage.contains("cancelled") =>
+						case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
 							throw e
 						case e: Exception if pushdownEnable =>
 							logError("Execute pushdown failed, Retry without pushdown optimize.", e)
