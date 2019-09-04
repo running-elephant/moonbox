@@ -257,13 +257,13 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 				injectTableFunctions(parsedPlan)
 				// may throw ColumnAnalysisException
 				val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
-				val limitPlan = parsedPlan match {
+				val limitPlan = analyzedPlan match {
 					case insert: InsertIntoDataSourceCommand =>
-						insert.query
+						insert
 					case insert: InsertIntoHadoopFsRelationCommand =>
-						insert.query
+						insert
 					case insert: InsertIntoHiveTable =>
-						insert.query
+						insert
 					case _ =>
 						GlobalLimit(
 							Literal(maxRows, IntegerType),
@@ -292,12 +292,12 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 							logError("Execute pushdown failed, Retry without pushdown optimize.", e)
 							// using sql instead of logical plan to create dataFrame.
 							// because in some case will throw exception that spark.sql.execution.id is already set.
-							val dataFrame = createDataFrame(sql)
-							(dataFrame.take(maxRows).toIterator, dataFrame.schema)
+							val dataFrame = createDataFrame(optimizedPlan)
+							(dataFrame.collect().toIterator, dataFrame.schema)
 					}
 				} else {
-					val dataFrame = createDataFrame(sql)
-					(dataFrame.take(maxRows).toIterator, dataFrame.schema)
+					val dataFrame = createDataFrame(optimizedPlan)
+					(dataFrame.collect().toIterator, dataFrame.schema)
 				}
 
 		}
