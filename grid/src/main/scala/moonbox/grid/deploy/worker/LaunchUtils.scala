@@ -118,11 +118,16 @@ object LaunchUtils extends MbLogging {
 	}
 
 	def getRuntimeJars(env: Map[String, String] = sys.env): List[String] = {
+		val file = new File(getRuntimeDir())
+		file.listFiles().filter(f => f.isFile && f.getName.endsWith(".jar")).map(_.getAbsolutePath).toList
+	}
+
+	private def getRuntimeDir(env: Map[String, String] = sys.env): String = {
 		val path = getMoonboxHome() + File.separator + "runtime"
 		val file = new File(path)
 		if (file.exists()) {
-			file.listFiles().filter(f => f.isFile && f.getName.endsWith(".jar")).map(_.getAbsolutePath).toList
-		} else List()
+			path
+		} else throw new Exception("runtime dir is not found")
 	}
 
 	def getAppResourceJar(appType: String, env: Map[String, String] = sys.env): Option[String] = {
@@ -154,6 +159,8 @@ object LaunchUtils extends MbLogging {
 	}
 
 	def getDriverClasspath(env: Map[String, String] = sys.env): String = {
-		getMoonboxLibs()
+		val libs = getMoonboxLibs()
+		val runtime = getRuntimeDir() + File.separator + "*"
+		libs + File.pathSeparator  + runtime
 	}
 }
