@@ -3,7 +3,7 @@ package moonbox.core.datasys.mysql
 import java.sql.{Connection, PreparedStatement, SQLException}
 import java.util.Locale
 
-import moonbox.common.MbLogging
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JdbcUtils}
 import org.apache.spark.sql.jdbc.{JdbcDialect, JdbcDialects, JdbcType}
@@ -11,7 +11,7 @@ import org.apache.spark.sql.types._
 
 import scala.util.control.NonFatal
 
-object MysqlUtils extends MbLogging {
+object MysqlUtils extends Logging {
 
 	def updateTable(data: DataFrame, tableSchema: Option[StructType],
 		isCaseSensitive: Boolean,parameter: Map[String, String]) {
@@ -33,7 +33,7 @@ object MysqlUtils extends MbLogging {
 			case Some(n) if n < data.rdd.getNumPartitions => data.coalesce(n)
 			case _ => data
 		}
-		repartitionedDF.foreachPartition(iterator => MysqlUtils.savePartition(
+		repartitionedDF.foreachPartition(iterator => savePartition(
 			getConnection, table, iterator, rddSchema, insertStmt, isCaseSensitive, batchSize, dialect, isolationLevel)
 		)
 	}
