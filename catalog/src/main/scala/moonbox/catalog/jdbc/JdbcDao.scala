@@ -453,6 +453,12 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 		)
 	}
 
+	def timedEventExists(organizationId: Long, procId: Long) = {
+		exists[TimedEventEntity, TimedEventEntityTable](
+			timedEvents, t => t.organizationId === organizationId && t.procedure === procId
+		)
+	}
+
 	def listTimedEvents(organizationId: Long) = {
 		query[TimedEventEntity, TimedEventEntityTable](
 			timedEvents, t => t.organizationId === organizationId

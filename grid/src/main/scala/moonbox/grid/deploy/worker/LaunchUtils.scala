@@ -159,8 +159,6 @@ object LaunchUtils extends MbLogging {
 	}
 
 	def getDriverClasspath(env: Map[String, String] = sys.env): String = {
-		val libs = getMoonboxLibs()
-		val runtime = getRuntimeDir() + File.separator + "*"
-		libs + File.pathSeparator  + runtime
+			getMoonboxLibs()
 	}
 }

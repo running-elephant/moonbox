@@ -359,6 +359,10 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 		jdbcCatalog.timedEventExists(event)
 	}
 
+	def timedEventExists(procId: Long): Boolean = {
+		jdbcCatalog.timedEventExists(procId)
+	}
+
 	def dropTimedEvent(event: String, ignoreIfNotExists: Boolean): Unit = {
 		jdbcCatalog.dropTimedEvent(event, ignoreIfNotExists)
 	}

@@ -319,6 +319,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def timedEventExists(event: String)(implicit by: User): Boolean
 
+	def timedEventExists(procId: Long)(implicit by: User): Boolean
+
 	def listTimedEvents()(implicit by: User): Seq[CatalogTimedEvent]
 
 	def listTimedEvents(pattern: String)(implicit by: User): Seq[CatalogTimedEvent]
