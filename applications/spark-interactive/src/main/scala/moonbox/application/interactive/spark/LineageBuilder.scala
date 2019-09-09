@@ -1,6 +1,5 @@
-package org.apache.spark.sql
+package moonbox.application.interactive.spark
 
-import moonbox.core._
 import org.apache.spark.sql.catalyst.catalog.{CatalogTable, CatalogTableType}
 import org.apache.spark.sql.types.StructType
 

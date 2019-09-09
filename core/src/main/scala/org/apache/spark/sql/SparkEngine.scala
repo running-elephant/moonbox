@@ -26,9 +26,9 @@ import java.io.File
 import moonbox.catalog.{CatalogTableType => TableType, _}
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
+import moonbox.core.MoonboxCatalog
 import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
-import moonbox.core.{DagEntity, MoonboxCatalog, SqlDag}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.analyze.MbAnalyzer
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
@@ -236,65 +236,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val parsedPlan = parsePlan(sql)
     injectTableFunctions(parsedPlan)
     analyzePlan(parsedPlan).schema
-  }
-
-
-  /**
-    * get dag of sql
-    *
-    * @param sql sql
-    * @return dag
-    */
-  def sqlDag(sql: String): SqlDag = {
-    val lineageBuilder = new LineageBuilder
-    val parsedPlan = parsePlan(sql)
-    var targetTableNodeId: Int = 0
-    parsedPlan match {
-      case insert: InsertIntoTable =>
-        injectTableFunctions(insert)
-        val analyzedPlan = analyzePlan(insert)
-        val query = analyzedPlan match {
-          case datasource: InsertIntoDataSourceCommand =>
-            targetTableNodeId = lineageBuilder.genTableNode(datasource.logicalRelation.catalogTable.get)
-            datasource.query
-          case hiveTable: InsertIntoHiveTable =>
-            targetTableNodeId = lineageBuilder.genTableNode(hiveTable.table)
-            hiveTable.query
-          case hadoopFs: InsertIntoHadoopFsRelationCommand =>
-            targetTableNodeId = lineageBuilder.genTableNode(hadoopFs.catalogTable.get)
-            hadoopFs.query
-          case _ =>
-            throw new Exception("Lineage analysis is not supported for this sql")
-        }
-        queryDag(lineageBuilder, targetTableNodeId, query)
-        SqlDag(dag_table = lineageBuilder.buildTableDag,
-          dag_col = DagEntity(Nil, Nil))
-      case _ =>
-        throw new Exception("Lineage analysis is not supported for this sql")
-    }
-  }
-
-  def queryDag(lineageBuilder: LineageBuilder, targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
-
-    def genDag(targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
-      logicalPlan match {
-        case relation: LogicalRelation =>
-          val sourceTableNodeId = lineageBuilder.genTableNode(relation.catalogTable.get)
-          lineageBuilder.putTableNodeEdge(sourceTableNodeId, targetTableNodeId)
-        case view: View =>
-          val viewTableNodeId = lineageBuilder.genTableNode(view.desc)
-          lineageBuilder.putTableNodeEdge(viewTableNodeId, targetTableNodeId)
-          queryDag(lineageBuilder, viewTableNodeId, view.child)
-        case unary: UnaryNode =>
-          genDag(targetTableNodeId, unary.child)
-        case binary: BinaryNode =>
-          genDag(targetTableNodeId, binary.left)
-          genDag(targetTableNodeId, binary.right)
-        case _: LogicalPlan =>
-      }
-    }
-
-    genDag(targetTableNodeId, logicalPlan)
   }
 
   /**

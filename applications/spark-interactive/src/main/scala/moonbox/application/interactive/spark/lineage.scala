@@ -1,4 +1,4 @@
-package moonbox.core
+package moonbox.application.interactive.spark
 
 import com.fasterxml.jackson.databind.ObjectMapper
 
@@ -31,6 +31,4 @@ case class DagEntity(nodes: Seq[DagNode], edges: Seq[DagEdge], props: Seq[Prop] 
 }
 
 case class SqlDag(dag_table: DagEntity, dag_col: DagEntity)
-
-case class SqlDags(dags: Seq[SqlDag])
 

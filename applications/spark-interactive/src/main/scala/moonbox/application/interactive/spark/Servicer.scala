@@ -26,7 +26,8 @@ import moonbox.core._
 import moonbox.grid.deploy.Interface.Dag
 import moonbox.grid.deploy.messages.Message._
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization.write
@@ -136,10 +137,69 @@ class Servicer(
 
   def lineage(sqls: Seq[String]): LineageResponse = {
     val lineage = sqls.map(sql => {
-      val dag = mbSession.lineage(sql.trim.stripSuffix(";"))
+      val dag = sqlDag(sql.trim.stripSuffix(";"))
       Dag(write(dag.dag_table), write(dag.dag_col))
     })
     LineageSuccessed(lineage)
   }
+
+  /**
+    * get dag of sql
+    *
+    * @param sql sql
+    * @return dag
+    */
+  private def sqlDag(sql: String): SqlDag = {
+    val lineageBuilder = new LineageBuilder
+    val parsedPlan = mbSession.engine.parsePlan(sql)
+    var targetTableNodeId: Int = 0
+    parsedPlan match {
+      case insert: InsertIntoTable =>
+        mbSession.engine.injectTableFunctions(insert)
+        val analyzedPlan = mbSession.engine.analyzePlan(insert)
+        val query = analyzedPlan match {
+          case datasource: InsertIntoDataSourceCommand =>
+            targetTableNodeId = lineageBuilder.genTableNode(datasource.logicalRelation.catalogTable.get)
+            datasource.query
+//          case hiveTable: InsertIntoHiveTable =>
+//            targetTableNodeId = lineageBuilder.genTableNode(hiveTable.table)
+//            hiveTable.query
+          case hadoopFs: InsertIntoHadoopFsRelationCommand =>
+            targetTableNodeId = lineageBuilder.genTableNode(hadoopFs.catalogTable.get)
+            hadoopFs.query
+          case _ =>
+            throw new Exception("Lineage analysis is not supported for this sql")
+        }
+        queryDag(lineageBuilder, targetTableNodeId, query)
+        SqlDag(dag_table = lineageBuilder.buildTableDag,
+          dag_col = DagEntity(Nil, Nil))
+      case _ =>
+        throw new Exception("Lineage analysis is not supported for this sql")
+    }
+  }
+
+  def queryDag(lineageBuilder: LineageBuilder, targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
+
+    def genDag(targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
+      logicalPlan match {
+        case relation: LogicalRelation =>
+          val sourceTableNodeId = lineageBuilder.genTableNode(relation.catalogTable.get)
+          lineageBuilder.putTableNodeEdge(sourceTableNodeId, targetTableNodeId)
+        case view: View =>
+          val viewTableNodeId = lineageBuilder.genTableNode(view.desc)
+          lineageBuilder.putTableNodeEdge(viewTableNodeId, targetTableNodeId)
+          queryDag(lineageBuilder, viewTableNodeId, view.child)
+        case unary: UnaryNode =>
+          genDag(targetTableNodeId, unary.child)
+        case binary: BinaryNode =>
+          genDag(targetTableNodeId, binary.left)
+          genDag(targetTableNodeId, binary.right)
+        case _: LogicalPlan =>
+      }
+    }
+
+    genDag(targetTableNodeId, logicalPlan)
+  }
+
 
 }

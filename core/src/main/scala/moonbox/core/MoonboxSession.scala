@@ -84,10 +84,6 @@ class MoonboxSession(
 		}
 	}
 
-	def lineage(sql: String): SqlDag = {
-		engine.sqlDag(sql)
-	}
-
 	private def initializeDatabase(): Unit = {
 		defaultDb.foreach { db =>
 			catalog.setCurrentDb(db)
