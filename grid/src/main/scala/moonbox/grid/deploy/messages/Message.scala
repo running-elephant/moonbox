@@ -20,6 +20,8 @@
 
 package moonbox.grid.deploy.messages
 
+import moonbox.grid.deploy.Interface.Dag
+
 
 sealed trait Message extends Serializable
 
@@ -103,10 +105,10 @@ object Message {
 	case class SchemaFailed(message: String) extends SchemaResponse
 	case class SchemaSuccessed(schema: String) extends SchemaResponse
 
-	case class LineageRequest(org: String, username: String, sql: String, database: Option[String]) extends ServiceMessage
+	case class LineageRequest(org: String, username: String, sqls: Seq[String], database: Option[String]) extends ServiceMessage
 	sealed trait LineageResponse extends ServiceMessage
 	case class LineageFailed(message: String) extends LineageResponse
-	case class LineageSuccessed(lineage: String) extends LineageResponse
+	case class LineageSuccessed(dags: Seq[Dag]) extends LineageResponse
 
 	// management
 	sealed trait ManagementMessage extends Message

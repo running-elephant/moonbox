@@ -303,11 +303,11 @@ class Main(
 					requester ! SchemaFailed(e.getMessage)
 			}
 
-		case lineage @ LineageRequest(org, username, sql, database) =>
+		case lineage @ LineageRequest(org, username, sqls, database) =>
 			val requester = sender()
 			Future {
 				val servicer = new Servicer(org, username, database, conf, self)
-				servicer.lineage(sql)
+				servicer.lineage(sqls)
 			}.onComplete {
 				case Success(response) =>
 					requester ! response
