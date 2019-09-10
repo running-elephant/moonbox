@@ -207,7 +207,8 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 	override def visitUnmountDatabase(ctx: UnmountDatabaseContext): MbCommand = {
 		val name = ctx.name.getText
 		val ignoreIfNotExists = ctx.EXISTS() != null
-		UnmountDatabase(name, ignoreIfNotExists, cascade = true)
+		val cascade = ctx.CASCADE() != null
+		UnmountDatabase(name, ignoreIfNotExists, cascade)
 	}
 
 

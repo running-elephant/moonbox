@@ -55,7 +55,7 @@ mql
     | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                           # unmountTable
 
     | MOUNT DATABASE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                      # mountDatabase
-    | UNMOUNT DATABASE (IF EXISTS)? name=identifier                                             # unmountDatabase
+    | UNMOUNT DATABASE (IF EXISTS)? name=identifier   (CASCADE)?                                # unmountDatabase
     | ALTER DATABASE name=identifier SET OPTIONS propertyList                                   # setDatabaseProperties
     | REFRESH DATABASE name=identifier                                                          # refreshDatabase
 
