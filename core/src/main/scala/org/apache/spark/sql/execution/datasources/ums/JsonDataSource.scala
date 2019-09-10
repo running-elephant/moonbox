@@ -202,13 +202,7 @@ object TextInputJsonDataSource extends JsonDataSource {
 				// such as one column is number type (not quoted), then change to string(must quoted).
 				val value = nameTypeIndex(f.name) match {
 					case (UMSProtocol.STRING | UMSProtocol.TIMESTAMP | UMSProtocol.DATETIME | UMSProtocol.DATE, index) =>
-						"\"" +
-							record.get(index).asText()
-								.stripPrefix("\"")
-								.stripSuffix("\"")
-								.replace("\n", "\\n")
-						    	.replace("\"", "\\\"") +
-							"\""
+						record.get(index).toString
 					case (UMSProtocol.DECIMAL | UMSProtocol.DOUBLE | UMSProtocol.FLOAT, index) =>
 						val data = record.get(index).asText().trim
 						if (data.startsWith(".")) {
