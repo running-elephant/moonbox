@@ -27,7 +27,7 @@ import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.ConfigFactory
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.MoonboxSession
+import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.master.ApplicationType
 import moonbox.grid.deploy.messages.Message._
@@ -52,13 +52,20 @@ object Main extends MbLogging {
 		val appType = conf.get("applicationType").getOrElse(throw new NoSuchElementException("applicationType"))
 		val appLabel = conf.get("appLabel").getOrElse("common")
 
-		val akkaConfig = Map(
-			"akka.jvm-exit-on-fatal-error" -> "true",
-			"akka.actor.provider" ->"akka.remote.RemoteActorRefProvider",
-			"akka.remote.enabled-transports.0" ->"akka.remote.netty.tcp",
-			"akka.remote.netty.tcp.hostname" -> Utils.localHostName(),
-			"akka.remote.netty.tcp.port" -> "0"
-		)
+
+		conf.set("moonbox.rpc.akka.remote.netty.tcp.hostname", Utils.localHostName())
+		conf.set("moonbox.rpc.akka.remote.netty.tcp.port", "0")
+
+		def akkaConfig: Map[String, String] = {
+			for { (key, value) <- AKKA_DEFAULT_CONFIG ++ AKKA_HTTP_DEFAULT_CONFIG ++ conf.getAll
+						if key.startsWith("moonbox.rpc.akka") || key.startsWith("moonbox.rest.akka")
+			} yield {
+				if (key.startsWith("moonbox.rpc.akka"))
+					(key.stripPrefix("moonbox.rpc."), value)
+				else
+					(key.stripPrefix("moonbox.rest."), value)
+			}
+		}
 
 		val akkaConf = ConfigFactory.parseMap(akkaConfig.asJava)
 		val system = ActorSystem("Moonbox", akkaConf)
