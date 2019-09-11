@@ -22,6 +22,7 @@ package moonbox.jdbc.interpreter
 
 import java.io.{ByteArrayOutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.sql._
 import java.util.Properties
 import java.util.concurrent.{ConcurrentHashMap => Jmap}
@@ -83,7 +84,36 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
     idToConnection.clear()
   }
 
+	private val KEY_SHA = "SHA"
+	private val hexDigits = (0 to 9).++('a' to 'f').map(_.toString)
+
+	def encryptSHA(data: String): String = {
+		if (data == null || data.equals("")) {
+			""
+		} else {
+			val sha = MessageDigest.getInstance(KEY_SHA)
+			sha.update(data.getBytes)
+			byteArrayToHexString(sha.digest()).toUpperCase
+		}
+	}
+
+	private def byteArrayToHexString(bytes: scala.Array[Byte]): String = {
+		bytes.map(byteToHexString).reduce(_ + _)
+	}
+
+	private def byteToHexString(byte: Byte): String = {
+		val res = if (byte < 0) byte + 256
+		else byte
+		hexDigits(res / 16) + hexDigits(res % 16)
+	}
+
   override def interpret(s: String, interpreterContext: InterpreterContext): InterpreterResult = {
+		val loginUser = interpreterContext.getAuthenticationInfo.getUser
+		val password = encryptSHA(loginUser)
+		val moonboxUser = "bi_hive@" + loginUser
+		baseProps.setProperty("user", moonboxUser)
+		log.info(s"replace login user $loginUser to $moonboxUser")
+		baseProps.setProperty("password", password)
     var interpreterResult: InterpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS)
     var statement: Statement = null
     var resultSet: ResultSet = null
