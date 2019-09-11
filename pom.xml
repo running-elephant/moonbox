@@ -20,6 +20,7 @@
 
     <modules>
         <module>common</module>
+        <module>network</module>
         <module>launcher</module>
         <module>testkit</module>
         <module>protocol</module>
@@ -56,8 +57,6 @@
         <module>applications/hive-interactive</module>
 
         <module>assembly</module>
-
-
 
     </modules>
 
