@@ -60,3 +60,6 @@ class NoSuchOrganizationException(org: String)
 
 class NoSuchAvailableTableException(table: String, user: String)
 	extends Exception(s"No table '$table' available for user '$user'")
+
+class NoSuchApplicationException(app: String)
+	extends Exception(s"Application '$app' not found")

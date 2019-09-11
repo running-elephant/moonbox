@@ -161,6 +161,20 @@ case class RenameViewEvent(
 	view: String,
 	newView: String) extends ViewEvent
 
+trait ApplicationEvent extends CatalogEvent
+
+case class CreateApplicationPreEvent(
+	name: String) extends ApplicationEvent
+
+case class CreateApplicationEvent(
+	name: String) extends ApplicationEvent
+
+case class DropApplicationPreEvent(
+	name: String) extends ApplicationEvent
+
+case class DropApplicationEvent(
+	name: String) extends ApplicationEvent
+
 
 trait OrganizationEvent extends CatalogEvent
 

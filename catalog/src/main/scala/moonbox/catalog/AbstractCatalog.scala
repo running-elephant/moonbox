@@ -31,6 +31,39 @@ object AbstractCatalog {
 abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, CatalogEvent] {
 
 	import AbstractCatalog._
+
+	// ----------------------------------------------------------------------------
+	// Application
+	// ----------------------------------------------------------------------------
+	final def createApplication(
+		appDefinition: CatalogApplication)(implicit by: User): Unit = {
+		postToAll(CreateApplicationPreEvent(appDefinition.name))
+		doCreateApplication(appDefinition)
+		postToAll(CreateApplicationEvent(appDefinition.name))
+	}
+
+	final def dropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropApplicationPreEvent(app))
+		doDropApplication(app, ignoreIfNotExists)
+		postToAll(DropApplicationEvent(app))
+	}
+
+	protected def doCreateApplication(appDefinition: CatalogApplication)(implicit by: User): Unit
+
+	protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
+
+	def alterApplication(appDefinition: CatalogApplication)(implicit by: User): Unit
+
+	def getApplication(app: String): CatalogApplication
+
+	def getApplicationOption(app: String): Option[CatalogApplication]
+
+	def applicationExists(app: String): Boolean
+
+	def listApplications(): Seq[CatalogApplication]
+
+	def listApplications(pattern: String): Seq[CatalogApplication]
+
 	// ----------------------------------------------------------------------------
 	// Organization
 	// ----------------------------------------------------------------------------

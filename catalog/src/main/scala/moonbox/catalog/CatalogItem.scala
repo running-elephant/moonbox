@@ -23,6 +23,14 @@ package moonbox.catalog
 
 trait CatalogItem
 
+case class CatalogApplication(
+	name: String,
+	labels: Seq[String],
+	appType: String,
+	config: Map[String, String]
+) extends CatalogItem
+
+
 case class CatalogDatabase(
 	name: String,
 	description: Option[String] = None,
@@ -54,20 +62,6 @@ case class CatalogTable(
 		throw new Exception(s"table $name did not specify database")
 	}
 }
-
-/*case class CatalogView(
-	name: String,
-	db: Option[String],
-	description: Option[String],
-	sql: String,
-	createBy: Option[String] = None
-) extends CatalogItem {
-
-	def database: String = db.getOrElse{
-		throw new Exception(s"view $name did not specify database")
-	}
-
-}*/
 
 case class CatalogOrganization(
 	name: String,

@@ -162,6 +162,47 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	// -----------------------------------------------------------------
+	// Application
+	// -----------------------------------------------------------------
+
+	def createApplication(application: ApplicationEntity) = {
+		insert(application, applications)
+	}
+
+	def deleteApplication(applicationId: Long) = {
+		delete[ApplicationEntity, ApplicationEntityTable](applications, _.id === applicationId)
+	}
+
+	def updateApplication(appDefinition: ApplicationEntity) = {
+		updateEntity[ApplicationEntity, ApplicationEntityTable](
+			applications, _.id === appDefinition.id.get,
+			appDefinition
+		)
+	}
+
+	def getApplication(applicationId: Long) = {
+		queryOneOption[ApplicationEntity, ApplicationEntityTable](applications, _.id === applicationId)
+	}
+
+	def getApplication(application: String) = {
+		queryOneOption[ApplicationEntity, ApplicationEntityTable](applications, _.name === application)
+	}
+
+	def applicationExists(application: String) = {
+		exists[ApplicationEntity, ApplicationEntityTable](applications, _.name === application)
+	}
+
+	def listApplications() = {
+		list[ApplicationEntity, ApplicationEntityTable](applications)
+	}
+
+	def listApplications(pattern: String) = {
+		query[ApplicationEntity, ApplicationEntityTable](
+			applications, _.name.like(pattern)
+		)
+	}
+
+	// -----------------------------------------------------------------
 	// Organization
 	// -----------------------------------------------------------------
 
@@ -678,77 +719,6 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 			functionResources, _.funcId === funcId
 		)
 	}
-
-	/*// -----------------------------------------------------------------
-	// View
-	// -----------------------------------------------------------------
-
-	def createView(view: ViewEntity) = {
-		insert[ViewEntity, ViewEntityTable](
-			view, views)
-	}
-
-	def deleteView(viewId: Long) = {
-		delete[ViewEntity, ViewEntityTable](
-			views, _.id === viewId
-		)
-	}
-
-	def deleteView(databaseId: Long, view: String) = {
-		delete[ViewEntity, ViewEntityTable](
-			views, t => t.databaseId === databaseId && t.name === view
-		)
-	}
-
-	def deleteViews(databaseId: Long) = {
-		delete[ViewEntity, ViewEntityTable](
-			views, _.databaseId === databaseId
-		)
-	}
-
-	def renameView(databaseId: Long, view: String, newView: String)(updateBy: Long) = {
-		update[ViewEntity, ViewEntityTable,
-			(Rep[String], Rep[Long], Rep[Long]), (Rep[String], Rep[Long], Rep[Long]),
-			(String, Long, Long)](
-			views, t => t.databaseId === databaseId && t.name === view,
-			t => (t.name, t.updateBy, t.updateTime), (newView, updateBy, Utils.now))
-	}
-
-	def updateView(viewDefinition: ViewEntity) = {
-		updateEntity[ViewEntity, ViewEntityTable](
-			views, t => t.id === viewDefinition.id.get, viewDefinition
-		)
-	}
-
-	def getView(viewId: Long) = {
-		queryOneOption[ViewEntity, ViewEntityTable](
-			views, _.id === viewId
-		)
-	}
-
-	def getView(databaseId: Long, view: String) = {
-		queryOneOption[ViewEntity, ViewEntityTable](
-			views, t => t.databaseId === databaseId && t.name === view
-		)
-	}
-
-	def viewExists(databaseId: Long, view: String) = {
-		exists[ViewEntity, ViewEntityTable](
-			views, t => t.databaseId === databaseId && t.name === view
-		)
-	}
-
-	def listViews(databaseId: Long) = {
-		query[ViewEntity, ViewEntityTable](
-			views, _.databaseId === databaseId
-		)
-	}
-
-	def listViews(databaseId: Long, pattern: String) = {
-		query[ViewEntity, ViewEntityTable](
-			views, t => t.databaseId === databaseId && t.name.like(pattern)
-		)
-	}*/
 
 	// -----------------------------------------------------------------
 	// database privileges

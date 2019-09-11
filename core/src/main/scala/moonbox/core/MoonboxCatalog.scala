@@ -269,41 +269,6 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 		jdbcCatalog.listFunctions(database, pattern)
 	}
 
-	/*def alterView(viewDefinition: CatalogView): Unit = {
-		jdbcCatalog.alterView(viewDefinition)
-	}
-
-	def viewExists(database: String, view: String): Boolean = {
-		jdbcCatalog.viewExists(database, view)
-	}
-
-	def dropView(db: String, view: String, ignoreIfNotExists: Boolean): Unit = {
-		jdbcCatalog.dropView(db, view, ignoreIfNotExists)
-	}
-
-	def getView(database: String, view: String): CatalogView = {
-		jdbcCatalog.getView(database, view)
-	}
-
-	def getViewOption(database: String, view: String): Option[CatalogView] = {
-		jdbcCatalog.getViewOption(database, view)
-	}
-
-	def listViews(database: String, pattern: String): Seq[CatalogView] = {
-		jdbcCatalog.listViews(database, pattern)
-	}
-
-	def listViews(database: String): Seq[CatalogView] = {
-		jdbcCatalog.listViews(database)
-	}
-
-	def listViews(database: String, pattern: Option[String]): Seq[CatalogView] = {
-		pattern match {
-			case Some(p) => listViews(database, p)
-			case None => listViews(database)
-		}
-	}*/
-
 	def createProcedure(procDefinition: CatalogProcedure, ignoreIfExists: Boolean): Unit = {
 		jdbcCatalog.createProcedure(procDefinition, ignoreIfExists)
 	}

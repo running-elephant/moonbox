@@ -191,3 +191,14 @@ case class VariableEntity(
 	createTime: Long = Utils.now,
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogEntity
+
+case class ApplicationEntity(
+	id: Option[Long] = None,
+	name: String,
+	labels: Seq[String],
+	appType: String,
+	config: Map[String, String],
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogEntity

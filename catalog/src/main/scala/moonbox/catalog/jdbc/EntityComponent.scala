@@ -68,6 +68,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val tablePrivileges = TableQuery[TablePrivilegeEntityTable]
 	protected final val columnPrivileges = TableQuery[ColumnPrivilegeEntityTable]
 	protected final val variables = TableQuery[VariableEntityTable]
+	protected final val applications = TableQuery[ApplicationEntityTable]
 
 	protected final val tableQueries = Seq(
 		databases,
@@ -81,7 +82,8 @@ trait EntityComponent extends DatabaseComponent {
 		databasePrivileges,
 		tablePrivileges,
 		columnPrivileges,
-		variables
+		variables,
+		applications
 	)
 
 	abstract class BaseTable[T](tag: Tag, desc: String) extends Table[T](tag, desc) {
@@ -239,6 +241,14 @@ trait EntityComponent extends DatabaseComponent {
 		def value = column[String]("value")
 		def userId = column[Long]("userId")
 		override def *  = (id.?, name, value, userId, createBy, createTime, updateBy, updateTime) <> (VariableEntity.tupled, VariableEntity.unapply)
+	}
+
+	class ApplicationEntityTable(tag: Tag) extends BaseTable[ApplicationEntity](tag, "applications") {
+		def name = column[String]("name")
+		def labels = column[Seq[String]]("labels")
+		def appType = column[String]("appType")
+		def config = column[Map[String, String]]("config")
+		override def * = (id.?, name, labels, appType, config, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
 	}
 }
 
