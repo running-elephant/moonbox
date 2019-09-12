@@ -74,7 +74,9 @@ class ColumnAnalysis(catalog: MoonboxCatalog) extends Rule[LogicalPlan] {
 			}
 		}
 
-		val unavailables = references.foldLeft(AttributeSet.empty)(_ ++ _) -- availables.foldLeft(AttributeSet.empty)(_ ++ _)
+		val nonProduced = tableOrView.map(_._2).foldLeft(AttributeSet.empty)(_ ++ _)
+
+		val unavailables = references.foldLeft(AttributeSet.empty)(_ ++ _).filter(nonProduced.contains) -- availables.foldLeft(AttributeSet.empty)(_ ++ _)
 		if (unavailables.nonEmpty) {
 			val columns = unavailables.map(attr => attr.name).mkString(", ")
 			val message = s"""SELECT denied to user ${catalog.getCurrentUser} for columns $columns"""
