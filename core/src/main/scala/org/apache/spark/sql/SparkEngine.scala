@@ -635,7 +635,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
     props.keys.foreach(key => {
       if (key.startsWith("spark.hadoop")) {
-        sparkContext.hadoopConfiguration.set(key.stripPrefix("spark.hadoop."), props(key))
+        sessionState.conf.setConfString(key.stripPrefix("spark.hadoop."), props(key))
       }
     })
     sessionState.catalog.createTable(hiveCatalogTable.copy(
