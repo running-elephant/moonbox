@@ -131,7 +131,7 @@ object MoonboxThriftServer extends MbLogging {
     case ("--mbport") :: value :: tail =>
       serverConf.put(MOONBOX_SERVER_PORT_KEY, value)
       parse(tail)
-    case ("-m | --mode") :: value :: tail =>
+    case ("-m" | "--mode") :: value :: tail =>
       serverConf.put(THRIFT_SERVER_MODE_KEY, value)
       parse(tail)
     case Nil =>
