@@ -264,10 +264,17 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             insert
           case insert: InsertIntoHiveTable =>
             insert
+					case limited@GlobalLimit(Literal(rows, _), LocalLimit(_, child)) =>
+						if (rows.toString.toInt > maxRows) {
+							GlobalLimit(
+								Literal(maxRows, IntegerType),
+								LocalLimit(Literal(maxRows, IntegerType),
+									analyzedPlan))
+						} else limited
           case _ =>
             GlobalLimit(
-              Literal(maxRows, IntegerType),
-              LocalLimit(Literal(maxRows, IntegerType),
+              Literal(10, IntegerType),
+              LocalLimit(Literal(10, IntegerType),
                 analyzedPlan))
         }
 
