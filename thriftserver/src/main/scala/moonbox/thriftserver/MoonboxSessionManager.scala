@@ -48,7 +48,7 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
     logInfo("Initializing moonbox client ...")
     val masterHost = serverConf.getOrElse(MOONBOX_SERVER_HOST_KEY, "localhost")
     val masterPort = serverConf.get(MOONBOX_SERVER_PORT_KEY).map(_.toInt).getOrElse(10010)
-    val clientOptions = ClientOptions.builder().options(Option(sessionConf).map(_.asScala.toMap).getOrElse(Map.empty)).user(username).password(password).host(masterHost).port(masterPort).isLocal(true).maxRows(50000000).build()
+    val clientOptions = ClientOptions.builder().options(Option(sessionConf).map(_.asScala.toMap).getOrElse(Map.empty)).user(username).password(password).host(masterHost).port(masterPort).isLocal(false).maxRows(50000000).build()
     val client = MoonboxClient.builder(clientOptions).build()
     moonboxSqlOperationManager.sessionHandleToMbClient.put(sessionHandle, client)
   }
@@ -60,10 +60,11 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
                            sessionConf: java.util.Map[String, String],
                            withImpersonation: Boolean,
                            delegationToken: String) = {
-    logInfo(s"Received openSession request from $ipAddress.")
-    logDebug(s"SessionConf: ${Option(sessionConf).map(_.asScala.toMap).getOrElse(Map.empty).mkString(", ")}")
+    logInfo(s"Received openSession request from $ipAddress, user $username.")
+    logInfo(s"SessionConf: ${Option(sessionConf).map(_.asScala.toMap).getOrElse(Map.empty).mkString(", ")}")
 
-    val session = new MoonboxSession(protocol, username, password, hiveConf, ipAddress)
+    val orgUsername = SessionManager.getOrg + "@" + username
+    val session = new MoonboxSession(protocol, orgUsername, password, hiveConf, ipAddress)
     session.setSessionManager(this)
     session.setOperationManager(moonboxSqlOperationManager)
     session.open(sessionConf)
@@ -73,7 +74,7 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
 
     // initialize moonbox client
     try {
-      initMoonboxClient(sessionHandle, sessionConf, username, password)
+      initMoonboxClient(sessionHandle, sessionConf, orgUsername, password)
     } catch {
       case e: Exception => throw new HiveSQLException(e.getMessage)
     }

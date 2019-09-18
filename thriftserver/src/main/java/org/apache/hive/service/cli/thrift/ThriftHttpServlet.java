@@ -160,6 +160,10 @@ public class ThriftHttpServlet extends TServlet {
         SessionManager.setProxyUserName(doAsQueryParam);
       }
 
+      String org = request.getHeader("org");
+      SessionManager.setOrg(org);
+      LOG.debug("client org: " + org);
+
       clientIpAddress = request.getRemoteAddr();
       LOG.debug("Client IP Address: " + clientIpAddress);
       // Set the thread local ip address
@@ -192,6 +196,7 @@ public class ThriftHttpServlet extends TServlet {
       // Clear the thread locals
       SessionManager.clearUserName();
       SessionManager.clearPassword();
+      SessionManager.clearOrg();
       SessionManager.clearIpAddress();
       SessionManager.clearProxyUserName();
     }
