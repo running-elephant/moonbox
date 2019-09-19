@@ -62,7 +62,7 @@ class MoonboxSession(
 	def sql(jobLabel: String, sql: String, maxRows: Int): DataResult = {
 		engine.setJobGroup(jobLabel,
 			s"""| $org@$username<br/>
-			    | ${sql.take(50)} ${if (sql.length > 50) " ..." else ""}
+			    | $sql
 			 """.stripMargin)
 		try {
 			engine.sql(sql, maxRows)
