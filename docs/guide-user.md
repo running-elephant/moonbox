@@ -62,6 +62,8 @@ Moonbox提供了jdbc驱动,请自行下载。以下为Scala示例:
 ```
 Class.forName("moonbox.jdbc.MbDriver")
 val url = s"jdbc:moonbox://host:port/database"
+// if want to connect to local app
+// val url = s"jdbc:moonbox://host:port/database?islocal=true"
 val username = "username"
 val password = "password"
 val connection = DriverManager.getConnection(url, username, password)
