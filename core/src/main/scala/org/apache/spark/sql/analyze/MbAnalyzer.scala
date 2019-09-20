@@ -7,7 +7,7 @@ import org.apache.spark.sql.catalyst.rules.RuleExecutor
 class MbAnalyzer(catalog: MoonboxCatalog) extends RuleExecutor[LogicalPlan]{
 
 	lazy val batches: Seq[Batch] = Seq(
-		Batch("Post-Hoc Resolution", Once, new ColumnAnalysis(catalog))
+		Batch("Post-Hoc Resolution", Once, new PrivilegeAnalysis(catalog))
 	)
 
 }
