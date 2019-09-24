@@ -142,13 +142,15 @@ case class GrantResourceToUser(
 
 		val db = tableIdentifier.database.getOrElse(getCurrentDb)
 
-		require(databaseExists(db))
-		require(userExists(mbSession.catalog.getCurrentOrg, user))
+		requireDbExists(db)
+		requireUserExists(mbSession.catalog.getCurrentOrg, user)
 
 		val table = tableIdentifier.table
 
 		if (table == "*") { // db level
-			require(!privileges.exists(_.isColumnLevel), "Illegal grant command.")
+			if (privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
 			createDatabasePrivilege(
 				CatalogDatabasePrivilege(
 					user = user,
@@ -157,8 +159,7 @@ case class GrantResourceToUser(
 				)
 			)
 		} else {
-
-			require(tableExists(db, table), s"Table or view $table does not exists")
+			requireTableExists(db, table)
 
 			val (tableLevel, columnLevel) = privileges.span(!_.isColumnLevel)
 			if (tableLevel.nonEmpty) { // table level
@@ -183,7 +184,9 @@ case class GrantResourceToUser(
 
 				// check column exists or not
 				val diff = columns.map(_._1).distinct.diff(schema)
-				require(diff.isEmpty, s"${diff.mkString(", ")} does not exist")
+				if (diff.nonEmpty) {
+					throw new Exception(s"${diff.mkString(", ")} does not exist")
+				}
 
 				val columnPrivilege = columns.groupBy(_._1).map { case (k, v) =>
 					(k, v.map(_._2).distinct)
@@ -201,7 +204,6 @@ case class GrantResourceToUser(
 
 		}
 
-
 		Seq.empty[Row]
 	}
 
@@ -216,16 +218,18 @@ case class RevokeResourceFromUser(
 
 		import mbSession.catalog._
 
-		require(userExists(getCurrentOrg, user))
+		requireUserExists(getCurrentOrg, user)
 
 		val db = tableIdentifier.database.getOrElse(getCurrentDb)
 
-		require(databaseExists(db))
+		requireDbExists(db)
 
 		val table = tableIdentifier.table
 
 		if (table == "*") {
-			require(!privileges.exists(_.isColumnLevel), "Illegal grant command.")
+			if (privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
 			dropDatabasePrivilege(user, db, privileges.map(_.NAME))
 		} else {
 

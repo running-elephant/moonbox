@@ -53,20 +53,6 @@ object ResourcePrivilege {
 }
 
 
-case class ColumnSelectPrivilege(column: Seq[String])  extends ResourcePrivilege {
-
-	override def isColumnLevel: Boolean = true
-
-	val NAME = "SELECT"
-}
-
-case class ColumnUpdatePrivilege(column: Seq[String]) extends ResourcePrivilege {
-
-	override def isColumnLevel: Boolean = true
-
-	val NAME = "UPDATE"
-}
-
 case object SelectPrivilege extends ResourcePrivilege {
 	val NAME = "SELECT"
 }
@@ -86,3 +72,17 @@ case object DeletePrivilege extends ResourcePrivilege {
 case object TruncatePrivilege extends ResourcePrivilege {
 	val NAME = "TRUNCATE"
 }
+
+case class ColumnSelectPrivilege(column: Seq[String]) extends ResourcePrivilege {
+	override def isColumnLevel: Boolean = true
+
+	val NAME = "SELECT"
+}
+
+case class ColumnUpdatePrivilege(column: Seq[String]) extends ResourcePrivilege {
+
+	override def isColumnLevel: Boolean = true
+
+	val NAME = "UPDATE"
+}
+
