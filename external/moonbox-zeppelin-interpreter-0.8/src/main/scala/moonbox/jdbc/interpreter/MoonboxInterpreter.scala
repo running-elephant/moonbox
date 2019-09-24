@@ -149,6 +149,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       idToStatement.put(paragraphId, statement)
       try {
         statement.setQueryTimeout(getQueryTimeout())
+        statement.setMaxRows(getMaxResultLine())
         if (statement.execute(s)) {
           resultSet = statement.getResultSet
           log.info("Interpreting the resultSet ...")
