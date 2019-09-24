@@ -175,7 +175,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
 	override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, milliseconds: Int) = {
 		checkActive(_client)
 		checkActive(_dataFetchClient)
-		_client.interactiveQuery(_token, _sessionId, interactiveSql, fetchSize, milliseconds)
+		_client.interactiveQuery(_token, _sessionId, interactiveSql, fetchSize, getMaxRows, milliseconds)
 	}
 
 	override def interactiveQuery(interactiveSql: Seq[String], fetchSize: Int, maxRows: Int, milliseconds: Int) = {
