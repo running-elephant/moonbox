@@ -114,109 +114,109 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     }
   }
 
-	// ----------------------------------------------------------------------------
-	// Application
-	// ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
+  // Application
+  // ----------------------------------------------------------------------------
 
-	override protected def doCreateApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
-		jdbcDao.action(jdbcDao.createApplication(
-			ApplicationEntity(
-				name = appDefinition.name,
-				labels = appDefinition.labels,
-				appType = appDefinition.appType,
-				config = appDefinition.config,
-				createBy = by.userId,
-				updateBy = by.userId
-			)
-		))
-	}
+  override protected def doCreateApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
+    jdbcDao.action(jdbcDao.createApplication(
+      ApplicationEntity(
+        name = appDefinition.name,
+        labels = appDefinition.labels,
+        appType = appDefinition.appType,
+        config = appDefinition.config,
+        createBy = by.userId,
+        updateBy = by.userId
+      )
+    ))
+  }
 
-	override def alterApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
-		jdbcDao.action(jdbcDao.getApplication(appDefinition.name)).flatMap {
-			case Some(appEntity) =>
-				jdbcDao.action(
-					jdbcDao.updateApplication(
-						ApplicationEntity(
-							id = appEntity.id,
-							name = appDefinition.name,
-							labels = appDefinition.labels,
-							appType = appDefinition.appType,
-							config = appDefinition.config,
-							createBy = appEntity.createBy,
-							createTime = appEntity.createTime,
-							updateBy = by.userId,
-							updateTime = Utils.now
-						)
-					)
-				)
-			case None =>
-				throw new NoSuchApplicationException(appDefinition.name)
-		}
-	}
+  override def alterApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
+    jdbcDao.action(jdbcDao.getApplication(appDefinition.name)).flatMap {
+      case Some(appEntity) =>
+        jdbcDao.action(
+          jdbcDao.updateApplication(
+            ApplicationEntity(
+              id = appEntity.id,
+              name = appDefinition.name,
+              labels = appDefinition.labels,
+              appType = appDefinition.appType,
+              config = appDefinition.config,
+              createBy = appEntity.createBy,
+              createTime = appEntity.createTime,
+              updateBy = by.userId,
+              updateTime = Utils.now
+            )
+          )
+        )
+      case None =>
+        throw new NoSuchApplicationException(appDefinition.name)
+    }
+  }
 
-	override def listApplications(): Seq[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.listApplications()).map(_.map(appEntity => CatalogApplication(
-			name = appEntity.name,
-			labels = appEntity.labels,
-			appType = appEntity.appType,
-			config = appEntity.config
-		)))
-	}
+  override def listApplications(): Seq[CatalogApplication] = await {
+    jdbcDao.action(jdbcDao.listApplications()).map(_.map(appEntity => CatalogApplication(
+      name = appEntity.name,
+      labels = appEntity.labels,
+      appType = appEntity.appType,
+      config = appEntity.config
+    )))
+  }
 
-	override def listApplications(pattern: String): Seq[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.listApplications(pattern)).map(_.map(appEntity =>
-			CatalogApplication(
-				name = appEntity.name,
-				labels = appEntity.labels,
-				appType = appEntity.appType,
-				config = appEntity.config
-		)))
-	}
+  override def listApplications(pattern: String): Seq[CatalogApplication] = await {
+    jdbcDao.action(jdbcDao.listApplications(pattern)).map(_.map(appEntity =>
+      CatalogApplication(
+        name = appEntity.name,
+        labels = appEntity.labels,
+        appType = appEntity.appType,
+        config = appEntity.config
+      )))
+  }
 
-	override def applicationExists(app: String): Boolean = await {
-		jdbcDao.action(jdbcDao.applicationExists(app))
-	}
+  override def applicationExists(app: String): Boolean = await {
+    jdbcDao.action(jdbcDao.applicationExists(app))
+  }
 
-	override protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
-		jdbcDao.action(jdbcDao.getApplication(app)).flatMap {
-			case Some(appEntity) =>
-				jdbcDao.action(jdbcDao.deleteApplication(appEntity.id.get))
-			case None =>
-				if (ignoreIfNotExists) Future(Unit)
-				else throw new NoSuchApplicationException(app)
-		}
-	}
+  override protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
+    jdbcDao.action(jdbcDao.getApplication(app)).flatMap {
+      case Some(appEntity) =>
+        jdbcDao.action(jdbcDao.deleteApplication(appEntity.id.get))
+      case None =>
+        if (ignoreIfNotExists) Future(Unit)
+        else throw new NoSuchApplicationException(app)
+    }
+  }
 
-	override def getApplicationOption(app: String): Option[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.getApplication(app)).map(_.map(appEntity =>
-			CatalogApplication(
-				name = appEntity.name,
-				labels = appEntity.labels,
-				appType = appEntity.appType,
-				config = appEntity.config
-			)
-		))
-	}
+  override def getApplicationOption(app: String): Option[CatalogApplication] = await {
+    jdbcDao.action(jdbcDao.getApplication(app)).map(_.map(appEntity =>
+      CatalogApplication(
+        name = appEntity.name,
+        labels = appEntity.labels,
+        appType = appEntity.appType,
+        config = appEntity.config
+      )
+    ))
+  }
 
-	override def getApplication(app: String): CatalogApplication = await {
-		jdbcDao.action(jdbcDao.getApplication(app)).map {
-			case Some(appEntity) =>
-				CatalogApplication(
-					name = appEntity.name,
-					labels = appEntity.labels,
-					appType = appEntity.appType,
-					config = appEntity.config
-				)
-			case None =>
-				throw new NoSuchApplicationException(app)
-		}
-	}
+  override def getApplication(app: String): CatalogApplication = await {
+    jdbcDao.action(jdbcDao.getApplication(app)).map {
+      case Some(appEntity) =>
+        CatalogApplication(
+          name = appEntity.name,
+          labels = appEntity.labels,
+          appType = appEntity.appType,
+          config = appEntity.config
+        )
+      case None =>
+        throw new NoSuchApplicationException(app)
+    }
+  }
 
   // ----------------------------------------------------------------------------
   // Organization
   // ----------------------------------------------------------------------------
 
-	protected override def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean)
+  protected override def doCreateOrganization(orgDefinition: CatalogOrganization, ignoreIfExists: Boolean)
                                              (implicit by: User): Unit = await {
     jdbcDao.action(jdbcDao.organizationExists(orgDefinition.name)).flatMap {
       case true =>
@@ -1078,8 +1078,11 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         jdbcDao.action(
           jdbcDao.getTable(dbEntity.id.get, tableDefinition.name)
         ).flatMap {
-          case Some(tableEntity) => // table exists
-            throw new TableExistsException(db, tableDefinition.name)
+          case Some(_) => // table exists
+            ignoreIfExists match {
+              case true => Future(Unit)
+              case false => throw new TableExistsException(db, tableDefinition.name)
+            }
           case None => // do create
             jdbcDao.action(jdbcDao.createTable(TableEntity(
               name = tableDefinition.name,
