@@ -248,7 +248,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @return data and schema
     */
 
-  def sql(sql: String, maxRows: Int = 100, unlimited: Boolean = true): (Iterator[Row], StructType) = {
+  def sql(sql: String, maxRows: Int = 100, unlimited: Boolean = false): (Iterator[Row], StructType) = {
     val parsedPlan = parsePlan(sql)
     parsedPlan match {
       case runnable: RunnableCommand =>
