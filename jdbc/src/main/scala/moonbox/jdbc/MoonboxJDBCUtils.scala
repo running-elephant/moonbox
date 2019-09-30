@@ -30,6 +30,7 @@ object MoonboxJDBCUtils {
   val USER_KEY = "user"
   val PASSWORD_KEY = "password"
   val FETCH_SIZE = "fetchsize"
+  val MAX_ROWS = "maxrows"
   val DEFAULT_PORT = 10010
   val HOSTS_AND_PORTS = "nodes" //host1:port1,host2:port2,host3:port3
 
