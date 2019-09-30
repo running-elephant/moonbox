@@ -21,6 +21,7 @@
 package moonbox.grid.deploy.master
 
 import akka.actor.{ActorRef, Address}
+import moonbox.grid.deploy.app.DriverInfo
 import moonbox.grid.deploy.worker.WorkerState
 
 import scala.collection.mutable

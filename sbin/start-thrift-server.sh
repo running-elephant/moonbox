@@ -23,9 +23,9 @@ else
   fi
 fi
 
-$RUNNER -Dlog4j.configuration="" -cp "${MOONBOX_HOME}/libs/*" moonbox.thriftserver.MoonboxThriftServer $@ 1>>${LOGFILE} 2>&1 &
+$RUNNER -Dlog4j.configuration="" -cp "${MOONBOX_HOME}/libs/*:${SPARK_HOME}/jars/*" moonbox.thriftserver.MoonboxThriftServer $@ 1>>${LOGFILE} 2>&1 &
 
 if [ $? -eq 0 ]; then
-   echo "${HOST}: starting moonbox master, logging to ${LOGFILE} "
+   echo "${HOST}: starting moonbox thrift server, logging to ${LOGFILE} "
 fi
 

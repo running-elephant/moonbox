@@ -48,7 +48,7 @@ object MoonboxShell {
 	private var password: String = _
 	private var fetchSize: Int = 1000
 	private var truncate: Int = 0
-	private var maxRowsToShow: Int = 50
+	private var maxRowsToShow: Int = 100
 	private var extraOptions: String = ""
 	private var client: MoonboxClient = _
 	private var clientInited: Boolean = _

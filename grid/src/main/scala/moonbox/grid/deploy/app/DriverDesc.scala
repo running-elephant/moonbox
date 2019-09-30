@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,12 +18,12 @@
  * >>
  */
 
-package moonbox.grid.deploy
+package moonbox.grid.deploy.app
 
 import moonbox.grid.deploy.worker.LaunchUtils
 import org.apache.spark.launcher.SparkLauncher
 
-trait DriverDescription {
+trait DriverDesc {
 	def master: Option[String]
 	def deployMode: Option[String]
 	def mainClass: String
@@ -32,15 +32,15 @@ trait DriverDescription {
 	def toConf: Map[String, String]
 }
 
-trait LongRunDriverDescription extends DriverDescription
+trait LongRunDriverDesc extends DriverDesc
 
-trait OnceRunDriverDescription extends DriverDescription
+trait OnceRunDriverDesc extends DriverDesc
 
-case class SparkLocalDriverDescription(
+case class SparkLocalDriverDesc(
 	driverId: String,
 	label: String,
 	masters: Array[String],
-	config: Map[String, String]) extends LongRunDriverDescription {
+	config: Map[String, String]) extends LongRunDriverDesc {
 
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
@@ -78,11 +78,11 @@ case class SparkLocalDriverDescription(
 	}
 }
 
-case class SparkClusterDriverDescription(
+case class SparkClusterDriverDesc(
 	driverId: String,
 	label: String,
 	masters: Array[String],
-	config: Map[String, String]) extends LongRunDriverDescription {
+	config: Map[String, String]) extends LongRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("client")
@@ -115,12 +115,12 @@ case class SparkClusterDriverDescription(
 	}
 }
 
-case class SparkBatchDriverDescription(
+case class SparkBatchDriverDesc(
 	org: String,
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
-) extends OnceRunDriverDescription {
+) extends OnceRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("cluster")
@@ -150,13 +150,13 @@ case class SparkBatchDriverDescription(
 	}
 }
 
-case class HiveBatchDriverDescription(
+case class HiveBatchDriverDesc(
 	driverId: String,
 	org: String,
 	username: String,
 	sqls: Seq[String],
 	config: Map[String, String]
-) extends OnceRunDriverDescription {
+) extends OnceRunDriverDesc {
 
 	override def master = None
 	override def deployMode = None

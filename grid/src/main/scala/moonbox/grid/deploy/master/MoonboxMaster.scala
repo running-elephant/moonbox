@@ -32,9 +32,10 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
 import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.{DriverDescription, HiveBatchDriverDescription, MoonboxService, SparkBatchDriverDescription}
+import moonbox.grid.deploy.MoonboxService
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.master.DriverState.DriverState
+import moonbox.grid.deploy.app._
+import DriverState.DriverState
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
@@ -80,11 +81,11 @@ class MoonboxMaster(
 	private var nextBatchDriverNumber = 0
 
 	// for interactive application
-	private val apps = new mutable.HashSet[ApplicationInfo]
-	private val idToApp = new mutable.HashMap[String, ApplicationInfo]
-	private val addressToApp = new mutable.HashMap[Address, ApplicationInfo]
+	private val apps = new mutable.HashSet[AppInfo]
+	private val idToApp = new mutable.HashMap[String, AppInfo]
+	private val addressToApp = new mutable.HashMap[Address, AppInfo]
 
-	private val sessionIdToApp = new mutable.HashMap[String, ApplicationInfo]
+	private val sessionIdToApp = new mutable.HashMap[String, AppInfo]
 
 	private var persistenceEngine: PersistenceEngine = _
 	private var leaderElectionAgent: LeaderElectionAgent = _
@@ -104,7 +105,7 @@ class MoonboxMaster(
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
 
-		// for check DEAD worker
+		// for checking DEAD worker
 		checkForWorkerTimeOutTask = system.scheduler.schedule(
 			new FiniteDuration(0, SECONDS),
 			new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS),
@@ -281,7 +282,7 @@ class MoonboxMaster(
 					driverIdDesces.foreach { case (driverId, desc, date) =>
 						val driverMatches = worker.drivers.exists { case (id, _) => id == driverId }
 						if (!driverMatches) { // not exist
-							if (recoveryEnable && desc.isInstanceOf[SparkBatchDriverDescription]) {
+							if (recoveryEnable && desc.isInstanceOf[SparkBatchDriverDesc]) {
 								logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
 								worker.endpoint ! KillDriver(driverId)
 							} else {
@@ -306,7 +307,7 @@ class MoonboxMaster(
 			} else if (idToApp.contains(id)) {
 				appRef ! RegisterApplicationFailed(s"Duplicate application ID $id")
 			} else {
-				val app = new ApplicationInfo(
+				val app = new AppInfo(
 					System.currentTimeMillis(), id, appLabel, appHost, appPort, appAddress, dataPort, appRef, appType)
 				if (registerApplication(app)) {
 					persistenceEngine.addApplication(app)
@@ -324,7 +325,7 @@ class MoonboxMaster(
 			idToApp.get(driverId) match {
 				case Some(app) =>
 					logInfo(s"Application has been re-registered: " + driverId)
-					app.state = ApplicationState.RUNNING
+					app.state = AppState.RUNNING
 				case None =>
 					logWarning("Scheduler state from unknown application: " + driverId)
 			}
@@ -414,9 +415,9 @@ class MoonboxMaster(
 				val submitDate = new Date()
 				val driverId = newDriverId(submitDate) + userConfig.get(EventEntity.NAME).map("-"+_).getOrElse("")
 				val driverDesc = if (lang == "hql") {
-					HiveBatchDriverDescription(driverId, org, username, sqls, config)
+					HiveBatchDriverDesc(driverId, org, username, sqls, config)
 				} else {
-					SparkBatchDriverDescription(org, username, sqls, config)
+					SparkBatchDriverDesc(org, username, sqls, config)
 				}
 				val driver = createDriver(driverDesc, driverId, submitDate)
 				persistenceEngine.addDriver(driver)
@@ -691,12 +692,12 @@ class MoonboxMaster(
 		if (state == RecoveryState.RECOVERING && canCompleteRecovery) { completeRecovery() }
 	}
 
-	private def selectApplication(centralized: Boolean, label: String = "common"): Option[ApplicationInfo] = {
-		val activeApps = apps.filter(_.state == ApplicationState.RUNNING).toSeq
+	private def selectApplication(centralized: Boolean, label: String = "common"): Option[AppInfo] = {
+		val activeApps = apps.filter(_.state == AppState.RUNNING).toSeq
 		val typedApps = if (centralized) {
-			activeApps.filter(app =>app.appType == ApplicationType.CENTRALIZED && app.label.equals(label))
+			activeApps.filter(app =>app.appType == AppType.CENTRALIZED && app.label.equals(label))
 		} else {
-			activeApps.filter(app => app.appType == ApplicationType.DISTRIBUTED && app.label.equals(label))
+			activeApps.filter(app => app.appType == AppType.DISTRIBUTED && app.label.equals(label))
 		}
 		Random.shuffle(typedApps).headOption
 	}
@@ -718,7 +719,7 @@ class MoonboxMaster(
 		}
 	}
 
-	private def beginRecovery(storedDrivers: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[ApplicationInfo]): Unit = {
+	private def beginRecovery(storedDrivers: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[AppInfo]): Unit = {
 		for (worker <- storedWorkers) {
 			logInfo("Try to recovery worker: " + worker.id)
 			try {
@@ -734,7 +735,7 @@ class MoonboxMaster(
 			logInfo("Try to recovery application: " + app.id)
 			try {
 				registerApplication(app)
-				app.state = ApplicationState.UNKNOWN
+				app.state = AppState.UNKNOWN
 				app.endpoint ! MasterChanged(self)
 			} catch {
 				case e: Exception => logInfo("Application " + app.id + " had exception on reconnect")
@@ -750,7 +751,7 @@ class MoonboxMaster(
 	// TODO
 	private def canCompleteRecovery: Boolean = {
 		workers.count(_.state == WorkerState.UNKNOWN) == 0 &&
-		apps.count(_.state == ApplicationState.UNKNOWN) == 0
+		apps.count(_.state == AppState.UNKNOWN) == 0
 	}
 
 	private def completeRecovery(): Unit = {
@@ -758,7 +759,7 @@ class MoonboxMaster(
 		state = RecoveryState.COMPLETING_RECOVERY
 		// worker no response until waiting WORKER_TIMEOUT, then mark it as WorkerState.DEAD
 		workers.filter(_.state == WorkerState.UNKNOWN).foreach(removeWorker)
-		apps.filter(_.state == ApplicationState.UNKNOWN).foreach(removeApplication)
+		apps.filter(_.state == AppState.UNKNOWN).foreach(removeApplication)
 
 		// TODO drivers
 		state = RecoveryState.ACTIVE
@@ -782,7 +783,7 @@ class MoonboxMaster(
 		persistenceEngine.removeWorker(worker)
 	}
 
-	private def removeApplication(app: ApplicationInfo): Unit = {
+	private def removeApplication(app: AppInfo): Unit = {
 		logInfo("Removing application " + app.id + " on " + app.endpoint)
 		apps -= app
 		idToApp -= app.id
@@ -826,7 +827,7 @@ class MoonboxMaster(
 		}
 	}
 
-	private def registerApplication(app: ApplicationInfo): Boolean = {
+	private def registerApplication(app: AppInfo): Boolean = {
 		if (addressToApp.contains(app.address)) {
 			logInfo("Attempted to re-register application at same address: " + app.address)
 			return false
@@ -843,7 +844,7 @@ class MoonboxMaster(
 		appId
 	}
 
-	private def createDriver(desc: DriverDescription, driverId: String, submitDate: Date): DriverInfo = {
+	private def createDriver(desc: DriverDesc, driverId: String, submitDate: Date): DriverInfo = {
 		new DriverInfo(submitDate.getTime, driverId, desc, submitDate)
 	}
 

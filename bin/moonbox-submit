@@ -5,7 +5,7 @@ if [ -f "${moonbox_home_dir}/conf/moonbox-env.sh" ]; then
   . "${moonbox_home_dir}/conf/moonbox-env.sh"
 fi
 
-java -Dlog4j.configuration="file:$MOONBOX_HOME/conf/log4j.properties" -cp "$MOONBOX_HOME/libs/*"  moonbox.rest.MoonboxRest "$@"
+$JAVA_HOME/bin/java -Dlog4j.configuration="file:$MOONBOX_HOME/conf/log4j.properties" -cp "$MOONBOX_HOME/libs/*"  moonbox.rest.MoonboxRest "$@"
 
 if [ "$?" -ne 0 ];
     then echo "execute sql failed."

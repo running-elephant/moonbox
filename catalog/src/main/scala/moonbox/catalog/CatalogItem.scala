@@ -36,7 +36,7 @@ case class CatalogDatabase(
 	description: Option[String] = None,
 	properties: Map[String, String],
 	isLogical: Boolean,
-	createBy: Option[String] = None
+	owner: Option[String] = None
 ) extends CatalogItem
 
 
@@ -90,7 +90,7 @@ case class CatalogFunction(
 	className: String,
 	methodName: Option[String],
 	resources: Seq[FunctionResource],
-	createBy: Option[String] = None
+	owner: Option[String] = None
 ) extends CatalogItem {
 
 	def database: String = db.getOrElse{
@@ -116,7 +116,7 @@ case class CatalogProcedure(
 	sqls: Seq[String],
 	lang: String,
 	description: Option[String] = None,
-	createBy: Option[String] = None
+	owner: Option[String] = None
 ) extends CatalogItem
 
 case class CatalogTimedEvent(
@@ -126,7 +126,7 @@ case class CatalogTimedEvent(
 	enable: Boolean,
 	description: Option[String] = None,
 	procedure: String,
-	createBy: Option[String] = None
+	owner: Option[String] = None
 ) extends CatalogItem
 
 case class CatalogDatabasePrivilege(
@@ -152,3 +152,9 @@ case class CatalogVariable(
 	user: String,
 	name: String,
 	value: String) extends CatalogItem
+
+case class CatalogGroup(
+	name: String,
+	users: Seq[String],
+	desc: Option[String]
+)

@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,12 +18,11 @@
  * >>
  */
 
-package moonbox.grid.deploy.master
+package moonbox.grid.deploy.app
 
-import akka.actor.ActorRef
-import akka.actor.Address
+import akka.actor.{ActorRef, Address}
 
-private[deploy] class ApplicationInfo(
+class AppInfo(
 	val startTime: Long,
 	val id: String,
 	val label: String,
@@ -32,15 +31,15 @@ private[deploy] class ApplicationInfo(
 	val address: Address,
 	val dataPort: Int,
 	val endpoint: ActorRef,
-	val appType: ApplicationType
+	val appType: AppType
 ) extends Serializable {
 
-	@transient var state: ApplicationState.Value = _
+	@transient var state: AppState.Value = _
 
 	init()
 
 	private def init(): Unit = {
-		state = ApplicationState.RUNNING
+		state = AppState.RUNNING
 	}
 
 	private def readObject(in: java.io.ObjectInputStream): Unit = {
@@ -63,22 +62,9 @@ private[deploy] class ApplicationInfo(
 	}
 }
 
-trait ApplicationType
 
-object ApplicationType {
 
-	def apply(`type`: String): ApplicationType = {
-		if (`type`.equalsIgnoreCase("CENTRALIZED")) {
-			CENTRALIZED
-		} else {
-			DISTRIBUTED
-		}
-	}
 
-	case object CENTRALIZED extends ApplicationType
-
-	case object DISTRIBUTED extends ApplicationType
-}
 
 
 

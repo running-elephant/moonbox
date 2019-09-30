@@ -30,8 +30,9 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config.WORKER_TIMEOUT
 import moonbox.grid.deploy.DeployMessages.{LaunchDriver, _}
 import moonbox.grid.deploy._
+import moonbox.grid.deploy.app._
 import moonbox.grid.deploy.master.MoonboxMaster._
-import moonbox.grid.deploy.master.{DriverState, MoonboxMaster}
+import moonbox.grid.deploy.master.MoonboxMaster
 import moonbox.grid.{LogMessage, MbActor}
 
 import scala.collection.JavaConverters._
@@ -59,7 +60,7 @@ class MoonboxWorker(
   private val drivers = new mutable.HashMap[String, DriverRunner]
   private val finishedDrivers = new mutable.LinkedHashMap[String, DriverRunner]
 
-  private val driverIdToDriverDesc = new mutable.HashMap[String, DriverDescription]()
+  private val driverIdToDriverDesc = new mutable.HashMap[String, DriverDesc]()
   private val killMarker = new mutable.HashSet[String]()
 
   private var registerToMasterScheduler: Option[Cancellable] = None
@@ -74,7 +75,7 @@ class MoonboxWorker(
     Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
       override def run(): Unit = {
         drivers.values.foreach { driver =>
-          if (driver.desc.isInstanceOf[LongRunDriverDescription]) {
+          if (driver.desc.isInstanceOf[LongRunDriverDesc]) {
             driver.kill()
           }
         }
@@ -164,7 +165,7 @@ class MoonboxWorker(
         killMarker.remove(driverId)
       } else {
         driverIdToDriverDesc.get(driverId).foreach { desc =>
-          if (desc.isInstanceOf[LongRunDriverDescription]) {
+          if (desc.isInstanceOf[LongRunDriverDesc]) {
             system.scheduler.scheduleOnce(new FiniteDuration(3, SECONDS)) {
               logInfo(s"Relaunch driver $driverId")
               self ! LaunchDriver(driverId, desc)
@@ -300,7 +301,7 @@ class MoonboxWorker(
       local.foreach { config =>
         val label = config.getOrElse("spark.app.label", "common")
         val driverId = newDriverId("local", label)
-        val driverDesc = new SparkLocalDriverDescription(driverId, label, masterAddresses, config)
+        val driverDesc = new SparkLocalDriverDesc(driverId, label, masterAddresses, config)
         driverIdToDriverDesc.put(driverId, driverDesc)
         self ! LaunchDriver(driverId, driverDesc)
       }
@@ -308,7 +309,7 @@ class MoonboxWorker(
       cluster.foreach { config =>
         val label = config.getOrElse("spark.app.label", "common")
         val driverId = newDriverId("cluster", label)
-        val driverDesc = new SparkClusterDriverDescription(driverId, label, masterAddresses, config)
+        val driverDesc = new SparkClusterDriverDesc(driverId, label, masterAddresses, config)
         driverIdToDriverDesc.put(driverId, driverDesc)
         self ! LaunchDriver(driverId, driverDesc)
       }
