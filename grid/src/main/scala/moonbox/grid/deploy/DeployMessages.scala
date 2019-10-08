@@ -23,8 +23,8 @@ package moonbox.grid.deploy
 import java.util.Date
 
 import akka.actor.{ActorRef, Address}
-import moonbox.grid.deploy.master.ApplicationType
-import moonbox.grid.deploy.master.DriverState.DriverState
+import moonbox.grid.deploy.app.{AppType, DriverDesc, DriverState}
+import DriverState.DriverState
 import moonbox.grid.timer.EventEntity
 
 
@@ -52,9 +52,9 @@ object DeployMessages {
 
 	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
 
-	case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDescription, Date)])
+	case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDesc, Date)])
 
-	case class WorkerLatestState(id: String,  drivers: Seq[(String, DriverDescription, Date)]) extends DeployMessages
+	case class WorkerLatestState(id: String,  drivers: Seq[(String, DriverDesc, Date)]) extends DeployMessages
 
 	case class Heartbeat(workerId: String, worker: ActorRef) extends DeployMessages
 
@@ -70,7 +70,7 @@ object DeployMessages {
 
 	case object SendHeartbeat extends DeployMessages
 
-	case class LaunchDriver(driverId: String, desc: DriverDescription) extends DeployMessages
+	case class LaunchDriver(driverId: String, desc: DriverDesc) extends DeployMessages
 
 	case class DriverStateChanged(
 		driverId: String,
@@ -89,7 +89,7 @@ object DeployMessages {
 		endpoint: ActorRef,
 		address: Address,
 		dataPort: Int,
-		appType: ApplicationType
+		appType: AppType
 	)
 
 	sealed trait RegisterApplicationResponse

@@ -49,6 +49,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.spark_project.guava.util.concurrent.Striped
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.JavaConverters._
 
 
 class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
@@ -247,7 +248,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @return data and schema
     */
 
-  def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
+  def sql(sql: String, maxRows: Int = 100, unlimited: Boolean = false): (Iterator[Row], StructType) = {
     val parsedPlan = parsePlan(sql)
     parsedPlan match {
       case runnable: RunnableCommand =>
@@ -255,7 +256,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         (dataFrame.collect().toIterator, dataFrame.schema)
       case other =>
         injectTableFunctions(parsedPlan)
-        // may throw ColumnAnalysisException
+        // may throw PrivilegeAnalysisException
         val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
         val limitPlan = analyzedPlan match {
           case insert: InsertIntoDataSourceCommand =>
@@ -264,6 +265,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             insert
           case insert: InsertIntoHiveTable =>
             insert
+					case _ if unlimited =>
+						analyzedPlan
 					case _ =>
 						GlobalLimit(
 							Literal(maxRows, IntegerType),
@@ -283,25 +286,37 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
                 (dataTable.iterator, dataTable.schema)
               case plan =>
                 val dataFrame = createDataFrame(plan)
-                (dataFrame.collect().toIterator, dataFrame.schema)
+                (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
             }
           } catch {
             case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
               throw e
             case e: Exception if pushdownEnable =>
               logError("Execute pushdown failed, Retry without pushdown optimize.", e)
-              // using sql instead of logical plan to create dataFrame.
-              // because in some case will throw exception that spark.sql.execution.id is already set.
               val dataFrame = createDataFrame(optimizedPlan)
-              (dataFrame.collect().toIterator, dataFrame.schema)
+              (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
           }
         } else {
           val dataFrame = createDataFrame(optimizedPlan)
-          (dataFrame.collect().toIterator, dataFrame.schema)
+          (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
         }
 
     }
   }
+
+	private def collectWithTryCatch(dataFrame: DataFrame, unlimited: Boolean): Iterator[Row] = {
+		try {
+			if (unlimited) {
+				dataFrame.toLocalIterator().asScala
+			} else {
+				dataFrame.collect().toIterator
+			}
+		} catch {
+			case e: OutOfMemoryError =>
+				logError("collect cause OutOfMemoryError", e)
+				throw new RuntimeException(e)
+		}
+	}
 
   /**
     * if pushdown enable

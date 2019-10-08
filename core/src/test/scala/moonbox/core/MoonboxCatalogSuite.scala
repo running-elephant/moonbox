@@ -193,7 +193,7 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 		val db = catalog.getDatabase("db")
 		assert(db.name == "db")
 		assert(db.description.contains("for testing"))
-		assert(db.createBy.contains("sa"))
+		assert(db.owner.contains("sa"))
 
 		intercept[DatabaseExistsException] {
 			catalog.createDatabase(CatalogDatabase(
@@ -362,7 +362,7 @@ class MoonboxCatalogSuite extends FunSuite with MbLogging {
 		val app = catalog.getProcedure("application")
 		assert(app.sqls == Seq("INSERT INTO TABLE table SELECT * FROM view"))
 		assert(app.description.contains("for testing"))
-		assert(app.createBy.contains("sa"))
+		assert(app.owner.contains("sa"))
 
 		intercept[ProcedureExistsException] {
 			catalog.createProcedure(CatalogProcedure(

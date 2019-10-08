@@ -20,6 +20,8 @@
 
 package moonbox.grid.deploy.master
 
+import moonbox.grid.deploy.app.{AppInfo, DriverInfo}
+
 import scala.reflect.ClassTag
 
 abstract class PersistenceEngine {
@@ -40,8 +42,8 @@ abstract class PersistenceEngine {
 		read[WorkerInfo]("workers")
 	}
 
-	final def readApplication(): Seq[ApplicationInfo] = {
-		read[ApplicationInfo]("apps")
+	final def readApplication(): Seq[AppInfo] = {
+		read[AppInfo]("apps")
 	}
 
 	final def addDriver(driver: DriverInfo): Unit = {
@@ -60,11 +62,11 @@ abstract class PersistenceEngine {
 		unpersist("workers/" + node.id)
 	}
 
-	final def addApplication(app: ApplicationInfo): Unit = {
+	final def addApplication(app: AppInfo): Unit = {
 		persist("apps/" + app.id, app)
 	}
 
-	final def removeApplication(app: ApplicationInfo): Unit = {
+	final def removeApplication(app: AppInfo): Unit = {
 		unpersist("apps/" + app.id)
 	}
 

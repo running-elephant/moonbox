@@ -43,6 +43,24 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 		db.toLowerCase(Locale.ROOT)
 	}
 
+	def requireDbExists(db: String): Unit = {
+		if (!databaseExists(db)) {
+			throw new NoSuchDatabaseException(db)
+		}
+	}
+
+	def requireTableExists(db: String, table: String) = {
+		if (!tableExists(db, table)) {
+			throw new NoSuchTableException(db, table)
+		}
+	}
+
+	def requireUserExists(org: String, user: String): Unit = {
+		if (!userExists(org, user)) {
+			throw new NoSuchUserException(user)
+		}
+	}
+
 	def setCurrentUser(org: String, user: String): this.type = synchronized {
 		userInSession = {
 			val orgId = jdbcCatalog.organizationId(org)

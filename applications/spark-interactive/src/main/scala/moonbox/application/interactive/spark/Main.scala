@@ -29,7 +29,7 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.master.ApplicationType
+import moonbox.grid.deploy.app.AppType
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.{LogMessage, MbActor}
 import moonbox.protocol.util.SchemaUtil
@@ -72,7 +72,7 @@ object Main extends MbLogging {
 
 		try {
 			system.actorOf(Props(
-				classOf[Main], driverId, appLabel, masters, conf, ApplicationType.apply(appType)
+				classOf[Main], driverId, appLabel, masters, conf, AppType.apply(appType)
 			), name = "interactive")
 		} catch {
 			case e: Exception =>
@@ -88,7 +88,7 @@ class Main(
 	appLabel: String,
 	masterAddresses: Array[String],
 	val conf: MbConf,
-	appType: ApplicationType
+	appType: AppType
 ) extends MbActor with LogMessage with MbLogging {
 
 	private implicit val executionContext: ExecutionContext = {

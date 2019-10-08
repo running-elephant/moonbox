@@ -689,7 +689,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
           sqls = procEntity.cmds,
           lang = procEntity.lang,
           description = procEntity.description,
-          createBy = Some(userName(procEntity.createBy))
+          owner = Some(userName(procEntity.createBy))
         )
       case None => throw new NoSuchProcedureException(proc)
     }
@@ -704,7 +704,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         sqls = procEntity.cmds,
         lang = procEntity.lang,
         description = procEntity.description,
-        createBy = Some(userName(procEntity.createBy))
+        owner = Some(userName(procEntity.createBy))
       )
     })
   }
@@ -722,7 +722,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         sqls = procEntity.cmds,
         lang = procEntity.lang,
         description = procEntity.description,
-        createBy = Some(userName(procEntity.createBy))
+        owner = Some(userName(procEntity.createBy))
       )
     })
   }
@@ -736,7 +736,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         sqls = procEntity.cmds,
         lang = procEntity.lang,
         description = procEntity.description,
-        createBy = Some(userName(procEntity.createBy))
+        owner = Some(userName(procEntity.createBy))
       )
     })
   }
@@ -843,7 +843,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         enable = timedEventEntity.enable,
         description = timedEventEntity.description,
         procedure = procedureName(timedEventEntity.procedure),
-        createBy = Some(userName(timedEventEntity.createBy))
+        owner = Some(userName(timedEventEntity.createBy))
       )
       case None => throw new NoSuchTimedEventException(event)
     }
@@ -860,7 +860,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
           enable = timedEventEntity.enable,
           description = timedEventEntity.description,
           procedure = procedureName(timedEventEntity.procedure),
-          createBy = Some(userName(timedEventEntity.createBy))
+          owner = Some(userName(timedEventEntity.createBy))
         )
       }
     }
@@ -885,7 +885,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         enable = timedEventEntity.enable,
         description = timedEventEntity.description,
         procedure = procedureName(timedEventEntity.procedure),
-        createBy = Some(userName(timedEventEntity.createBy))
+        owner = Some(userName(timedEventEntity.createBy))
       )
     })
   }
@@ -901,7 +901,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         enable = timedEventEntity.enable,
         description = timedEventEntity.description,
         procedure = procedureName(timedEventEntity.procedure),
-        createBy = Some(userName(timedEventEntity.createBy))
+        owner = Some(userName(timedEventEntity.createBy))
       )
     })
   }
@@ -1014,7 +1014,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        createBy = Some(userName(dbEntity.createBy))
+        owner = Some(userName(dbEntity.createBy))
       )
       case None => throw new NoSuchDatabaseException(database)
     }
@@ -1031,7 +1031,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        createBy = Some(userName(dbEntity.createBy))
+        owner = Some(userName(dbEntity.createBy))
       )
     })
   }
@@ -1048,7 +1048,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        createBy = Some(userName(dbEntity.createBy))
+        owner = Some(userName(dbEntity.createBy))
       )
     })
   }
@@ -1060,7 +1060,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        createBy = Some(userName(dbEntity.createBy))
+        owner = Some(userName(dbEntity.createBy))
       )
     })
   }
@@ -1422,7 +1422,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
                 className = funcEntity.className,
                 methodName = funcEntity.methodName,
                 resources = functionResources,
-                createBy = Some(userName(funcEntity.createBy))
+                owner = Some(userName(funcEntity.createBy))
               )
             }
           case None => throw new NoSuchFunctionException(database, func)
@@ -1451,7 +1451,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
                 className = funcEntity.className,
                 methodName = funcEntity.methodName,
                 resources = functionResources,
-                createBy = Some(userName(funcEntity.createBy))
+                owner = Some(userName(funcEntity.createBy))
               ))
             }
           case None => Future(None)
@@ -1491,7 +1491,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               className = func.className,
               methodName = func.methodName,
               resources = resources,
-              createBy = Some(userName(func.createBy))
+              owner = Some(userName(func.createBy))
             )
           }
         }
@@ -1518,7 +1518,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               className = func.className,
               methodName = func.methodName,
               resources = resources,
-              createBy = Some(userName(func.createBy))
+              owner = Some(userName(func.createBy))
             )
           }
         }
@@ -1804,7 +1804,29 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     }
   }
 
-  /**
+	// ----------------------------------------------------------------------------
+	// Group
+	// ----------------------------------------------------------------------------
+
+
+  override protected def doCreateGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = ???
+
+	override def listGroups(): Seq[CatalogGroup] = ???
+
+	override def listGroups(pattern: String): Seq[CatalogGroup] = ???
+
+	override def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = ???
+
+	override def getGroup(group: String): CatalogGroup = ???
+
+	override protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = ???
+
+	override def groupExists(group: String): Boolean = ???
+
+	override def getGroupOption(group: String): Option[CatalogGroup] = ???
+
+
+	/**
     * asynchronous to synchronous
     *
     * @param f asynchronous method

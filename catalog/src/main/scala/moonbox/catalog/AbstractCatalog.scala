@@ -430,6 +430,39 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	protected def getColumnPrivilege(user: String, database: String, table: String)(implicit by: User): CatalogColumnPrivilege
 
+	// ----------------------------------------------------------------------------
+	// Group
+	// ----------------------------------------------------------------------------
+	final def createGroup(
+		groupDefinition: CatalogGroup)(implicit by: User): Unit = {
+		postToAll(CreateGroupPreEvent(by.org, groupDefinition.name))
+		doCreateGroup(groupDefinition)
+		postToAll(CreateGroupEvent(by.org, groupDefinition.name))
+	}
+
+	final def dropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = {
+		postToAll(DropGroupPreEvent(by.org, group))
+		doDropGroup(group, ignoreIfNotExists, cascade)
+		postToAll(DropGroupEvent(by.org, group))
+	}
+
+	protected def doCreateGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit
+
+	protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit
+
+	def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit
+
+	def getGroup(group: String): CatalogGroup
+
+	def getGroupOption(group: String): Option[CatalogGroup]
+
+	def groupExists(group: String): Boolean
+
+	def listGroups(): Seq[CatalogGroup]
+
+	def listGroups(pattern: String): Seq[CatalogGroup]
+
+
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
 		listener.onEvent(event)
 	}
