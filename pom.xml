@@ -35,6 +35,7 @@
 
         <module>external/spark-hbase-connector</module>
         <module>external/spark-presto-connector</module>
+        <module>external/spark-kafka-0-10-sql</module>
 
         <module>external/elasticsearch-adapter</module>
         <module>external/mongo-adapter</module>
