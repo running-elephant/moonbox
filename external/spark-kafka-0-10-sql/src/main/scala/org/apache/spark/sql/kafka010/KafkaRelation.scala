@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation, TableScan}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
+import org.apache.spark.sql._
 import org.apache.spark.unsafe.types.UTF8String
 
 
@@ -58,6 +58,9 @@ private[kafka010] class KafkaRelation(
     // id. Hence, we should generate a unique id for each query.
     val uniqueGroupId = s"spark-kafka-relation-${UUID.randomUUID}"
 
+    if (sourceOptions.contains(UmsCommon.DATA_FORMAT) && sourceOptions(UmsCommon.DATA_FORMAT) == "ums") {
+      throw new AnalysisException(s"Kafka ums data scan is not supported now.")
+    }
     val kafkaOffsetReader = new KafkaOffsetReader(
       strategy,
       KafkaSourceProvider.kafkaParamsForDriver(specifiedKafkaParams),
@@ -114,6 +117,7 @@ private[kafka010] class KafkaRelation(
         DateTimeUtils.fromJavaTimestamp(new java.sql.Timestamp(cr.timestamp)),
         cr.timestampType.id)
     }
+
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }
 

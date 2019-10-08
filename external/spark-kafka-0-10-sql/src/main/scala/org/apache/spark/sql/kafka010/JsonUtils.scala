@@ -17,8 +17,10 @@
 
 package org.apache.spark.sql.kafka010
 
+import java.sql.Timestamp
+
 import org.apache.kafka.common.TopicPartition
-import org.json4s.NoTypeHints
+import org.json4s._
 import org.json4s.jackson.Serialization
 
 import scala.collection.mutable.HashMap
@@ -31,6 +33,16 @@ import scala.util.control.NonFatal
 object JsonUtils {
   private implicit val formats = Serialization.formats(NoTypeHints)
 
+//  private def customFormats: Traversable[Serializer[_]] = {
+//    Seq(
+//      new CustomSerializer[java.sql.Date](_ => (
+//        { case JInt(s) => new java.sql.Date(s.longValue()) },
+//        { case d: java.sql.Date => JString(d.toString) })),
+//      new CustomSerializer[java.sql.Timestamp](_ => (
+//        { case JInt(s) => new Timestamp(s.longValue())  },
+//        { case t: java.sql.Timestamp => JString(t.toString) }))
+//      )
+//  }
   /**
     * Read TopicPartitions from json string
     */

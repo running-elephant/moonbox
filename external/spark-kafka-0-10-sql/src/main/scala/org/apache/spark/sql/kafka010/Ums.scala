@@ -1,7 +1,13 @@
 package org.apache.spark.sql.kafka010
 
+import java.sql.Timestamp
+
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.kafka010.UmsFieldType.UmsFieldType
 import org.apache.spark.sql.types._
+
+import scala.collection.mutable.ArrayBuffer
 
 case class Ums(protocol: UmsProtocol,
                schema: UmsSchema,
@@ -22,18 +28,18 @@ object UmsSchema {
   def apply(namespace: String, schema: StructType): UmsSchema = {
     val umsFieldSeq = schema.map(structField => {
       val fieldType = structField.dataType match {
-        case StringType => "string"
-        case IntegerType => "int"
-        case LongType => "long"
-        case FloatType => "float"
-        case DoubleType => "double"
-        case BooleanType => "boolean"
-        case DateType => "date"
-        case TimestampType => "datetime"
-        case DecimalType.SYSTEM_DEFAULT => "decimal"
-        case BinaryType => "binary"
+        case StringType => UmsFieldType.STRING
+        case IntegerType => UmsFieldType.INT
+        case LongType => UmsFieldType.LONG
+        case FloatType => UmsFieldType.FLOAT
+        case DoubleType => UmsFieldType.DOUBLE
+        case BooleanType => UmsFieldType.BOOLEAN
+        case DateType => UmsFieldType.DATE
+        case TimestampType => UmsFieldType.DATETIME
+        case DecimalType.Fixed(p, s) => UmsFieldType.DECIMAL
+        case BinaryType => UmsFieldType.BINARY
       }
-      UmsField(structField.name, UmsFieldType.withName(fieldType), structField.nullable)
+      UmsField(structField.name, fieldType, structField.nullable)
     })
     UmsSchema(namespace, umsFieldSeq)
   }
@@ -70,7 +76,6 @@ object UmsCommon {
   val UMS_PROTOCOL: String = "ums.protocol"
   val UMS_NAMESPACE: String = "ums.namespace"
   val UMS_PAYLOAD_SIZE: String = "ums.payload.size"
-  val UMS_SCHEMA: String = "ums.schema"
   val DEFAULT_UMS_PAYLOAD_SIZE: Int = 50
 
   def genKey(protocol: String, ns: String): String = protocol + "." + ns
@@ -79,24 +84,47 @@ object UmsCommon {
 
   def validateProtocol(protocol: String): Boolean = !protocol.contains(".")
 
-  def genSparkStructType(schema: String): StructType = {
-    val fields = schema.split(",").map(field => {
-      val fieldSplit = field.split("\\s+")
-      val (fieldName, fieldType) = (fieldSplit.head, fieldSplit(1).trim.toLowerCase())
-      val sparkDataType = fieldType match {
-        case "string" => StringType
-        case "int" => IntegerType
-        case "long" => LongType
-        case "float" => FloatType
-        case "double" => DoubleType
-        case "boolean" => BooleanType
-        case "date" => DateType
-        case "datetime" => TimestampType
-        case "decimal" => DecimalType.SYSTEM_DEFAULT
-        case "binary" => BinaryType
+  def genUmsTuple(sparkSchema: StructType, sparkRow: InternalRow): UmsTuple = {
+    val seq = new ArrayBuffer[String]
+    for (i <- sparkSchema.indices) {
+      val umsValue = sparkSchema(i).dataType match {
+        case StringType => sparkRow.getUTF8String(i)
+        case IntegerType => sparkRow.getInt(i)
+        case LongType => sparkRow.getLong(i)
+        case FloatType => sparkRow.getFloat(i)
+        case DoubleType => sparkRow.getDouble(i)
+        case BooleanType => sparkRow.getBoolean(i)
+        case DateType =>
+          DateTimeUtils.toJavaDate(sparkRow.getInt(i))
+        case TimestampType =>
+          DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
+        case d@DecimalType.Fixed(p, s) =>
+          sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
+        case BinaryType => sparkRow.getBinary(i)
       }
-      StructField(fieldName, sparkDataType, true)
-    })
-    StructType(fields)
+      seq.append(umsValue.toString)
+    }
+    UmsTuple(seq)
   }
+
+  //  def genSparkStructType(schema: String): StructType = {
+  //    val fields = schema.split(",").map(field => {
+  //      val fieldSplit = field.trim.split("\\s+")
+  //      val (fieldName, fieldType) = (fieldSplit.head, fieldSplit(1).trim.toLowerCase())
+  //      val sparkDataType = fieldType match {
+  //        case "string" => StringType
+  //        case "int" => IntegerType
+  //        case "long" => LongType
+  //        case "float" => FloatType
+  //        case "double" => DoubleType
+  //        case "boolean" => BooleanType
+  //        case "date" => DateType
+  //        case "datetime" => TimestampType
+  //        case "decimal" => DecimalType.SYSTEM_DEFAULT
+  //        case "binary" => BinaryType
+  //      }
+  //      StructField(fieldName, sparkDataType, true)
+  //    })
+  //    StructType(fields)
+  //  }
 }

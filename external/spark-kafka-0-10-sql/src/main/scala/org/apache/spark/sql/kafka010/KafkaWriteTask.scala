@@ -27,7 +27,7 @@ import org.apache.spark.sql.kafka010.UmsCommon._
 import org.apache.spark.sql.types.{BinaryType, StringType, StructType}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 /**
   * A simple trait for writing out data in a single Spark task, without any concerns about how
@@ -80,11 +80,15 @@ private[kafka010] class KafkaWriteTask(
   def umsExecute(iterator: Iterator[InternalRow]): Unit = {
     producer = CachedKafkaProducer.getOrCreate(new ju.HashMap[String, Object](producerConfiguration))
     var p = 0
-    val tupleBuffer = new ListBuffer[UmsTuple]
+    val tupleBuffer = new ArrayBuffer[UmsTuple]
     val umsPayloadSize = umsParameters.getOrElse(UMS_PAYLOAD_SIZE, DEFAULT_UMS_PAYLOAD_SIZE.toString).toInt
     val umsProtocol = UmsProtocol(umsParameters(UMS_PROTOCOL))
     val umsSchema = UmsSchema(umsParameters(UMS_NAMESPACE), inputSchema)
     val key = genKey(umsParameters(UMS_PROTOCOL), umsParameters(UMS_NAMESPACE))
+
+    def genTuple(row: InternalRow): UmsTuple = {
+      genUmsTuple(inputSchema, row)
+    }
 
     def genUmsJson: String = {
       val ums = Ums(umsProtocol, umsSchema, tupleBuffer)
@@ -105,9 +109,9 @@ private[kafka010] class KafkaWriteTask(
     }
 
     while (iterator.hasNext && failedWrite == null) {
-      val currentRow = iterator.next().toSeq(inputSchema).map(_.toString)
+      val currentRow = iterator.next()
       p += 1
-      tupleBuffer.append(UmsTuple(currentRow))
+      tupleBuffer.append(genTuple(currentRow))
       if (p == umsPayloadSize) {
         sendRecord
         p = 0

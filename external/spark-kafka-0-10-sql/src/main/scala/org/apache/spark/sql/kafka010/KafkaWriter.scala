@@ -99,10 +99,6 @@ private[kafka010] object KafkaWriter extends Logging {
         throw new AnalysisException(s"'$UMS_NAMESPACE' config value '${umsParameters(UMS_NAMESPACE)}' is not valid")
       }
     }
-
-    if (!umsParameters.contains(UMS_SCHEMA)) {
-      throw new AnalysisException(s"Required ums config '$UMS_SCHEMA' not found")
-    }
   }
 
   def write(
@@ -111,9 +107,10 @@ private[kafka010] object KafkaWriter extends Logging {
              kafkaParameters: ju.Map[String, String],
              umsParameters: ju.Map[String, String],
              topic: Option[String] = None): Unit = {
+
+    val schema = queryExecution.analyzed.schema
     if (umsParameters.contains(DATA_FORMAT) && umsParameters(DATA_FORMAT) == UMS_DATA_FORMAT) {
       validateUmsParams(umsParameters)
-      val schema = genSparkStructType(umsParameters(UMS_SCHEMA))
       SQLExecution.withNewExecutionId(sparkSession, queryExecution) {
         queryExecution.toRdd.foreachPartition { iter =>
           val writeTask = new KafkaWriteTask(kafkaParameters, umsParameters, schema, topic)
@@ -123,7 +120,6 @@ private[kafka010] object KafkaWriter extends Logging {
       }
     } else {
       validateQuery(queryExecution, kafkaParameters, topic)
-      val schema = queryExecution.analyzed.schema
       SQLExecution.withNewExecutionId(sparkSession, queryExecution) {
         queryExecution.toRdd.foreachPartition { iter =>
           val writeTask = new KafkaWriteTask(kafkaParameters, umsParameters, schema, topic)
