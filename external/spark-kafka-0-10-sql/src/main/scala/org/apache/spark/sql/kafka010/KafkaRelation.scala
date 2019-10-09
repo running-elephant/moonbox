@@ -22,11 +22,11 @@ import java.util.UUID
 import org.apache.kafka.common.TopicPartition
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.sources.{BaseRelation, InsertableRelation, TableScan}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql._
 import org.apache.spark.unsafe.types.UTF8String
 
 
@@ -58,7 +58,8 @@ private[kafka010] class KafkaRelation(
     // id. Hence, we should generate a unique id for each query.
     val uniqueGroupId = s"spark-kafka-relation-${UUID.randomUUID}"
 
-    if (sourceOptions.contains(UmsCommon.DATA_FORMAT) && sourceOptions(UmsCommon.DATA_FORMAT) == "ums") {
+    if (sourceOptions.contains(KafkaSourceProvider.FORMAT_OPTION_KEY)
+      && sourceOptions(KafkaSourceProvider.FORMAT_OPTION_KEY) == KafkaSourceProvider.UMS_FORMAT) {
       throw new AnalysisException(s"Kafka ums data scan is not supported now.")
     }
     val kafkaOffsetReader = new KafkaOffsetReader(
@@ -120,6 +121,7 @@ private[kafka010] class KafkaRelation(
 
     sqlContext.internalCreateDataFrame(rdd, schema).rdd
   }
+
 
   private def getPartitionOffsets(
                                    kafkaReader: KafkaOffsetReader,

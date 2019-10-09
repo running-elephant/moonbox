@@ -109,7 +109,8 @@ private[kafka010] object KafkaWriter extends Logging {
              topic: Option[String] = None): Unit = {
 
     val schema = queryExecution.analyzed.schema
-    if (umsParameters.contains(DATA_FORMAT) && umsParameters(DATA_FORMAT) == UMS_DATA_FORMAT) {
+    if (umsParameters.contains(KafkaSourceProvider.FORMAT_OPTION_KEY) &&
+      umsParameters(KafkaSourceProvider.FORMAT_OPTION_KEY) == KafkaSourceProvider.UMS_FORMAT) {
       validateUmsParams(umsParameters)
       SQLExecution.withNewExecutionId(sparkSession, queryExecution) {
         queryExecution.toRdd.foreachPartition { iter =>

@@ -1,7 +1,5 @@
 package org.apache.spark.sql.kafka010
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.kafka010.UmsFieldType.UmsFieldType
@@ -71,8 +69,7 @@ object UmsFieldType extends Enumeration {
 }
 
 object UmsCommon {
-  val DATA_FORMAT: String = "data.format"
-  val UMS_DATA_FORMAT: String = "ums"
+  val UMS_FORMAT: String = "ums"
   val UMS_PROTOCOL: String = "ums.protocol"
   val UMS_NAMESPACE: String = "ums.namespace"
   val UMS_PAYLOAD_SIZE: String = "ums.payload.size"

@@ -385,6 +385,8 @@ private[kafka010] object KafkaSourceProvider extends Logging {
   private[kafka010] val ENDING_OFFSETS_OPTION_KEY = "endingoffsets"
   private val FAIL_ON_DATA_LOSS_OPTION_KEY = "failondataloss"
   val TOPIC_OPTION_KEY = "topic"
+  val FORMAT_OPTION_KEY = "format"
+  val UMS_FORMAT = "ums"
 
   private val deserClassName = classOf[StringDeserializer].getName
 
