@@ -152,7 +152,19 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @return resolved logical plan
     */
   def analyzePlan(plan: LogicalPlan): LogicalPlan = {
-    sessionState.analyzer.execute(plan)
+    val analyzed = sessionState.analyzer.execute(plan)
+    sparkSession.sessionState.analyzer.checkAnalysis(analyzed)
+    analyzed
+  }
+
+  /**
+    * check resolved logical plan
+    *
+    * @param plan resolved logical plan
+    * @return resolved logical plan
+    */
+  def checkAnalysis(plan: LogicalPlan): Unit = {
+    sparkSession.sessionState.analyzer.checkAnalysis(plan)
   }
 
   /**
@@ -623,6 +635,12 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val options = props.map { case (k, v) => s"'$k' '$v'" }.mkString(",")
     val schema = props.get("schema").map(s => s"($s)").getOrElse("")
 
+//    props.keys.foreach(key => {
+//      if (key != "path" && key != "schema" && key != "type") {
+//        sessionState.conf.setConfString(key, props(key))
+//      }
+//    })
+
     // for compatibility
     val partition = props.get("partitionColumns").orElse(
       props.get("partitionColumnNames")).map(s => s"PARTITIONED BY ($s)").getOrElse("")
@@ -738,13 +756,13 @@ object SparkEngine extends MbLogging {
 
   private val hivePostHocResolutionRule = Seq[RuleBuilder](
     (session: SparkSession) => new DetermineTableStats(session),
-    (session: SparkSession) => CatalogRelationConversions(sQLConf(session), session),
+    (session: SparkSession) => CatalogRelationConversions(sqlConf(session), session),
     (session: SparkSession) => PreprocessTableCreation(session),
-    (session: SparkSession) => PreprocessTableInsertion(sQLConf(session)),
+    (session: SparkSession) => PreprocessTableInsertion(sqlConf(session)),
     (session: SparkSession) => HiveAnalysis
   )
 
-  private def sQLConf(session: SparkSession): SQLConf = {
+  private def sqlConf(session: SparkSession): SQLConf = {
     val conf = new SQLConf()
     session.sparkContext.conf.getAll.foreach { case (k, v) =>
       conf.setConfString(k, v)

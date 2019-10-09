@@ -97,7 +97,9 @@ class Servicer(
       try {
         val parsed = mbSession.engine.parsePlan(sql)
         mbSession.engine.injectTableFunctions(parsed)
-        mbSession.engine.checkColumns(mbSession.engine.analyzePlan(parsed))
+        val analyzed = mbSession.engine.analyzePlan(parsed)
+        mbSession.engine.checkAnalysis(analyzed)
+        mbSession.engine.checkColumns(analyzed)
         (true, None)
       } catch {
         case e: Exception =>
