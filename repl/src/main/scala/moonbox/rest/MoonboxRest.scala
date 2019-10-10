@@ -196,10 +196,10 @@ object MoonboxRest {
 				"   -s            Connect to host:port.\n" +
 				"   -u            User for login.\n" +
 				"   -p            Password to use when connecting to server.\n" +
-				"   -l            Mql or hql to execute.\n" +
+				"   -l            Language to execute: MQL (\"mql\") or HQL (\"hql\").\n" +
 				"   -d            Current database, optional.\n" +
 				"   -f            MQL or HQL script file path.\n" +
-				"   -e 			  MQL with double quotes"
+				"   -e            MQL with double quotes."
 		)
 		System.exit(exitCode)
 	}
