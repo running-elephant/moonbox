@@ -28,11 +28,11 @@ object MQLs {
 		"ALTER ORG name SET COMMENT comment",
 		"DROP ORG [IF EXISTS] name [CASCADE]",
 
-		"CREATE SA [IF NOT EXISTS] name IN [ORG] name IDENTIFIED BY password",
-		"RENAME SA name IN [ORG] name TO name",
-		"ALTER SA name IN [ORG] RENAME TO name",
-		"ALTER SA name IN [ORG] IDENTIFIED BY password",
-		"DROP SA [IF EXISTS] name IN [ORG] name",
+		"CREATE SA [IF NOT EXISTS] name IN [ORG] org_name IDENTIFIED BY password",
+		"RENAME SA name IN [ORG] org_name TO name",
+		"ALTER SA name IN [ORG] org_name RENAME TO name",
+		"ALTER SA name IN [ORG] org_name IDENTIFIED BY password",
+		"DROP SA [IF EXISTS] name IN [ORG] org_name",
 
 		"CREATE USER [IF NOT EXISTS] name IDENTIFIED BY password",
 		"RENAME USER name TO name",
