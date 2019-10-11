@@ -180,7 +180,7 @@ object MoonboxRest {
 		case c :: tail if c.startsWith("-C") =>
 			c.stripPrefix("-C").split(",").foreach { keyvalues =>
 				val kv = keyvalues.trim.split("=")
-				assert(kv.length == 2, "please check config format.")
+				assert(kv.length >= 2, "please check config format.")
 				config.put(kv(0).trim, kv(1).trim)
 			}
 		case Nil =>

@@ -134,7 +134,7 @@ object LaunchUtils extends MbLogging {
 		val path = getMoonboxHome() + File.separator + "apps"
 		val file = new File(path)
 		if (file.exists()) {
-			file.listFiles().find(f => f.isFile && f.getName.contains(appType)).map(_.getAbsolutePath)
+			file.listFiles().find(f => f.isFile && f.getName.contains(appType) && f.getName.endsWith(".jar")).map(_.getAbsolutePath)
 		} else None
 	}
 

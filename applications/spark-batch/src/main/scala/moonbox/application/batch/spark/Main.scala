@@ -22,10 +22,7 @@ package moonbox.application.batch.spark
 
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.core._
-import moonbox.core.command.{InsertMode, _}
-import moonbox.core.datasys.DataSystem
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.catalyst.plans.logical.InsertIntoTable
+import moonbox.core.command._
 
 
 object Main extends MbLogging {

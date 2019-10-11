@@ -26,7 +26,7 @@ EXIST=1
 KILL_TIMES=0
 while [[ "$EXIST" != 0  && ${KILL_TIMES} -lt 5 ]];  #-lt  小于
 do
-    kill_process "MoonboxMaster" ${KILL_TIMES}
+    kill_process "moonbox.MoonboxMaster" ${KILL_TIMES}
     sleep 2
     if [[ $? !=  0 ]] ; then
         EXIST=1
