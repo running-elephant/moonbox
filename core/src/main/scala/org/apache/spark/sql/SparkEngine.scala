@@ -263,6 +263,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
   def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
     val parsedPlan = parsePlan(sql)
+		val unlimited = maxRows < 0
     parsedPlan match {
       case runnable: RunnableCommand =>
         val dataFrame = createDataFrame(runnable)
@@ -278,6 +279,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             insert
           case insert: InsertIntoHiveTable =>
             insert
+					case _ if unlimited =>
+						analyzedPlan
 					case _ =>
 						GlobalLimit(
 							Literal(maxRows, IntegerType),
@@ -286,8 +289,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         }
 
         val optimizedPlan = optimizePlan(limitPlan)
-
-				val collectPartition = maxRows > collectThreshold
 
         if (pushdownEnable) {
           try {
@@ -299,7 +300,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
                 (dataTable.iterator, dataTable.schema)
               case plan =>
                 val dataFrame = createDataFrame(plan)
-                (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
+                (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
             }
           } catch {
             case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
@@ -307,19 +308,19 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             case e: Exception if pushdownEnable =>
               logError("Execute pushdown failed, Retry without pushdown optimize.", e)
               val dataFrame = createDataFrame(optimizedPlan)
-              (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
+              (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
           }
         } else {
           val dataFrame = createDataFrame(optimizedPlan)
-          (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
+          (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
         }
 
     }
   }
 
-	private def collectWithTryCatch(dataFrame: DataFrame, collectPartition: Boolean): Iterator[Row] = {
+	private def collectWithTryCatch(dataFrame: DataFrame, unlimited: Boolean): Iterator[Row] = {
 		try {
-			if (collectPartition) {
+			if (unlimited) {
 				dataFrame.toLocalIterator().asScala
 			} else {
 				dataFrame.collect().toIterator
