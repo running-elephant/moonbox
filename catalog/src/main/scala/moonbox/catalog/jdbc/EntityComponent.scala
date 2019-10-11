@@ -251,8 +251,9 @@ trait EntityComponent extends DatabaseComponent {
 		def name = column[String]("name")
 		def labels = column[Seq[String]]("labels")
 		def appType = column[String]("appType")
+		def state = column[String]("state")
 		def config = column[Map[String, String]]("config")
-		override def * = (id.?, name, labels, appType, config, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
+		override def * = (id.?, name, labels, appType, config, state, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
 	}
 
 	class GroupEntityTable(tag: Tag) extends BaseTable[GroupEntity](tag, "groups") {

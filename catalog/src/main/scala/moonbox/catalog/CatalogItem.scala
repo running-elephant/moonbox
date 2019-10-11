@@ -27,6 +27,7 @@ case class CatalogApplication(
 	name: String,
 	labels: Seq[String],
 	appType: String,
+	state: String,
 	config: Map[String, String]
 ) extends CatalogItem
 
@@ -155,6 +156,10 @@ case class CatalogVariable(
 
 case class CatalogGroup(
 	name: String,
-	users: Seq[String],
 	desc: Option[String]
+)
+
+case class CatalogGroupUserRel(
+	group: String,
+	users: Seq[String]
 )

@@ -135,6 +135,60 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
+	test("group") {
+		assertEquals(
+			CreateGroup("group", None, ignoreIfExists = false),
+			"CREATE GROUP group"
+		)
+
+		assertEquals(
+			CreateGroup("group", Some("comment"), ignoreIfExists = false),
+			"CREATE GROUP group COMMENT comment"
+		)
+
+		assertEquals(
+			CreateGroup("group", None, ignoreIfExists = true),
+			"CREATE GROUP IF NOT EXISTS group"
+		)
+
+		assertEquals(
+			AlterGroupSetName("group", "group1"),
+			"ALTER GROUP group RENAME TO group1",
+			"RENAME GROUP group TO group1"
+		)
+
+
+		assertEquals(
+			AlterGroupSetComment("group", "comment"),
+			"ALTER GROUP group SET COMMENT 'comment'"
+		)
+
+		assertEquals(
+			AlterGroupAddUser("group", Seq("user1", "user2")),
+			"ALTER GROUP group ADD USER user1, user2"
+		)
+
+		assertEquals(
+			AlterGroupRemoveUser("group", Seq("user1", "user2")),
+			"ALTER GROUP group REMOVE USER user1, user2"
+		)
+
+		assertEquals(
+			DropGroup("group", ignoreIfNotExists = false, cascade = false),
+			"DROP GROUP group"
+		)
+
+		assertEquals(
+			DropGroup("group", ignoreIfNotExists = true, cascade = false),
+			"DROP GROUP IF EXISTS group"
+		)
+
+		assertEquals(
+			DropGroup("group", ignoreIfNotExists = true, cascade = true),
+			"DROP GROUP IF EXISTS group CASCADE"
+		)
+	}
+
 	test("database") {
 		assertEquals(
 			CreateDatabase("database", Some("for testing"), ignoreIfExists = true),
@@ -527,10 +581,19 @@ class MoonboxParserSuite extends FunSuite {
 			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO user1"
 		)
 
+		assertEquals(
+			GrantGrantToGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), "group1"),
+			"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO GROUP group1"
+		)
 
 		assertEquals(
 			RevokeGrantFromUser(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), "user2"),
 			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM user2"
+		)
+
+		assertEquals(
+			RevokeGrantFromGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL, RolePrivilege.DCL), "group2"),
+			"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM GROUP group2"
 		)
 
 	}
@@ -541,10 +604,19 @@ class MoonboxParserSuite extends FunSuite {
 			"GRANT ACCOUNT, DDL TO user1"
 		)
 
+		assertEquals(
+			GrantPrivilegeToGroup(Seq(RolePrivilege.ACCOUNT, RolePrivilege.DDL), "group1"),
+			"GRANT ACCOUNT, DDL TO GROUP group1"
+		)
 
 		assertEquals(
 			RevokePrivilegeFromUser(Seq(RolePrivilege.ACCOUNT), "user2"),
 			"REVOKE ACCOUNT FROM USER user2"
+		)
+
+		assertEquals(
+			RevokePrivilegeFromGroup(Seq(RolePrivilege.ACCOUNT), "group2"),
+			"REVOKE ACCOUNT FROM GROUP group2"
 		)
 
 	}
@@ -576,6 +648,33 @@ class MoonboxParserSuite extends FunSuite {
 		)
 	}
 
+	test("grant resource to group") {
+		assertEquals(
+			GrantResourceToGroup(Seq(SelectPrivilege), TableIdentifier("t1", Some("db")), "group1"),
+			"GRANT SELECT ON db.t1 TO GROUP group1"
+		)
+
+		assertEquals(
+			GrantResourceToGroup(Seq(ColumnSelectPrivilege(Seq("id", "name"))), TableIdentifier("t1", Some("db")), "group1"),
+			"GRANT SELECT(id, name) ON db.t1 TO GROUP group1"
+		)
+
+		assertEquals(
+			GrantResourceToGroup(Seq(ColumnSelectPrivilege(Seq("id", "name")), ColumnUpdatePrivilege(Seq("id", "name"))), TableIdentifier("*", Some("db")), "group2"),
+			"GRANT SELECT(id, name), UPDATE(id, name) ON db.* TO GROUP group2"
+		)
+
+		assertEquals(
+			GrantResourceToGroup(Seq(ColumnSelectPrivilege(Seq("id", "name")),
+				ColumnUpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			),
+				TableIdentifier("*", Some("db")), "group1"),
+			"GRANT SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* TO GROUP group1"
+		)
+	}
+
 	test("revoke resource from user") {
 		assertEquals(
 			RevokeResourceFromUser(Seq(SelectPrivilege), TableIdentifier("t1", Some("db")), "user1"),
@@ -600,6 +699,33 @@ class MoonboxParserSuite extends FunSuite {
 			),
 				TableIdentifier("*", Some("db")), "user1"),
 			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM USER user1"
+		)
+	}
+
+	test("revoke resource from group") {
+		assertEquals(
+			RevokeResourceFromGroup(Seq(SelectPrivilege), TableIdentifier("t1", Some("db")), "group1"),
+			"REVOKE SELECT ON db.t1 FROM GROUP group1"
+		)
+
+		assertEquals(
+			RevokeResourceFromGroup(Seq(ColumnSelectPrivilege(Seq("id", "name"))), TableIdentifier("t1", Some("db")), "group1"),
+			"REVOKE SELECT(id, name) ON db.t1 FROM GROUP group1"
+		)
+
+		assertEquals(
+			RevokeResourceFromGroup(Seq(ColumnSelectPrivilege(Seq("id", "name")), ColumnUpdatePrivilege(Seq("id", "name"))), TableIdentifier("*", Some("db")), "group1"),
+			"REVOKE SELECT(id, name), UPDATE(id, name) ON db.* FROM GROUP group1"
+		)
+
+		assertEquals(
+			RevokeResourceFromGroup(Seq(ColumnSelectPrivilege(Seq("id", "name")),
+				ColumnUpdatePrivilege(Seq("id", "name")),
+				InsertPrivilege,
+				DeletePrivilege
+			),
+				TableIdentifier("*", Some("db")), "group1"),
+			"REVOKE SELECT(id, name), UPDATE(id, name), INSERT, DELETE ON db.* FROM GROUP group1"
 		)
 	}
 

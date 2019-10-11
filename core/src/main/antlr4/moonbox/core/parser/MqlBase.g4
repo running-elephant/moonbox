@@ -19,24 +19,29 @@ mql
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)?
         org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)?                       # createSa
-    | RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier      # renameSa
+    | RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier     # renameSa
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
         RENAME TO newName=identifier                                                            # setSaName
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
         IDENTIFIED BY pwd=password                                                              # setSaPassword
-    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier SET OPTIONS propertyList    # setSaOptions
-    | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION)? org=identifier                 # dropSa
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier SET OPTIONS propertyList   # setSaOptions
+    | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION)? org=identifier                # dropSa
 
-    | GRANT GRANT OPTION grantPrivilegeList TO USER? user=identifier                        # grantGrantToUser
-    | REVOKE GRANT OPTION grantPrivilegeList FROM USER? user=identifier                     # revokeGrantFromUser
+    | GRANT GRANT OPTION grantPrivilegeList TO USER? user=identifier                            # grantGrantToUser
+    | REVOKE GRANT OPTION grantPrivilegeList FROM USER? user=identifier                         # revokeGrantFromUser
+    | GRANT GRANT OPTION grantPrivilegeList TO GROUP group=identifier                           # grantGrantToGroup
+    | REVOKE GRANT OPTION grantPrivilegeList FROM GROUP group=identifier                        # revokeGrantFromGroup
+
+    | GRANT grantPrivilegeList TO USER? user=identifier                                         # grantPrivilegeToUsers
+    | REVOKE grantPrivilegeList FROM USER? user=identifier                                      # revokePrivilegeFromUsers
+    | GRANT grantPrivilegeList TO GROUP group=identifier                                        # grantPrivilegeToGroup
+    | REVOKE grantPrivilegeList FROM GROUP group=identifier                                     # revokePrivilegeFromGroup
 
 
-    | GRANT grantPrivilegeList TO USER? user=identifier                                     # grantPrivilegeToUsers
-    | REVOKE grantPrivilegeList FROM USER? user=identifier                                  # revokePrivilegeFromUsers
-
-
-    | GRANT privileges ON tableCollections TO USER? user=identifier                        # grantResourcePrivilegeToUsers
-    | REVOKE privileges ON tableCollections FROM USER? user=identifier                     # revokeResourcePrivilegeFromUsers
+    | GRANT privileges ON tableCollections TO USER? user=identifier                             # grantResourcePrivilegeToUsers
+    | REVOKE privileges ON tableCollections FROM USER? user=identifier                          # revokeResourcePrivilegeFromUsers
+    | GRANT privileges ON tableCollections TO GROUP group=identifier                            # grantResourcePrivilegeToGroup
+    | REVOKE privileges ON tableCollections FROM GROUP group=identifier                         # revokeResourcePrivilegeFromGroup
 
 
     | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password
@@ -46,6 +51,14 @@ mql
     | ALTER USER name=identifier IDENTIFIED BY pwd=password                                     # setUserPassword
     | ALTER USER name=identifier SET OPTIONS propertyList                                       # setUserOptions
     | DROP USER (IF EXISTS)? name=identifier                                                    # dropUser
+
+    | CREATE GROUP (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                   # createGroup
+    | RENAME GROUP name=identifier TO newName=identifier                                        # renameGroup
+    | ALTER GROUP name=identifier RENAME TO newName=identifier                                  # setGroupName
+    | ALTER GROUP name=identifier SET COMMENT comment=STRING                                    # setGroupComment
+    | ALTER GROUP name=identifier addUser                                                       # addGroupUser
+    | ALTER GROUP name=identifier removeUser                                                    # removeGroupUser
+    | DROP GROUP (IF EXISTS)? name=identifier CASCADE?                                          # dropGroup
 
     | MOUNT STREAM? TABLE (IF NOT EXISTS)? tableIdentifier ('('columns=colTypeList')')?
         OPTIONS propertyList                                                                    # mountTable
@@ -77,7 +90,7 @@ mql
     | ALTER VIEW name=tableIdentifier AS query                                                  # setViewQuery
     | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
 
-    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds # createProcedure
+    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds  # createProcedure
     | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
     | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
     | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys
@@ -106,6 +119,8 @@ mql
     | SHOW (ORGS | ORGANIZATIONS) (LIKE pattern=STRING)?                                        # showOrgs
     | SHOW SAS (LIKE pattern=STRING)?                                                           # showSas
     | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
+    | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
+    | SHOW USERS IN GROUP name=identifier (LIKE pattern=STRING)?                                # showUsersInGroup
 
     | SHOW (PROCS | PROCEDURES) (LIKE pattern=STRING)?                                          # showProcedures
     | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable

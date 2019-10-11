@@ -353,3 +353,39 @@ case class DropGroupEvent(
 	organization: String,
 	group: String) extends GroupEvent
 
+case class RenameGroupPreEvent(
+	organization: String,
+	group: String,
+	newGroup: String
+) extends GroupEvent
+
+case class RenameGroupEvent(
+	organization: String,
+	group: String,
+	newGroup: String
+) extends GroupEvent
+
+case class CreateGroupUserRelPreEvent(
+	organization: String,
+	group: String,
+	users: Seq[String]
+) extends GroupEvent
+
+case class CreateGroupUserRelEvent(
+	organization: String,
+	group: String,
+	users: Seq[String]
+) extends GroupEvent
+
+case class DropGroupUserRelPreEvent(
+	organization: String,
+	group: String,
+	users: Seq[String]
+) extends GroupEvent
+
+case class DropGroupUserRelEvent(
+	organization: String,
+	group: String,
+	users: Seq[String]
+) extends GroupEvent
+

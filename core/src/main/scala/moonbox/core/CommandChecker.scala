@@ -55,16 +55,31 @@ object CommandChecker extends MbLogging {
 		case dml: DML =>
 
 		case GrantResourceToUser(_, _, _)
-			 | RevokeResourceFromUser(_, _, _) =>
+				 | RevokeResourceFromUser(_, _, _)
+				 | GrantResourceToGroup(_, _, _)
+				 | RevokeResourceFromGroup(_, _, _) =>
 
 			require(catalog.catalogUser.dcl, "Permission denied.")
 
 		case GrantGrantToUser(_, _)
-			 | RevokeGrantFromUser(_, _) =>
+				 | RevokeGrantFromUser(_, _)
+				 | GrantGrantToGroup(_, _)
+				 | RevokeGrantFromGroup(_, _) =>
 
 			require(catalog.catalogUser.isSA, "Permission denied.")
 
-		case GrantPrivilegeToUser(privileges, _) =>
+		case GrantPrivilegeToUser(privileges, _)  =>
+
+			require(
+				privileges.map {
+					case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
+					case RolePrivilege.DDL => catalog.catalogUser.grantDdl
+					case RolePrivilege.DCL => catalog.catalogUser.grantDcl
+				}.forall(_ == true),
+				"Permission denied."
+			)
+
+		case GrantPrivilegeToGroup(privileges, _) =>
 
 			require(
 				privileges.map {
@@ -76,6 +91,17 @@ object CommandChecker extends MbLogging {
 			)
 
 		case RevokePrivilegeFromUser(privileges, _) =>
+
+			require(
+				privileges.map {
+					case RolePrivilege.ACCOUNT => catalog.catalogUser.grantAccount
+					case RolePrivilege.DDL => catalog.catalogUser.grantDdl
+					case RolePrivilege.DCL => catalog.catalogUser.grantDcl
+				}.forall(_ == true),
+				"Permission denied."
+			)
+
+		case RevokePrivilegeFromGroup(privileges, _) =>
 
 			require(
 				privileges.map {

@@ -172,6 +172,72 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 		jdbcCatalog.listSas(pattern)
 	}
 
+	def createGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean): Unit = {
+		jdbcCatalog.createGroup(groupDefinition, ignoreIfExists)
+	}
+
+	def renameGroup(group: String, newGroup: String): Unit = {
+		jdbcCatalog.renameGroup(group, newGroup)
+	}
+
+	def alterGroup(groupDefinition: CatalogGroup): Unit = {
+		jdbcCatalog.alterGroup(groupDefinition)
+	}
+
+	def groupExists(group: String): Boolean = {
+		jdbcCatalog.groupExists(group)
+	}
+
+	def dropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
+		jdbcCatalog.dropGroup(group, ignoreIfNotExists, cascade)
+	}
+
+	def getGroup(group: String): CatalogGroup = {
+		jdbcCatalog.getGroup(group)
+	}
+
+	def getGroupOption(group: String): Option[CatalogGroup] = {
+		jdbcCatalog.getGroupOption(group)
+	}
+
+	def listGroups(): Seq[CatalogGroup] = {
+		jdbcCatalog.listGroups()
+	}
+
+	def listGroups(pattern: String): Seq[CatalogGroup] = {
+		jdbcCatalog.listGroups(pattern)
+	}
+
+	def listGroups(pattern: Option[String]): Seq[CatalogGroup] = {
+		pattern match {
+			case Some(p) => listGroups(p)
+			case None => listGroups()
+		}
+	}
+
+	def createGroupUserRel(groupUserRel: CatalogGroupUserRel): Unit = {
+		jdbcCatalog.createGroupUserRel(groupUserRel)
+	}
+
+	def deleteGroupUserRel(groupUserRel: CatalogGroupUserRel): Unit = {
+		jdbcCatalog.dropGroupUserRel(groupUserRel)
+	}
+
+	def listUserInGroup(group: String): Seq[String] = {
+		jdbcCatalog.listGroupUser(group).users
+	}
+
+	def listUserInGroup(group: String, pattern: String) = {
+		jdbcCatalog.listGroupUser(group, pattern)
+	}
+
+	def listUserInGroup(group: String, pattern: Option[String]) = {
+		pattern match {
+			case None => jdbcCatalog.listGroupUser(group).users
+			case Some(p) => jdbcCatalog.listGroupUser(group, p).users
+		}
+	}
+
 	def createDatabase(dbDefinition: CatalogDatabase, ignoreIfExists: Boolean): Unit = {
 		jdbcCatalog.createDatabase(dbDefinition, ignoreIfExists)
 	}

@@ -198,6 +198,7 @@ case class ApplicationEntity(
 	labels: Seq[String],
 	appType: String,
 	config: Map[String, String],
+	state: String,
 	createBy: Long,
 	createTime: Long = Utils.now,
 	updateBy: Long,

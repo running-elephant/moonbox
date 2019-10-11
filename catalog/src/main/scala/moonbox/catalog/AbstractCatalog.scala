@@ -433,10 +433,9 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// ----------------------------------------------------------------------------
 	// Group
 	// ----------------------------------------------------------------------------
-	final def createGroup(
-		groupDefinition: CatalogGroup)(implicit by: User): Unit = {
+	final def createGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean)(implicit by: User): Unit = {
 		postToAll(CreateGroupPreEvent(by.org, groupDefinition.name))
-		doCreateGroup(groupDefinition)
+		doCreateGroup(groupDefinition, ignoreIfExists)
 		postToAll(CreateGroupEvent(by.org, groupDefinition.name))
 	}
 
@@ -446,21 +445,50 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 		postToAll(DropGroupEvent(by.org, group))
 	}
 
-	protected def doCreateGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit
+	final def renameGroup(group: String, newGroup: String)(implicit by: User): Unit = {
+		postToAll(RenameGroupPreEvent(by.org, group, newGroup))
+		doRenameGroup(group, newGroup)
+		postToAll(RenameGroupPreEvent(by.org, group, newGroup))
+	}
+
+	protected def doRenameGroup(group: String, newGroup: String)(implicit by: User): Unit
+
+	protected def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean)(implicit by: User): Unit
 
 	protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit
 
 	def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit
 
-	def getGroup(group: String): CatalogGroup
+	def getGroup(group: String)(implicit by: User): CatalogGroup
 
-	def getGroupOption(group: String): Option[CatalogGroup]
+	def getGroupOption(group: String)(implicit by: User): Option[CatalogGroup]
 
-	def groupExists(group: String): Boolean
+	def groupExists(group: String)(implicit by: User): Boolean
 
-	def listGroups(): Seq[CatalogGroup]
+	def listGroups()(implicit by: User): Seq[CatalogGroup]
 
-	def listGroups(pattern: String): Seq[CatalogGroup]
+	def listGroups(pattern: String)(implicit by: User): Seq[CatalogGroup]
+
+
+	final def createGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit = {
+		postToAll(CreateGroupUserRelPreEvent(by.org, groupUserRel.group, groupUserRel.users))
+		doCreateGroupUserRel(groupUserRel)
+		postToAll(CreateGroupUserRelEvent(by.org, groupUserRel.group, groupUserRel.users))
+	}
+
+	protected def doCreateGroupUserRel(groupUserRels: CatalogGroupUserRel)(implicit by: User): Unit
+
+	final def dropGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit = {
+		postToAll(DropGroupUserRelPreEvent(by.org, groupUserRel.group, groupUserRel.users))
+		doDropGroupUserRel(groupUserRel)
+		postToAll(DropGroupUserRelEvent(by.org, groupUserRel.group, groupUserRel.users))
+	}
+
+	protected def doDropGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit
+
+	def listGroupUser(group: String)(implicit by: User): CatalogGroupUserRel
+
+	def listGroupUser(group: String, pattern: String)(implicit by: User): CatalogGroupUserRel
 
 
 	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {

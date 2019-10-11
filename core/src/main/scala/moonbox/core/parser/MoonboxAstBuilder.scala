@@ -179,6 +179,61 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		DropUser(name, ignoreIfNotExists)
 	}
 
+	override def visitShowGroups(ctx: ShowGroupsContext): MbCommand = {
+		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
+		ShowGroups(pattern)
+	}
+
+	override def visitShowUsersInGroup(ctx: ShowUsersInGroupContext): MbCommand = {
+		val group = ctx.name.getText
+		val pattern = Option(ctx.pattern).map(_.getText).map(ParserUtils.tripQuotes)
+		ShowUsersInGroup(group, pattern)
+	}
+
+	override def visitCreateGroup(ctx: CreateGroupContext): MbCommand = {
+		val name = ctx.name.getText
+		val desc = Option(ctx.comment).map(_.getText).map(ParserUtils.tripQuotes)
+		val ignoreIfExists = ctx.EXISTS() != null
+		CreateGroup(name, desc, ignoreIfExists)
+	}
+
+	override def visitSetGroupName(ctx: SetGroupNameContext): MbCommand = {
+		val name = ctx.name.getText
+		val newName = ctx.newName.getText
+		AlterGroupSetName(name, newName)
+	}
+
+	override def visitRenameGroup(ctx: RenameGroupContext): MbCommand = {
+		val name = ctx.name.getText
+		val newName = ctx.newName.getText
+		AlterGroupSetName(name, newName)
+	}
+
+	override def visitSetGroupComment(ctx: SetGroupCommentContext): MbCommand = {
+		val name = ctx.name.getText
+		val comment = ParserUtils.tripQuotes(ctx.comment.getText)
+		AlterGroupSetComment(name, comment)
+	}
+
+	override def visitAddGroupUser(ctx: AddGroupUserContext): MbCommand = {
+		val name = ctx.name.getText
+		val users = visitAddUser(ctx.addUser())
+		AlterGroupAddUser(name, users)
+	}
+
+	override def visitRemoveGroupUser(ctx: RemoveGroupUserContext): MbCommand = {
+		val name = ctx.name.getText
+		val users = visitRemoveUser(ctx.removeUser())
+		AlterGroupRemoveUser(name, users)
+	}
+
+	override def visitDropGroup(ctx: DropGroupContext): MbCommand = {
+		val name = ctx.name.getText
+		val ignoreIfNotExists = ctx.EXISTS() != null
+		val cascade = ctx.CASCADE() != null
+		DropGroup(name, ignoreIfNotExists, cascade)
+	}
+
 	override def visitAddUser(ctx: AddUserContext): Seq[String] = {
 		visitIdentifierList(ctx.identifierList())
 	}
@@ -558,6 +613,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		GrantGrantToUser(grants, user)
 	}
 
+	override def visitGrantGrantToGroup(ctx: GrantGrantToGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		GrantGrantToGroup(grants, group)
+	}
 
 	override def visitRevokeGrantFromUser(ctx: RevokeGrantFromUserContext): MbCommand = {
 		val user = ctx.user.getText
@@ -565,6 +625,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		RevokeGrantFromUser(grants, user)
 	}
 
+	override def visitRevokeGrantFromGroup(ctx: RevokeGrantFromGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val grants = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		RevokeGrantFromGroup(grants, group)
+	}
 
 	override def visitGrantPrivilegeList(ctx: GrantPrivilegeListContext): Seq[RolePrivilege] = {
 		ctx.grantPrivilege().map(visitGrantPrivilege)
@@ -582,18 +647,36 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		GrantPrivilegeToUser(privileges, user)
 	}
 
+	override def visitGrantPrivilegeToGroup(ctx: GrantPrivilegeToGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		GrantPrivilegeToGroup(privileges, group)
+	}
+
 	override def visitRevokePrivilegeFromUsers(ctx: RevokePrivilegeFromUsersContext): MbCommand = {
 		val user = ctx.user.getText
 		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
 		RevokePrivilegeFromUser(privileges, user)
 	}
 
+	override def visitRevokePrivilegeFromGroup(ctx: RevokePrivilegeFromGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val privileges = visitGrantPrivilegeList(ctx.grantPrivilegeList())
+		RevokePrivilegeFromGroup(privileges, group)
+	}
 
 	override def visitGrantResourcePrivilegeToUsers(ctx: GrantResourcePrivilegeToUsersContext): MbCommand = {
 		val user = ctx.user.getText
 		val resourcePrivileges = visitPrivileges(ctx.privileges())
 		val tableIdentifier = visitTableCollections(ctx.tableCollections())
 		GrantResourceToUser(resourcePrivileges, tableIdentifier, user)
+	}
+
+	override def visitGrantResourcePrivilegeToGroup(ctx: GrantResourcePrivilegeToGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		GrantResourceToGroup(resourcePrivileges, tableIdentifier, group)
 	}
 
 	override def visitRevokeResourcePrivilegeFromUsers(ctx: RevokeResourcePrivilegeFromUsersContext): MbCommand = {
@@ -603,6 +686,12 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		RevokeResourceFromUser(resourcePrivileges, tableIdentifier, user)
 	}
 
+	override def visitRevokeResourcePrivilegeFromGroup(ctx: RevokeResourcePrivilegeFromGroupContext): MbCommand = {
+		val group = ctx.group.getText
+		val resourcePrivileges = visitPrivileges(ctx.privileges())
+		val tableIdentifier = visitTableCollections(ctx.tableCollections())
+		RevokeResourceFromGroup(resourcePrivileges, tableIdentifier, group)
+	}
 
 	override def visitPrivileges(ctx: PrivilegesContext): Seq[ResourcePrivilege] = {
 		ctx.privilege().flatMap(visitPrivilege)
