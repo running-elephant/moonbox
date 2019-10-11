@@ -11,7 +11,7 @@
 
   <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
   <packaging>jar</packaging>
-  <name>Moonbox Kafka 0.10 Source</name>
+  <name>Moonbox Project Kafka 0.10 Connector</name>
 
   <dependencies>
     <dependency>
