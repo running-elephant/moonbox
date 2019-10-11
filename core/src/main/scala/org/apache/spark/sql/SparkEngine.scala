@@ -62,6 +62,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
   private val mbAnalyzer = createColumnAnalyzer()
   private val mbOptimizer = new MbOptimizer(sparkSession)
+	private val collectThreshold = conf.get("spark.sql.resultThreshold.", 100000)
 
   /**
     * create sparkSession with inject hive rules and strategies for hive tables
@@ -260,7 +261,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @return data and schema
     */
 
-  def sql(sql: String, maxRows: Int = 100, unlimited: Boolean = false): (Iterator[Row], StructType) = {
+  def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
     val parsedPlan = parsePlan(sql)
     parsedPlan match {
       case runnable: RunnableCommand =>
@@ -277,8 +278,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             insert
           case insert: InsertIntoHiveTable =>
             insert
-					case _ if unlimited =>
-						analyzedPlan
 					case _ =>
 						GlobalLimit(
 							Literal(maxRows, IntegerType),
@@ -287,6 +286,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         }
 
         val optimizedPlan = optimizePlan(limitPlan)
+
+				val collectPartition = maxRows > collectThreshold
 
         if (pushdownEnable) {
           try {
@@ -298,7 +299,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
                 (dataTable.iterator, dataTable.schema)
               case plan =>
                 val dataFrame = createDataFrame(plan)
-                (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
+                (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
             }
           } catch {
             case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
@@ -306,19 +307,19 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
             case e: Exception if pushdownEnable =>
               logError("Execute pushdown failed, Retry without pushdown optimize.", e)
               val dataFrame = createDataFrame(optimizedPlan)
-              (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
+              (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
           }
         } else {
           val dataFrame = createDataFrame(optimizedPlan)
-          (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
+          (collectWithTryCatch(dataFrame, collectPartition), dataFrame.schema)
         }
 
     }
   }
 
-	private def collectWithTryCatch(dataFrame: DataFrame, unlimited: Boolean): Iterator[Row] = {
+	private def collectWithTryCatch(dataFrame: DataFrame, collectPartition: Boolean): Iterator[Row] = {
 		try {
-			if (unlimited) {
+			if (collectPartition) {
 				dataFrame.toLocalIterator().asScala
 			} else {
 				dataFrame.collect().toIterator
