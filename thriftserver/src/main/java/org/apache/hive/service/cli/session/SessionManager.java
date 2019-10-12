@@ -390,6 +390,44 @@ public class SessionManager extends CompositeService {
             return null;
         }
     };
+
+    public static void setMaxRows(Long maxrows) {
+        threadLocalMaxRows.set(maxrows);
+    }
+
+    public static void clearMaxRows() {
+        threadLocalMaxRows.remove();
+    }
+
+    public static Long getMaxRows() {
+        return threadLocalMaxRows.get();
+    }
+
+    private static ThreadLocal<Long> threadLocalMaxRows = new ThreadLocal<Long>() {
+        @Override
+        protected Long initialValue() {
+            return Long.MIN_VALUE;
+        }
+    };
+
+    public static void setIsLocal(Boolean islocal) {
+        threadLocalIsLocal.set(islocal);
+    }
+
+    public static void clearIsLocal() {
+        threadLocalIsLocal.remove();
+    }
+
+    public static Boolean getIsLocal() {
+        return threadLocalIsLocal.get();
+    }
+
+    private static ThreadLocal<Boolean> threadLocalIsLocal = new ThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return false;
+        }
+    };
   /*---------------- moonbox code: end ----------------*/
 
     public static void setProxyUserName(String userName) {
