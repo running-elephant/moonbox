@@ -125,6 +125,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         labels = appDefinition.labels,
         appType = appDefinition.appType,
         config = appDefinition.config,
+				state = appDefinition.state,
         createBy = by.userId,
         updateBy = by.userId
       )
@@ -142,6 +143,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               labels = appDefinition.labels,
               appType = appDefinition.appType,
               config = appDefinition.config,
+							state = appDefinition.state,
               createBy = appEntity.createBy,
               createTime = appEntity.createTime,
               updateBy = by.userId,
@@ -159,6 +161,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       name = appEntity.name,
       labels = appEntity.labels,
       appType = appEntity.appType,
+			state = appEntity.state,
       config = appEntity.config
     )))
   }
@@ -169,6 +172,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         name = appEntity.name,
         labels = appEntity.labels,
         appType = appEntity.appType,
+				state = appEntity.state,
         config = appEntity.config
       )))
   }
@@ -193,6 +197,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         name = appEntity.name,
         labels = appEntity.labels,
         appType = appEntity.appType,
+				state = appEntity.state,
         config = appEntity.config
       )
     ))
@@ -205,6 +210,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
           name = appEntity.name,
           labels = appEntity.labels,
           appType = appEntity.appType,
+					state = appEntity.state,
           config = appEntity.config
         )
       case None =>
@@ -256,6 +262,13 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         if (cascade) {
           jdbcDao.actionTransactionally(
             for (
+							// delete groups and group user rels
+							_ <- jdbcDao.listGroups(catalogOrganization.id.get).map {
+								_.map { groupEntity =>
+									jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get)
+									jdbcDao.deleteGroup(groupEntity.id.get)
+								}
+							};
             // delete tables and functions in database
               _ <- jdbcDao.listDatabases(catalogOrganization.id.get).map {
                 _.map { dbEntity =>
@@ -281,10 +294,11 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               databases <- jdbcDao.listDatabases(catalogOrganization.id.get);
               users <- jdbcDao.listUsers(catalogOrganization.id.get);
               events <- jdbcDao.listTimedEvents(catalogOrganization.id.get);
-              procedures <- jdbcDao.listProcedures(catalogOrganization.id.get)
-            ) yield (databases, users, events, procedures)
-          ).map { case (databases, users, events, procedures) =>
-            if (databases.isEmpty && users.isEmpty && events.isEmpty && procedures.isEmpty) {
+              procedures <- jdbcDao.listProcedures(catalogOrganization.id.get);
+							groups <- jdbcDao.listGroups(catalogOrganization.id.get)
+            ) yield (databases, users, events, procedures, groups)
+          ).map { case (databases, users, events, procedures, groups) =>
+            if (databases.isEmpty && users.isEmpty && events.isEmpty && procedures.isEmpty && groups.isEmpty) {
               jdbcDao.action(jdbcDao.deleteOrganization(org))
             } else {
               throw new NonEmptyException(s"organization $org")
@@ -420,6 +434,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       case Some(userEntity) =>
         jdbcDao.actionTransactionally(
           for (
+						_ <- jdbcDao.deleteGroupUserRelsByUser(userEntity.id.get);
             _ <- jdbcDao.deleteDatabasePrivilegeByUser(userEntity.id.get);
             _ <- jdbcDao.deleteTablePrivilegeByUser(userEntity.id.get);
             _ <- jdbcDao.deleteColumnPrivilegeByUser(userEntity.id.get);
@@ -1808,23 +1823,158 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
 	// Group
 	// ----------------------------------------------------------------------------
 
+  override protected def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, groupDefinition.name)).flatMap {
+			case true =>
+				if (ignoreIfExists) {
+					Future(Unit)
+				} else {
+					throw new GroupExistsException(groupDefinition.name)
+				}
+			case false =>
+				jdbcDao.action(
+					jdbcDao.createGroup(GroupEntity(
+						name = groupDefinition.name,
+						organizationId = by.orgId,
+						description = groupDefinition.desc,
+						createBy = by.userId,
+						updateBy = by.userId
+					))
+				)
+		}
+	}
 
-  override protected def doCreateGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = ???
+	override protected def doRenameGroup(group: String, newGroup: String)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, group)).flatMap {
+			case false => throw new NoSuchGroupException(group)
+			case true =>
+				jdbcDao.action(jdbcDao.groupExists(by.orgId, newGroup)).flatMap {
+					case true => throw new GroupExistsException(newGroup)
+					case false =>
+						jdbcDao.action(jdbcDao.renameGroup(by.orgId, group, newGroup)(by.userId))
+				}
+		}
+	}
 
-	override def listGroups(): Seq[CatalogGroup] = ???
+	override def listGroups()(implicit by: User): Seq[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.listGroups(by.orgId)).map(_.map(groupEntity =>
+			CatalogGroup(groupEntity.name, groupEntity.description)))
+	}
 
-	override def listGroups(pattern: String): Seq[CatalogGroup] = ???
+	override def listGroups(pattern: String)(implicit by: User): Seq[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.listGroups(by.orgId, pattern)).map(_.map(groupEntity =>
+			CatalogGroup(groupEntity.name, groupEntity.description)))
+	}
 
-	override def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = ???
+	override def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupDefinition.name)).flatMap {
+			case None => throw new NoSuchGroupException(groupDefinition.name)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.updateGroup(
+					groupEntity.copy(updateBy = by.userId, updateTime = Utils.now)
+				))
+		}
+	}
 
-	override def getGroup(group: String): CatalogGroup = ???
+	override def getGroup(group: String)(implicit by: User): CatalogGroup = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				CatalogGroup(
+					groupEntity.name,
+					groupEntity.description
+				)
+		}
+	}
 
-	override protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = ???
+	override def getGroupOption(group: String)(implicit by: User): Option[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map(_.map(groupEntity =>
+			CatalogGroup(
+				groupEntity.name,
+				groupEntity.description
+			)
+		))
+	}
 
-	override def groupExists(group: String): Boolean = ???
+	override protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None =>
+				if (ignoreIfNotExists) Future(Unit)
+				else throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
+					if (rels.nonEmpty) {
+						if (!cascade) throw new NonEmptyException(group)
+						else {
+							jdbcDao.actionTransactionally(
+								jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get).flatMap(_ => jdbcDao.deleteGroup(groupEntity.id.get))
+							)
+						}
+					} else {
+						jdbcDao.action(jdbcDao.deleteGroup(groupEntity.id.get))
+					}
+				}
+		}
+	}
 
-	override def getGroupOption(group: String): Option[CatalogGroup] = ???
+	override def groupExists(group: String)(implicit by: User): Boolean = await {
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, group))
+	}
 
+	override protected def doCreateGroupUserRel(groupUserRels: CatalogGroupUserRel)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRels.group)).flatMap {
+			case None => throw new NoSuchGroupException(groupUserRels.group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
+					jdbcDao.action(jdbcDao.createGroupUserRel(
+						groupUserRels.users.map(user => userId(by.orgId, user)).filterNot(rels.map(_.userId).contains).map(id =>
+							GroupUserRelEntity(
+								groupId = groupEntity.id.get,
+								userId = id,
+								createBy = by.userId,
+								updateBy = by.userId
+							)
+						):_*
+					))
+				}
+		}
+	}
+
+	override protected def doDropGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRel.group)).flatMap {
+			case None => throw new NoSuchGroupException(groupUserRel.group)
+			case Some(groupEntity) =>
+				jdbcDao.action(
+					jdbcDao.deleteGroupUserRels(groupEntity.id.get, groupUserRel.users.map(user => userId(by.orgId, user)))
+				)
+		}
+	}
+
+	override def listGroupUser(group: String)(implicit by: User): CatalogGroupUserRel = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).map(_.map(rel => userName(rel.userId))).map( users =>
+					CatalogGroupUserRel(
+						group = group,
+						users = users
+					)
+				)
+		}
+	}
+
+	override def listGroupUser(group: String, pattern: String)(implicit by: User): CatalogGroupUserRel = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).map(_.map(rel => userName(rel.userId))).map( users =>
+					CatalogGroupUserRel(
+						group = group,
+						users = Utils.filterPattern(users, Utils.escapeLikeRegex(pattern))
+					)
+				)
+		}
+	}
 
 	/**
     * asynchronous to synchronous

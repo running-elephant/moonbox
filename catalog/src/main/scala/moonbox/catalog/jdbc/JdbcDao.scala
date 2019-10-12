@@ -966,22 +966,29 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 		insertMultiple[GroupUserRelEntity, GroupUserRelEntityTable](rels, groupUserRels)
 	}
 
-	def deleteGroupUserRel(groupId: Long, userId: Long) = {
+	def deleteGroupUserRels(groupId: Long, userIds: Seq[Long]) = {
 		delete[GroupUserRelEntity, GroupUserRelEntityTable](
 			groupUserRels,
-			rel => rel.groupId === groupId && rel.userId === userId)
+			rel => rel.groupId === groupId && rel.userId.inSet(userIds))
 	}
 
-	def deleteGroupUserRelByGroup(groupId: Long) = {
+	def deleteGroupUserRelsByGroup(groupId: Long) = {
 		delete[GroupUserRelEntity, GroupUserRelEntityTable](
 			groupUserRels,
 			rel => rel.groupId === groupId)
 	}
 
-	def deleteGroupUserRelByUser(userId: Long) = {
+	def deleteGroupUserRelsByUser(userId: Long) = {
 		delete[GroupUserRelEntity, GroupUserRelEntityTable](
 			groupUserRels,
 			rel => rel.userId === userId)
+	}
+
+	def getGroupUserRelsByGroup(groupId: Long) = {
+		query[GroupUserRelEntity, GroupUserRelEntityTable](
+			groupUserRels,
+			_.groupId === groupId
+		)
 	}
 
 }

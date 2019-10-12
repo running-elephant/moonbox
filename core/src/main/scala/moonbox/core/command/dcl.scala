@@ -25,8 +25,56 @@ import moonbox.core.MoonboxSession
 import moonbox.core.command.RolePrivilege.RolePrivilege
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.expressions.AttributeReference
+import org.apache.spark.sql.types.StringType
 
 sealed trait DCL
+
+case class CreateGroup(
+	name: String,
+	desc: Option[String],
+	ignoreIfExists: Boolean) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.createGroup(
+			CatalogGroup(name, desc), ignoreIfExists
+		)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterGroupSetName(name: String, newName: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.renameGroup(name, newName)
+		Seq.empty[Row]
+	}
+}
+
+case class AlterGroupSetComment(name: String, comment: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.alterGroup(CatalogGroup(name, Some(comment)))
+		Seq.empty[Row]
+	}
+}
+case class AlterGroupAddUser(name: String, users: Seq[String]) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.createGroupUserRel(CatalogGroupUserRel(name, users))
+		Seq.empty[Row]
+	}
+}
+
+case class AlterGroupRemoveUser(name: String, users: Seq[String]) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.deleteGroupUserRel(CatalogGroupUserRel(name, users))
+		Seq.empty[Row]
+	}
+}
+
+case class DropGroup(name: String, ignoreIfNotExists: Boolean, cascade: Boolean) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.dropGroup(name, ignoreIfNotExists, cascade)
+		Seq.empty[Row]
+	}
+}
 
 case class GrantGrantToUser(
 	grants: Seq[RolePrivilege],
@@ -54,6 +102,16 @@ case class GrantGrantToUser(
 	}
 }
 
+case class GrantGrantToGroup(
+	grants: Seq[RolePrivilege],
+	group: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+				.map(user => GrantGrantToUser(grants, user))
+				.foreach(_.run(mbSession))
+		Seq.empty[Row]
+	}
+}
 
 case class RevokeGrantFromUser(
 	grants: Seq[RolePrivilege],
@@ -77,6 +135,17 @@ case class RevokeGrantFromUser(
 				grantDcl = grantDcl
 			)
 		)
+		Seq.empty[Row]
+	}
+}
+
+case class RevokeGrantFromGroup(
+	grants: Seq[RolePrivilege],
+	group: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+		    .map(user => RevokeGrantFromUser(grants, user))
+		    .foreach(_.run(mbSession))
 		Seq.empty[Row]
 	}
 }
@@ -105,6 +174,15 @@ case class GrantPrivilegeToUser(privileges: Seq[RolePrivilege], user: String)
 	}
 }
 
+case class GrantPrivilegeToGroup(privileges: Seq[RolePrivilege], group: String)
+	extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+		    .map(user => GrantPrivilegeToUser(privileges, user))
+		    .foreach(_.run(mbSession))
+		Seq.empty[Row]
+	}
+}
 
 case class RevokePrivilegeFromUser(privileges: Seq[RolePrivilege], user: String)
 	extends MbRunnableCommand with DCL {
@@ -130,6 +208,15 @@ case class RevokePrivilegeFromUser(privileges: Seq[RolePrivilege], user: String)
 	}
 }
 
+case class RevokePrivilegeFromGroup(privileges: Seq[RolePrivilege], group: String)
+	extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+		    .map(user => RevokePrivilegeFromUser(privileges, user))
+		    .foreach(_.run(mbSession))
+		Seq.empty[Row]
+	}
+}
 
 case class GrantResourceToUser(
 	privileges: Seq[ResourcePrivilege],
@@ -206,8 +293,18 @@ case class GrantResourceToUser(
 
 		Seq.empty[Row]
 	}
+}
 
-
+case class GrantResourceToGroup(
+	privileges: Seq[ResourcePrivilege],
+	tableIdentifier: TableIdentifier,
+	group: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+				.map(user => GrantResourceToUser(privileges, tableIdentifier, user))
+				.foreach(_.run(mbSession))
+		Seq.empty[Row]
+	}
 }
 
 case class RevokeResourceFromUser(
@@ -254,5 +351,41 @@ case class RevokeResourceFromUser(
 			}
 		}
 		Seq.empty[Row]
+	}
+}
+
+case class RevokeResourceFromGroup(
+	privileges: Seq[ResourcePrivilege],
+	tableIdentifier: TableIdentifier,
+	group: String) extends MbRunnableCommand with DCL {
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group)
+				.map(user => RevokeResourceFromUser(privileges, tableIdentifier, user))
+				.foreach(_.run(mbSession))
+		Seq.empty[Row]
+	}
+}
+
+case class ShowGroups(pattern: Option[String]) extends MbRunnableCommand with DCL {
+
+	override def output = {
+		AttributeReference("GROUP_NAME", StringType, nullable = false)() ::
+				AttributeReference("DESCRIPTION", StringType, nullable = false)() :: Nil
+	}
+
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listGroups(pattern)
+		    .map(group => Row(group.name, group.desc.getOrElse(" - ")))
+	}
+}
+
+case class ShowUsersInGroup(group: String, pattern: Option[String]) extends MbRunnableCommand with DCL {
+
+	override def output = {
+		AttributeReference("USER", StringType, nullable = false)() :: Nil
+	}
+
+	override def run(mbSession: MoonboxSession): Seq[Row] = {
+		mbSession.catalog.listUserInGroup(group, pattern).map(user => Row(user))
 	}
 }
