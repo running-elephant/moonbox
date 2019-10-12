@@ -2,20 +2,18 @@ package org.apache.spark.sql.kafka010
 
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
-import org.apache.spark.sql.kafka010.UmsFieldType.UmsFieldType
 import org.apache.spark.sql.types._
 
 import scala.collection.mutable.ArrayBuffer
 
 case class Ums(protocol: UmsProtocol,
                schema: UmsSchema,
-               payload: Seq[UmsTuple]) {
-}
+               payload: Seq[UmsTuple])
+
 
 case class UmsProtocol(`type`: String,
-                       version: Option[String] = Some("v1"),
-                       msg_id: Option[Long] = Some(-1L),
-                       msg_prev_id: Option[Long] = Some(-1L))
+                       version: Option[String] = Some("v1")
+                      )
 
 
 case class UmsSchema(namespace: String,
@@ -37,7 +35,7 @@ object UmsSchema {
         case DecimalType.Fixed(p, s) => UmsFieldType.DECIMAL
         case BinaryType => UmsFieldType.BINARY
       }
-      UmsField(structField.name, fieldType, structField.nullable)
+      UmsField(structField.name, fieldType.toString, structField.nullable)
     })
     UmsSchema(namespace, umsFieldSeq)
   }
@@ -45,8 +43,9 @@ object UmsSchema {
 
 
 case class UmsField(name: String,
-                    `type`: UmsFieldType,
-                    nullable: Boolean)
+                    `type`: String,
+                    nullable: Boolean,
+                    encoded: Boolean = false)
 
 case class UmsTuple(tuple: Seq[String])
 
@@ -92,17 +91,23 @@ object UmsCommon {
         case DoubleType => sparkRow.getDouble(i)
         case BooleanType => sparkRow.getBoolean(i)
         case DateType =>
-          DateTimeUtils.toJavaDate(sparkRow.getInt(i))
+          if(sparkRow.isNullAt(i)) null
+          else DateTimeUtils.toJavaDate(sparkRow.getInt(i))
         case TimestampType =>
-          DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
+          if(sparkRow.isNullAt(i)) null
+          else DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
         case d@DecimalType.Fixed(p, s) =>
-          sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
+          if (sparkRow.isNullAt(i)) "0.0"
+          else sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
         case BinaryType => sparkRow.getBinary(i)
       }
-      seq.append(umsValue.toString)
+      if (umsValue == null) seq.append("null")
+      else seq.append(umsValue.toString)
     }
     UmsTuple(seq)
   }
+
+
 
   //  def genSparkStructType(schema: String): StructType = {
   //    val fields = schema.split(",").map(field => {

@@ -27,7 +27,7 @@ import org.apache.spark.sql.kafka010.UmsCommon._
 import org.apache.spark.sql.types.{BinaryType, StringType, StructType}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * A simple trait for writing out data in a single Spark task, without any concerns about how
