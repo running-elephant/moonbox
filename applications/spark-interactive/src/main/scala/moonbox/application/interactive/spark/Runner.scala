@@ -214,7 +214,9 @@ class Runner(
 		}
 	}
 
-	private def hasNext: Boolean = currentData.hasNext && currentRowId < maxRows
+	private def hasNext: Boolean =
+		if(maxRows < 0) currentData.hasNext
+		else currentData.hasNext && currentRowId < maxRows
 
 	private def clear(): Unit = {
 		currentData = null
