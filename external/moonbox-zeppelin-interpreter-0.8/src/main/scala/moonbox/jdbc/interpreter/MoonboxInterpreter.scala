@@ -115,6 +115,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       baseProps.setProperty("user", moonboxUser)
       log.info(s"replace login user $loginUser to $moonboxUser")
       baseProps.setProperty("password", password)
+      baseProps.setProperty("maxrows", getMaxResultLine().toString)
     }
     var interpreterResult: InterpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS)
     var statement: Statement = null
@@ -140,8 +141,8 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
         throw new SQLException("Getting connection error")
       }
       idToConnection.put(paragraphId, connection)
-      log.info("Creating statement ...")
       statement = connection.createStatement()
+      log.info(s"statement maxrows: ${statement.getMaxRows}")
       if (statement == null) {
         interpreterResult = new InterpreterResult(InterpreterResult.Code.ERROR, "Creating statement error")
         throw new SQLException("Creating statement error")
@@ -149,7 +150,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
       idToStatement.put(paragraphId, statement)
       try {
         statement.setQueryTimeout(getQueryTimeout())
-        statement.setMaxRows(getMaxResultLine())
+//        statement.setMaxRows(getMaxResultLine())
         if (statement.execute(s)) {
           resultSet = statement.getResultSet
           log.info("Interpreting the resultSet ...")
@@ -195,7 +196,7 @@ class MoonboxInterpreter(property: Properties) extends Interpreter(property) {
     }
     msg.append(NEWLINE)
     var rowCount = 0
-    while (resultSet.next() && rowCount < getMaxResultLine()) {
+    while (resultSet.next()) {
       for (i <- 1 to md.getColumnCount) {
         val col = resultSet.getObject(i)
         val value = if (col == null) "null" else col.toString
