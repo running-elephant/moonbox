@@ -63,7 +63,9 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def supportsTableCorrelationNames(): Boolean = ???
 	override def supportsExtendedSQLGrammar(): Boolean = ???
 	override def getJDBCMajorVersion: Int = ???
-	override def getUserName: String = ???
+	override def getUserName: String = {
+		connection.getUserName()
+	}
 	override def getMaxProcedureNameLength: Int = ???
 	override def getDriverName: String = "moonbox.jdbc.MbDriver"
 	override def getMaxRowSize: Int = ???
@@ -81,7 +83,9 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def getFunctions(catalog: String, schemaPattern: String, functionNamePattern: String): ResultSet = ???
 	override def supportsSchemasInPrivilegeDefinitions(): Boolean = ???
 	override def supportsResultSetConcurrency(`type`: Int, concurrency: Int): Boolean = ???
-	override def getURL: String = ???
+	override def getURL: String = {
+		connection.getUrl()
+	}
 	override def supportsSubqueriesInQuantifieds(): Boolean = ???
 	override def supportsBatchUpdates(): Boolean = ???
 	override def supportsLikeEscapeClause(): Boolean = ???

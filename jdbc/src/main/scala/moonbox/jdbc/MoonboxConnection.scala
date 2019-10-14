@@ -63,6 +63,10 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     true
   }
 
+  def getUrl(): String = url
+
+  def getUserName(): String = props.getProperty(USER_KEY)
+
   private def initSession(moonboxClient: MoonboxClient, clientOptions: ClientOptions, props: Properties): Unit = {
     if (clientOptions.password.isDefined && clientOptions.password.get.length > 0) {
       jdbcSession = JdbcSession(moonboxClient,
@@ -133,10 +137,10 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
   override def createStatement(): Statement = {
     checkClosed()
     statement = new MoonboxStatement(this)
-    if (props.contains(MAX_ROWS)) {
+    if (props.containsKey(MAX_ROWS)) {
       statement.setMaxRows(props.getProperty(MAX_ROWS).toInt)
     }
-    if (props.contains(FETCH_SIZE)) {
+    if (props.containsKey(FETCH_SIZE)) {
       statement.setFetchSize(props.getProperty(FETCH_SIZE).toInt)
     }
     statement
