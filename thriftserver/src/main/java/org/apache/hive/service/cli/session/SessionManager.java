@@ -428,6 +428,25 @@ public class SessionManager extends CompositeService {
             return false;
         }
     };
+
+    public static void setFetchSize(Integer fetchSize) {
+        threadLocalFetchSize.set(fetchSize);
+    }
+
+    public static void clearFetchSize() {
+        threadLocalFetchSize.remove();
+    }
+
+    public static Integer getFetchSize() {
+        return threadLocalFetchSize.get();
+    }
+
+    private static ThreadLocal<Integer> threadLocalFetchSize = new ThreadLocal<Integer>() {
+        @Override
+        protected Integer initialValue() {
+            return Integer.MIN_VALUE;
+        }
+    };
   /*---------------- moonbox code: end ----------------*/
 
     public static void setProxyUserName(String userName) {

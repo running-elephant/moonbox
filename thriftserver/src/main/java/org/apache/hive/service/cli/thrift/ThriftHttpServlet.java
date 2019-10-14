@@ -163,7 +163,7 @@ public class ThriftHttpServlet extends TServlet {
             LOG.debug("client org: " + org);
 
             String maxRows = request.getHeader("maxrows");
-            LOG.info("client maxrows: " + maxRows);
+            LOG.info("client query maxrows: " + maxRows);
             if (maxRows != null) {
                 SessionManager.setMaxRows(Long.valueOf(maxRows));
             }
@@ -172,6 +172,12 @@ public class ThriftHttpServlet extends TServlet {
             if (isLocal != null) {
                 SessionManager.setIsLocal(Boolean.valueOf(isLocal));
             }
+
+            String fetchSize = request.getHeader("fetchsize");
+            if (fetchSize != null) {
+                SessionManager.setFetchSize(Integer.valueOf(fetchSize));
+            }
+//            LOG.info("client fetchSize: " + fetchSize);
 
             clientIpAddress = request.getRemoteAddr();
             LOG.debug("Client IP Address: " + clientIpAddress);
@@ -210,6 +216,7 @@ public class ThriftHttpServlet extends TServlet {
             SessionManager.clearProxyUserName();
             SessionManager.clearMaxRows();
             SessionManager.clearIsLocal();
+            SessionManager.clearFetchSize();
         }
     }
 

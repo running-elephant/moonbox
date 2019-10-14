@@ -48,7 +48,9 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
     logInfo("Initializing moonbox client ...")
     val masterHost = serverConf.getOrElse(MOONBOX_SERVER_HOST_KEY, "localhost")
     val masterPort = serverConf.get(MOONBOX_SERVER_PORT_KEY).map(_.toInt).getOrElse(10010)
-    logInfo("moonbox session maxrows: " + SessionManager.getMaxRows)
+    val fetchSize =
+      if (SessionManager.getFetchSize == Integer.MIN_VALUE) 2000
+      else SessionManager.getFetchSize.toInt
     val clientOptions = ClientOptions.builder().options(Option(sessionConf).map(_.asScala.toMap)
       .getOrElse(Map.empty)).user(username)
       .password(password)
@@ -56,7 +58,7 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
       .port(masterPort)
       .isLocal(SessionManager.getIsLocal)
       .maxRows(SessionManager.getMaxRows)
-      .fetchSize(10000)
+      .fetchSize(fetchSize)
       .build()
     logInfo("moonbox client options build")
     val client = MoonboxClient.builder(clientOptions).build()
