@@ -225,7 +225,7 @@ columnIdentifiers
     ;
 
 tableCollections
-    : (db=identifier '.')? table = identifierOrStar
+    : (db=identifierOrStar '.')? table = identifierOrStar
     ;
 
 identifierOrStar

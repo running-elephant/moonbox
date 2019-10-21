@@ -227,14 +227,26 @@ case class GrantResourceToUser(
 
 		import mbSession.catalog._
 
-		val db = tableIdentifier.database.getOrElse(getCurrentDb)
-
-		requireDbExists(db)
 		requireUserExists(mbSession.catalog.getCurrentOrg, user)
 
+		val db = tableIdentifier.database.getOrElse(getCurrentDb)
 		val table = tableIdentifier.table
 
-		if (table == "*") { // db level
+		if (db == "*") { // all
+			if (table != "*" || privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			listDatabase().foreach(catalogDb =>
+				createDatabasePrivilege(
+					CatalogDatabasePrivilege(
+						user = user,
+						database = catalogDb.name,
+						privileges = privileges.map(_.NAME)
+					)
+				)
+			)
+		} else if (table == "*") { // db level
+			requireDbExists(db)
 			if (privileges.exists(_.isColumnLevel)) {
 				throw new Exception("Illegal grant command.")
 			}
@@ -246,6 +258,7 @@ case class GrantResourceToUser(
 				)
 			)
 		} else {
+			requireDbExists(db)
 			requireTableExists(db, table)
 
 			val (tableLevel, columnLevel) = privileges.span(!_.isColumnLevel)
@@ -300,9 +313,95 @@ case class GrantResourceToGroup(
 	tableIdentifier: TableIdentifier,
 	group: String) extends MbRunnableCommand with DCL {
 	override def run(mbSession: MoonboxSession): Seq[Row] = {
-		mbSession.catalog.listUserInGroup(group)
-				.map(user => GrantResourceToUser(privileges, tableIdentifier, user))
-				.foreach(_.run(mbSession))
+
+		import mbSession.catalog._
+
+		val db = tableIdentifier.database.getOrElse(getCurrentDb)
+		val table = tableIdentifier.table
+
+		val users = mbSession.catalog.listUserInGroup(group)
+
+		users.foreach(user => requireUserExists(mbSession.catalog.getCurrentOrg, user))
+
+		if (db == "*") { // all
+			if (table != "*" || privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			listDatabase().foreach(catalogDb =>
+					users.foreach { user =>
+						createDatabasePrivilege(
+							CatalogDatabasePrivilege(
+								user = user,
+								database = catalogDb.name,
+								privileges = privileges.map(_.NAME)
+							)
+						)
+					}
+			)
+		} else if (table == "*") { // db level
+			requireDbExists(db)
+			if (privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			users.foreach { user =>
+				createDatabasePrivilege(
+					CatalogDatabasePrivilege(
+						user = user,
+						database = db,
+						privileges = privileges.map(_.NAME)
+					)
+				)
+			}
+		} else {
+			requireDbExists(db)
+			requireTableExists(db, table)
+
+			val (tableLevel, columnLevel) = privileges.span(!_.isColumnLevel)
+			if (tableLevel.nonEmpty) { // table level
+				users.foreach { user =>
+					createTablePrivilege(
+						CatalogTablePrivilege(
+							user = user,
+							database = db,
+							table = tableIdentifier.table,
+							privileges = tableLevel.map(_.NAME)
+						)
+					)
+				}
+			}
+
+			if (columnLevel.nonEmpty) { // column level
+			val schema = mbSession.tableSchema(table, db).map(_.name)
+				val columns = privileges.flatMap {
+					case ColumnSelectPrivilege(column) =>
+						column.map((_, SelectPrivilege.NAME))
+					case ColumnUpdatePrivilege(column) =>
+						column.map((_, SelectPrivilege.NAME))
+				}
+
+				// check column exists or not
+				val diff = columns.map(_._1).distinct.diff(schema)
+				if (diff.nonEmpty) {
+					throw new Exception(s"${diff.mkString(", ")} does not exist")
+				}
+
+				val columnPrivilege = columns.groupBy(_._1).map { case (k, v) =>
+					(k, v.map(_._2).distinct)
+				}
+
+				users.foreach { user =>
+					createColumnPrivilege(
+						CatalogColumnPrivilege(
+							user = user,
+							database = db,
+							table = table,
+							privilege = columnPrivilege
+						)
+					)
+				}
+			}
+		}
+
 		Seq.empty[Row]
 	}
 }
@@ -318,18 +417,24 @@ case class RevokeResourceFromUser(
 		requireUserExists(getCurrentOrg, user)
 
 		val db = tableIdentifier.database.getOrElse(getCurrentDb)
-
-		requireDbExists(db)
-
 		val table = tableIdentifier.table
 
-		if (table == "*") {
+		if (db == "*") { // all
+			if (table != "*" || privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			listDatabase().foreach(catalogDb =>
+				dropDatabasePrivilege(user, catalogDb.name, privileges.map(_.NAME))
+			)
+		} else if (table == "*") {
+			requireDbExists(db)
 			if (privileges.exists(_.isColumnLevel)) {
 				throw new Exception("Illegal grant command.")
 			}
 			dropDatabasePrivilege(user, db, privileges.map(_.NAME))
 		} else {
-
+			requireDbExists(db)
+			requireTableExists(db, table)
 			val (tableLevel, columnLevel) = privileges.span(!_.isColumnLevel)
 
 			if (tableLevel.nonEmpty) {
@@ -359,9 +464,75 @@ case class RevokeResourceFromGroup(
 	tableIdentifier: TableIdentifier,
 	group: String) extends MbRunnableCommand with DCL {
 	override def run(mbSession: MoonboxSession): Seq[Row] = {
-		mbSession.catalog.listUserInGroup(group)
-				.map(user => RevokeResourceFromUser(privileges, tableIdentifier, user))
-				.foreach(_.run(mbSession))
+
+		import mbSession.catalog._
+
+		val db = tableIdentifier.database.getOrElse(getCurrentDb)
+		val table = tableIdentifier.table
+
+		val users = mbSession.catalog.listUserInGroup(group)
+
+		users.foreach(user => requireUserExists(mbSession.catalog.getCurrentOrg, user))
+
+		if (db == "*") { // all
+			if (table != "*" || privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			listDatabase().foreach(catalogDb =>
+				users.foreach { user =>
+					dropDatabasePrivilege(user, catalogDb.name, privileges.map(_.NAME))
+				}
+			)
+		} else if (table == "*") { // db level
+			requireDbExists(db)
+			if (privileges.exists(_.isColumnLevel)) {
+				throw new Exception("Illegal grant command.")
+			}
+			users.foreach { user =>
+				dropDatabasePrivilege(user, db, privileges.map(_.NAME))
+			}
+		} else {
+			requireDbExists(db)
+			requireTableExists(db, table)
+
+			val (tableLevel, columnLevel) = privileges.span(!_.isColumnLevel)
+			if (tableLevel.nonEmpty) { // table level
+				users.foreach { user =>
+					createTablePrivilege(
+						CatalogTablePrivilege(
+							user = user,
+							database = db,
+							table = tableIdentifier.table,
+							privileges = tableLevel.map(_.NAME)
+						)
+					)
+				}
+			}
+
+			if (columnLevel.nonEmpty) { // column level
+			val schema = mbSession.tableSchema(table, db).map(_.name)
+				val columns = privileges.flatMap {
+					case ColumnSelectPrivilege(column) =>
+						column.map((_, SelectPrivilege.NAME))
+					case ColumnUpdatePrivilege(column) =>
+						column.map((_, SelectPrivilege.NAME))
+				}
+
+				// check column exists or not
+				val diff = columns.map(_._1).distinct.diff(schema)
+				if (diff.nonEmpty) {
+					throw new Exception(s"${diff.mkString(", ")} does not exist")
+				}
+
+				val columnPrivilege = columns.groupBy(_._1).map { case (k, v) =>
+					(k, v.map(_._2).distinct)
+				}
+
+				users.foreach { user =>
+					dropColumnPrivilege(user, db, table, columnPrivilege.toSeq)
+				}
+			}
+		}
 		Seq.empty[Row]
 	}
 }
