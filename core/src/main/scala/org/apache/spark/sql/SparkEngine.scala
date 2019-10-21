@@ -263,14 +263,15 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
   def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
     val parsedPlan = parsePlan(sql)
+		injectTableFunctions(parsedPlan)
+
 		val unlimited = maxRows < 0
     parsedPlan match {
       case runnable: RunnableCommand =>
         val dataFrame = createDataFrame(runnable)
         (dataFrame.collect().toIterator, dataFrame.schema)
       case other =>
-        injectTableFunctions(parsedPlan)
-        // may throw PrivilegeAnalysisException
+				// may throw PrivilegeAnalysisException
         val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
         val limitPlan = analyzedPlan match {
           case insert: InsertIntoDataSourceCommand =>
@@ -321,7 +322,18 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 	private def collectWithTryCatch(dataFrame: DataFrame, unlimited: Boolean): Iterator[Row] = {
 		try {
 			if (unlimited) {
-				dataFrame.toLocalIterator().asScala
+				dataFrame.cache()
+				val iter = dataFrame.toLocalIterator()
+				new Iterator[Row] {
+
+					override def hasNext: Boolean = {
+						val ifHasNext = iter.hasNext
+						if (!ifHasNext) dataFrame.unpersist()
+						ifHasNext
+					}
+
+					override def next(): Row = iter.next()
+				}
 			} else {
 				dataFrame.collect().toIterator
 			}
