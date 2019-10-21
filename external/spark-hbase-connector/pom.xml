@@ -261,9 +261,9 @@
         </plugins>
     </build>
 
-    <!--<profiles>
+    <profiles>
         <profile>
-            <id>hbase</id>
+            <id>hbase-filter</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -305,7 +305,7 @@
             </build>
         </profile>
 
-    </profiles>-->
+    </profiles>
 
 
 </project>
