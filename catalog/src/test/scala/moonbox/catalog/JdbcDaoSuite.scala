@@ -340,7 +340,7 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 					updateBy = 1
 				)
 			)
-		))(id => assert(id == 1))
+		))(id => assert(id == 2))
 
 		whenReady(action(
 			createDatabase(
@@ -354,6 +354,53 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 					updateBy = 1
 				)
 			)
-		))(id => assert(id == 2))
+		))(id => assert(id == 3))
+	}
+
+	test("application") {
+		whenReady(action(
+			createApplication(
+				ApplicationEntity(
+					name = "app",
+					labels = Seq("common", "test"),
+					appType = "SPARK",
+					config = Map(),
+					state = "",
+					createBy = 1,
+					updateBy = 1
+				)
+			)
+		))(id => assert(id == 1))
+
+		whenReady(action(
+			updateApplication(
+				ApplicationEntity(
+					id = Some(1),
+					name = "app",
+					labels = Seq("common", "test"),
+					appType = "SPARK",
+					config = Map(),
+					state = "",
+					createBy = 1,
+					updateBy = 1
+				)
+			)
+		))(affect => assert(affect == 1))
+
+		whenReady(action(
+			getApplication(1)
+		))(app => assert(app.isDefined))
+
+		whenReady(action(
+			getApplication("app")
+		))(app => assert(app.isDefined))
+
+		whenReady(
+			action(
+				applicationExists("app")
+			)
+		)(exists => assert(exists))
+
+		whenReady(action(deleteApplication(1)))(affect => assert(affect == 1))
 	}
 }
