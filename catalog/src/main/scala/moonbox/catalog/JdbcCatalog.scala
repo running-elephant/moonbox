@@ -47,7 +47,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     name.toLowerCase(Locale.ROOT)
   }
 
-  val defauleDb = DEFAULT_DATABASE
+  val defaultDb = DEFAULT_DATABASE
 
 
   /**

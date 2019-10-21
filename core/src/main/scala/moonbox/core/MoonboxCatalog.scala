@@ -37,7 +37,7 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 
 	var catalogOrg: CatalogOrganization = _
 
-	private var currentDb = formatDatabaseName(jdbcCatalog.defauleDb)
+	private var currentDb = formatDatabaseName(jdbcCatalog.defaultDb)
 
 	private def formatDatabaseName(db: String): String = {
 		db.toLowerCase(Locale.ROOT)
