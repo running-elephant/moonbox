@@ -97,11 +97,11 @@ object UmsCommon {
           if(sparkRow.isNullAt(i)) null
           else DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
         case d@DecimalType.Fixed(p, s) =>
-          if (sparkRow.isNullAt(i)) "0.0"
+          if (sparkRow.isNullAt(i)) null
           else sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
         case BinaryType => sparkRow.getBinary(i)
       }
-      if (umsValue == null) seq.append("null")
+      if (umsValue == null) seq.append(null)
       else seq.append(umsValue.toString)
     }
     UmsTuple(seq)
