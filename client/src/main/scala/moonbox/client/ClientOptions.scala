@@ -107,7 +107,7 @@ object ClientOptions {
 			this
 		}
 
-		def maxRows(value: Long) = {
+		def maxRows(value: Int) = {
 			_options += (MAX_ROWS -> value.toString)
 			this
 		}
