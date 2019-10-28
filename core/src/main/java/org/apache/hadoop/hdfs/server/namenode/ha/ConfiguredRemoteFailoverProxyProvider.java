@@ -72,7 +72,6 @@ public class ConfiguredRemoteFailoverProxyProvider<T> extends
       new ArrayList<AddressRpcProxyPair<T>>();
   private final UserGroupInformation ugi;
   private final Class<T> xface;
-  public static final String DFS_REMOTE_NAMESERVICES = "dfs.remote.nameservices";
   private int currentProxyIndex = 0;
   public ConfiguredRemoteFailoverProxyProvider(Configuration conf, URI uri,
                                                Class<T> xface) {
@@ -95,8 +94,8 @@ public class ConfiguredRemoteFailoverProxyProvider<T> extends
         maxRetriesOnSocketTimeouts);
     try {
       ugi = UserGroupInformation.getCurrentUser();
-      Map<String, Map<String, InetSocketAddress>> map = getHaNnRpcAddresses(conf);
-      Map<String, InetSocketAddress> addressesInNN = map.get(uri.getHost());
+      System.out.println(uri.getHost());
+      Map<String, InetSocketAddress> addressesInNN = getAddressesForNameserviceId(conf, uri.getHost(), null, DFSConfigKeys.DFS_NAMENODE_RPC_ADDRESS_KEY);
       if (addressesInNN == null || addressesInNN.size() == 0) {
         throw new RuntimeException("Could not find any configured addresses " +
             "for URI " + uri);
@@ -172,19 +171,7 @@ public class ConfiguredRemoteFailoverProxyProvider<T> extends
   public boolean useLogicalURI() {
     return true;
   }
-  private static Map<String, Map<String, InetSocketAddress>> getHaNnRpcAddresses(
-      Configuration conf) {
-    Collection<String> remoteNameserviceIds = conf.getTrimmedStringCollection(DFS_REMOTE_NAMESERVICES);
-    Map<String, Map<String, InetSocketAddress>> ret = Maps.newLinkedHashMap();
-    for (String nsId : emptyAsSingletonNull(remoteNameserviceIds)) {
-      Map<String, InetSocketAddress> isas =
-          getAddressesForNameserviceId(conf, nsId, null, DFSConfigKeys.DFS_NAMENODE_RPC_ADDRESS_KEY);
-      if (!isas.isEmpty()) {
-        ret.put(nsId, isas);
-      }
-    }
-    return ret;
-  }
+
   private static Collection<String> emptyAsSingletonNull(Collection<String> coll) {
     if (coll == null || coll.isEmpty()) {
       return Collections.singletonList(null);
