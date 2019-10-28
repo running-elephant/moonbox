@@ -391,7 +391,7 @@ public class SessionManager extends CompositeService {
         }
     };
 
-    public static void setMaxRows(Long maxrows) {
+    public static void setMaxRows(Integer maxrows) {
         threadLocalMaxRows.set(maxrows);
     }
 
@@ -399,14 +399,14 @@ public class SessionManager extends CompositeService {
         threadLocalMaxRows.remove();
     }
 
-    public static Long getMaxRows() {
+    public static Integer getMaxRows() {
         return threadLocalMaxRows.get();
     }
 
-    private static ThreadLocal<Long> threadLocalMaxRows = new ThreadLocal<Long>() {
+    private static ThreadLocal<Integer> threadLocalMaxRows = new ThreadLocal<Integer>() {
         @Override
-        protected Long initialValue() {
-            return Long.MIN_VALUE;
+        protected Integer initialValue() {
+            return Integer.MIN_VALUE;
         }
     };
 
