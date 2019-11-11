@@ -196,6 +196,15 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     sessionState.optimizer.execute(plan)
   }
 
+  def explainPlan(plan: LogicalPlan, extended: Boolean = false) = {
+    val executedPlan = createDataFrame(plan).queryExecution.executedPlan
+    if (extended) {
+      executedPlan.toString()
+    } else {
+      executedPlan.simpleString
+    }
+  }
+
   /**
     * optimize logical plan using pushdown rule
     *
@@ -356,7 +365,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     *
     * @return
     */
-  private def pushdownEnable: Boolean = {
+  def pushdownEnable: Boolean = {
     !sparkSession.conf
       .getOption("spark.sql.optimize.pushdown")
       .exists(_.equalsIgnoreCase("false"))
@@ -685,7 +694,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val path = hiveCatalogTable.storage.locationUri.get.toString
     setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
 
-    //    val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
+    val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
     sessionState.catalog.createTable(hiveCatalogTable.copy(
       identifier = table,
@@ -694,12 +703,13 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       provider = Some("hive"),
       properties = hiveCatalogTable.properties ++ props
     ), ignoreIfExists = true)
+
     // TODO modify storage.uri
-    //    sessionState.catalog.createPartitions(
-    //      table,
-    //      hivePartitions,
-    //      ignoreIfExists = true
-    //    )
+    sessionState.catalog.createPartitions(
+      table,
+      hivePartitions,
+      ignoreIfExists = true
+    )
   }
 
   /**
