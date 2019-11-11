@@ -122,7 +122,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
     executeQuery(sql)
     isResultSet
   }
-  override def getResultSet = resultSet
+  override def getResultSet = {
+    resultSet
+  }
   override def getUpdateCount = throw new SQLException("Unsupported")
   override def getMoreResults = false
   override def setFetchDirection(direction: Int) = {}
