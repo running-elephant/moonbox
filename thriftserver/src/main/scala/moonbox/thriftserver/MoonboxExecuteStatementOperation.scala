@@ -148,7 +148,7 @@ class MoonboxExecuteStatementOperation(var client: MoonboxClient,
 
   private def handleShowStatement(mbStatement: String, isDatabases: Boolean): Unit = {
     val result = doMoonboxQuery(mbStatement)
-    if (!isDatabases)  {
+    if (!isDatabases) {
       val schema =
         """
           |{
@@ -172,7 +172,7 @@ class MoonboxExecuteStatementOperation(var client: MoonboxClient,
           |  ]
           |}
         """.stripMargin
-      val array =  new Array[Any](3)
+      val array = new Array[Any](3)
       val iter = result.map { row =>
         array(0) = database
         array(1) = row.getString(0)
@@ -212,9 +212,9 @@ class MoonboxExecuteStatementOperation(var client: MoonboxClient,
       """.stripMargin
     val iter = result.map { row =>
       val arr = new Array[Any](3)
-        arr(0) = row.getString(0)
-        arr(1) = row.getString(1)
-        arr(2) = ""
+      arr(0) = row.getString(0)
+      arr(1) = row.getString(1)
+      arr(2) = ""
       new MoonboxRow(arr)
     }
     moonboxRowSet = new MoonboxRowSet(iter.asJava, schema)
@@ -232,15 +232,17 @@ class MoonboxExecuteStatementOperation(var client: MoonboxClient,
         } else throw new HiveSQLException(e)
     }
   }
+
   override def cancel(): Unit = {
     logInfo(s"Canceling query, SessionId=${client.sessionId}, Token=${client.token}")
-    if (client.cancelInteractiveQuery()){
+    if (client.cancelInteractiveQuery()) {
       logInfo("Cancel query successfully.")
     } else {
       logInfo("Cancel query failed.")
     }
     cleanup(OperationState.CANCELED)
   }
+
   private def cleanup(state: OperationState) {
     setState(state)
     if (runInBackground) {
@@ -261,6 +263,7 @@ object MoonboxExecuteStatementOperation {
       case INTEGER => "int"
       case LONG => "bigint"
       case NULL => "void"
+      case DECIMAL => "decimal(38,18)"
       case ARRAY | BINARY | BOOLEAN | DATE | CHAR | VARCHAR | DOUBLE | FLOAT | STRING | TIMESTAMP | STRUCT | MAP | OBJECT | _ => dataType.getName
     }
   }
