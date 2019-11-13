@@ -270,6 +270,16 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     analyzePlan(parsedPlan).schema
   }
 
+  private def alterLogicalPlanPartition(logicalPlan: LogicalPlan, props: Map[String, String]): LogicalPlan = {
+    if (props.contains("repartitionNums")) {
+      Repartition(props("repartitionNums").toInt, shuffle = true, logicalPlan)
+    } else if (props.contains("coalesceNums")) {
+      Repartition(props("coalesceNums").toInt, shuffle = false, logicalPlan)
+    } else {
+      logicalPlan
+    }
+  }
+
   /**
     * execute spark sql
     *
@@ -292,11 +302,11 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
         val limitPlan = analyzedPlan match {
           case insert: InsertIntoDataSourceCommand =>
-            insert
+            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.logicalRelation.catalogTable.get.storage.properties))
           case insert: InsertIntoHadoopFsRelationCommand =>
-            insert
+            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.catalogTable.get.storage.properties))
           case insert: InsertIntoHiveTable =>
-            insert
+            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.table.storage.properties))
           case _ if unlimited =>
             analyzedPlan
           case _ =>
