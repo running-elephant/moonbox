@@ -22,23 +22,25 @@ message OpenSessionRequestPB {
 }
 
 message OpenSessionResponsePB {
+    string session_id = 1;
 }
 
 message CloseSessionRequestPB {
-
+    string session_id = 1;
 }
 
 message CloseSessionResponsePB {
 }
 
 message ExecutionRequestPB {
-    repeated string sqls = 1;
-    int32 fetch_size = 2;
-    int32 max_rows = 3;
+    string session_id = 1;
+    repeated string sqls = 2;
+    int32 fetch_size = 3;
+    int32 max_rows = 4;
 }
 
 message ExecutionResultRequestPB {
-
+    string session_id = 1;
 }
 
 message ExecutionResultPB {
@@ -47,7 +49,7 @@ message ExecutionResultPB {
 }
 
 message ExecutionCancelRequestPB {
-
+    string session_id = 1;
 }
 
 message ExecutionCancelResponsePB {
