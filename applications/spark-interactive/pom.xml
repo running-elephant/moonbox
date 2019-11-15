@@ -17,6 +17,11 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-network_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-protocol_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>

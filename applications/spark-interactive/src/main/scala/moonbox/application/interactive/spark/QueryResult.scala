@@ -20,6 +20,8 @@
 
 package moonbox.application.interactive.spark
 
+import org.apache.spark.sql.types.StructType
+
 trait QueryResult
-case class DirectResult(schema: String, data: Seq[Seq[Any]]) extends QueryResult
-case class IndirectResult(schema: String) extends QueryResult
+case class DirectResult(schema: StructType, data: Seq[Seq[Any]]) extends QueryResult
+case class IndirectResult(schema: StructType) extends QueryResult

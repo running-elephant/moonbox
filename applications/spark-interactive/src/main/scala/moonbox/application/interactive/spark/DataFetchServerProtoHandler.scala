@@ -1,3 +1,4 @@
+/*
 /*-
  * <<
  * Moonbox
@@ -88,3 +89,4 @@ class DataFetchServerProtoHandler(sessionIdToJobRunner: mutable.Map[String, Runn
     ProtoMessage.newBuilder().setMessageId(messageId).setInteractiveNextResultOutbound(outbound).build()
   }
 }
+*/
