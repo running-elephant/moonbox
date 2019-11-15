@@ -66,7 +66,7 @@ title: Configuration
   </td>
 </tr>
 <tr>
-  <td><code>moonbox.deploy.tcp..enable</code></td>
+  <td><code>moonbox.deploy.tcp.enable</code></td>
   <td>true</td>
   <td>
     Whether to enable TCP server.  
