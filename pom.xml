@@ -28,8 +28,8 @@
         <module>catalyst</module>
         <module>core</module>
         <module>grid</module>
-        <module>repl</module>
         <module>jdbc</module>
+        <module>repl</module>
         <module>thriftserver</module>
 
         <module>external/spark-hbase-connector</module>
