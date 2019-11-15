@@ -1,4 +1,4 @@
 package moonbox.jdbc;
 
-public class MoonboxDriver {
+public class MoonboxDriver extends MbDriver {
 }

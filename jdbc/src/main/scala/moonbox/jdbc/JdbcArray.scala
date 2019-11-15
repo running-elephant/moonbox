@@ -1,3 +1,4 @@
+/*
 /*-
  * <<
  * Moonbox
@@ -44,3 +45,4 @@ class JdbcArray(elementTypeName: String, elementType: Int, values: Array[Any]) e
   override def getResultSet(index: Long, count: Int, map: java.util.Map[String, Class[_]]) = throw new SQLFeatureNotSupportedException("Unsupported")
   override def free() = {}
 }
+*/

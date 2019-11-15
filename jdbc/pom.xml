@@ -20,6 +20,16 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-network_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-protocol_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!--<dependency>
+            <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-client_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -27,7 +37,7 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>2.11.8</version>
-        </dependency>
+        </dependency>-->
     </dependencies>
 
     <build>
