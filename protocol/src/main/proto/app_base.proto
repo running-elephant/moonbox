@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package moonbox;
+
+import "data_base.proto";
+
+option java_package = "moonbox.protocol.protobuf";
+option java_multiple_files = true;
+
+message AppRequestMessage {
+    oneof message {
+        OpenSessionRequestPB open_session = 1;
+        CloseSessionRequestPB close_session = 2;
+        ExecutionRequestPB execute = 3;
+        ExecutionResultRequestPB execute_result = 4;
+        ExecutionCancelRequestPB execte_cancel = 5;
+    }
+}
+
+message OpenSessionRequestPB {
+    map<string, string> config = 1;
+}
+
+message OpenSessionResponsePB {
+}
+
+message CloseSessionRequestPB {
+
+}
+
+message CloseSessionResponsePB {
+}
+
+message ExecutionRequestPB {
+    repeated string sqls = 1;
+    int32 fetch_size = 2;
+    int32 max_rows = 3;
+}
+
+message ExecutionResultRequestPB {
+
+}
+
+message ExecutionResultPB {
+    ResultDataPB data = 1;
+    bool has_more = 2;
+}
+
+message ExecutionCancelRequestPB {
+
+}
+
+message ExecutionCancelResponsePB {
+}
+
+
+
+
