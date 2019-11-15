@@ -24,6 +24,7 @@ import java.sql.Connection
 
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
+import org.apache.spark.sql.types.{DataType, StringType}
 
 
 class MbMySQLDialect extends MbDialect {
@@ -38,6 +39,13 @@ class MbMySQLDialect extends MbDialect {
 
 	override def relation(relation: LogicalRelation): String = {
 		relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
+	}
+
+	override def dataTypeToSQL(dataType: DataType): String = {
+		dataType match {
+			case StringType => "CHAR"
+			case _ => dataType.sql
+		}
 	}
 
 	override def maybeQuote(name: String): String = {
