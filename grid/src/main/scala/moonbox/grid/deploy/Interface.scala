@@ -20,6 +20,7 @@
 
 package moonbox.grid.deploy
 
+
 trait Interface
 
 object Interface extends Interface {
@@ -104,6 +105,21 @@ object Interface extends Interface {
 
 	case object AppsInfoInbound extends Inbound
 	case class AppsInfoOutbound(apps: Seq[Seq[String]]) extends Outbound
+
+	case class CreateAppInbound(token: String, name: String, appType: String, config: Map[String, String]) extends Inbound
+	case class CreateAppOutbound(success: Boolean, message: Option[String]) extends Outbound
+
+	case class DeleteAppInbound(token: String, name: String) extends Inbound
+	case class DeleteAppOutbound(success: Boolean, message: Option[String]) extends Outbound
+
+	case class UpdateAppInbound(token: String, name: String, config: Map[String, String]) extends Inbound
+	case class UpdateAppOutbound(success: Boolean, message: Option[String]) extends Outbound
+
+	case class StartAppInbound(token: String, name: String, worker: Option[String]) extends Inbound
+	case class StartAppOutbound(success: Boolean, message: Option[String]) extends Outbound
+
+	case class StopAppInbound(token: String, name: String) extends Inbound
+	case class StopAppOutbound(success: Boolean, message: Option[String]) extends Outbound
 }
 
 

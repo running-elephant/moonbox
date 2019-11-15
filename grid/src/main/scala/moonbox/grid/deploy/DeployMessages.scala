@@ -25,6 +25,7 @@ import java.util.Date
 import akka.actor.{ActorRef, Address}
 import moonbox.grid.deploy.app.{AppType, DriverDesc, DriverState}
 import DriverState.DriverState
+import moonbox.grid.deploy
 import moonbox.grid.timer.EventEntity
 
 
@@ -52,9 +53,11 @@ object DeployMessages {
 
 	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
 
-	case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDesc, Date)])
+	/*case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDesc, Date)])*/
 
-	case class WorkerLatestState(id: String,  drivers: Seq[(String, DriverDesc, Date)]) extends DeployMessages
+	case class WorkerSchedulerStateResponse(workerId: String, driverIds: Seq[String])
+
+	case class WorkerLatestState(workerId: String,  driverIds: Seq[String]) extends DeployMessages
 
 	case class Heartbeat(workerId: String, worker: ActorRef) extends DeployMessages
 
@@ -115,5 +118,21 @@ object DeployMessages {
 	case class UnregisteredTimedEvent(masterRef: ActorRef) extends UnregisterTimedEventResponse
 
 	case class UnregisterTimedEventFailed(message: String) extends UnregisterTimedEventResponse
+
+
+	case class RequestSubmitDriver(driverDesc: DriverDesc) extends DeployMessages
+
+	case class SubmitDriverResponse(
+		master: ActorRef, success: Boolean, driverId: Option[String], message: String) extends DeployMessages
+
+	case class RequestKillDriver(driverId: String) extends DeployMessages
+
+	case class KillDriverResponse(master: ActorRef, driverId: String, success: Boolean, message: String)
+			extends DeployMessages
+
+	case class RequestDriverStatus(driverId: String) extends DeployMessages
+
+	case class DriverStatusResponse(found: Boolean, state: Option[DriverState],
+		workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
 
 }

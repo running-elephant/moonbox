@@ -21,34 +21,29 @@
 package moonbox.grid.deploy.rest
 
 import java.math.BigInteger
-import akka.actor.ActorSystem
+
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
+import moonbox.catalog.JdbcCatalog
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
-import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
-import moonbox.grid.deploy.Interface._
-import org.json4s.jackson.Serialization
-import org.json4s.{CustomSerializer, DefaultFormats, JInt, JString, Serializer}
+import moonbox.grid.deploy.rest.routes.AssembleRoutes
+import org.json4s.{CustomSerializer, JInt, JString, Serializer}
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
-class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxService,
+class RestServer(host: String, port: Int, conf: MbConf, catalog: JdbcCatalog, masterRef: ActorRef,
 	implicit val akkaSystem: ActorSystem) extends JsonSerializer with MbLogging {
 
 	private val maxRetries: Int = conf.get(PORT_MAX_RETRIES)
 	private var bindingFuture: Future[ServerBinding] = _
 	private implicit val materializer = ActorMaterializer()
-	private implicit val formats = DefaultFormats ++ customFormats
-	private implicit val serialization = Serialization
-	private implicit val shouldWritePretty = ShouldWritePretty.True
 
-	private def customFormats: Traversable[Serializer[_]] = {
+	override def customFormats: Traversable[Serializer[_]] = {
 		Seq(
 			new CustomSerializer[java.sql.Date](_ => (
 					{ case JInt(s) => new java.sql.Date(s.longValue()) },
@@ -69,7 +64,8 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxServic
 	}
 
 	private def createRoutes(localAddress: String) = {
-		extractClientIP { clientIP =>
+		new AssembleRoutes(conf, catalog, masterRef).routes // ~
+		/*extractClientIP { clientIP =>
 			implicit val connectionInfo = ConnectionInfo(localAddress, clientIP.value, ConnectionType.REST)
 
 			pathPrefix("management") {
@@ -173,7 +169,7 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxServic
 					}
 				}
 			}
-		}
+		}*/
 
 
 	}

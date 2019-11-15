@@ -28,9 +28,16 @@ import akka.http.scaladsl.unmarshalling.{Unmarshaller, _}
 import akka.util.ByteString
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport.ShouldWritePretty
-import org.json4s.{Formats, MappingException, Serialization}
+import org.json4s.jackson.Serialization
+import org.json4s.{DefaultFormats, Formats, MappingException, Serialization, Serializer}
 
 trait JsonSerializer extends Json4sSupport {
+	implicit val formats = DefaultFormats ++ customFormats
+	implicit val serialization = Serialization
+	implicit val shouldWritePretty = ShouldWritePretty.True
+
+	def customFormats: Traversable[Serializer[_]] = Seq()
+
 	val jsonStringUnmarshaller: FromEntityUnmarshaller[String] =
 		Unmarshaller.byteStringUnmarshaller
 			.forContentTypes(`application/json`, `text/plain`, `application/x-www-form-urlencoded`)

@@ -20,8 +20,38 @@
 
 package moonbox.grid.deploy.security
 
-import moonbox.common.MbLogging
+import scala.collection.mutable
 
-trait Login extends MbLogging {
-	def doLogin(org: String, username: String, password: String): Boolean
+
+trait Login {
+	def doLogin(username: String, password: String): Session
+}
+
+class SessionBuilder(session: Session) {
+	def put(key: String, value: String) = {
+		session.put(key, value)
+		this
+	}
+
+	def build(): Session = {
+		put(Session.KEY, Session.keysToString(session.keys.toSeq))
+		session
+	}
+}
+
+
+case class Session private() extends mutable.HashMap[String, String]
+
+object Session {
+	val KEY = "SESSION_KEY"
+
+	def builder: SessionBuilder = new SessionBuilder(new Session)
+
+	def keysToString(keys: Seq[String]): String = {
+		keys.mkString(",")
+	}
+
+	def stringToKeys(keys: String): Seq[String] = {
+		keys.split(",").toSeq
+	}
 }
