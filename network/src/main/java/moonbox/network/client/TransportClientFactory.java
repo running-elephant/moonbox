@@ -30,13 +30,12 @@ public class TransportClientFactory {
     final InetSocketAddress address = new InetSocketAddress(host, port);
     logger.debug("Creating new connection to {}", address);
 
-    int connectTimeoutMs = connectTimeout * 1000;
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.group(workerGroup)
         .channel(NioSocketChannel.class)
         .option(ChannelOption.TCP_NODELAY, true)
         .option(ChannelOption.SO_KEEPALIVE, true)
-        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutMs)
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout)
         .option(ChannelOption.SO_RCVBUF, 10240)
         .option(ChannelOption.SO_SNDBUF, 10240);
 
@@ -53,9 +52,9 @@ public class TransportClientFactory {
     });
 
     ChannelFuture cf = bootstrap.connect(address);
-    if (!cf.await(connectTimeoutMs)) {
+    if (!cf.await(connectTimeout)) {
       throw new IOException(
-          String.format("Connecting to %s timed out (%s ms)", address, connectTimeoutMs));
+          String.format("Connecting to %s timed out (%s ms)", address, connectTimeout));
     } else if (cf.cause() != null) {
       throw new IOException(String.format("Failed to connect to %s", address), cf.cause());
     }

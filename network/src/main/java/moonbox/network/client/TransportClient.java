@@ -86,7 +86,7 @@ public class TransportClient implements Closeable {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     channel.close().awaitUninterruptibly(10, TimeUnit.SECONDS);
   }
 }
