@@ -1,3 +1,4 @@
+/*
 /*-
  * <<
  * Moonbox
@@ -240,3 +241,4 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def isWrapperFor(iface: Class[_]): Boolean = iface != null && iface.isAssignableFrom(getClass)
 }
+*/

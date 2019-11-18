@@ -21,7 +21,7 @@
 package moonbox.application.interactive.spark
 
 import java.util.UUID
-import java.util.concurrent.{ExecutionException, Executors}
+import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import com.typesafe.config.ConfigFactory
@@ -32,7 +32,6 @@ import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.app.AppType
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.{LogMessage, MbActor}
-import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.SparkEngine
 
 import scala.collection.JavaConverters._
@@ -104,8 +103,8 @@ class Main(
 
 	private var registerToMasterScheduler: Option[Cancellable] = None
 
-	private var dataFetchServer: Option[DataFetchServer] = None
-	private var dataFetchPort: Int = _
+	private var server: Option[SparkServer] = None
+	private var bindPort: Int = _
 
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
@@ -122,8 +121,8 @@ class Main(
 		}
 
 		try {
-			dataFetchServer = Some(new DataFetchServer(host, 0, conf, sessionIdToRunner))
-			dataFetchPort = dataFetchServer.map(_.start()).get
+			server = Some(new SparkServer(host, 0))
+			bindPort = server.map(_.start()).get
 		} catch {
 			case e: Exception =>
 				logError("Could not start data fetch server.", e)
@@ -142,7 +141,7 @@ class Main(
 			changeMaster(masterRef, masterRef.path.address)
 			masterRef ! ApplicationStateResponse(driverId)
 
-		case open @ OpenSession(org, username, database, sessionConfig) =>
+		/*case open @ OpenSession(org, username, database, sessionConfig) =>
 			val requester = sender()
 			val sessionId = newSessionId
 			val f = Future(new Runner(sessionId, org, username, database, conf, sessionConfig, self))
@@ -151,7 +150,7 @@ class Main(
 					sessionIdToRunner.put(sessionId, runner)
 					logInfo(s"Open session successfully for $username, session id is $sessionId, current database set to ${database.getOrElse("default")} ")
 					logInfo(s"Current ${sessionIdToRunner.size} users online.")
-					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(dataFetchPort), "Open session successfully.")
+					requester ! OpenSessionResponse(Some(sessionId), Some(host), Some(bindPort), "Open session successfully.")
 				case Failure(e) =>
 					logError("open session error", e)
 					requester ! OpenSessionResponse(None, None, None, e.getMessage)
@@ -225,7 +224,7 @@ class Main(
 					val msg = s"Your session id $sessionId  is incorrect. Or it is lost in runner."
 					logWarning(msg)
 					sender() ! InteractiveJobCancelResponse(success = false, msg)
-			}
+			}*/
 
 		case event: RegisterTimedEvent =>
 			if (master.isDefined) {
@@ -398,7 +397,7 @@ class Main(
 			port,
 			self,
 			address,
-			dataFetchPort,
+			bindPort,
 			appType
 		), self)
 	}

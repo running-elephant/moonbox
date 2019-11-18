@@ -1,3 +1,4 @@
+/*
 /*-
  * <<
  * Moonbox
@@ -176,3 +177,4 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   }
   override def isWrapperFor(iface: Class[_]) = iface != null && iface.isAssignableFrom(getClass)
 }
+*/

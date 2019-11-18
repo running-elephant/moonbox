@@ -30,8 +30,9 @@ import moonbox.core.command._
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.Interface.ResultData
 import moonbox.grid.timer.EventEntity
-import moonbox.protocol.util.SchemaUtil
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.types.StructType
+
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -53,7 +54,7 @@ class Runner(
 	private var fetchSize: Int = _
 	private var maxRows: Int = _
 	private var currentData: Iterator[Row] = _
-	private var currentSchema: String = _
+	private var currentSchema: StructType = _
 
 	private var currentRowId: Long = _
 
@@ -77,7 +78,7 @@ class Runner(
 				DirectResult(runnable.outputSchema, result.map(_.toSeq))
 			case CreateTempView(table, query, isCache, replaceIfExists) =>
 				createTempView(table, query, isCache, replaceIfExists)
-				DirectResult(SchemaUtil.emptyJsonSchema, Seq.empty)
+				DirectResult(SchemaUtils.emptySchema, Seq.empty)
 			case other: Statement =>
 				statement(other.sql)
 			case other =>
@@ -194,7 +195,7 @@ class Runner(
 
 		val continue = hasNext
 
-		val data = ResultData(sessionId, currentSchema, resultData, continue)
+		val data = ResultData(sessionId, null, resultData, continue)
 
 		if (!continue) clear()
 
@@ -204,7 +205,7 @@ class Runner(
 	private def initCurrentData(dataFrame: DataResult): QueryResult = {
 		currentRowId = 0
 		currentData = dataFrame._1
-		currentSchema = dataFrame._2.json
+		currentSchema = dataFrame._2
 		logInfo(s"Initialize current data: schema=$currentSchema")
 
 		if (currentData.nonEmpty) {

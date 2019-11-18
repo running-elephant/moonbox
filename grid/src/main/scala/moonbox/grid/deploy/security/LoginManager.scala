@@ -1,3 +1,29 @@
+package moonbox.grid.deploy.security
+
+import moonbox.catalog.JdbcCatalog
+import moonbox.common.{MbConf, MbLogging}
+import moonbox.grid.config._
+
+
+
+class LoginManager(val conf: MbConf, catalog: JdbcCatalog) extends MbLogging {
+
+	private val loginImpl = createLogin(conf.get(LOGIN_IMPLEMENTATION))
+
+	def login(username: String, password: String): Session = {
+		loginImpl.doLogin(username, password)
+	}
+
+	private def createLogin(loginType: String): Login = loginType.toUpperCase match {
+		case "LDAP" => new LdapLogin(conf)
+		case _ => new CatalogLogin(conf, catalog)
+	}
+
+}
+
+
+
+/*
 /*-
  * <<
  * Moonbox
@@ -30,8 +56,7 @@ import moonbox.grid.deploy.{ConnectionInfo, ConnectionType, MoonboxService}
 
 import scala.collection.JavaConversions._
 
-class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
-  private val catalog = new JdbcCatalog(conf)
+class LoginManager(conf: MbConf, catalog: JdbcCatalog, mbService: MoonboxService) extends MbLogging {
   private val tokenEncoder = new TokenEncoder(conf)
 
   private val loginType = conf.get(LOGIN_IMPLEMENTATION)
@@ -72,13 +97,12 @@ class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
   }
 
   def login(org: String, username: String, password: String, forget: Boolean = false): Option[String] = {
-    if (loginImpl.doLogin(org, username, password)) {
-      val token = tokenEncoder.encode(org, username)
-      if (!forget) {
-        tokenToLastActiveTime.put(token, System.currentTimeMillis())
-      }
-      Some(token)
-    } else None
+		val session = loginImpl.doLogin(org + "@" + username, password)
+		val token = tokenEncoder.encode(org, username)
+		if (!forget) {
+			tokenToLastActiveTime.put(token, System.currentTimeMillis())
+		}
+		Some(token)
   }
 
   def logout(token: String): Unit = {
@@ -117,7 +141,8 @@ class LoginManager(conf: MbConf, mbService: MoonboxService) extends MbLogging {
   }
 
   def getUserConfig(org: String, user: String): Map[String, String] = {
-    catalog.getOrganization(org).config ++
-      catalog.getUser(org, user).configuration
+		catalog.getOrganization(org).config ++
+				catalog.getUser(org, user).configuration
   }
 }
+*/

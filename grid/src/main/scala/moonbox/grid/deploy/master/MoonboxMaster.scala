@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,27 +27,26 @@ import akka.actor.{ActorRef, ActorSystem, Address, Cancellable, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+import moonbox.catalog.JdbcCatalog
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.{LogMessage, MbActor}
 import moonbox.grid.config._
-import moonbox.grid.deploy.audit.BlackHoleAuditLogger
-import moonbox.grid.deploy.MoonboxService
 import moonbox.grid.deploy.DeployMessages._
+import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.app._
-import DriverState.DriverState
-import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
-import moonbox.grid.deploy.transport.TransportServer
-import moonbox.grid.timer.{EventEntity, EventHandler, TimedEventService, TimedEventServiceImpl}
+import moonbox.grid.deploy.transport.TcpServer
+import moonbox.grid.deploy.worker.WorkerState
+import moonbox.grid.timer.{EventHandler, TimedEventService, TimedEventServiceImpl}
+import moonbox.grid.{LogMessage, MbActor}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.duration._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.{Failure, Random, Success}
 
 class MoonboxMaster(
@@ -61,24 +60,20 @@ class MoonboxMaster(
 	private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT)
 
 	private val recoveryMode = conf.get(RECOVERY_MODE)
-	private val recoveryEnable = !recoveryMode.equalsIgnoreCase("NONE")
 
 	private var state = RecoveryState.STANDBY
 
-	private var mbService: MoonboxService = _
+	private var catalog: JdbcCatalog = _
 
 	private val idToWorker = new mutable.HashMap[String, WorkerInfo]
 	private val addressToWorker = new mutable.HashMap[Address, WorkerInfo]
 	private val workers = new mutable.HashSet[WorkerInfo]
 
-	// for batch and interactive
 	private val drivers = new mutable.HashSet[DriverInfo]
-	private val completedDrivers = new ArrayBuffer[DriverInfo]
-	// for batch
 	private val waitingDrivers = new ArrayBuffer[DriverInfo]
+	private val completedDrivers = new ArrayBuffer[DriverInfo]
 
-	// for batch driver id
-	private var nextBatchDriverNumber = 0
+	private var nextDriverNumber = 0
 
 	// for interactive application
 	private val apps = new mutable.HashSet[AppInfo]
@@ -98,7 +93,7 @@ class MoonboxMaster(
 	private var restServer: Option[RestServer] = None
 	private var restServerBoundPort: Option[Int] = None
 
-	private var tcpServer: Option[TransportServer] = None
+	private var tcpServer: Option[TcpServer] = None
 	private var tcpServerBoundPort: Option[Int] = None
 
 
@@ -132,8 +127,8 @@ class MoonboxMaster(
 		}
 
 		// TODO
-		 try {
-			mbService = new MoonboxService(conf, self, new BlackHoleAuditLogger)
+		try {
+			catalog = new JdbcCatalog(conf)
 		} catch {
 			case e: Exception =>
 				logError("Could not start catalog.", e)
@@ -156,7 +151,7 @@ class MoonboxMaster(
 		try {
 			if (conf.get(REST_SERVER_ENABLE)) {
 				val port = conf.get(REST_SERVER_PORT)
-				restServer = Some(new RestServer(host, port, conf, mbService, system))
+				restServer = Some(new RestServer(host, port, conf, catalog, self, system))
 				restServerBoundPort = restServer.map(_.start())
 			}
 		} catch {
@@ -169,7 +164,7 @@ class MoonboxMaster(
 		try {
 			if (conf.get(TCP_SERVER_ENABLE)) {
 				val port = conf.get(TCP_SERVER_PORT)
-				tcpServer = Some(new TransportServer(host, port, conf, mbService))
+				tcpServer = Some(new TcpServer(host, port, conf, catalog))
 				tcpServerBoundPort = tcpServer.map(_.start())
 			}
 		} catch {
@@ -234,9 +229,9 @@ class MoonboxMaster(
 					schedule()
 				} else {
 					logWarning(s"Worker registration failed. Attempted to re-register " +
-						s"worker at same address: $workerAddress")
+							s"worker at same address: $workerAddress")
 					workerRef ! RegisterWorkerFailed(s"Worker registration failed. " +
-						s"Attempted to re-register worker at same address: $workerAddress")
+							s"Attempted to re-register worker at same address: $workerAddress")
 				}
 			}
 
@@ -247,21 +242,21 @@ class MoonboxMaster(
 				case None =>
 					if (workers.map(_.id).contains(workerId)) {
 						logWarning(s"Got heartbeat from unregistered worker $workerId." +
-							" Asking it to re-register.")
+								" Asking it to re-register.")
 						worker ! ReconnectWorker(self)
 					} else {
 						logWarning(s"Got heartbeat from unregistered worker $workerId." +
-							" This worker was never registered, so ignoring the heartbeat.")
+								" This worker was never registered, so ignoring the heartbeat.")
 					}
 			}
 
-			// master changed
-		case WorkerStateResponse(workerId, driverIdDesces) =>
+		// master changed
+		case WorkerSchedulerStateResponse(workerId, driverIds) =>
 			idToWorker.get(workerId) match {
 				case Some(worker) =>
 					logInfo(s"Worker has been re-registered: " + workerId)
 					worker.state = WorkerState.ALIVE
-					driverIdDesces.foreach { case (driverId, desc, date) =>
+					driverIds.foreach { driverId =>
 						drivers.find(_.id == driverId).foreach { driver =>
 							logInfo(s"Driver $driverId exists, update it.")
 							driver.worker = Some(worker)
@@ -275,25 +270,15 @@ class MoonboxMaster(
 
 			if (canCompleteRecovery) { completeRecovery() }
 
-			// registered
-		case WorkerLatestState(workerId, driverIdDesces) =>
+		// registered
+		case WorkerLatestState(workerId, driverIds) =>
 			idToWorker.get(workerId) match {
 				case Some(worker) =>
-					driverIdDesces.foreach { case (driverId, desc, date) =>
+					driverIds.foreach { driverId =>
 						val driverMatches = worker.drivers.exists { case (id, _) => id == driverId }
 						if (!driverMatches) { // not exist
-							if (recoveryEnable && desc.isInstanceOf[SparkBatchDriverDesc]) {
-								logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
-								worker.endpoint ! KillDriver(driverId)
-							} else {
-								logInfo(s"new driver registered $driverId")
-								val driver = createDriver(desc, driverId, date)
-								persistenceEngine.addDriver(driver)
-								drivers.add(driver)
-								driver.worker = Some(worker)
-								driver.state = DriverState.UNKNOWN
-								worker.addDriver(driver)
-							}
+							logInfo(s"master doesn't recognize this driver: $driverId. So tell worker kill it.")
+							worker.endpoint ! KillDriver(driverId)
 						}
 					}
 				case None =>
@@ -315,9 +300,9 @@ class MoonboxMaster(
 					logInfo(s"Application $id registration success: $appAddress")
 				} else {
 					logWarning(s"Application $id registration failed. Attempted to re-register " +
-						s"application at same address: $appAddress")
+							s"application at same address: $appAddress")
 					appRef ! RegisterApplicationFailed(s"Application $id registration failed. " +
-						s"Attempted to re-register application at same address: $appAddress")
+							s"Attempted to re-register application at same address: $appAddress")
 				}
 			}
 
@@ -400,12 +385,70 @@ class MoonboxMaster(
 		case management: ManagementMessage =>
 			handleManagementMessage.apply(management)
 
+		case RequestSubmitDriver(driverDesc) =>
+			if (state != RecoveryState.ACTIVE) {
+				val msg = s"Current state is not active: $state. " +
+				"Can only accept driver submission in ALIVE state."
+				sender() ! SubmitDriverResponse(self, false, None, msg)
+			} else {
+				logInfo("Driver submitted " + driverDesc.toString)
+				val driver = createDriver(driverDesc)
+				persistenceEngine.addDriver(driver)
+				waitingDrivers += driver
+				drivers.add(driver)
+				schedule()
+
+				sender() ! SubmitDriverResponse(self, true, Some(driver.id),
+					s"Driver Successfully submitted as ${driver.id}")
+			}
+
+		case RequestKillDriver(driverId) =>
+			if (state != RecoveryState.ACTIVE) {
+				val msg = s"Current state is not active: $state. " +
+						"Can only kill drivers status in ALIVE state."
+				sender() ! KillDriverResponse(self, driverId, success = false, msg)
+			} else {
+				logInfo("Asked to kill driver " + driverId)
+				val driver = drivers.find(_.id == driverId)
+				driver match {
+					case Some(d) =>
+						if (waitingDrivers.contains(d)) {
+							waitingDrivers -= d
+							self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
+						} else {
+							d.worker.foreach { w =>
+								w.endpoint ! KillDriver(driverId)
+							}
+						}
+						val msg = s"Kill request for $driverId submitted."
+						logInfo(msg)
+						sender() ! KillDriverResponse(self, driverId, success = true, msg)
+					case None =>
+				}
+			}
+
+		case RequestDriverStatus(driverId) =>
+			if (state != RecoveryState.ACTIVE) {
+				val msg = s"Current state is not active: $state. " +
+						"Can only request driver status in ALIVE state."
+				sender() ! DriverStatusResponse(found = false, None, None, None, Some(new Exception(msg)))
+			} else {
+				(drivers ++ completedDrivers).find(_.id == driverId) match {
+					case Some(driver) =>
+						sender() ! DriverStatusResponse(found = true, Some(driver.state),
+							driver.worker.map(_.id), driver.worker.map(w => s"${w.host}:${w.port}"), driver.exception)
+					case None =>
+						sender() ! DriverStatusResponse(found = false, None, None, None, None)
+				}
+			}
+
 		case e => logWarning("Unknown message: " + e.toString)
+
 	}
 
 	private def handleJobMessage: Receive = {
 
-		case JobSubmit(org, username, lang, sqls, userConfig) =>
+		/*case JobSubmit(org, username, lang, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
 				sender() ! JobSubmitResponse(None, msg)
@@ -427,9 +470,9 @@ class MoonboxMaster(
 				val msg = s"Batch job successfully submitted as ${driver.id}"
 				logInfo(msg)
 				sender() ! JobSubmitResponse(Some(driver.id), msg)
-			}
+			}*/
 
-		case JobProgress(driverId) =>
+		/*case JobProgress(driverId) =>
 			if (state != RecoveryState.ACTIVE) {
 				val msg = s"Current master is not active: $state.  Can only request driver state in ACTIVE state."
 				sender() ! JobProgressState(driverId, -1, DriverState.UNKNOWN.toString, msg)
@@ -474,7 +517,7 @@ class MoonboxMaster(
 						logWarning(msg)
 						sender() ! BatchJobCancelResponse(driverId, success = false, msg)
 				}
-			}
+			}*/
 
 		case open @ OpenSession(_, _, _, config) =>
 			val requester = sender()
@@ -664,12 +707,12 @@ class MoonboxMaster(
 	private def handleManagementMessage: Receive = {
 		case ClusterInfoRequest =>
 			val clusterInfo = workers.toSeq.map { worker =>
-					Seq(
-						worker.host,
-						worker.port.toString,
-						worker.state.toString,
-						s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
-					)
+				Seq(
+					worker.host,
+					worker.port.toString,
+					worker.state.toString,
+					s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
+				)
 			}
 			sender() ! ClusterInfoResponse(clusterInfo)
 		case AppsInfoRequest =>
@@ -751,7 +794,7 @@ class MoonboxMaster(
 	// TODO
 	private def canCompleteRecovery: Boolean = {
 		workers.count(_.state == WorkerState.UNKNOWN) == 0 &&
-		apps.count(_.state == AppState.UNKNOWN) == 0
+				apps.count(_.state == AppState.UNKNOWN) == 0
 	}
 
 	private def completeRecovery(): Unit = {
@@ -838,14 +881,16 @@ class MoonboxMaster(
 		true
 	}
 
-	private def newDriverId(submitDate: Date): String = {
-		val appId = "batch-%s-%04d".format(createDateFormat.format(submitDate), nextBatchDriverNumber)
-		nextBatchDriverNumber += 1
+	private def newDriverId(tag: String, submitDate: Date): String = {
+		val appId = s"$tag-%s-%04d".format(createDateFormat.format(submitDate), nextDriverNumber)
+		nextDriverNumber += 1
 		appId
 	}
 
-	private def createDriver(desc: DriverDesc, driverId: String, submitDate: Date): DriverInfo = {
-		new DriverInfo(submitDate.getTime, driverId, desc, submitDate)
+	private def createDriver(desc: DriverDesc): DriverInfo = {
+		val now = System.currentTimeMillis()
+		val date = new Date(now)
+		new DriverInfo(now, newDriverId(desc.name, date), desc, date)
 	}
 
 	private def launchDriver(worker: WorkerInfo, driver: DriverInfo): Unit = {
@@ -870,7 +915,7 @@ class MoonboxMaster(
 				driver.worker.foreach(_.removeDriver(driver))
 				schedule()
 			case None =>
-				logWarning(s"Asked to remove unknown driver: $driverId")
+				logWarning(s"Asked to remove unknown driver: $driverId. State is $state")
 		}
 	}
 

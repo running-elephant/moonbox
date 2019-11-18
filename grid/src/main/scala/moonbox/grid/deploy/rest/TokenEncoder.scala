@@ -24,11 +24,13 @@ import java.util.UUID
 
 import moonbox.common.MbConf
 import moonbox.grid.config._
+import moonbox.grid.deploy.security.Session
 import org.json4s.DefaultFormats
+import org.json4s.JsonAST.JString
 import org.json4s.native.JsonMethods._
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 
-private[deploy] class TokenEncoder(conf: MbConf) {
+class TokenEncoder(conf: MbConf) {
 
 	private val _JWT_ALGORITHM = conf.get(JWT_ALGORITHM)
 
@@ -36,22 +38,31 @@ private[deploy] class TokenEncoder(conf: MbConf) {
 
 	private val jwtHeader = JwtHeader(JwtAlgorithm.fromString(_JWT_ALGORITHM), "JWT")
 
+	private val SEED_KEY = "seed"
 
-	def encode(org: String, username: String, expires: Long): String = {
-		val jwtClaim: JwtClaim = JwtClaim().expiresIn(expires) + ("org", org) + ("username", username) + ("seed", UUID.randomUUID().toString)
+
+	def encode(session: Session, expires: Long): String = {
+		val jwtClaim = JwtClaim().expiresIn(expires) ++ (session.toSeq:_*) + (SEED_KEY, UUID.randomUUID().toString)
 		Jwt.encode(jwtHeader, jwtClaim, _JWT_SECRET)
 	}
 
-	def decode(token: String): Option[(String, String)] = {
+	def decode(token: String): Option[Session] = {
 		implicit val formats = DefaultFormats
 		Jwt.decodeRaw(token, _JWT_SECRET, JwtAlgorithm.allHmac()).map { decoded =>
-			Some(parse(decoded).extract[Username])
-		}.getOrElse(None).map(u => (u.org, u.username))
+			val paresed = parse(decoded)
+			val JString(s) =  paresed \ Session.KEY
+
+			val sessionBuilder = Session.builder
+			Session.stringToKeys(s).foreach { key =>
+				val JString(value) = paresed \ key
+				sessionBuilder.put(key, value)
+			}
+			Some(sessionBuilder.build())
+		}.getOrElse(None)
 	}
 
 	def isvalid(token: String): Boolean = {
 		Jwt.isValid(token, _JWT_SECRET, JwtAlgorithm.allHmac())
 	}
 
-	private case class Username(org: String, username: String, seed: String)
 }

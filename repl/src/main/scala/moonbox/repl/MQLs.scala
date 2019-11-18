@@ -28,11 +28,11 @@ object MQLs {
 		"ALTER ORG name SET COMMENT comment",
 		"DROP ORG [IF EXISTS] name [CASCADE]",
 
-		"CREATE SA [IF NOT EXISTS] name IN [ORG] name IDENTIFIED BY password",
-		"RENAME SA name IN [ORG] name TO name",
-		"ALTER SA name IN [ORG] RENAME TO name",
-		"ALTER SA name IN [ORG] IDENTIFIED BY password",
-		"DROP SA [IF EXISTS] name IN [ORG] name",
+		"CREATE SA [IF NOT EXISTS] name IN [ORG] org_name IDENTIFIED BY password",
+		"RENAME SA name IN [ORG] org_name TO name",
+		"ALTER SA name IN [ORG] org_name RENAME TO name",
+		"ALTER SA name IN [ORG] org_name IDENTIFIED BY password",
+		"DROP SA [IF EXISTS] name IN [ORG] org_name",
 
 		"CREATE USER [IF NOT EXISTS] name IDENTIFIED BY password",
 		"RENAME USER name TO name",
@@ -44,15 +44,15 @@ object MQLs {
 		"REVOKE ACCOUNT, DDL, DCL FROM USER name",
 
 		"GRANT GRANT OPTION ACCOUNT, DDL, DCL TO USER name",
-		"REVOKE ACCOUNT, DDL, DCL FROM USER name",
+		"REVOKE GRANT OPTION ACCOUNT, DDL, DCL FROM USER name",
 
 		"GRANT SELECT(col, col), UPDATE(col, col), INSERT, DELETE, TRUNCATE ON [db.]table TO USER name",
 		"REVOKE SELECT(col, col), UPDATE(col, col), INSERT, DELETE, TRUNCATE ON [db.]table FROM USER name",
 
-		"CREATE DATABASE [IF NOT EXISTS] name OPTIONS(key 'value', key 'value')",
+		"CREATE DATABASE [IF NOT EXISTS] name [COMMENT comment]",
 		"RENAME DATABASE name TO name",
 		"ALTER DATABASE name RENAME TO name",
-		"ALTER DATABASE SET COMMENT comment",
+		"ALTER DATABASE name SET COMMENT comment",
 		"DROP DATABASE [IF EXISTS] name [CASCADE]",
 
 		"MOUNT TABLE [db.]name OPTIONS(key 'value', key 'value')",
@@ -63,7 +63,8 @@ object MQLs {
 
 		"MOUNT DATABASE [IF NOT EXISTS] name OPTIONS(key 'value', key 'value')",
 		"ALTER DATABASE name SET OPTIONS(key 'value', key 'value')",
-		"UNMOUNT DATABASE [IF EXISTS] name",
+		"UNMOUNT DATABASE [IF EXISTS] name [CASCADE]",
+		"REFRESH DATABASE name",
 
 		"CREATE [OR REPLACE] VIEW [db.]name [COMMENT comment] AS SELECT ...",
 		"RENAME VIEW [db.]name TO name",
@@ -72,7 +73,7 @@ object MQLs {
 		"ALTER VIEW [db.]name AS SELECT ...",
 		"DROP VIEW [IF EXISTS] [db.]name",
 
-		"CREATE PROC [IF NOT EXISTS] name OPTIONS(key 'value') AS (mql;mql ...)",
+		"CREATE PROC [IF NOT EXISTS] name USING {MQL | HQL} AS (mql;mql ...)",
 		"RENAME PROC name TO name",
 		"ALTER PROC name RENAME TO name",
 		"ALTER PROC name AS (mql;mql ...)",
@@ -83,12 +84,11 @@ object MQLs {
 		"ALTER EVENT name RENAME TO name",
 		"ALTER DEFINER definer EVENT name",
 		"ALTER EVENT name ON SCHEDULE AT expression",
-		"ALTER EVENT name [ENABLE | DISABLE]",
+		"ALTER EVENT name {ENABLE | DISABLE}",
 		"DROP EVENT [IF EXITS] name",
 
 		"SHOW DATABASES [LIKE pattern]",
 		"SHOW TABLES [IN db][LIKE pattern]",
-		"SHOW VIEWS [IN db][LIKE pattern]",
 		"SHOW FUNCTIONS [IN db][LIKE pattern]",
 		"SHOW USERS [LIKE pattern]",
 		"SHOW PROCEDURES [LIKE pattern]",
@@ -96,7 +96,6 @@ object MQLs {
 
 		"DESC DATABASE name",
 		"DESC [TABLE] [db.]name",
-		"DESC VIEW [db.]name",
 		"DESC FUNCTION [db.]name",
 		"DESC USER name",
 		"DESC EVENT name",

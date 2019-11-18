@@ -70,7 +70,7 @@
         </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-client_2.11</artifactId>
+            <artifactId>moonbox-jdbc_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

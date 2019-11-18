@@ -21,16 +21,15 @@
     <modules>
         <module>common</module>
         <module>network</module>
+        <module>protocol</module>
         <module>launcher</module>
         <module>testkit</module>
-        <module>protocol</module>
         <module>catalog</module>
         <module>catalyst</module>
         <module>core</module>
         <module>grid</module>
-        <module>client</module>
-        <module>repl</module>
         <module>jdbc</module>
+        <module>repl</module>
         <module>thriftserver</module>
 
         <module>external/spark-hbase-connector</module>

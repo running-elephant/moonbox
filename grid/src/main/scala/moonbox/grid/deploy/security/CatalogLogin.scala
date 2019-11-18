@@ -21,22 +21,39 @@
 package moonbox.grid.deploy.security
 
 import moonbox.catalog.{JdbcCatalog, PasswordEncryptor}
-import moonbox.common.MbConf
+import moonbox.common.{MbConf, MbLogging}
 
-class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login {
+class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login with MbLogging {
 
-	Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
-		override def run(): Unit = {
-			if (catalog != null) {
-				catalog.close()
-			}
+	override def doLogin(username: String, password: String): Session = {
+		val (org, user) = parseUsername(username)
+		catalog.getUserOption(org, user) match {
+			case Some(catalogUser) =>
+				if (catalogUser.password == PasswordEncryptor.encryptSHA(password))  {
+					val orgId = catalog.organizationId(org)
+					val userId = catalog.userId(orgId, user)
+					Session.builder
+							.put("org", org)
+							.put("orgId", s"$orgId")
+							.put("user", user)
+							.put("userId", s"$userId")
+							.build()
+				}
+				else {
+					throw new PasswordNotMatchException
+				}
+			case _ => throw new UserNotFoundException(username)
 		}
-	}))
+	}
 
-	override def doLogin(org: String, username: String, password: String): Boolean = {
-		catalog.getUserOption(org, username) match {
-			case Some(user) if user.password == PasswordEncryptor.encryptSHA(password) => true
-			case _ => false
+	private def parseUsername(username: String): (String, String) = {
+		val orgUser = username.split("@")
+		if (orgUser.length != 2) {
+			throw new UsernameFormatException(username)
+		} else {
+			val org = orgUser(0)
+			val user = orgUser(1)
+			(org, user)
 		}
 	}
 }

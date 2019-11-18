@@ -1,3 +1,4 @@
+/*
 package moonbox.jdbc
 
 import java.io.{InputStream, Reader}
@@ -213,3 +214,4 @@ class MoonboxPrepareStatement(statement: Statement, sql: String) extends Prepare
   override def isWrapperFor(iface: Class[_]): Boolean =
     iface != null && iface.isAssignableFrom(getClass)
 }
+*/

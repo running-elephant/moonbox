@@ -26,8 +26,8 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.types.{StructField, StructType}
 
 trait MbRunnableCommand extends MbCommand {
-	final def outputSchema: String = {
-		StructType(output.map(a => StructField(a.name, a.dataType, a.nullable, a.metadata))).json
+	final def outputSchema: StructType = {
+		StructType(output.map(a => StructField(a.name, a.dataType, a.nullable, a.metadata)))
 	}
 	def output: Seq[Attribute] = Seq.empty
 	def run(mbSession: MoonboxSession): Seq[Row]

@@ -30,6 +30,7 @@ trait DriverDesc {
 	def appResource: String
 	def toAppArgs: Seq[String]
 	def toConf: Map[String, String]
+	def name: String = ""
 }
 
 trait LongRunDriverDesc extends DriverDesc
