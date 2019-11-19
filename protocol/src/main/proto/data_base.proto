@@ -7,6 +7,47 @@ option java_multiple_files = true;
 
 import public "common.proto";
 
+enum DataType {
+    BYTE = 0;
+    BOOLEAN = 1;
+    INT = 2;
+    SHORT = 3;
+    LONG = 4;
+    FLOAT = 5;
+    DOUBLE = 6;
+    DECIMAL = 7;
+    CHAR = 8;
+    VARCHAR = 9;
+    STRING = 10;
+    BINARY = 11;
+    DATE = 12;
+    TIMESTAMP = 13;
+    NULL = 14;
+    ARRAY = 15;
+    STRUCT = 16;
+    MAP = 17;
+    OBJECT = 18;
+    UNKNOWN_DATA = 999;
+}
+
+message ColumnTypeAttributesPB {
+    int32 precision = 1;
+    int32 scale = 2;
+}
+
+message ColumnSchemaPB {
+    string name = 1;
+    DataType data_type = 2;
+    bool nullable = 3;
+    string metadata = 4;
+    ColumnTypeAttributesPB attribute= 5;
+}
+
+message SchemaPB {
+    repeated ColumnSchemaPB columns = 1;
+}
+
+
 message ResultDataPB {
     SchemaPB schema = 1;
     repeated RowPB row = 2;
