@@ -53,9 +53,7 @@ import org.apache.hive.service.server.ThreadFactoryWithGarbageCleanup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 /**
@@ -447,6 +445,45 @@ public class SessionManager extends CompositeService {
             return Integer.MIN_VALUE;
         }
     };
+
+    public static void setQueryTimeout(Integer readTimeout) {
+        threadLocalQueryTimeout.set(readTimeout);
+    }
+
+    public static void clearQueryTimeout() {
+        threadLocalQueryTimeout.remove();
+    }
+
+    public static Integer getQueryTimeout() {
+        return threadLocalQueryTimeout.get();
+    }
+
+    private static ThreadLocal<Integer> threadLocalQueryTimeout = new ThreadLocal<Integer>() {
+        @Override
+        protected Integer initialValue() {
+            return Integer.MIN_VALUE;
+        }
+    };
+
+    public static void setParameterMap(HashMap<String, String> parameterMap) {
+        threadLocalParameterMap.set(parameterMap);
+    }
+
+    public static HashMap<String, String> getParameterMap() {
+        return threadLocalParameterMap.get();
+    }
+
+    public static void clearParameterMap() {
+        threadLocalParameterMap.remove();
+    }
+
+    public static ThreadLocal<HashMap<String, String>> threadLocalParameterMap = new ThreadLocal<HashMap<String, String>>() {
+        @Override
+        protected HashMap<String, String> initialValue() {
+            return new HashMap<>();
+        }
+    };
+
   /*---------------- moonbox code: end ----------------*/
 
     public static void setProxyUserName(String userName) {
