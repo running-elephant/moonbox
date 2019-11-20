@@ -1,18 +1,9 @@
 package moonbox.jdbc;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import moonbox.jdbc.util.Utils;
-import moonbox.network.TransportContext;
-import moonbox.network.client.TransportClient;
-import moonbox.network.client.TransportClientFactory;
-import moonbox.network.server.NoOpRpcHandler;
-import moonbox.network.util.JavaUtils;
-import moonbox.protocol.protobuf.AccessRequestPB;
-import moonbox.protocol.protobuf.AccessResponsePB;
-import moonbox.protocol.protobuf.HostPortPB;
 
 import java.sql.*;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -21,63 +12,41 @@ public class MoonboxConnection implements Connection {
   private static final String DEFAULT_MASTER_HOST = "localhost";
   private static final int DEFAULT_MASTER_PORT = 10010;
   private static final int DEFAULT_CONNECT_TIMEOUT = 20 * 1000;
-  private final TransportClientFactory clientFactory;
+  private static final String DEFAULT_DATABASE = "default";
   private Properties info;
-  private TransportContext context;
-  private TransportClient client;
-  private String database = "default";
+  private MoonboxClient client;
   private String masterHost;
   private int masterPort;
   private int connectTimeout;
+  private String database;
 
   private DatabaseMetaData dbmd;
 
   public MoonboxConnection(String url, Properties info) throws SQLException {
     this.info = Utils.parseURL(url, info);
-    ;
+    this.database = this.info.getProperty("database", DEFAULT_DATABASE);
     this.masterHost = this.info.getProperty("host", DEFAULT_MASTER_HOST);
     this.masterPort = Integer.valueOf(this.info.getProperty("port", String.valueOf(DEFAULT_MASTER_PORT)));
     this.connectTimeout = Integer.valueOf(this.info.getProperty("connectTimeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT)));
-    this.context = new TransportContext(new NoOpRpcHandler(), true);
-    this.clientFactory = context.createClientFactory();
     this.client = createClient();
     this.dbmd = getMetaData(false);
   }
 
-  private TransportClient createClient() throws SQLException {
-    TransportClient clientToMaster = null;
+  private MoonboxClient createClient() throws SQLException {
+    String user = this.info.getProperty("user");
+    String password = this.info.getProperty("password");
+    String appType = this.info.getProperty("appType");
+    Map<String, String> config = new HashMap<>();
+    config.put("database", database);
     try {
-      clientToMaster = clientFactory.createClient(masterHost, masterPort, connectTimeout);
-
-      AccessRequestPB accessRequestPB =
-          AccessRequestPB.newBuilder()
-              .setUsername(getClientInfo("user"))
-              .setPassword(getClientInfo("password"))
-              .setAppType(getClientInfo("appType"))
-              .build();
-      ByteBuf byteBuf = clientToMaster.sendSync(Unpooled.wrappedBuffer(accessRequestPB.toByteArray()), connectTimeout);
-      AccessResponsePB accessResponsePB =
-          AccessResponsePB
-              .getDefaultInstance()
-              .getParserForType()
-              .parseFrom(JavaUtils.byteBufToByteArray(byteBuf));
-
-      HostPortPB hostPort = accessResponsePB.getHostPort();
-      String host = hostPort.getHost();
-      int port = hostPort.getPort();
-      this.info.setProperty("engineHost", host);
-      this.info.setProperty("enginePort", String.valueOf(port));
-      return clientFactory.createClient(host, port, connectTimeout);
+      return new MoonboxClient(masterHost,
+          masterPort, connectTimeout, user, password, appType, config);
     } catch (Exception e) {
       throw new SQLException(e);
-    } finally {
-      if (clientToMaster != null) {
-        clientToMaster.close();
-      }
     }
   }
 
-  TransportClient getClient() {
+  MoonboxClient getClient() {
     return this.client;
   }
 
@@ -138,7 +107,7 @@ public class MoonboxConnection implements Connection {
 
   @Override
   public boolean isClosed() throws SQLException {
-    return !client.isActive();
+    return client.isClose();
   }
 
   @Override
@@ -154,7 +123,7 @@ public class MoonboxConnection implements Connection {
   }
 
   public void checkClosed() throws SQLException {
-    if (!this.client.isActive()) {
+    if (this.client.isClose()) {
       throw new SQLException("No operations allowed after connection closed.");
     }
   }

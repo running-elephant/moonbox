@@ -13,7 +13,7 @@ import java.util.Stack;
 
 public class Utils {
 
-  public static ByteBuf messageToBytebuf(Message message) {
+  public static ByteBuf messageToByteBuf(Message message) {
     return Unpooled.wrappedBuffer(message.toByteArray());
   }
 

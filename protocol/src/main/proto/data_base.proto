@@ -66,22 +66,26 @@ message Value {
         bytes byte_array = 5;  // Array[Byte] and other java objects
         double double_value = 6;
         float float_value = 7;
-        Decimal big_decimal = 8;
-        Timestamp timestamp = 9;
-        Struct struct_value = 10;
-        ListValue list_value = 11;
-        NullValue null_value = 12;
+        DecimalPB big_decimal = 8;
+        Struct struct_value = 9;
+        Array list_value = 10;
+        NullValue null_value = 11;
     }
 }
 
-message Decimal {
-    bytes value = 1;
-    int32 scale = 2;
-    int32 precision = 3;
+message DecimalPB {
+    oneof under {
+        int64 long = 1;
+        IntegerPB big_integer = 2;
+    }
+}
+
+message IntegerPB {
+    repeated int32 = 1;
 }
 
 message Struct {
-    map<string, Value> fields = 1;
+    repeated Value fields = 1;
 }
 
 message ListValue {
@@ -91,9 +95,4 @@ message ListValue {
 enum NullValue {
     // Null value.
     NULL_VALUE = 0;
-}
-
-message Timestamp {
-    int64 seconds = 1;
-    int32 nanos = 2;
 }

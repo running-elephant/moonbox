@@ -1,15 +1,10 @@
 package moonbox.jdbc;
 
 
-import com.google.common.util.concurrent.SettableFuture;
-import io.netty.buffer.ByteBuf;
 import moonbox.jdbc.util.Utils;
-import moonbox.network.client.ResponseCallback;
-import moonbox.protocol.protobuf.*;
+import moonbox.protocol.protobuf.ExecutionResultPB;
 
 import java.sql.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MoonboxStatement implements Statement {
   private static final int DEFAULT_QUERY_TIMEOUT = 60 * 60;// 1h
@@ -21,9 +16,6 @@ public class MoonboxStatement implements Statement {
   private int maxRows;
   private int fetchSize;
   private int queryTimeout;
-  private String sessionId;
-  private SettableFuture<ByteBuf> result;
-  private AtomicBoolean executing = new AtomicBoolean(false);
 
   MoonboxStatement(MoonboxConnection conn, String database) throws SQLException {
     this.conn = conn;
@@ -31,73 +23,14 @@ public class MoonboxStatement implements Statement {
     this.maxRows = Integer.valueOf(this.conn.getClientInfo().getProperty("maxRows", String.valueOf(DEFAULT_MAX_ROWS)));
     this.fetchSize = Integer.valueOf(this.conn.getClientInfo().getProperty("fetchSize", String.valueOf(DEFAULT_FETCH_SIZE)));
     this.queryTimeout = Integer.valueOf(this.conn.getClientInfo().getProperty("queryTimeout", String.valueOf(DEFAULT_QUERY_TIMEOUT)));
-    this.sessionId = openSession();
-  }
-
-  private String openSession() throws SQLException {
-    OpenSessionRequestPB openSessionRequestPB = OpenSessionRequestPB.newBuilder().build();
-    ByteBuf byteBuf = conn.getClient().sendSync(Utils.messageToBytebuf(openSessionRequestPB), conn.getConnectTimeout());
-    String sessionId;
-    try {
-      OpenSessionResponsePB openSessionResponsePB =
-          OpenSessionResponsePB
-              .getDefaultInstance()
-              .getParserForType()
-              .parseFrom(Utils.byteBufToByteArray(byteBuf));
-      sessionId = openSessionResponsePB.getSessionId();
-    } catch (Exception e) {
-      throw new SQLException(e);
-    }
-    return sessionId;
   }
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
     synchronized (this) {
-      result = SettableFuture.create();
-      ExecutionRequestPB requestPB =
-          ExecutionRequestPB.newBuilder()
-              .setFetchSize(fetchSize)
-              .setMaxRows(maxRows)
-              .addAllSqls(Utils.splitSQLs(sql))
-              .build();
-
-      conn.getClient().send(Utils.messageToBytebuf(requestPB), new ResponseCallback() {
-        @Override
-        public void onSuccess(ByteBuf response) {
-          result.set(response);
-        }
-
-        @Override
-        public void onFailure(Throwable e) {
-          result.setException(e);
-        }
-      });
-
-      executing.compareAndSet(false, true);
-
-      ByteBuf byteBuf;
-      try {
-        byteBuf = result.get(queryTimeout, TimeUnit.SECONDS);
-      } catch (Exception e) {
-        cancel();
-        throw new SQLException(e);
-      } finally {
-        executing.compareAndSet(true, false);
-      }
-      ExecutionResultPB executionResultPB;
-      try {
-        executionResultPB = ExecutionResultPB.getDefaultInstance().getParserForType().parseFrom(Utils.byteBufToByteArray(byteBuf));
-      } catch (Exception e) {
-        throw new SQLException(e);
-      }
-      return resultConvert(executionResultPB);
+      ExecutionResultPB execute = conn.getClient().execute(Utils.splitSQLs(sql), maxRows, fetchSize, queryTimeout);
+      return new MoonboxResultSet(conn, this, new MoonboxResult(conn, this, execute));
     }
-
-  }
-
-  private ResultSet resultConvert(ExecutionResultPB resultPB) {
-    return new MoonboxResultSet();
   }
 
   @Override
@@ -107,8 +40,7 @@ public class MoonboxStatement implements Statement {
 
   @Override
   public void close() throws SQLException {
-    CloseSessionRequestPB close = CloseSessionRequestPB.newBuilder().setSessionId(sessionId).build();
-    conn.getClient().sendSync(Utils.messageToBytebuf(close), conn.getConnectTimeout());
+
   }
 
   @Override
@@ -148,8 +80,7 @@ public class MoonboxStatement implements Statement {
 
   @Override
   public void cancel() throws SQLException {
-    ExecutionCancelRequestPB cancelRequestPB = ExecutionCancelRequestPB.newBuilder().setSessionId(sessionId).build();
-    conn.getClient().sendSync(Utils.messageToBytebuf(cancelRequestPB), conn.getConnectTimeout());
+    conn.getClient().cancel();
   }
 
   @Override
