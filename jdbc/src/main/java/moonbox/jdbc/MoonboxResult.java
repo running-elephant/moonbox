@@ -3,8 +3,11 @@ package moonbox.jdbc;
 import moonbox.protocol.protobuf.*;
 
 import java.math.BigDecimal;
-import java.sql.*;
+import java.math.BigInteger;
+import java.sql.Date;
+import java.sql.JDBCType;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +16,7 @@ import java.util.NoSuchElementException;
 public class MoonboxResult {
   private MoonboxConnection conn;
   private MoonboxStatement statement;
-  private SchemaPB schema;
+  private StructTypePB schema;
   private Map<String, Integer> columnNameToIndex;
   private boolean hasMoreData;
   private List<RowPB> currentData;
@@ -26,14 +29,15 @@ public class MoonboxResult {
     this.statement = statement;
     this.hasMoreData = resultPB.getHasMore();
     this.schema = resultPB.getData().getSchema();
+    this.columnCount = schema.getFieldsCount();
     this.columnNameToIndex = new HashMap<>();
 
-    for(int i=0; i < schema.getColumnsCount(); i++) {
-      columnNameToIndex.put(schema.getColumns(i).getName(), i);
+    for(int i=0; i < columnCount; i++) {
+      columnNameToIndex.put(schema.getFields(i).getName(), i);
     }
 
-    this.currentData = resultPB.getData().getRowList();
-    this.columnCount = schema.getColumnsCount();
+    this.currentData = resultPB.getData().getRowsList();
+
   }
 
   public boolean next() throws Exception {
@@ -53,7 +57,7 @@ public class MoonboxResult {
     checkClosed();
     ExecutionResultPB next = conn.getClient().next(statement.getQueryTimeout());
     this.hasMoreData = next.getHasMore();
-    this.currentData = next.getData().getRowList();
+    this.currentData = next.getData().getRowsList();
     this.rowIndex = 0;
   }
 
@@ -67,11 +71,6 @@ public class MoonboxResult {
     checkColumnName(columnName);
     return columnNameToIndex.get(columnName);
   }
-
-  public SchemaPB getSchema() {
-    return this.schema;
-  }
-
 
   private void checkColumnIndex(int columnIndex) {
     if (columnIndex < 1 || columnIndex > columnCount) {
@@ -93,123 +92,167 @@ public class MoonboxResult {
 
   public String getColumnTypeName(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return JDBCType.valueOf(convertTypeToSQLType(schema.getColumns(columnIndex).getDataType())).getName();
+    return JDBCType.valueOf(convertTypeToSQLType(schema.getFields(columnIndex).getDataType())).getName();
   }
 
   public String getColumnName(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return schema.getColumns(columnIndex).getName();
+    return schema.getFields(columnIndex).getName();
   }
 
   public int getColumnType(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return convertTypeToSQLType(schema.getColumns(columnIndex).getDataType());
+    return convertTypeToSQLType(schema.getFields(columnIndex).getDataType());
   }
 
-  public static Object[] convertRow(RowPB row, SchemaPB schema) {
-    Object[] objects = new Object[row.getFieldCount()];
-    for (int i = 0; i < row.getFieldCount(); i++) {
-      objects[i] = convertValue(row.getField(i), schema.getColumns(i));
+  public int getColumnCount() {
+    return columnCount;
+  }
+
+  public int getPrecision(int column) {
+    checkColumnIndex(column);
+    DataTypePB dataType = schema.getFields(column).getDataType();
+    if (dataType.hasDecimalType()) {
+      return dataType.getDecimalType().getPrecision();
+    } else {
+      return 0;
+    }
+  }
+
+  public int getScale(int column) {
+    checkColumnIndex(column);
+    DataTypePB dataType = schema.getFields(column).getDataType();
+    if (dataType.hasDecimalType()) {
+      return dataType.getDecimalType().getScale();
+    } else {
+      return 0;
+    }
+  }
+
+  public static Object[] convertRow(RowPB row, StructTypePB schema) {
+    Object[] objects = new Object[row.getFieldsCount()];
+    for (int i = 0; i < row.getFieldsCount(); i++) {
+      objects[i] = convertValue(row.getFields(i), schema.getFields(i).getDataType());
     }
     return objects;
   }
 
-  public static Object convertValue(Value value, ColumnSchemaPB columnSchemaPB) {
-    switch (columnSchemaPB.getDataType()) {
-      case BYTE:
-        return (byte) value.getIntValue();
-      case BOOLEAN:
-        return value.getBooleanValue();
-      case INT:
-        return value.getIntValue();
-      case SHORT:
-        return (short) value.getIntValue();
-      case LONG:
-        return value.getLongValue();
-      case FLOAT:
-        return value.getFloatValue();
-      case DOUBLE:
-        return value.getDoubleValue();
-      case DECIMAL:
-        Decimal bigDecimal = value.getBigDecimal();
-        long longValue = bigDecimal.getValue();
-        int scale = columnSchemaPB.getAttribute().getScale();
+  public static Object convertValue(Value value, DataTypePB dt) {
+    if (dt.hasByteType()) {
+      return (byte) value.getIntValue();
+    } else if (dt.hasShortType()) {
+      return (short) value.getIntValue();
+    } else if (dt.hasIntegerType()) {
+      return value.getIntValue();
+    } else if (dt.hasLongType()) {
+      return value.getLongValue();
+    } else if (dt.hasFloatType()) {
+      return value.getFloatValue();
+    } else if (dt.hasDoubleType()) {
+      return value.getDoubleValue();
+    } else if (dt.hasDecimalType()) {
+      BigDecimalPB bigDecimal = value.getBigDecimalValue();
+      int scale = dt.getDecimalType().getScale();
+      if (bigDecimal.hasBigInteger()) {
+        return new BigDecimal(new BigInteger(bigDecimal.getBigInteger().getIntVals().toByteArray()), scale);
+      } else {
+        long longValue = bigDecimal.getLong();
         return BigDecimal.valueOf(longValue, scale);
-      case CHAR:
-        return (char) value.getIntValue();
-      case VARCHAR:
-        return value.getStringValue();
-      case STRING:
-        return value.getStringValue();
-      case BINARY:
-        return value.getByteArray().toByteArray();
-      case DATE:
-        long date = value.getLongValue();
-        return new Date(date);
-      case TIMESTAMP:
-        long time = value.getLongValue();
-        return new Timestamp(time);
-      case NULL:
-        return null;
-      case ARRAY:
-        ListValue listValue = value.getListValue();
-        columnSchemaPB.
-        return ;
-      case STRUCT:
-        return Types.STRUCT;
-      case MAP:
-        return Types.JAVA_OBJECT;
-      case OBJECT:
-        return Types.JAVA_OBJECT;
-      case UNKNOWN_DATA:
-      default:
-        return null;
+      }
+    } else if (dt.hasBooleanType()) {
+      return value.getBooleanValue();
+    } else if (dt.hasCharType()) {
+      return (char) value.getIntValue();
+    } else if (dt.hasVarcharType()) {
+      return value.getStringValue();
+    } else if (dt.hasStringType()) {
+      return value.getStringValue();
+    } else if (dt.hasDateType()) {
+      long date = value.getLongValue();
+      return new Date(date);
+    } else if (dt.hasTimestampType()) {
+      long time = value.getLongValue();
+      return new Timestamp(time);
+    } else if (dt.hasBinaryType()) {
+      return value.getBytesValue().toByteArray();
+    } else if (dt.hasArrayType()) { // TODO
+      DataTypePB elementType = dt.getArrayType().getElementType();
+      ArrayPB arrayValue = value.getArrayValue();
+      int valuesCount = arrayValue.getValuesCount();
+      Object[] objects = new Object[valuesCount];
+      for (int i = 0; i < valuesCount; i++) {
+        objects[i] = convertValue(arrayValue.getValues(i), elementType);
+      }
+      return objects;
+    } else if (dt.hasMapType()) {
+      Map<String, Value> valuesMap = value.getMapValue().getValuesMap();
+      DataTypePB keyType = dt.getMapType().getKeyType();
+      DataTypePB valueType = dt.getMapType().getValueType();
+      Map<String, Object> objects = new HashMap<>();
+      for (Map.Entry<String, Value> entry: valuesMap.entrySet()) {
+        objects.put(entry.getKey(), convertValue(entry.getValue(), valueType));
+      }
+      return objects;
+    } else if (dt.hasStrucType()) {
+      StructTypePB strucType = dt.getStrucType();
+      int fieldsCount = strucType.getFieldsCount();
+      StructPB structValue = value.getStructValue();
+
+      Object[] objects = new Object[fieldsCount];
+      for (int i = 0; i < fieldsCount; i++) {
+        objects[i] = convertValue(structValue.getFields(i), strucType.getFields(i).getDataType());
+      }
+      return objects;
+    } else if (dt.hasObjectType()) { // TODO
+      return value.getBytesValue().toByteArray();
+    } else if (dt.hasNullType()) {
+      return null;
+    } else {
+      throw new IllegalArgumentException("Unknown dataType: " + dt.getTypeName());
     }
   }
 
-  public static int convertTypeToSQLType(DataType dataType) {
-    switch (dataType) {
-      case BYTE:
-        return Types.CHAR;
-      case BOOLEAN:
-        return Types.BOOLEAN;
-      case INT:
-        return Types.INTEGER;
-      case SHORT:
-        return Types.SMALLINT;
-      case LONG:
-        return Types.BIGINT;
-      case FLOAT:
-        return Types.FLOAT;
-      case DOUBLE:
-        return Types.DOUBLE;
-      case DECIMAL:
-        return Types.DECIMAL;
-      case CHAR:
-        return Types.CHAR;
-      case VARCHAR:
-        return Types.VARCHAR;
-      case STRING:
-        return Types.VARCHAR;
-      case BINARY:
-        return Types.BINARY;
-      case DATE:
-        return Types.DATE;
-      case TIMESTAMP:
-        return Types.TIMESTAMP;
-      case NULL:
-        return Types.NULL;
-      case ARRAY:
-        return Types.ARRAY;
-      case STRUCT:
-        return Types.STRUCT;
-      case MAP:
-        return Types.JAVA_OBJECT;
-      case OBJECT:
-        return Types.JAVA_OBJECT;
-      case UNKNOWN_DATA:
-      default:
-        return Types.OTHER;
+  public static int convertTypeToSQLType(DataTypePB dt) {
+    if (dt.hasByteType()) {
+      return Types.CHAR;
+    } else if (dt.hasShortType()) {
+      return Types.SMALLINT;
+    } else if (dt.hasIntegerType()) {
+      return Types.INTEGER;
+    } else if (dt.hasLongType()) {
+      return Types.BIGINT;
+    } else if (dt.hasFloatType()) {
+      return Types.FLOAT;
+    } else if (dt.hasDoubleType()) {
+      return Types.DOUBLE;
+    } else if (dt.hasDecimalType()) {
+      return Types.DECIMAL;
+    } else if (dt.hasBooleanType()) {
+      return Types.BOOLEAN;
+    } else if (dt.hasCharType()) {
+      return Types.CHAR;
+    } else if (dt.hasVarcharType()) {
+      return Types.VARCHAR;
+    } else if (dt.hasStringType()) {
+      return Types.VARCHAR;
+    } else if (dt.hasDateType()) {
+      return Types.DATE;
+    } else if (dt.hasTimestampType()) {
+      return Types.TIMESTAMP;
+    } else if (dt.hasBinaryType()) {
+      return Types.BINARY;
+    } else if (dt.hasArrayType()) {
+      return Types.ARRAY;
+    } else if (dt.hasMapType()) {
+      return Types.JAVA_OBJECT;
+    } else if (dt.hasStrucType()) {
+      return Types.STRUCT;
+    } else if (dt.hasObjectType()) {
+      return Types.JAVA_OBJECT;
+    } else if (dt.hasNullType()) {
+      return Types.NULL;
+    } else {
+      throw new IllegalArgumentException("Unknown dataType: " + dt.getTypeName());
     }
   }
 

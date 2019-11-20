@@ -4,9 +4,19 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 public class MoonboxResultSetMetaData implements ResultSetMetaData {
+  private MoonboxConnection connection;
+  private MoonboxStatement statement;
+  private MoonboxResult result;
+
+  MoonboxResultSetMetaData(MoonboxConnection connection, MoonboxStatement statement, MoonboxResult result) {
+    this.connection = connection;
+    this.statement = statement;
+    this.result = result;
+  }
+
   @Override
   public int getColumnCount() throws SQLException {
-    return 0;
+    return result.getColumnCount();
   }
 
   @Override
@@ -46,27 +56,27 @@ public class MoonboxResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getColumnLabel(int column) throws SQLException {
-    return null;
+    return result.getColumnName(column);
   }
 
   @Override
   public String getColumnName(int column) throws SQLException {
-    return null;
+    return result.getColumnName(column);
   }
 
   @Override
   public String getSchemaName(int column) throws SQLException {
-    return null;
+    return connection.getSchema();
   }
 
   @Override
   public int getPrecision(int column) throws SQLException {
-    return 0;
+    return result.getPrecision(column);
   }
 
   @Override
   public int getScale(int column) throws SQLException {
-    return 0;
+    return getScale(column);
   }
 
   @Override
@@ -76,22 +86,22 @@ public class MoonboxResultSetMetaData implements ResultSetMetaData {
 
   @Override
   public String getCatalogName(int column) throws SQLException {
-    return null;
+    return connection.getCatalog();
   }
 
   @Override
   public int getColumnType(int column) throws SQLException {
-    return 0;
+    return result.getColumnType(column);
   }
 
   @Override
   public String getColumnTypeName(int column) throws SQLException {
-    return null;
+    return result.getColumnTypeName(column);
   }
 
   @Override
   public boolean isReadOnly(int column) throws SQLException {
-    return false;
+    return true;
   }
 
   @Override

@@ -1,14 +1,8 @@
 package moonbox.jdbc;
 
-import com.google.protobuf.ByteString;
-import moonbox.protocol.protobuf.Decimal;
-
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.net.URL;
 import java.sql.*;
 import java.util.Calendar;
@@ -116,6 +110,7 @@ public class MoonboxResultSet implements ResultSet {
     throw new UnsupportedOperationException("getAsciiStream");
   }
 
+  @Deprecated
   @Override
   public InputStream getUnicodeStream(int columnIndex) throws SQLException {
     throw new UnsupportedOperationException("getUnicodeStream");
@@ -196,6 +191,7 @@ public class MoonboxResultSet implements ResultSet {
     return getAsciiStream(result.getIndex(columnLabel));
   }
 
+  @Deprecated
   @Override
   public InputStream getUnicodeStream(String columnLabel) throws SQLException {
     return getUnicodeStream(result.getIndex(columnLabel));
@@ -223,7 +219,7 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
-    return null;
+    return new MoonboxResultSetMetaData(conn,statement, result);
   }
 
   @Override
@@ -251,11 +247,13 @@ public class MoonboxResultSet implements ResultSet {
     throw new UnsupportedOperationException("updateClob");
   }
 
+  @Deprecated
   @Override
   public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
     return result.get(columnIndex);
   }
 
+  @Deprecated
   @Override
   public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
     return getBigDecimal(findColumn(columnLabel));
@@ -603,107 +601,107 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public Ref getRef(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("moveToCurrentRow");
+    throw new UnsupportedOperationException("getRef");
   }
 
   @Override
   public Blob getBlob(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("moveToCurrentRow");
+    throw new UnsupportedOperationException("getBlob");
   }
 
   @Override
   public Clob getClob(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("moveToCurrentRow");
+    throw new UnsupportedOperationException("getClob");
   }
 
   @Override
   public Array getArray(int columnIndex) throws SQLException {
-    return result.get();
+    return result.get(columnIndex);
   }
 
   @Override
   public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getObject");
   }
 
   @Override
   public Ref getRef(String columnLabel) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getRef");
   }
 
   @Override
   public Blob getBlob(String columnLabel) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getBlob");
   }
 
   @Override
   public Clob getClob(String columnLabel) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getClob");
   }
 
   @Override
   public Array getArray(String columnLabel) throws SQLException {
-    return null;
+    return result.get(findColumn(columnLabel));
   }
 
   @Override
   public Date getDate(int columnIndex, Calendar cal) throws SQLException {
-    return null;
+    return result.get(columnIndex);
   }
 
   @Override
   public Date getDate(String columnLabel, Calendar cal) throws SQLException {
-    return null;
+    return result.get(findColumn(columnLabel));
   }
 
   @Override
   public Time getTime(int columnIndex, Calendar cal) throws SQLException {
-    return null;
+    return new Time(result.<Date>get(columnIndex).getTime());
   }
 
   @Override
   public Time getTime(String columnLabel, Calendar cal) throws SQLException {
-    return null;
+    return new Time(result.<Date>get(findColumn(columnLabel)).getTime());
   }
 
   @Override
   public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-    return null;
+    return result.get(columnIndex);
   }
 
   @Override
   public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
-    return null;
+    return result.get(findColumn(columnLabel));
   }
 
   @Override
   public URL getURL(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getURL");
   }
 
   @Override
   public URL getURL(String columnLabel) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getURL");
   }
 
   @Override
   public void updateRef(int columnIndex, Ref x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateRef");
   }
 
   @Override
   public void updateRef(String columnLabel, Ref x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateRef");
   }
 
   @Override
   public void updateBlob(int columnIndex, Blob x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
   public void updateBlob(String columnLabel, Blob x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
@@ -718,32 +716,32 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public void updateArray(int columnIndex, Array x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateArray");
   }
 
   @Override
   public void updateArray(String columnLabel, Array x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateArray");
   }
 
   @Override
   public RowId getRowId(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getRowId");
   }
 
   @Override
   public RowId getRowId(String columnLabel) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getRowId");
   }
 
   @Override
   public void updateRowId(int columnIndex, RowId x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateRowId");
   }
 
   @Override
   public void updateRowId(String columnLabel, RowId x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateRowId");
   }
 
   @Override
@@ -758,122 +756,122 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public void updateNString(int columnIndex, String nString) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNString");
   }
 
   @Override
   public void updateNString(String columnLabel, String nString) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNString");
   }
 
   @Override
   public void updateNClob(int columnIndex, NClob nClob) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public void updateNClob(String columnLabel, NClob nClob) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public NClob getNClob(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getNClob");
   }
 
   @Override
   public NClob getNClob(String columnLabel) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getNClob");
   }
 
   @Override
   public SQLXML getSQLXML(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getSQLXML");
   }
 
   @Override
   public SQLXML getSQLXML(String columnLabel) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getSQLXML");
   }
 
   @Override
   public void updateSQLXML(int columnIndex, SQLXML xmlObject) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateSQLXML");
   }
 
   @Override
   public void updateSQLXML(String columnLabel, SQLXML xmlObject) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateSQLXML");
   }
 
   @Override
   public String getNString(int columnIndex) throws SQLException {
-    return null;
+    return result.get(columnIndex);
   }
 
   @Override
   public String getNString(String columnLabel) throws SQLException {
-    return null;
+    return result.get(findColumn(columnLabel));
   }
 
   @Override
   public Reader getNCharacterStream(int columnIndex) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getNCharacterStream");
   }
 
   @Override
   public Reader getNCharacterStream(String columnLabel) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("getNCharacterStream");
   }
 
   @Override
   public void updateNCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNCharacterStream");
   }
 
   @Override
   public void updateNCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNCharacterStream");
   }
 
   @Override
   public void updateAsciiStream(int columnIndex, InputStream x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateAsciiStream");
   }
 
   @Override
   public void updateBinaryStream(int columnIndex, InputStream x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBinaryStream");
   }
 
   @Override
   public void updateCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateCharacterStream");
   }
 
   @Override
   public void updateAsciiStream(String columnLabel, InputStream x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateAsciiStream");
   }
 
   @Override
   public void updateBinaryStream(String columnLabel, InputStream x, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBinaryStream");
   }
 
   @Override
   public void updateCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateCharacterStream");
   }
 
   @Override
   public void updateBlob(int columnIndex, InputStream inputStream, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
   public void updateBlob(String columnLabel, InputStream inputStream, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
@@ -888,62 +886,62 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public void updateNClob(int columnIndex, Reader reader, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public void updateNClob(String columnLabel, Reader reader, long length) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNCharacterStream");
   }
 
   @Override
   public void updateNCharacterStream(String columnLabel, Reader reader) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNCharacterStream");
   }
 
   @Override
   public void updateAsciiStream(int columnIndex, InputStream x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateAsciiStream");
   }
 
   @Override
   public void updateBinaryStream(int columnIndex, InputStream x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBinaryStream");
   }
 
   @Override
   public void updateCharacterStream(int columnIndex, Reader x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateCharacterStream");
   }
 
   @Override
   public void updateAsciiStream(String columnLabel, InputStream x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateAsciiStream");
   }
 
   @Override
   public void updateBinaryStream(String columnLabel, InputStream x) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBinaryStream");
   }
 
   @Override
   public void updateCharacterStream(String columnLabel, Reader reader) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateCharacterStream");
   }
 
   @Override
   public void updateBlob(int columnIndex, InputStream inputStream) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
   public void updateBlob(String columnLabel, InputStream inputStream) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateBlob");
   }
 
   @Override
@@ -958,31 +956,31 @@ public class MoonboxResultSet implements ResultSet {
 
   @Override
   public void updateNClob(int columnIndex, Reader reader) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public void updateNClob(String columnLabel, Reader reader) throws SQLException {
-    throw new UnsupportedOperationException("updateClob");
+    throw new UnsupportedOperationException("updateNClob");
   }
 
   @Override
   public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getObject");
   }
 
   @Override
   public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("getObject");
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    return null;
+    throw new UnsupportedOperationException("unwrap");
   }
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    return false;
+    throw new UnsupportedOperationException("isWrapperFor");
   }
 }
