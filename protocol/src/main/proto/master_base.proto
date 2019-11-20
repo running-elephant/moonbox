@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package moonbox;
 
-import "common.proto";
-
 option java_package = "moonbox.protocol.protobuf";
 option java_multiple_files = true;
 
