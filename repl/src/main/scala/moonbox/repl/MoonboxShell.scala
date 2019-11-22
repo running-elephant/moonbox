@@ -27,7 +27,6 @@ import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.terminal.Terminal.{Signal, SignalHandler}
 import org.jline.terminal.TerminalBuilder
-
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -58,7 +57,7 @@ object MoonboxShell {
 
 	private var connection: Connection = _
 
-	private def prompter: String = s"$user(${connection.getCatalog})> "
+	private def prompter: String = s"$user> "
 
 	private def printWelcome(): Unit = {
 		import scala.util.Properties.{javaVersion, javaVmName, versionString}
@@ -190,11 +189,11 @@ object MoonboxShell {
 		val index = sql.indexOf('=')
 		if (index != -1) {
 			try {
-				val param = sql.substring(index).trim.toInt
+				val param = sql.substring(index + 1).trim.toInt
 				f(param)
 			} catch {
 				case e: NumberFormatException =>
-					val helpMsg = set.command.mkString(" | ") + " : " + set.description
+					val helpMsg = "Set error:" + set.command.mkString(" | ")
 					Console.err.println(helpMsg)
 			}
 		}
@@ -229,9 +228,10 @@ object MoonboxShell {
 		val sqls = new mutable.ArrayBuffer[String]()
 		val sqlBuilder = new mutable.StringBuilder()
 		var braceCount = 0
-		var line = lineReader.readLine(prompter).trim
-		while (sqlBuilder.nonEmpty) {
-			line.toCharArray.foreach { char =>
+		var endLine = false
+		var line = lineReader.readLine(prompter)
+		while (!endLine) {
+			line.trim.toCharArray.foreach { char =>
 				if (char == DELIMITER && braceCount == 0) {
 					sqls.append(sqlBuilder.toString())
 					sqlBuilder.clear()
@@ -247,7 +247,9 @@ object MoonboxShell {
 			}
 			if (sqlBuilder.nonEmpty) {
 				sqlBuilder.append(' ')
-				line = lineReader.readLine(" " * (prompter.length - 1) + "| ").trim
+				line = lineReader.readLine(" " * (prompter.length - 2) + "| ").trim
+			} else {
+				endLine = true
 			}
 		}
 		sqls
@@ -294,7 +296,6 @@ object MoonboxShell {
 			}
 		} catch {
 			case e: Exception =>
-
 		}
 	}
 
@@ -399,6 +400,7 @@ object MoonboxShell {
 					"options:\n" +
 					"   -h, --host            Connect to host.\n" +
 					"   -P, --port            Port num to ues for connecting to server.\n" +
+					"		-d, --database				Database to connect to." +
 					"   -u, --user            User for login, org@user.\n" +
 					"   -p, --password        Password to use when connecting to server.\n" +
 					"   -r, --runtime         Run in local or in cluster.\n" +
