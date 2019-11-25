@@ -704,6 +704,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val path = hiveCatalogTable.storage.locationUri.get.toString
     setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
 
+    logInfo(s"hive table $table catalog: $hiveCatalogTable")
+
     val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
     sessionState.catalog.createTable(hiveCatalogTable.copy(
