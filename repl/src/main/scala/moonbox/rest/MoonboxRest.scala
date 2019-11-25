@@ -181,7 +181,7 @@ object MoonboxRest {
 			c.stripPrefix("-C").split(",").foreach { keyvalues =>
 				val kv = keyvalues.trim.split("=")
 				assert(kv.length >= 2, "please check config format.")
-				config.put(kv(0).trim, kv(1).trim)
+				config.put(kv(0).trim, keyvalues.substring(kv(0).length + 1).trim)
 			}
 		case Nil =>
 		case _ =>
