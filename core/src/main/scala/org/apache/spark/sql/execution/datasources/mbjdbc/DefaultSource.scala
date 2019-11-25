@@ -54,7 +54,7 @@ class DefaultSource extends CreatableRelationProvider
     newParameters
   }
 
-  private def calculatePartitionBound(jdbcOptions: JDBCOptions): (Long, Long) = {
+  private def computePartitionBound(jdbcOptions: JDBCOptions): (Long, Long) = {
     var conn: Connection = null
     try {
       conn = JdbcUtils.createConnectionFactory(jdbcOptions)()
@@ -95,7 +95,7 @@ class DefaultSource extends CreatableRelationProvider
     } else {
       assert(lowerBound.nonEmpty && upperBound.nonEmpty && numPartitions.nonEmpty)
       if (autoCalculateBound.nonEmpty && autoCalculateBound.get) {
-        val (lowerBound, upperBound) = calculatePartitionBound(jdbcOptions)
+        val (lowerBound, upperBound) = computePartitionBound(jdbcOptions)
         JDBCPartitioningInfo(
           partitionColumn.get, lowerBound, upperBound, numPartitions.get)
       } else {
@@ -174,6 +174,8 @@ class DefaultSource extends CreatableRelationProvider
       map.put(JDBCOptions.JDBC_TRUNCATE, "true")
     if (!props.contains(JDBCOptions.JDBC_TXN_ISOLATION_LEVEL))
       map.put(JDBCOptions.JDBC_TXN_ISOLATION_LEVEL, "NONE")
+    if (!props.contains(JDBCOptions.JDBC_BATCH_FETCH_SIZE))
+      map.put(JDBCOptions.JDBC_BATCH_FETCH_SIZE, "20000")
     if (props("type") == "mysql") {
       var url = props(JDBCOptions.JDBC_URL)
       if (!url.contains("rewriteBatchedStatements")) {
