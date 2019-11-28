@@ -13,6 +13,11 @@ message AccessRequestPB {
 
 message AccessResponsePB {
     HostPortPB host_port = 1;
+    SessionPB session = 2;
+}
+
+message SessionPB {
+    map<string, string> session = 1;
 }
 
 message HostPortPB {

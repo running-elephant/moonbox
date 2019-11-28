@@ -71,11 +71,15 @@ public class Utils {
 
   private static List<String> split(String sql, List<Integer> index) {
     List<String> result = new ArrayList<>();
-    int begin = 0;
-    for (int i = 0; i < index.size(); i ++) {
-      int point = index.get(i);
-      result.add(sql.substring(begin, point));
-      begin = point;
+    if (index.isEmpty()) {
+      result.add(sql);
+    } else {
+      int begin = 0;
+      for (int i = 0; i < index.size(); i ++) {
+        int point = index.get(i);
+        result.add(sql.substring(begin, point));
+        begin = point;
+      }
     }
     return result;
   }

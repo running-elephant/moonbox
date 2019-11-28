@@ -20,18 +20,19 @@
 
 package moonbox.grid.deploy.transport
 
+import akka.actor.ActorRef
 import moonbox.catalog.JdbcCatalog
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.network.TransportContext
 
-class TcpServer(host: String, port: Int, conf: MbConf, jdbcCatalog: JdbcCatalog) extends MbLogging {
+class TcpServer(host: String, port: Int, conf: MbConf, jdbcCatalog: JdbcCatalog, master: ActorRef) extends MbLogging {
 
-	private val context = new TransportContext(new TcpServerHandler(conf, jdbcCatalog), true)
+	private val context = new TransportContext(new TcpServerHandler(conf, jdbcCatalog, master), true)
 	private val server = context.createServer(host, port)
 
 	def start(): Int = {
 		val portBind = server.start()
-		logInfo(s"TcpServer is listening on $host:${server.getPort}")
+		logInfo(s"TcpServer is listening on $host:${portBind}")
 		portBind
 	}
 

@@ -51,7 +51,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateOrganization(name, desc, config, ignoreIfExists)
 	}
 
-	override def visitRenameOrganization(ctx: RenameOrganizationContext): MbCommand = {
+	/*override def visitRenameOrganization(ctx: RenameOrganizationContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterOrganizationSetName(name, newName)
@@ -61,7 +61,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterOrganizationSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetOrganizationComment(ctx: SetOrganizationCommentContext): MbCommand = {
 		val name = ctx.name.getText
@@ -102,7 +102,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateSa(name, password, organization, configuration, ignoreIfExists)
 	}
 
-	override def visitRenameSa(ctx: RenameSaContext): MbCommand = {
+	/*override def visitRenameSa(ctx: RenameSaContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		val organization = ctx.org.getText
@@ -114,7 +114,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val newName = ctx.newName.getText
 		val organization = ctx.org.getText
 		AlterSaSetName(name, newName, organization)
-	}
+	}*/
 
 	override def visitSetSaPassword(ctx: SetSaPasswordContext): MbCommand = {
 		val name = ctx.name.getText
@@ -149,7 +149,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateUser(name, password, configuration, ignoreIfExists)
 	}
 
-	override def visitRenameUser(ctx: RenameUserContext): MbCommand = {
+	/*override def visitRenameUser(ctx: RenameUserContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterUserSetName(name, newName)
@@ -159,7 +159,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterUserSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetUserPassword(ctx: SetUserPasswordContext): MbCommand = {
 		val name = ctx.name.getText
@@ -197,7 +197,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateGroup(name, desc, ignoreIfExists)
 	}
 
-	override def visitSetGroupName(ctx: SetGroupNameContext): MbCommand = {
+	/*override def visitSetGroupName(ctx: SetGroupNameContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterGroupSetName(name, newName)
@@ -207,7 +207,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterGroupSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetGroupComment(ctx: SetGroupCommentContext): MbCommand = {
 		val name = ctx.name.getText
@@ -292,7 +292,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateDatabase(name, desc, ignoreIfExists)
 	}
 
-	override def visitRenameDatabase(ctx: RenameDatabaseContext): MbCommand = {
+	/*override def visitRenameDatabase(ctx: RenameDatabaseContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterDatabaseSetName(name, newName)
@@ -302,7 +302,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterDatabaseSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetDatabaseComment(ctx: SetDatabaseCommentContext): MbCommand = {
 		val name = ctx.name.getText
@@ -398,7 +398,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		}
 	}
 
-	override def visitRenameTable(ctx: RenameTableContext): MbCommand = {
+	/*override def visitRenameTable(ctx: RenameTableContext): MbCommand = {
 		val table = visitTableIdentifier(ctx.name)
 		val newTable = visitTableIdentifier(ctx.newName)
 		AlterTableSetName(table, newTable)
@@ -408,7 +408,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
 		val newTableIdentifier = visitTableIdentifier(ctx.newName)
 		AlterTableSetName(tableIdentifier, newTableIdentifier)
-	}
+	}*/
 
 	override def visitSetTableProperties(ctx: SetTablePropertiesContext): MbCommand = {
 		val tableIdentifier = visitTableIdentifier(ctx.name)
@@ -518,7 +518,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateProcedure(name, mqlList, lang, ignoreIfExists)
 	}
 
-	override def visitRenameProcedure(ctx: RenameProcedureContext): MbCommand = {
+	/*override def visitRenameProcedure(ctx: RenameProcedureContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterProcedureSetName(name, newName)
@@ -528,7 +528,7 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterProcedureSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetProcedureQuerys(ctx: SetProcedureQuerysContext): MbCommand = {
 		val name = ctx.name.getText
@@ -559,11 +559,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		CreateTimedEvent(name, definer, scheduler, desc, proc, enable, ignoreIfExists)
 	}
 
-	override def visitRenameEvent(ctx: RenameEventContext): MbCommand = {
+	/*override def visitRenameEvent(ctx: RenameEventContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterTimedEventSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetDefiner(ctx: SetDefinerContext): MbCommand = {
 		val name = ctx.name.getText
@@ -571,11 +571,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
 		AlterTimedEventSetDefiner(name, definer)
 	}
 
-	override def visitSetEventName(ctx: SetEventNameContext): MbCommand = {
+	/*override def visitSetEventName(ctx: SetEventNameContext): MbCommand = {
 		val name = ctx.name.getText
 		val newName = ctx.newName.getText
 		AlterTimedEventSetName(name, newName)
-	}
+	}*/
 
 	override def visitSetEventSchedule(ctx: SetEventScheduleContext): MbCommand = {
 		val name = ctx.name.getText

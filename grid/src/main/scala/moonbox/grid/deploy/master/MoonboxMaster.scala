@@ -37,7 +37,7 @@ import moonbox.grid.deploy.app._
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
 import moonbox.grid.deploy.transport.TcpServer
-import moonbox.grid.deploy.worker.WorkerState
+import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.timer.{EventHandler, TimedEventService, TimedEventServiceImpl}
 import moonbox.grid.{LogMessage, MbActor}
 
@@ -53,7 +53,6 @@ class MoonboxMaster(
 	val system: ActorSystem,
 	val conf: MbConf) extends MbActor with LogMessage with LeaderElectable with MbLogging {
 
-	// for batch application IDs
 	private def createDateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT)
 
 	private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(60, SECONDS))
@@ -75,7 +74,6 @@ class MoonboxMaster(
 
 	private var nextDriverNumber = 0
 
-	// for interactive application
 	private val apps = new mutable.HashSet[AppInfo]
 	private val idToApp = new mutable.HashMap[String, AppInfo]
 	private val addressToApp = new mutable.HashMap[Address, AppInfo]
@@ -96,6 +94,22 @@ class MoonboxMaster(
 	private var tcpServer: Option[TcpServer] = None
 	private var tcpServerBoundPort: Option[Int] = None
 
+
+
+	// for test
+	private def launchDrivers(): Unit = {
+		try {
+			val local = LaunchUtils.getLocalDriverConfigs(conf)
+			local.foreach { config =>
+				val driverDesc = new SparkLocalDriverDesc(config)
+				self ! RequestSubmitDriver(driverDesc)
+			}
+		} catch {
+			case e: Throwable =>
+				logError("Launch Driver Error: ", e)
+				gracefullyShutdown()
+		}
+	}
 
 	@scala.throws[Exception](classOf[Exception])
 	override def preStart(): Unit = {
@@ -164,7 +178,7 @@ class MoonboxMaster(
 		try {
 			if (conf.get(TCP_SERVER_ENABLE)) {
 				val port = conf.get(TCP_SERVER_PORT)
-				tcpServer = Some(new TcpServer(host, port, conf, catalog))
+				tcpServer = Some(new TcpServer(host, port, conf, catalog, self))
 				tcpServerBoundPort = tcpServer.map(_.start())
 			}
 		} catch {
@@ -172,6 +186,8 @@ class MoonboxMaster(
 				logError("Could not start tcp server.", e)
 				gracefullyShutdown()
 		}
+
+		AppMasterManager.registerAppMaster(new SparkLocalAppMaster)
 
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 	}
@@ -208,7 +224,12 @@ class MoonboxMaster(
 					new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS), self, CompleteRecovery)
 			} else {
 				logInfo(s"Now working as $state")
+				// test
+				launchDrivers()
 			}
+
+			// test
+		case s:SubmitDriverResponse =>
 
 		case RevokedLeadership =>
 			logError("Leadership has been revoked, master shutting down.")
@@ -442,11 +463,28 @@ class MoonboxMaster(
 				}
 			}
 
+		case RequestApplicationAddress(appType) =>
+
+			val response = AppMasterManager.getAppMaster(appType) match {
+				case Some(appMaster) =>
+					appMaster.selectApp(apps) match {
+						case Some(appInfo) =>
+							ApplicationAddressResponse(found = true, host = Some(appInfo.host), port = Some(appInfo.dataPort))
+						case None =>
+							ApplicationAddressResponse(found = false, exception = Some(new Exception(s"there is no available $appType application")))
+					}
+				case None =>
+					ApplicationAddressResponse(found = false, exception = Some(new Exception(s"unknown application type $appType.")))
+			}
+			sender() ! response
+
 		case e => logWarning("Unknown message: " + e.toString)
 
 	}
 
 	private def handleJobMessage: Receive = {
+
+		case _ =>
 
 		/*case JobSubmit(org, username, lang, sqls, userConfig) =>
 			if(state != RecoveryState.ACTIVE) {
@@ -519,7 +557,7 @@ class MoonboxMaster(
 				}
 			}*/
 
-		case open @ OpenSession(_, _, _, config) =>
+		/*case open @ OpenSession(_, _, _, config) =>
 			val requester = sender()
 			val centralized = config.get("islocal").exists(_.equalsIgnoreCase("true"))
 			val appLabel = config.getOrElse("spark.app.label", "common")
@@ -585,7 +623,7 @@ class MoonboxMaster(
 					}
 				case None =>
 					requester ! InteractiveJobCancelResponse(success = false, s"Session $sessionId lost in master.")
-			}
+			}*/
 	}
 
 	private def handleServiceMessage: Receive = {
@@ -738,9 +776,9 @@ class MoonboxMaster(
 	private def selectApplication(centralized: Boolean, label: String = "common"): Option[AppInfo] = {
 		val activeApps = apps.filter(_.state == AppState.RUNNING).toSeq
 		val typedApps = if (centralized) {
-			activeApps.filter(app =>app.appType == AppType.CENTRALIZED && app.label.equals(label))
+			activeApps.filter(app =>app.appType == "sparklocal" && app.label.equals(label))
 		} else {
-			activeApps.filter(app => app.appType == AppType.DISTRIBUTED && app.label.equals(label))
+			activeApps.filter(app => app.appType == "sparkcluster" && app.label.equals(label))
 		}
 		Random.shuffle(typedApps).headOption
 	}

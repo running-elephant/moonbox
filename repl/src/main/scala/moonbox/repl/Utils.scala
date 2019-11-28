@@ -32,7 +32,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Utils {
 	// name, type, nullable
-	def parseJson(json: String): Array[(String, String, Boolean)] = {
+/*	def parseJson(json: String): Array[(String, String, Boolean)] = {
 		import scala.collection.JavaConversions._
 		val schemaObject = new JSONObject(json)
 		schemaObject.getJSONArray("fields").map {
@@ -59,8 +59,8 @@ object Utils {
 			if (char == ')') stack.pop()
 		}
 		splits(sql, splitIndex.toArray, 0, Nil).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
-	}
-
+	}*/
+/*
 	@tailrec
 	private def splits(sql: String, idxs: Array[Int], offset: Int, res: Seq[String]): Seq[String] = {
 		if (idxs.nonEmpty) {
@@ -68,12 +68,12 @@ object Utils {
 			val (h, t) = sql.splitAt(head - offset)
 			splits(t, idxs.tail, head, h :: res.toList)
 		} else res
-	}
+	}*/
 
-	def parseJson2(json: String): Unit = {
+/*	def parseJson2(json: String): Unit = {
 		val jsonObject = new JSONObject(json)
 		jsonObject.getJSONArray("fields")
-	}
+	}*/
 
 	private def cell2String(cell: Any): String = {
 		cell match {

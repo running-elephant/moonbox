@@ -97,7 +97,7 @@ class MoonboxWorker(
 
 		case LaunchDriver(driverId, driverDesc) =>
 			logInfo(s"Ask to launch driver $driverId")
-			val driver = new DriverRunner(conf, driverId, driverDesc, self, new Date())
+			val driver = new DriverRunner(conf, driverId, driverDesc, sender(), self, new Date())
 			drivers(driverId) = driver
 			driver.start()
 

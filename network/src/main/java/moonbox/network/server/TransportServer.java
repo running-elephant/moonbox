@@ -42,7 +42,7 @@ public class TransportServer implements Closeable {
 
   public int start() throws IOException {
     try {
-      init(hostToBind, portToBind);
+      this.portToBind = init(hostToBind, portToBind);
     } catch (RuntimeException e) {
       try {
         close();
@@ -51,7 +51,7 @@ public class TransportServer implements Closeable {
         throw ex;
       }
     }
-    return portToBind;
+    return this.portToBind;
   }
 
   private int init(String hostToBind, int portToBind) {
@@ -75,9 +75,7 @@ public class TransportServer implements Closeable {
     channelFuture = bootstrap.bind(address);
     channelFuture.syncUninterruptibly();
 
-    portToBind = ((InetSocketAddress) channelFuture.channel().localAddress()).getPort();
-    // logger.info("transport server started on port: {}", portToBind);
-    return  portToBind;
+    return  ((InetSocketAddress) channelFuture.channel().localAddress()).getPort();
   }
 
   public int getPort() {

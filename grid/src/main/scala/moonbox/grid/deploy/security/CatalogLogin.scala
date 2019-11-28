@@ -47,13 +47,17 @@ class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login with MbLogg
 	}
 
 	private def parseUsername(username: String): (String, String) = {
-		val orgUser = username.split("@")
-		if (orgUser.length != 2) {
-			throw new UsernameFormatException(username)
+		if (username.equalsIgnoreCase("root")) {
+			("SYSTEM", username)
 		} else {
-			val org = orgUser(0)
-			val user = orgUser(1)
-			(org, user)
+			val orgUser = username.split("@")
+			if (orgUser.length != 2) {
+				throw new UsernameFormatException(username)
+			} else {
+				val org = orgUser(0)
+				val user = orgUser(1)
+				(org, user)
+			}
 		}
 	}
 }

@@ -20,12 +20,9 @@
 
 package moonbox.grid.deploy
 
-import java.util.Date
-
 import akka.actor.{ActorRef, Address}
-import moonbox.grid.deploy.app.{AppType, DriverDesc, DriverState}
-import DriverState.DriverState
-import moonbox.grid.deploy
+import moonbox.grid.deploy.app.{AppInfo, DriverDesc}
+import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.timer.EventEntity
 
 
@@ -92,7 +89,7 @@ object DeployMessages {
 		endpoint: ActorRef,
 		address: Address,
 		dataPort: Int,
-		appType: AppType
+		appType: String
 	)
 
 	sealed trait RegisterApplicationResponse
@@ -134,5 +131,10 @@ object DeployMessages {
 
 	case class DriverStatusResponse(found: Boolean, state: Option[DriverState],
 		workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
+
+	case class RequestApplicationAddress(appType: String) extends DeployMessages
+
+	case class ApplicationAddressResponse(found: Boolean,
+		host: Option[String] = None, port: Option[Int] = None, exception: Option[Exception] = None) extends DeployMessages
 
 }

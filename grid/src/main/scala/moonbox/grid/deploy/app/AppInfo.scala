@@ -31,7 +31,7 @@ class AppInfo(
 	val address: Address,
 	val dataPort: Int,
 	val endpoint: ActorRef,
-	val appType: AppType
+	val appType: String
 ) extends Serializable {
 
 	@transient var state: AppState.Value = _
