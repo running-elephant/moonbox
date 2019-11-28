@@ -57,6 +57,7 @@
         <module>applications/hive-interactive</module>
 
         <module>assembly</module>
+        <module>mbw</module>
 
     </modules>
 
