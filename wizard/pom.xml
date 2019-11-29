@@ -53,11 +53,11 @@
                 <artifactId>springfox-swagger-ui</artifactId>
                 <version>2.6.1</version>
             </dependency>
-            <dependency>
+            <!--<dependency>
                 <groupId>com.gantry</groupId>
                 <artifactId>gantry-basic</artifactId>
                 <version>1.0</version>
-            </dependency>
+            </dependency>-->
         </dependencies>
     </dependencyManagement>
 
@@ -110,11 +110,11 @@
             <artifactId>spring-cloud-starter-eureka</artifactId>
         </dependency>
 
-        <dependency>
+        <!--<dependency>
             <groupId>com.gantry</groupId>
             <artifactId>gantry-basic</artifactId>
             <version>1.0</version>
-        </dependency>
+        </dependency>-->
 
         <!-- Swagger -->
         <dependency>
