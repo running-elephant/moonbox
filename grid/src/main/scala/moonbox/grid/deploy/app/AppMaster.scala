@@ -1,33 +1,36 @@
 package moonbox.grid.deploy.app
 
-import java.text.SimpleDateFormat
-import java.util.{Date, Locale, ServiceLoader}
-import java.util.concurrent.{ConcurrentHashMap, CopyOnWriteArrayList}
+import java.util.ServiceLoader
+import java.util.concurrent.ConcurrentHashMap
 
-import akka.actor.Address
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.master.WorkerInfo
 
 import scala.collection.mutable
+import scala.util.Random
 
 abstract class AppMaster extends MbLogging {
 
-	AppMasterManager.registerAppMaster(this)
+	// AppMasterManager.registerAppMaster(this)
 
-	private var nextDriverNumber = 0
-
-	private def createDateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT)
-
-	private def newDriverId(): String = {
-		val submitDate = new Date()
-		val appId = s"$typeName-%s-%04d".format(createDateFormat.format(submitDate), nextDriverNumber)
-		nextDriverNumber += 1
-		appId
+	def selectApp(apps: mutable.HashSet[AppInfo]): Option[AppInfo] = {
+		Random.shuffle(apps.filter(_.appType == typeName)).headOption
 	}
 
-	def createDriverDesc: DriverDesc
+	def launchApp(): Unit = {
+
+	}
+
+	def stopApp(appName: String): Unit = {
+
+	}
+
+	def createDriverDesc(config: Map[String, String]): DriverDesc
 
 	def typeName: String
+
+	def configTemplate: Map[String, String]
+
+	def resourceTemplate: Map[String, String]
 
 }
 
@@ -54,8 +57,8 @@ object AppMasterManager extends MbLogging {
 		logInfo(s"register AppManager: $appManager.")
 	}
 
-	def getAppMaster(typeName: String): AppMaster = {
-		registeredDrivers.get(typeName)
+	def getAppMaster(typeName: String): Option[AppMaster] = {
+		Option(registeredDrivers.get(typeName))
 	}
 
 }

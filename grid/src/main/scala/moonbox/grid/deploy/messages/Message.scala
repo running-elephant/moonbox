@@ -21,7 +21,6 @@
 package moonbox.grid.deploy.messages
 
 import moonbox.grid.deploy.Interface.Dag
-import moonbox.grid.deploy.app.AppType
 
 
 sealed trait Message extends Serializable

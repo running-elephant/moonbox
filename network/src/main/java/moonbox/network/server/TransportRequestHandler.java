@@ -43,11 +43,11 @@ public class TransportRequestHandler extends MessageHandler<RequestMessage>  {
 
           @Override
           public void onFailure(Throwable e) {
-            respond(new RpcFailure(req.requestId, Throwables.getStackTraceAsString(e)));
+            respond(new RpcFailure(req.requestId, e.getMessage() != null ? e.getMessage() : Throwables.getStackTraceAsString(e)));
           }
         }));
       } catch (Exception e) {
-        respond(new RpcFailure(req.requestId, Throwables.getStackTraceAsString(e)));
+        respond(new RpcFailure(req.requestId, e.getMessage() != null ? e.getMessage() : Throwables.getStackTraceAsString(e)));
       } finally {
         req.body().release();
       }

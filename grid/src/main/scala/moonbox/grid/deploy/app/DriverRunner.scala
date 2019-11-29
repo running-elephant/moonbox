@@ -34,6 +34,7 @@ private[deploy] class DriverRunner(
 	conf: MbConf,
 	val driverId: String,
 	val desc: DriverDesc,
+	val master: ActorRef,
 	val worker: ActorRef,
 	val submitDate: Date) extends Serializable with MbLogging {
 
@@ -56,9 +57,14 @@ private[deploy] class DriverRunner(
 					desc.deployMode.foreach(launcher.setDeployMode)
 					sys.env.get("SPARK_HOME").foreach(launcher.setSparkHome)
 
+					val appArgs = desc.toAppArgs ++ Seq("masters", master.path.toStringWithAddress(master.path.address),
+						"driverId", driverId,
+						"appType", desc.name
+					)
+
 					launcher
 						.setMainClass(desc.mainClass)
-						.addAppArgs(desc.toAppArgs:_*)
+						.addAppArgs(appArgs:_*)
 						.setVerbose(false)
 						.setAppResource(desc.appResource)
 					desc.toConf.foreach { case (k, v) =>

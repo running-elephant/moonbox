@@ -75,10 +75,10 @@ class Runner(
 				alterTimedEvent(event, manager)
 			case runnable: MbRunnableCommand =>
 				val result = runnable.run(mbSession)
-				DirectResult(runnable.outputSchema, result.map(_.toSeq))
+				QueryResult(runnable.outputSchema, result, false)
 			case CreateTempView(table, query, isCache, replaceIfExists) =>
 				createTempView(table, query, isCache, replaceIfExists)
-				DirectResult(SchemaUtils.emptySchema, Seq.empty)
+				QueryResult(SchemaUtils.emptySchema, Seq.empty, false)
 			case other: Statement =>
 				statement(other.sql)
 			case other =>
@@ -86,9 +86,10 @@ class Runner(
 		}.last
 	}
 
-	def cancel(): Unit = {
+	def cancel(): QueryResult = {
 		logInfo(s"Cancel job group with job group id $sessionId")
 		mbSession.engine.cancelJobGroup(sessionId)
+		QueryResult(SchemaUtils.emptySchema, Seq.empty, false)
 	}
 
 	private def createEventEntity(name: String, org: String, definer: String,
@@ -121,7 +122,7 @@ class Runner(
 			val response = target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
 				case RegisteredTimedEvent(_) =>
 					Future {
-						(event.outputSchema, event.run(mbSession).map(_.toSeq))
+						(event.outputSchema, event.run(mbSession))
 					}
 				case RegisterTimedEventFailed(message) =>
 					throw new Exception(message)
@@ -132,14 +133,14 @@ class Runner(
 				.mapTo[UnregisterTimedEventResponse].flatMap {
 				case UnregisteredTimedEvent(_) =>
 					Future {
-						(event.outputSchema, event.run(mbSession).map(_.toSeq))
+						(event.outputSchema, event.run(mbSession))
 					}
 				case UnregisterTimedEventFailed(message) =>
 					throw new Exception(message)
 			}
 			Await.result(response, awaitTimeout)
 		}
-		DirectResult(schema, data)
+		QueryResult(schema, data, false)
 	}
 
 	private def createTimedEvent(event: CreateTimedEvent, target: ActorRef): QueryResult = {
@@ -153,21 +154,30 @@ class Runner(
 			val response = target.ask(RegisterTimedEvent(eventEntity)).mapTo[RegisterTimedEventResponse].flatMap {
 				case RegisteredTimedEvent(_) =>
 					Future {
-						(event.outputSchema, event.run(mbSession).map(_.toSeq))
+						(event.outputSchema, event.run(mbSession))
 					}
 				case RegisterTimedEventFailed(message) =>
 					throw new Exception(message)
 			}
 			Await.result(response, awaitTimeout)
 		} else {
-			(event.outputSchema, event.run(mbSession).map(_.toSeq))
+			(event.outputSchema, event.run(mbSession))
 		}
-		DirectResult(schema, data)
+		QueryResult(schema, data, false)
 	}
 
 	private def statement(sql: String): QueryResult = {
 		val dataResult = mbSession.sql(sessionId, sql, maxRows)
-		initCurrentData(dataResult)
+		currentRowId = 0
+		currentData = dataResult._1
+		currentSchema = dataResult._2
+		logInfo(s"Initialize current data: schema=$currentSchema")
+
+		if (currentData.nonEmpty) {
+			QueryResult(currentSchema, Seq.empty, true)
+		} else {
+			QueryResult(currentSchema, Seq.empty, false)
+		}
 	}
 
 
@@ -183,36 +193,23 @@ class Runner(
 		}
 	}
 
-	def fetchResultData(): ResultData = {
+	def fetchResultData(): QueryResult = {
 		logDebug(s"Fetching data from runner: row $currentRowId, fetchSize=$fetchSize")
 		var rowCount = 0
-		val resultData = new ArrayBuffer[Seq[Any]]()
+		val resultData = new ArrayBuffer[Row]()
 		while (hasNext && rowCount < fetchSize) {
-			resultData.append(currentData.next().toSeq)
+			resultData.append(currentData.next())
 			currentRowId += 1
 			rowCount += 1
 		}
 
 		val continue = hasNext
 
-		val data = ResultData(sessionId, null, resultData, continue)
+		val data = QueryResult(currentSchema, resultData, continue)
 
 		if (!continue) clear()
 
 		data
-	}
-
-	private def initCurrentData(dataFrame: DataResult): QueryResult = {
-		currentRowId = 0
-		currentData = dataFrame._1
-		currentSchema = dataFrame._2
-		logInfo(s"Initialize current data: schema=$currentSchema")
-
-		if (currentData.nonEmpty) {
-			IndirectResult(currentSchema)
-		} else {
-			DirectResult(currentSchema, Seq.empty)
-		}
 	}
 
 	private def hasNext: Boolean =

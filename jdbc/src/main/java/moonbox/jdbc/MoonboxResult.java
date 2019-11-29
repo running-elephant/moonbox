@@ -33,7 +33,7 @@ public class MoonboxResult {
     this.columnNameToIndex = new HashMap<>();
 
     for(int i=0; i < columnCount; i++) {
-      columnNameToIndex.put(schema.getFields(i).getName(), i);
+      columnNameToIndex.put(schema.getFields(i).getName(), i + 1);
     }
 
     this.currentData = resultPB.getData().getRowsList();
@@ -64,7 +64,7 @@ public class MoonboxResult {
   @SuppressWarnings("unchecked")
   public <T> T get(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return (T) currentRow[columnIndex];
+    return (T) currentRow[columnIndex - 1];
   }
 
   public int getIndex(String columnName) {
@@ -74,7 +74,7 @@ public class MoonboxResult {
 
   private void checkColumnIndex(int columnIndex) {
     if (columnIndex < 1 || columnIndex > columnCount) {
-      throw new IllegalArgumentException("ColumnIndex out of range 0 to " + columnCount);
+      throw new IllegalArgumentException("ColumnIndex out of range 1 to " + columnCount);
     }
   }
 
@@ -92,17 +92,17 @@ public class MoonboxResult {
 
   public String getColumnTypeName(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return JDBCType.valueOf(convertTypeToSQLType(schema.getFields(columnIndex).getDataType())).getName();
+    return JDBCType.valueOf(convertTypeToSQLType(schema.getFields(columnIndex - 1).getDataType())).getName();
   }
 
   public String getColumnName(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return schema.getFields(columnIndex).getName();
+    return schema.getFields(columnIndex - 1).getName();
   }
 
   public int getColumnType(int columnIndex) {
     checkColumnIndex(columnIndex);
-    return convertTypeToSQLType(schema.getFields(columnIndex).getDataType());
+    return convertTypeToSQLType(schema.getFields(columnIndex - 1).getDataType());
   }
 
   public int getColumnCount() {
@@ -111,7 +111,7 @@ public class MoonboxResult {
 
   public int getPrecision(int column) {
     checkColumnIndex(column);
-    DataTypePB dataType = schema.getFields(column).getDataType();
+    DataTypePB dataType = schema.getFields(column - 1).getDataType();
     if (dataType.hasDecimalType()) {
       return dataType.getDecimalType().getPrecision();
     } else {
@@ -121,7 +121,7 @@ public class MoonboxResult {
 
   public int getScale(int column) {
     checkColumnIndex(column);
-    DataTypePB dataType = schema.getFields(column).getDataType();
+    DataTypePB dataType = schema.getFields(column - 1).getDataType();
     if (dataType.hasDecimalType()) {
       return dataType.getDecimalType().getScale();
     } else {
@@ -153,12 +153,7 @@ public class MoonboxResult {
     } else if (dt.hasDecimalType()) {
       BigDecimalPB bigDecimal = value.getBigDecimalValue();
       int scale = dt.getDecimalType().getScale();
-      if (bigDecimal.hasBigInteger()) {
-        return new BigDecimal(new BigInteger(bigDecimal.getBigInteger().getIntVals().toByteArray()), scale);
-      } else {
-        long longValue = bigDecimal.getLong();
-        return BigDecimal.valueOf(longValue, scale);
-      }
+      return new BigDecimal(new BigInteger(bigDecimal.getBigInteger().getIntVals().toByteArray()), scale);
     } else if (dt.hasBooleanType()) {
       return value.getBooleanValue();
     } else if (dt.hasCharType()) {
@@ -200,7 +195,7 @@ public class MoonboxResult {
 
       Object[] objects = new Object[fieldsCount];
       for (int i = 0; i < fieldsCount; i++) {
-        objects[i] = convertValue(structValue.getFields(i), strucType.getFields(i).getDataType());
+        objects[i] = convertValue(structValue.getRow().getFields(i), strucType.getFields(i).getDataType());
       }
       return objects;
     } else if (dt.hasObjectType()) { // TODO

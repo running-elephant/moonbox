@@ -23,79 +23,18 @@ package moonbox.repl
 import java.io.File
 
 import com.typesafe.config.ConfigFactory
-import org.json.JSONObject
-
-import scala.annotation.tailrec
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-
+import scala.collection.JavaConverters._
 
 object Utils {
-	// name, type, nullable
-	def parseJson(json: String): Array[(String, String, Boolean)] = {
-		import scala.collection.JavaConversions._
-		val schemaObject = new JSONObject(json)
-		schemaObject.getJSONArray("fields").map {
-			case elem: JSONObject =>
-				val columnName = elem.getString("name")
-				val nullable = elem.getBoolean("nullable")
-				val columnType = elem.get("type") match {
-					case v: JSONObject => v.getString("type")
-					case s => s.toString
-				}
-				(columnName, columnType, nullable)
-			case _ => null
-		}.filter(_ != null).toArray
-	}
 
-	def splitSql(sql: String, splitter: Char): Seq[String] = {
-		val stack = new mutable.Stack[Char]()
-		val splitIndex = new ArrayBuffer[Int]()
-		for ((char, idx) <- sql.toCharArray.zipWithIndex) {
-			if (char == splitter) {
-				if (stack.isEmpty) splitIndex += idx
-			}
-			if (char == '(') stack.push('(')
-			if (char == ')') stack.pop()
-		}
-		splits(sql, splitIndex.toArray, 0, Nil).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
-	}
-
-	@tailrec
-	private def splits(sql: String, idxs: Array[Int], offset: Int, res: Seq[String]): Seq[String] = {
-		if (idxs.nonEmpty) {
-			val head = idxs.head
-			val (h, t) = sql.splitAt(head - offset)
-			splits(t, idxs.tail, head, h :: res.toList)
-		} else res
-	}
-
-	def parseJson2(json: String): Unit = {
-		val jsonObject = new JSONObject(json)
-		jsonObject.getJSONArray("fields")
-	}
-
-	private def cell2String(cell: Any): String = {
+	private def valueString(cell: Any): String = {
 		cell match {
 			case null => "null"
 			case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
-			case array: Array[_] => array.map(cell2String).mkString("[", ", ", "]")
-			case seq: Seq[_] => seq.map(cell2String).mkString("[", ", ", "]")
-			/*case d: java.sql.Date =>
-			  new ThreadLocal[DateFormat]() {
-				override def initialValue() = {
-				  new SimpleDateFormat("yyyy-MM-dd", Locale.US)
-				}
-			  }.get().format(d)
-			case ts: Timestamp =>
-			  val formatted = new ThreadLocal[DateFormat]() {
-				override def initialValue() = {
-				  new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-				}
-			  }.get().format(ts, Locale.US)
-			  if (ts.toString.length > 19 && ts.toString.substring(19) != ".0") {
-				formatted + ts.toString.substring(19)
-			  } else formatted*/
+			case array: Array[_] => array.map(valueString).mkString("[", ", ", "]")
+			case seq: Seq[_] => seq.map(valueString).mkString("[", ", ", "]")
+			case map: java.util.Map[_, _] => map.asScala.map { case (k, v) =>
+				s"${valueString(k)}:${valueString(v)}" }.mkString("{", ", ", "}")
 			case _ => cell.toString
 		}
 	}
@@ -115,13 +54,13 @@ object Utils {
 	}
 
 	/**
-	  *
-	  * @param _data    rows of table
-	  * @param schema   a sequence of column names
-	  * @param _numRows default is 1000, denotes the max number of rows to show
-	  * @param truncate 0 denotes not truncating
-	  * @return
-	  */
+		*
+		* @param _data    rows of table
+		* @param schema   a sequence of column names
+		* @param _numRows default is 1000, denotes the max number of rows to show
+		* @param truncate 0 denotes not truncating
+		* @return
+		*/
 	def stringToShow(_data: Seq[Seq[Any]],
 		schema: Seq[String],
 		_numRows: Int = 1000,
@@ -135,7 +74,7 @@ object Utils {
 		// first `truncate-3` and "..."
 		var rows: Seq[Seq[String]] = data.map { row =>
 			row.map { cell =>
-				val str = cell2String(cell)
+				val str = valueString(cell)
 				if (truncate > 0 && str.length > truncate) {
 					// do not show ellipses for strings shorter than 4 characters.
 					if (truncate < 4) str.substring(0, truncate)
@@ -217,7 +156,7 @@ object Utils {
 			if (!file.exists()) {
 				10010
 			} else {
-				val config =  ConfigFactory.parseFile(file)
+				val config = ConfigFactory.parseFile(file)
 				val restPort = if (config.hasPath("moonbox.deploy.tcp.port")) {
 					config.getInt("moonbox.deploy.tcp.port")
 				} else 10010

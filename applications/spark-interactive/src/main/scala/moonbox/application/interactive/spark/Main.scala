@@ -29,7 +29,6 @@ import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.app.AppType
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.{LogMessage, MbActor}
 import org.apache.spark.sql.SparkEngine
@@ -48,7 +47,7 @@ object Main extends MbLogging {
 
 		val driverId = conf.get("driverId").getOrElse(throw new NoSuchElementException("driverId"))
 		val masters = conf.get("masters").map(_.split(";")).getOrElse(throw new NoSuchElementException("masters"))
-		val appType = conf.get("applicationType").getOrElse(throw new NoSuchElementException("applicationType"))
+		val appType = conf.get("appType").getOrElse(throw new NoSuchElementException("appType"))
 		val appLabel = conf.get("appLabel").getOrElse("common")
 
 
@@ -71,7 +70,7 @@ object Main extends MbLogging {
 
 		try {
 			system.actorOf(Props(
-				classOf[Main], driverId, appLabel, masters, conf, AppType.apply(appType)
+				classOf[Main], driverId, masters, conf, appLabel, appType
 			), name = "interactive")
 		} catch {
 			case e: Exception =>
@@ -84,10 +83,10 @@ object Main extends MbLogging {
 
 class Main(
 	driverId: String,
-	appLabel: String,
 	masterAddresses: Array[String],
 	val conf: MbConf,
-	appType: AppType
+	appLabel: String,
+	appType: String
 ) extends MbActor with LogMessage with MbLogging {
 
 	private implicit val executionContext: ExecutionContext = {
@@ -98,8 +97,6 @@ class Main(
 	private var registered = false
 	private var connected = false
 	private var connectionAttemptCount = 0
-
-	private val sessionIdToRunner = new scala.collection.mutable.HashMap[String, Runner]
 
 	private var registerToMasterScheduler: Option[Cancellable] = None
 
@@ -121,7 +118,7 @@ class Main(
 		}
 
 		try {
-			server = Some(new SparkServer(host, 0))
+			server = Some(new SparkServer(host, new MbConf(), self))
 			bindPort = server.map(_.start()).get
 		} catch {
 			case e: Exception =>
@@ -326,9 +323,6 @@ class Main(
 			logWarning(s"Unknown message received: $e")
 	}
 
-	private def newSessionId: String = {
-		UUID.randomUUID().toString
-	}
 
 	private def startComputeEnv(): Unit = {
 		SparkEngine.start(conf)

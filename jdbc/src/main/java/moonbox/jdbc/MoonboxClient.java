@@ -31,6 +31,8 @@ public class MoonboxClient {
   private int port;
   private final String appType;
   private final String sessionId;
+  private SessionPB session;
+  private final Map<String, String> config;
   private SettableFuture<ByteBuf> result;
 
 
@@ -47,8 +49,9 @@ public class MoonboxClient {
     this.user = user;
     this.password = password;
     this.appType = appType;
+    this.config = config;
     this.client = createClient();
-    this.sessionId = opensession(config);
+    this.sessionId = opensession();
   }
 
   public String getMasterHost() {
@@ -76,22 +79,24 @@ public class MoonboxClient {
             .setPassword(password)
             .setAppType(appType)
             .build();
-    ByteBuf byteBuf = clientToMaster.sendSync(Unpooled.wrappedBuffer(accessRequestPB.toByteArray()), connectTimeout);
+    ByteBuf byteBuf = clientToMaster.sendSync(Utils.messageToByteBuf(accessRequestPB), connectTimeout);
     AccessResponsePB accessResponsePB =
         AccessResponsePB
             .getDefaultInstance()
             .getParserForType()
-            .parseFrom(JavaUtils.byteBufToByteArray(byteBuf));
-
+            .parseFrom(Utils.byteBufToByteArray(byteBuf));
+    clientToMaster.close();
     HostPortPB hostPort = accessResponsePB.getHostPort();
+    this.session = accessResponsePB.getSession();
     this.host = hostPort.getHost();
     this.port = hostPort.getPort();
     return clientFactory.createClient(host, port, connectTimeout);
   }
 
-  public String opensession(Map<String, String> config) throws Exception {
-    OpenSessionRequestPB openSessionRequestPB = OpenSessionRequestPB.newBuilder().putAllConfig(config).build();
-    ByteBuf byteBuf = client.sendSync(Utils.messageToByteBuf(openSessionRequestPB), connectTimeout);
+  private String opensession() throws Exception {
+    OpenSessionRequestPB openSessionRequestPB = OpenSessionRequestPB.newBuilder().setSession(session).putAllConfig(config).build();
+    AppRequestMessage appRequestPB = AppRequestMessage.newBuilder().setOpenSession(openSessionRequestPB).build();
+    ByteBuf byteBuf = client.sendSync(Utils.messageToByteBuf(appRequestPB), connectTimeout);
     OpenSessionResponsePB openSessionResponsePB =
         OpenSessionResponsePB
             .getDefaultInstance()
@@ -133,17 +138,17 @@ public class MoonboxClient {
             .setSessionId(sessionId)
             .addAllSqls(sqls)
             .build();
-    return execute(requestPB, queryTimeout);
+    return execute(AppRequestMessage.newBuilder().setExecute(requestPB).build(), queryTimeout);
   }
 
   public ExecutionResultPB next(int queryTimeout) {
     ExecutionResultRequestPB requestPB = ExecutionResultRequestPB.newBuilder().setSessionId(sessionId).build();
-    return execute(requestPB, queryTimeout);
+    return execute(AppRequestMessage.newBuilder().setExecuteResult(requestPB).build(), queryTimeout);
   }
 
   public void cancel() {
     ExecutionCancelRequestPB requestPB = ExecutionCancelRequestPB.newBuilder().setSessionId(sessionId).build();
-    client.sendSync(Utils.messageToByteBuf(requestPB), connectTimeout);
+    client.sendSync(Utils.messageToByteBuf(AppRequestMessage.newBuilder().setExecteCancel(requestPB).build()), connectTimeout);
     if (!result.isDone()) {
       result.cancel(true);
     }

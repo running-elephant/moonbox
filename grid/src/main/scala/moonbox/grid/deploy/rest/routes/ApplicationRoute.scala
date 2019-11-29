@@ -82,7 +82,6 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	@Path("/{appName}")
 	def getApp = (token: String, session: Session) => path(Segment) { appName =>
 		get {
-			logInfo(appName)
 			onComplete(appService.getApplication(appName, session)) {
 				case Success(appOption) =>
 					appOption match {
@@ -126,12 +125,48 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	@Path("/{appName}")
 	def deleteApp = (token: String, session: Session) => path(Segment) { appName =>
 		delete {
-			logInfo(appName)
+			logInfo("delete" + appName)
+			complete(OK)
+		}
+	}
+
+	@ApiOperation(value = "Start a application", nickname = "start", httpMethod = "PUT")
+	@ApiImplicitParams(Array(
+		new ApiImplicitParam(name = "appName", value = "application name", required = true, dataType = "string", paramType = "path")
+	))
+	@ApiResponses(Array(
+		new ApiResponse(code = 200, message = "OK"),
+		new ApiResponse(code = 404, message = "Not found"),
+		new ApiResponse(code = 451, message = "request process failed"),
+		new ApiResponse(code = 500, message = "internal server error")
+	))
+	@Path("/{appName}/start")
+	def startApp = (token: String, session: Session) => path(Segment / "start") { appName =>
+		put {
+			logInfo("start" + appName)
+			complete(OK)
+		}
+	}
+
+	@ApiOperation(value = "Stop a application", nickname = "stop", httpMethod = "PUT")
+	@ApiImplicitParams(Array(
+		new ApiImplicitParam(name = "appName", value = "application name", required = true, dataType = "string", paramType = "path")
+	))
+	@ApiResponses(Array(
+		new ApiResponse(code = 200, message = "OK"),
+		new ApiResponse(code = 404, message = "Not found"),
+		new ApiResponse(code = 451, message = "request process failed"),
+		new ApiResponse(code = 500, message = "internal server error")
+	))
+	@Path("/{appName}/stop")
+	def stopApp = (token: String, session: Session) => path(Segment / "stop") { appName =>
+		put {
+			logInfo("stop" + appName)
 			complete(OK)
 		}
 	}
 
 	override def createSecurityRoute: Array[(String, Session) => Route] = Array(
-		createApp, deleteApp, getApp, listApps
+		createApp, deleteApp, getApp, listApps, startApp, stopApp
 	)
 }

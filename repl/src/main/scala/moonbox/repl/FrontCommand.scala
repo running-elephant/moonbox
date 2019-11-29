@@ -20,7 +20,7 @@ object ShowHistory extends FrontCommand {
 
 object ShowState extends FrontCommand {
 
-	override def command: Seq[String] = Seq("reconnect", "r")
+	override def command: Seq[String] = Seq("state", "status")
 
 	override def accept(cmd: String): Boolean = command.contains(cmd.toLowerCase)
 

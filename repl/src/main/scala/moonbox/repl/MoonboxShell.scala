@@ -20,16 +20,19 @@
 
 package moonbox.repl
 
-import java.sql.{Connection, DriverManager}
+import java.sql.{Connection, DriverManager, ResultSet, ResultSetMetaData}
 import java.util.Properties
+
 import moonbox.jdbc.MbDriver
 import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.reader.{LineReader, LineReaderBuilder, UserInterruptException}
 import org.jline.terminal.Terminal.{Signal, SignalHandler}
 import org.jline.terminal.TerminalBuilder
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.io.AnsiColor
 import scala.language.implicitConversions
 
@@ -111,7 +114,8 @@ object MoonboxShell {
 			printWelcome()
 			loop()
 		} catch {
-			case e: Exception => Console.err.println(e.getMessage)
+			case e: Exception =>
+				Console.err.println(e.getMessage)
 		} finally {
 			System.exit(-1)
 		}
@@ -119,9 +123,16 @@ object MoonboxShell {
 
 	private def loop(): Unit = {
 		while (true) {
-			val sqls = readLine()
-			lineReader.getHistory.add(sqls.mkString("; "))
-			sqls.foreach(process)
+			try {
+				val sqlString = readLine().mkString(DELIMITER.toString)
+				if (sqlString.trim.nonEmpty) {
+					process(sqlString)
+				}
+			} catch {
+				case e: NullPointerException =>
+				case e: InterruptedException =>
+				case e: UserInterruptException =>
+			}
 		}
 	}
 
@@ -208,12 +219,23 @@ object MoonboxShell {
 		statement.setFetchSize(fetchSize)
 		statement.setQueryTimeout(timeout * 1000)
 		try {
-			statement.executeQuery(sql)
+			val rs = statement.executeQuery(sql)
+			val rsMeta = rs.getMetaData
+			val columnNums = rsMeta.getColumnCount
+			val schema = new Array[String](columnNums)
+			val data = new ArrayBuffer[Seq[Any]]()
+			for (i <- 0 until columnNums) {
+				schema(i) = rsMeta.getColumnName(i + 1)
+			}
+			while (rs.next()) {
+				data.append((1 to columnNums).map(i => rs.getObject(i)))
+			}
+			print(Utils.stringToShow(data, schema, maxRows))
 		}	catch {
 			case u: UserInterruptException =>
 			case i: InterruptedException =>
-				statement.cancel()
 				println("Query canceled.")
+				statement.cancel()
 			case e: Exception =>
 				Console.err.println(s"Query error: ${e.getMessage}")
 		}
@@ -400,7 +422,8 @@ object MoonboxShell {
 					"options:\n" +
 					"   -h, --host            Connect to host.\n" +
 					"   -P, --port            Port num to ues for connecting to server.\n" +
-					"		-d, --database				Database to connect to." +
+					"		-d, --database				Database to connect to.\n" +
+					"		-a, --appType  				Engine to use for computing.\n" +
 					"   -u, --user            User for login, org@user.\n" +
 					"   -p, --password        Password to use when connecting to server.\n" +
 					"   -r, --runtime         Run in local or in cluster.\n" +
