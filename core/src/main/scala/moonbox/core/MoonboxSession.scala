@@ -61,7 +61,7 @@ class MoonboxSession(
 
 	def sql(jobLabel: String, sql: String, maxRows: Int): DataResult = {
 		engine.setJobGroup(jobLabel,
-			s"""| $username<br/>
+			s"""| $org@$username<br/>
 			    | $sql
 			 """.stripMargin)
 		try {
