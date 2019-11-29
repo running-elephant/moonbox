@@ -23,11 +23,11 @@ package org.apache.spark.sql.sqlbuilder
 import java.sql.Connection
 
 import org.apache.spark.sql.catalyst.expressions.aggregate.Last
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, DayOfMonth, EqualTo, Expression, Hour, Like, Literal, Md5, Minute, Month, Not, ParseToTimestamp, RLike, RegExpExtract, RegExpReplace, Second, StringLocate, ToDate, UnixTimestamp, Year}
-import org.apache.spark.sql.catalyst.plans.logical.{Join, Project, SubqueryAlias}
+import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, DayOfMonth, EqualTo, Expression, Hour, Md5, Minute, Month, RLike, RegExpExtract, RegExpReplace, Second, StringLocate, ToDate, Year}
+import org.apache.spark.sql.catalyst.plans.logical.{Join, Project}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
-import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.{DataType, StringType}
 
 import scala.collection.mutable
 
@@ -55,6 +55,13 @@ class MbClickHouseDialect extends MbDialect {
   override def maybeQuote(name: String): String = {
     if (name.contains("#") || name.contains("(")) quote(name)
     else name
+  }
+
+  override def dataTypeToSQL(dataType: DataType): String = {
+    dataType match {
+      case _: StringType => "String"
+      case other: _ => other.sql
+    }
   }
 
   override def projectToSQL(p: Project, isDistinct: Boolean, child: String, expression: String): String = {
