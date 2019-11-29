@@ -78,8 +78,6 @@ class MoonboxMaster(
 	private val idToApp = new mutable.HashMap[String, AppInfo]
 	private val addressToApp = new mutable.HashMap[Address, AppInfo]
 
-	private val sessionIdToApp = new mutable.HashMap[String, AppInfo]
-
 	private var persistenceEngine: PersistenceEngine = _
 	private var leaderElectionAgent: LeaderElectionAgent = _
 
@@ -225,11 +223,10 @@ class MoonboxMaster(
 			} else {
 				logInfo(s"Now working as $state")
 				// test
-				launchDrivers()
+				if (sys.env.contains("MOONBOX_DEV")) {
+					launchDrivers()
+				}
 			}
-
-			// test
-		case s:SubmitDriverResponse =>
 
 		case RevokedLeadership =>
 			logError("Leadership has been revoked, master shutting down.")
@@ -397,9 +394,6 @@ class MoonboxMaster(
 					requester ! UnregisterTimedEventFailed(e.getMessage)
 			}
 
-		case job: JobMessage =>
-			handleJobMessage.apply(job)
-
 		case service: ServiceMessage =>
 			handleServiceMessage.apply(service)
 
@@ -478,152 +472,11 @@ class MoonboxMaster(
 			}
 			sender() ! response
 
+		// for test
+		case s:SubmitDriverResponse =>
+
 		case e => logWarning("Unknown message: " + e.toString)
 
-	}
-
-	private def handleJobMessage: Receive = {
-
-		case _ =>
-
-		/*case JobSubmit(org, username, lang, sqls, userConfig) =>
-			if(state != RecoveryState.ACTIVE) {
-				val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
-				sender() ! JobSubmitResponse(None, msg)
-			} else {
-				logInfo("Batch job submitted: " + sqls.mkString("; "))
-				val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
-				val submitDate = new Date()
-				val driverId = newDriverId(submitDate) + userConfig.get(EventEntity.NAME).map("-"+_).getOrElse("")
-				val driverDesc = if (lang == "hql") {
-					HiveBatchDriverDesc(driverId, org, username, sqls, config)
-				} else {
-					SparkBatchDriverDesc(org, username, sqls, config)
-				}
-				val driver = createDriver(driverDesc, driverId, submitDate)
-				persistenceEngine.addDriver(driver)
-				waitingDrivers += driver
-				drivers.add(driver)
-				schedule()
-				val msg = s"Batch job successfully submitted as ${driver.id}"
-				logInfo(msg)
-				sender() ! JobSubmitResponse(Some(driver.id), msg)
-			}*/
-
-		/*case JobProgress(driverId) =>
-			if (state != RecoveryState.ACTIVE) {
-				val msg = s"Current master is not active: $state.  Can only request driver state in ACTIVE state."
-				sender() ! JobProgressState(driverId, -1, DriverState.UNKNOWN.toString, msg)
-			} else {
-				waitingDrivers.find(_.id == driverId) match {
-					case Some(driver) =>
-						val msg = s"Driver $driverId is waiting for submit."
-						sender() ! JobProgressState(driverId, driver.startTime, driver.state.toString, msg)
-					case None =>
-						(drivers ++ completedDrivers).find(_.id == driverId) match {
-							case Some(driver) =>
-								val msg = driver.exception.map(_.getMessage).getOrElse("")
-								sender() ! JobProgressState(driverId, driver.startTime, driver.state.toString, msg)
-							case None =>
-								val msg = s"Ask unknown job state: $driverId"
-								logWarning(msg)
-								sender() ! JobProgressState(driverId, -1, DriverState.UNKNOWN.toString, msg)
-						}
-				}
-			}
-
-		case BatchJobCancel(driverId) =>
-			if (state != RecoveryState.ACTIVE) {
-				val msg = s"Current master is not active: $state. Can only kill drivers in ACTIVE state."
-				sender() ! BatchJobCancelResponse(driverId, success = false, msg)
-			} else {
-				logInfo(s"Asked to kill driver " + driverId)
-				val driver = drivers.find(_.id == driverId)
-				driver match {
-					case Some(d) =>
-						if (waitingDrivers.contains(d)) {
-							waitingDrivers -= d
-							self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
-						} else {
-							d.worker.foreach(_.endpoint ! KillDriver(driverId))
-						}
-						val msg = s"Kill request for $driverId submitted."
-						logInfo(msg)
-						sender() ! BatchJobCancelResponse(driverId, success = true, msg)
-					case None =>
-						val msg = s"Driver $driverId has already finished or does not exist."
-						logWarning(msg)
-						sender() ! BatchJobCancelResponse(driverId, success = false, msg)
-				}
-			}*/
-
-		/*case open @ OpenSession(_, _, _, config) =>
-			val requester = sender()
-			val centralized = config.get("islocal").exists(_.equalsIgnoreCase("true"))
-			val appLabel = config.getOrElse("spark.app.label", "common")
-			val candidate = selectApplication(centralized, appLabel)
-			candidate match {
-				case Some(app) =>
-					logInfo(s"Try asking application ${app.id} to open session.")
-					val f = app.endpoint.ask(open).mapTo[OpenSessionResponse]
-					f.onComplete {
-						case Success(response) =>
-							if (response.sessionId.isDefined) {
-								sessionIdToApp.put(response.sessionId.get, app)
-							}
-							requester ! response
-						case Failure(e) =>
-							requester ! OpenSessionResponse(None, message = e.getMessage)
-					}
-				case None =>
-					val appType = if (centralized) "centralized" else "distributed"
-					val msg = s"There is no available application for $appType computation."
-					logWarning(msg)
-					sender() ! OpenSessionResponse(None, message = msg)
-			}
-
-		case close @ CloseSession(sessionId) =>
-			val requester = sender()
-			sessionIdToApp.get(sessionId) match {
-				case Some(app) =>
-					val f = app.endpoint.ask(close).mapTo[CloseSessionResponse]
-					f.onComplete {
-						case Success(response) =>
-							if (response.success) {
-								sessionIdToApp.remove(response.sessionId)
-							}
-							requester ! response
-						case Failure(e) =>
-							requester ! CloseSessionResponse(sessionId, success = false, e.getMessage)
-					}
-				case None =>
-					requester ! CloseSessionResponse(sessionId, success = false, s"Session $sessionId lost in master.")
-			}
-
-		case query: JobQuery =>
-			val requester = sender()
-			sessionIdToApp.get(query.sessionId) match {
-				case Some(app) =>
-					app.endpoint forward query
-				case None =>
-					requester ! JobQueryResponse(success = false, "", Seq.empty, hasNext = false,
-						s"Session ${query.sessionId} lost in master.")
-			}
-
-		case cancel @ InteractiveJobCancel(sessionId) =>
-			val requester = sender()
-			sessionIdToApp.get(sessionId) match {
-				case Some(app) =>
-					val f = app.endpoint.ask(cancel).mapTo[InteractiveJobCancelResponse]
-					f.onComplete {
-						case Success(response) =>
-							requester ! response
-						case Failure(e) =>
-							requester ! InteractiveJobCancelResponse(success = false, e.getMessage)
-					}
-				case None =>
-					requester ! InteractiveJobCancelResponse(success = false, s"Session $sessionId lost in master.")
-			}*/
 	}
 
 	private def handleServiceMessage: Receive = {
