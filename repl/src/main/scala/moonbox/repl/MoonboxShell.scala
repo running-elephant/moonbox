@@ -114,7 +114,8 @@ object MoonboxShell {
 			printWelcome()
 			loop()
 		} catch {
-			case e: Exception => Console.err.println(e.getMessage)
+			case e: Exception =>
+				Console.err.println(e.getMessage)
 		} finally {
 			System.exit(-1)
 		}
@@ -122,10 +123,15 @@ object MoonboxShell {
 
 	private def loop(): Unit = {
 		while (true) {
-			val sqlString = readLine().mkString(DELIMITER.toString)
-			if (sqlString.trim.nonEmpty) {
-				lineReader.getHistory.add(sqlString)
-				process(sqlString)
+			try {
+				val sqlString = readLine().mkString(DELIMITER.toString)
+				if (sqlString.trim.nonEmpty) {
+					process(sqlString)
+				}
+			} catch {
+				case e: NullPointerException =>
+				case e: InterruptedException =>
+				case e: UserInterruptException =>
 			}
 		}
 	}
@@ -228,8 +234,8 @@ object MoonboxShell {
 		}	catch {
 			case u: UserInterruptException =>
 			case i: InterruptedException =>
-				statement.cancel()
 				println("Query canceled.")
+				statement.cancel()
 			case e: Exception =>
 				Console.err.println(s"Query error: ${e.getMessage}")
 		}
