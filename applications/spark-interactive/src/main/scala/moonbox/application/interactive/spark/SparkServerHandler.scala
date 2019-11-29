@@ -1,7 +1,7 @@
 package moonbox.application.interactive.spark
 
 import java.math.BigDecimal
-import java.sql.Date
+import java.sql.{Date, Timestamp}
 import java.util
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -13,7 +13,6 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.network.server.{RpcCallContext, RpcHandler}
 import moonbox.network.util.JavaUtils
 import moonbox.protocol.protobuf.{DataTypePB, ExecutionRequestPB, _}
-import org.apache.commons.net.ntp.TimeStamp
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -305,7 +304,7 @@ class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler 
 
 			case TimestampType =>
 				if (value != null) {
-					builder.setLongValue(value.asInstanceOf[TimeStamp].getTime)
+					builder.setLongValue(value.asInstanceOf[Timestamp].getTime)
 				} else {
 					builder.clearLongValue()
 				}
@@ -319,8 +318,11 @@ class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler 
 
 			case array: ArrayType =>
 				if (value != null) {
-					val arrayValues = value.asInstanceOf[Array[Any]].map(v => valueConvert(v, array.elementType))
-					builder.setArrayValue(ArrayPB.newBuilder().addAllValues(arrayValues.toSeq.asJava))
+					// value.asInstanceOf[mutable.WrappedArray[Any]].toArray
+					val arrayValues = value.asInstanceOf[Seq[Any]].map { v =>
+						valueConvert(v, array.elementType)
+					}
+					builder.setArrayValue(ArrayPB.newBuilder().addAllValues(arrayValues.asJava))
 				} else {
 					builder.clearArrayValue()
 				}
