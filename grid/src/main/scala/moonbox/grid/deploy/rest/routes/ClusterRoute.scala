@@ -4,9 +4,10 @@ import javax.ws.rs.Path
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Route
 import io.swagger.annotations._
-import moonbox.grid.deploy.rest.entities.{Response, ResponseHeader}
+import moonbox.grid.deploy.rest.entities.Response
 import moonbox.grid.deploy.rest.service.{ClusterService, LoginService}
 import moonbox.grid.deploy.security.Session
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -26,18 +27,18 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def list = (token: String, session: Session) => {
+	def list = (session: Session) => {
 		get {
 			onComplete(Future(clusterService.clusterInfo())) {
 				case Success(nodes) =>
-					complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token)), payload = Some(nodes)))
+					complete(OK, Response(code = 200, msg = "Success", payload = Some(nodes)))
 				case Failure(e) =>
-					complete(OK, Response(ResponseHeader(code = 451, msg = e.getMessage, token = Some(token))))
+					complete(OK, Response(code = 451, msg = e.getMessage))
 			}
 		}
 	}
 
-	override def createSecurityRoute: Array[(String, Session) => Route] = Array(
+	override def createSecurityRoute: Array[Session => Route] = Array(
 		list
 	)
 }

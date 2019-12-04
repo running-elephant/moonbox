@@ -3,9 +3,10 @@ package moonbox.grid.deploy.rest.routes
 import javax.ws.rs.Path
 
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Route
 import io.swagger.annotations._
-import moonbox.grid.deploy.rest.entities.{Login, Response, ResponseHeader}
+import moonbox.grid.deploy.rest.entities.{Login, Response}
 import moonbox.grid.deploy.rest.service.LoginService
 import moonbox.grid.deploy.security.{PasswordNotMatchException, UserNotFoundException, UsernameFormatException}
 
@@ -34,24 +35,26 @@ class LoginRoute(loginService: LoginService) extends CrossDomainRoute {
 					case Success(either) =>
 						either.fold(
 							token => {
-								complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token))))
+								respondWithHeader(RawHeader("token", token)) {
+									complete(OK, Response(code = 200, msg = "Success"))
+								}
 							},
 							exception => {
-								val header = exception match {
+								val response = exception match {
 									case u: UserNotFoundException =>
-										ResponseHeader(405, u.getMessage)
+										Response(405, u.getMessage)
 									case u: UsernameFormatException =>
-										ResponseHeader(211, u.getMessage)
+										Response(211, u.getMessage)
 									case e: PasswordNotMatchException =>
-										ResponseHeader(210, e.getMessage)
+										Response(210, e.getMessage)
 									case e =>
-										ResponseHeader(451, e.getMessage)
+										Response(451, e.getMessage)
 								}
-								complete(OK, Response(header))
+								complete(OK, response)
 							}
 						)
 					case Failure(e) =>
-						complete(OK, Response(ResponseHeader(451, e.getMessage)))
+						complete(OK, Response(451, e.getMessage))
 				}
 			}
 		}

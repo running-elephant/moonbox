@@ -5,7 +5,7 @@ import javax.ws.rs.Path
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.server.Route
 import io.swagger.annotations._
-import moonbox.grid.deploy.rest.entities.{Application, Response, ResponseHeader}
+import moonbox.grid.deploy.rest.entities.{Application, Response}
 import moonbox.grid.deploy.rest.service.{ApplicationService, LoginService}
 import moonbox.grid.deploy.security.Session
 
@@ -34,14 +34,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def createApp = (token: String, session: Session) => {
+	def createApp = (session: Session) => {
 		post {
 			entity(as[Application]) { in =>
 				onComplete(appService.createApplication(in, session)) {
 					case Success(_) =>
-						complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token))))
+						complete(OK, Response(code = 200, msg = "Success"))
 					case Failure(e) =>
-						complete(OK, Response(ResponseHeader(code = 451, msg = e.getMessage, token = Some(token))))
+						complete(OK, Response(code = 451, msg = e.getMessage))
 				}
 			}
 		}
@@ -56,14 +56,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def updateApp = (token: String, session: Session) => {
+	def updateApp = (session: Session) => {
 		post {
 			entity(as[Application]) { in =>
 				onComplete(appService.createApplication(in, session)) {
 					case Success(_) =>
-						complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token))))
+						complete(OK, Response(code = 200, msg = "Success"))
 					case Failure(e) =>
-						complete(OK, Response(ResponseHeader(code = 451, msg = e.getMessage, token = Some(token))))
+						complete(OK, Response(code = 451, msg = e.getMessage))
 				}
 			}
 		}
@@ -80,18 +80,18 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}")
-	def getApp = (token: String, session: Session) => path(Segment) { appName =>
+	def getApp = (session: Session) => path(Segment) { appName =>
 		get {
 			onComplete(appService.getApplication(appName, session)) {
 				case Success(appOption) =>
 					appOption match {
 						case Some(app) =>
-							complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token)), payload = Some(app)))
+							complete(OK, Response(code = 200, msg = "Success", payload = Some(app)))
 						case None =>
-							complete(OK, Response(ResponseHeader(code = 404, msg = "Application Not Found", token = Some(token))))
+							complete(OK, Response(code = 404, msg = "Application Not Found"))
 					}
 				case Failure(e) =>
-					complete(OK, Response(ResponseHeader(code = 451, msg = e.getMessage, token = Some(token))))
+					complete(OK, Response(code = 451, msg = e.getMessage))
 			}
 		}
 	}
@@ -103,12 +103,12 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def listApps = (token: String, session: Session) => get {
+	def listApps = (session: Session) => get {
 		onComplete(appService.listApplication(session)) {
 			case Success(apps) =>
-				complete(OK, Response(ResponseHeader(code = 200, msg = "Success", token = Some(token)), payload = Some(apps)))
+				complete(OK, Response(code = 200, msg = "Success", payload = Some(apps)))
 			case Failure(e) =>
-				complete(OK, Response(ResponseHeader(code = 451, msg = e.getMessage, token = Some(token))))
+				complete(OK, Response(code = 451, msg = e.getMessage))
 		}
 	}
 
@@ -123,7 +123,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}")
-	def deleteApp = (token: String, session: Session) => path(Segment) { appName =>
+	def deleteApp = (session: Session) => path(Segment) { appName =>
 		delete {
 			logInfo("delete" + appName)
 			complete(OK)
@@ -141,7 +141,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}/start")
-	def startApp = (token: String, session: Session) => path(Segment / "start") { appName =>
+	def startApp = (session: Session) => path(Segment / "start") { appName =>
 		put {
 			logInfo("start" + appName)
 			complete(OK)
@@ -159,14 +159,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}/stop")
-	def stopApp = (token: String, session: Session) => path(Segment / "stop") { appName =>
+	def stopApp = (session: Session) => path(Segment / "stop") { appName =>
 		put {
 			logInfo("stop" + appName)
 			complete(OK)
 		}
 	}
 
-	override def createSecurityRoute: Array[(String, Session) => Route] = Array(
+	override def createSecurityRoute: Array[Session => Route] = Array(
 		createApp, deleteApp, getApp, listApps, startApp, stopApp
 	)
 }
