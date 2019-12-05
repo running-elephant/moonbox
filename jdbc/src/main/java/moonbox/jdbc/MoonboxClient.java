@@ -51,7 +51,7 @@ public class MoonboxClient {
     this.appType = appType;
     this.config = config;
     this.client = createClient();
-    this.sessionId = opensession();
+    this.sessionId = opensession().getSessionId();
   }
 
   public String getMasterHost() {
@@ -93,16 +93,24 @@ public class MoonboxClient {
     return clientFactory.createClient(host, port, connectTimeout);
   }
 
-  private String opensession() throws Exception {
+  private OpenSessionResponsePB opensession() throws Exception {
     OpenSessionRequestPB openSessionRequestPB = OpenSessionRequestPB.newBuilder().setSession(session).putAllConfig(config).build();
     AppRequestMessage appRequestPB = AppRequestMessage.newBuilder().setOpenSession(openSessionRequestPB).build();
     ByteBuf byteBuf = client.sendSync(Utils.messageToByteBuf(appRequestPB), connectTimeout);
-    OpenSessionResponsePB openSessionResponsePB =
-        OpenSessionResponsePB
-            .getDefaultInstance()
-            .getParserForType()
-            .parseFrom(Utils.byteBufToByteArray(byteBuf));
-    return openSessionResponsePB.getSessionId();
+    return OpenSessionResponsePB
+        .getDefaultInstance()
+        .getParserForType()
+        .parseFrom(Utils.byteBufToByteArray(byteBuf));
+  }
+
+  private CloseSessionResponsePB closesession() throws Exception {
+    CloseSessionRequestPB closeSessionRequestPB = CloseSessionRequestPB.newBuilder().setSessionId(sessionId).build();
+    AppRequestMessage appRequestPB = AppRequestMessage.newBuilder().setCloseSession(closeSessionRequestPB).build();
+    ByteBuf byteBuf = client.sendSync(Utils.messageToByteBuf(appRequestPB), connectTimeout);
+    return CloseSessionResponsePB
+        .getDefaultInstance()
+        .getParserForType()
+        .parseFrom(Utils.byteBufToByteArray(byteBuf));
   }
 
   private ExecutionResultPB execute(Message request, int queryTimeout) {
@@ -156,7 +164,14 @@ public class MoonboxClient {
 
   public void close() {
     if (client != null && client.isActive()) {
-      client.close();
+      try {
+        closesession();
+        client.close();
+      } catch (ExecutionException e) {
+        throw Throwables.propagate(e.getCause());
+      } catch (Exception e) {
+        throw Throwables.propagate(e);
+      }
     }
   }
 
