@@ -23,6 +23,9 @@ public class MbDriver implements Driver {
 
   @Override
   public Connection connect(String url, Properties info) throws SQLException {
+    if (!acceptsURL(url)) {
+      return null;
+    }
     return new MoonboxConnection(url, info);
   }
 
