@@ -17,6 +17,9 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler with MbLogging {
 
@@ -80,9 +83,12 @@ class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler 
 				val maxRows = executeRequest.getMaxRows
 				val fetchSize = executeRequest.getFetchSize
 				val sqlsList = executeRequest.getSqlsList.asScala
-				val queryResult = runner.query(sqlsList, fetchSize, maxRows)
-
-				context.reply(Unpooled.wrappedBuffer(constructExecuteResult(queryResult).toByteArray))
+				Future(runner.query(sqlsList, fetchSize, maxRows)).onComplete {
+					case Success(result) =>
+						context.reply(Unpooled.wrappedBuffer(constructExecuteResult(result).toByteArray))
+					case Failure(e) =>
+						context.sendFailure(e)
+				}
 			case None =>
 				throw new RuntimeException("session lost, please reconnect.")
 		}
