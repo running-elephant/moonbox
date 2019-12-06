@@ -55,6 +55,7 @@ object MoonboxShell {
 	private var truncate: Int = 0
 	private var maxRows: Int = 100
 	private var extraOptions: String = ""
+	private val mainThread = Thread.currentThread()
 
 	private val lineReader = createLineReader()
 
@@ -88,7 +89,7 @@ object MoonboxShell {
 				if (signal.equals(Signal.INT)) {
 					new Thread() {
 						override def run() = {
-							Thread.currentThread().interrupt()
+							mainThread.interrupt()
 						}
 					}.start()
 				}
@@ -234,10 +235,17 @@ object MoonboxShell {
 		}	catch {
 			case u: UserInterruptException =>
 			case i: InterruptedException =>
-				println("Query canceled.")
-				statement.cancel()
 			case e: Exception =>
-				Console.err.println(s"Query error: ${e.getMessage}")
+				if (e.getMessage != null && e.getMessage.contains("java.lang.InterruptedException")) {
+					try {
+						statement.cancel()
+					} catch {
+						case e: Exception =>
+					}
+					println("Query canceled.")
+				} else {
+					Console.err.println(s"Query error: ${e.getMessage}")
+				}
 		}
 	}
 
