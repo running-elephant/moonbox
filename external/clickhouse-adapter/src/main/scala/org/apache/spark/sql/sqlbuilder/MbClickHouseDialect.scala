@@ -60,7 +60,7 @@ class MbClickHouseDialect extends MbDialect {
   override def dataTypeToSQL(dataType: DataType): String = {
     dataType match {
       case _: StringType => "String"
-      case other: _ => other.sql
+      case other@_ => other.sql
     }
   }
 
