@@ -35,7 +35,7 @@ public class MoonboxConnection implements Connection {
   private MoonboxClient createClient() throws SQLException {
     String user = this.info.getProperty("user");
     String password = this.info.getProperty("password");
-    String appType = this.info.getProperty("appType");
+    String appType = this.info.getProperty("apptype");
     Map<String, String> config = new HashMap<>();
     config.put("database", database);
     try {

@@ -20,17 +20,15 @@ public class MoonboxStatement implements Statement {
   MoonboxStatement(MoonboxConnection conn, String database) throws SQLException {
     this.conn = conn;
     this.database = database;
-    this.maxRows = Integer.valueOf(this.conn.getClientInfo().getProperty("maxRows", String.valueOf(DEFAULT_MAX_ROWS)));
-    this.fetchSize = Integer.valueOf(this.conn.getClientInfo().getProperty("fetchSize", String.valueOf(DEFAULT_FETCH_SIZE)));
-    this.queryTimeout = Integer.valueOf(this.conn.getClientInfo().getProperty("queryTimeout", String.valueOf(DEFAULT_QUERY_TIMEOUT)));
+    this.maxRows = Integer.valueOf(this.conn.getClientInfo().getProperty("maxrows", String.valueOf(DEFAULT_MAX_ROWS)));
+    this.fetchSize = Integer.valueOf(this.conn.getClientInfo().getProperty("fetchsize", String.valueOf(DEFAULT_FETCH_SIZE)));
+    this.queryTimeout = Integer.valueOf(this.conn.getClientInfo().getProperty("querytimeout", String.valueOf(DEFAULT_QUERY_TIMEOUT)));
   }
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    synchronized (this) {
-      ExecutionResultPB execute = conn.getClient().execute(Utils.splitSQLs(sql), maxRows, fetchSize, queryTimeout);
-      return new MoonboxResultSet(conn, this, new MoonboxResult(conn, this, execute));
-    }
+    ExecutionResultPB execute = conn.getClient().execute(Utils.splitSQLs(sql), maxRows, fetchSize, queryTimeout);
+    return new MoonboxResultSet(conn, this, new MoonboxResult(conn, this, execute));
   }
 
   @Override

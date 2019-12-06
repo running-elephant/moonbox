@@ -46,7 +46,14 @@ public class Utils {
       }
     }
 
-    return info;
+    // key to lower case
+    Properties properties = new Properties();
+    info.entrySet().forEach(entry -> {
+      String key = entry.getKey().toString().toLowerCase();
+      properties.put(key, entry.getValue());
+    });
+
+    return properties;
   }
 
   public static List<String> splitSQLs(String sql) {
