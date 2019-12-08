@@ -701,34 +701,34 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val hiveClient = HiveClientUtils.getHiveClient(props)
     val hiveCatalogTable = hiveClient.getTable(props("hivedb"), props("hivetable"))
 
-    val path = hiveCatalogTable.storage.locationUri.get.toString
-    setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
+    logInfo(s"hive table $table catalog: $hiveCatalogTable")
 
-		logInfo(s"hive table $table catalog: $hiveCatalogTable")
+    if (hiveCatalogTable.tableType == CatalogTableType.VIEW) {
+      injectTableFunctions(parsePlan(hiveCatalogTable.viewText.get))
+      sessionState.catalog.createTable(
+        hiveCatalogTable.copy(identifier = table), ignoreIfExists = true
+      )
+    } else {
+      val path = hiveCatalogTable.storage.locationUri.get.toString
+      setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
 
-		if (hiveCatalogTable.tableType == CatalogTableType.VIEW) {
-			injectTableFunctions(parsePlan(hiveCatalogTable.viewText.get))
-			sessionState.catalog.createTable(
-				hiveCatalogTable.copy(identifier = table), ignoreIfExists = true
-			)
-		} else {
-			val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
+      val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
-			sessionState.catalog.createTable(hiveCatalogTable.copy(
-				identifier = table,
-				tableType = CatalogTableType.EXTERNAL,
-				storage = hiveCatalogTable.storage.copy(properties = props ++ hiveCatalogTable.storage.properties),
-				provider = Some("hive"),
-				properties = hiveCatalogTable.properties ++ props
-			), ignoreIfExists = true)
+      sessionState.catalog.createTable(hiveCatalogTable.copy(
+        identifier = table,
+        tableType = CatalogTableType.EXTERNAL,
+        storage = hiveCatalogTable.storage.copy(properties = props ++ hiveCatalogTable.storage.properties),
+        provider = Some("hive"),
+        properties = hiveCatalogTable.properties ++ props
+      ), ignoreIfExists = true)
 
-			// TODO modify storage.uri
-			sessionState.catalog.createPartitions(
-				table,
-				hivePartitions,
-				ignoreIfExists = true
-			)
-		}
+      // TODO modify storage.uri
+      sessionState.catalog.createPartitions(
+        table,
+        hivePartitions,
+        ignoreIfExists = true
+      )
+    }
 
   }
 
