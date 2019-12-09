@@ -8,7 +8,8 @@ option java_multiple_files = true;
 message AccessRequestPB {
     string username = 1;
     string password = 2;
-    string appType = 3;
+    string app_type = 3;
+    string app_name = 4;
 }
 
 message AccessResponsePB {

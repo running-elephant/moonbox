@@ -457,11 +457,11 @@ class MoonboxMaster(
 				}
 			}
 
-		case RequestApplicationAddress(appType) =>
+		case RequestApplicationAddress(appType, appName) =>
 
 			val response = AppMasterManager.getAppMaster(appType) match {
 				case Some(appMaster) =>
-					appMaster.selectApp(apps) match {
+					appMaster.selectApp(apps, appName) match {
 						case Some(appInfo) =>
 							ApplicationAddressResponse(found = true, host = Some(appInfo.host), port = Some(appInfo.dataPort))
 						case None =>

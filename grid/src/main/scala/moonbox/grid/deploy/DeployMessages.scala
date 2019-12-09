@@ -132,7 +132,7 @@ object DeployMessages {
 	case class DriverStatusResponse(found: Boolean, state: Option[DriverState],
 		workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
 
-	case class RequestApplicationAddress(appType: String) extends DeployMessages
+	case class RequestApplicationAddress(appType: String, appName: Option[String]) extends DeployMessages
 
 	case class ApplicationAddressResponse(found: Boolean,
 		host: Option[String] = None, port: Option[Int] = None, exception: Option[Exception] = None) extends DeployMessages

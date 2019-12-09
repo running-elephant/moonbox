@@ -50,6 +50,7 @@ object MoonboxShell {
 	private var user: String = _
 	private var password: String = _
 	private var appType: String = "sparkcluster"
+	private var appName: Option[String] = None
 	private var database: String = "default"
 	private var fetchSize: Int = 1000
 	private var truncate: Int = 0
@@ -294,6 +295,7 @@ object MoonboxShell {
 			info.put("fetchSize", fetchSize.toString)
 			info.put("queryTimeout", timeout.toString)
 			info.put("maxRows", maxRows.toString)
+			appName.foreach(name => info.put("appName", name))
 			info.putAll(handleExtraOptions(extraOptions).asJava)
 			connection = DriverManager.getConnection(s"jdbc:moonbox://$host:$port/$database", info)
 		} catch {
@@ -410,6 +412,9 @@ object MoonboxShell {
 		case ("-a" | "--apptype") :: value :: tail =>
 			appType = value
 			parseArgs(tail)
+		case ("-n" | "--appname") :: value :: tail =>
+			appName = Some(value)
+			parseArgs(tail)
 		case ("-f" | "--fetchsize") :: IntParam(value) :: tail =>
 			fetchSize = value
 			parseArgs(tail)
@@ -431,10 +436,10 @@ object MoonboxShell {
 					"   -h, --host            Connect to host.\n" +
 					"   -P, --port            Port num to ues for connecting to server.\n" +
 					"		-d, --database				Database to connect to.\n" +
-					"		-a, --appType  				Engine to use for computing.\n" +
-					"   -u, --user            User for login, org@user.\n" +
+					"		-a, --apptype  				Type of app to use for computing.\n" +
+					"		-n, --appname					Name of app to use for computing. optional.\n" +
+					"   -u, --user            User for login, the format is org@user.\n" +
 					"   -p, --password        Password to use when connecting to server.\n" +
-					"   -r, --runtime         Run in local or in cluster.\n" +
 					"   -t, --timeout         The query timeout: seconds.\n" +
 					"   -f, --fetchsize       The fetch size.\n" +
 					"   -e, --extraoptions    The extra options: like \"k1=v1&k2=v2...\"\n" +

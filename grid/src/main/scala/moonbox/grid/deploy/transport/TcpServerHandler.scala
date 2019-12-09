@@ -28,10 +28,16 @@ class TcpServerHandler(conf: MbConf, catalog: JdbcCatalog, master: ActorRef) ext
 		val username = accessRequestPB.getUsername
 		val password = accessRequestPB.getPassword
 		val appType = accessRequestPB.getAppType
+		val appName = Option {
+			val name = accessRequestPB.getAppName
+			if (name != null && name.isEmpty) {
+				null
+			} else name
+		}
 		try {
 			val session: Session = loginManager.login(username, password)
 			logInfo(s"$username login successfully.")
-			master.ask(RequestApplicationAddress(appType)).mapTo[ApplicationAddressResponse].onComplete {
+			master.ask(RequestApplicationAddress(appType, appName)).mapTo[ApplicationAddressResponse].onComplete {
 				case Success(addressResponse) =>
 					if (addressResponse.found) {
 						val host = addressResponse.host.get

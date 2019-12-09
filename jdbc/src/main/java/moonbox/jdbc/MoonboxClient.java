@@ -30,6 +30,7 @@ public class MoonboxClient {
   private String host;
   private int port;
   private final String appType;
+  private final String appName;
   private final String sessionId;
   private SessionPB session;
   private final Map<String, String> config;
@@ -42,6 +43,7 @@ public class MoonboxClient {
                        String user,
                        String password,
                        String appType,
+                       String appName,
                        Map<String, String> config) throws Exception {
     this.masterHost = masterHost;
     this.masterPort = masterPort;
@@ -49,6 +51,7 @@ public class MoonboxClient {
     this.user = user;
     this.password = password;
     this.appType = appType;
+    this.appName = appName;
     this.config = config;
     this.client = createClient();
     this.sessionId = opensession().getSessionId();
@@ -73,12 +76,14 @@ public class MoonboxClient {
   private TransportClient createClient() throws Exception {
     TransportClientFactory clientFactory = new TransportContext(new NoOpRpcHandler(), true).createClientFactory();
     TransportClient clientToMaster = clientFactory.createClient(masterHost, masterPort, connectTimeout);
-    AccessRequestPB accessRequestPB =
-        AccessRequestPB.newBuilder()
-            .setUsername(user)
-            .setPassword(password)
-            .setAppType(appType)
-            .build();
+    AccessRequestPB.Builder builder = AccessRequestPB.newBuilder();
+    builder.setUsername(user)
+        .setPassword(password)
+        .setAppType(appType);
+    if (appName != null) {
+      builder.setAppName(appName);
+    }
+    AccessRequestPB accessRequestPB = builder.build();
     ByteBuf byteBuf = clientToMaster.sendSync(Utils.messageToByteBuf(accessRequestPB), connectTimeout);
     AccessResponsePB accessResponsePB =
         AccessResponsePB

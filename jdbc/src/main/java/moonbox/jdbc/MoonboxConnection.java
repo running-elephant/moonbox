@@ -36,11 +36,12 @@ public class MoonboxConnection implements Connection {
     String user = this.info.getProperty("user");
     String password = this.info.getProperty("password");
     String appType = this.info.getProperty("apptype");
+    String appName = this.info.getProperty("appname");
     Map<String, String> config = new HashMap<>();
     config.put("database", database);
     try {
       return new MoonboxClient(masterHost,
-          masterPort, connectTimeout, user, password, appType, config);
+          masterPort, connectTimeout, user, password, appType, appName, config);
     } catch (Exception e) {
       throw new SQLException(e);
     }

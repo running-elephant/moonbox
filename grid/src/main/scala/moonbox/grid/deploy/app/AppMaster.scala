@@ -12,8 +12,13 @@ abstract class AppMaster extends MbLogging {
 
 	// AppMasterManager.registerAppMaster(this)
 
-	def selectApp(apps: mutable.HashSet[AppInfo]): Option[AppInfo] = {
-		Random.shuffle(apps.filter(_.appType == typeName)).headOption
+	def selectApp(apps: mutable.HashSet[AppInfo], appName: Option[String]): Option[AppInfo] = {
+		appName match {
+			case Some(name) =>
+				Random.shuffle(apps.filter(_.appType == typeName)).find(_.id == name)
+			case None =>
+				Random.shuffle(apps.filter(_.appType == typeName)).headOption
+		}
 	}
 
 	def launchApp(): Unit = {
