@@ -35,7 +35,7 @@ class LoginRoute(loginService: LoginService) extends CrossDomainRoute {
 					case Success(either) =>
 						either.fold(
 							token => {
-								respondWithHeader(RawHeader("token", token)) {
+								respondWithHeader(RawHeader("Authorization", token)) {
 									complete(OK, Response(code = 200, msg = "Success"))
 								}
 							},
