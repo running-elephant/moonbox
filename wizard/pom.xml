@@ -9,8 +9,8 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>moonbox-mbw</artifactId>
-    <name>Moonbox Project MBW</name>
+    <artifactId>moonbox-wizard</artifactId>
+    <name>Moonbox Project Wizard</name>
 
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
