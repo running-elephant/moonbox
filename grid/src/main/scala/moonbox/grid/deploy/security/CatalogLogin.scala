@@ -40,7 +40,6 @@ class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login with MbLogg
             .put("user", user)
             .put("userId", s"$userId")
             .put("roleType", s"${roleType.toString}")
-							.put("password", password)
             .build()
         }
         else {
