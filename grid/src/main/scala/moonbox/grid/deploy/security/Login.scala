@@ -40,7 +40,11 @@ class SessionBuilder(session: Session) {
 }
 
 
-case class Session private() extends mutable.HashMap[String, String]
+case class Session private() extends mutable.HashMap[String, String] {
+	override def toSeq: Seq[(String, String)] = {
+		this.filterKeys(_ != "password").toSeq
+	}
+}
 
 object Session {
 	val KEY = "SESSION_KEY"
