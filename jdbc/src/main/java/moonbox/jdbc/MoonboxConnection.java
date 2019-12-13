@@ -36,7 +36,7 @@ public class MoonboxConnection implements Connection {
     String user = this.info.getProperty("user");
     String password = this.info.getProperty("password");
     String appType = this.info.getProperty("apptype");
-    String appName = this.info.getProperty("appname");
+    String appName = this.info.getProperty("appname", null);
     Map<String, String> config = new HashMap<>();
     config.put("database", database);
     try {
