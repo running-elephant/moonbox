@@ -109,7 +109,6 @@ class WorkbenchService(actor: ActorRef, catalog: JdbcCatalog) extends MbLogging 
   }
 
   private def getConnectionUrl: String = {
-    //    actor.path.address.host.get
-    s"jdbc:moonbox://10.10.168.226:10010/default"
+    s"jdbc:moonbox://localhost:10010/default"
   }
 }
