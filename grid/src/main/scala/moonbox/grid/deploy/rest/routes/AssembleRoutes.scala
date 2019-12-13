@@ -7,6 +7,7 @@ import moonbox.catalog.JdbcCatalog
 import moonbox.common.MbConf
 import moonbox.grid.deploy.rest.service._
 import moonbox.grid.deploy.security.LoginManager
+import moonbox.grid.deploy.rest.service.workbench._
 
 class AssembleRoutes(
 	conf: MbConf,

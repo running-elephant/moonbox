@@ -1,34 +1,35 @@
-package moonbox.grid.deploy.rest
+package moonbox.grid.deploy.rest.service.workbench
 
 import java.sql.{Connection, DriverManager, SQLException}
 import java.util.Properties
+import java.util.concurrent.ConcurrentHashMap
 
 import moonbox.common.MbLogging
-
-import scala.collection.mutable
 
 /**
   * Workbench Moonbox Jdbc Connection Cache Management
   */
 object MoonboxConnectionCache extends MbLogging {
 
-  private lazy val connectionMap = mutable.HashMap.empty[String, Connection]
+  private lazy val connectionMap = new ConcurrentHashMap[String, Connection]
 
   def getConnection(consoleId: String, url: String, props: Map[String, String]): Connection = {
     try {
       var connection: Connection = null
       if (connectionMap.contains(consoleId)) {
-        connection = connectionMap(consoleId)
+        connection = connectionMap.get(consoleId)
         if (connection.isClosed) {
           connection = newConnection(url, props)
-          connectionMap.update(consoleId, connection)
+          connectionMap.put(consoleId, connection)
         } else {
           if (connection.getClientInfo.getProperty("apptype") != props("apptype")) {
             try {
               connection.close()
+            } catch {
+              case _: Exception => //good
             }
             connection = newConnection(url, props)
-            connectionMap.update(consoleId, connection)
+            connectionMap.put(consoleId, connection)
           }
         }
       } else {
@@ -44,7 +45,7 @@ object MoonboxConnectionCache extends MbLogging {
 
   def removeConnection(consoleId: String): Unit = {
     if (connectionMap.contains(consoleId)) {
-      val connection = connectionMap(consoleId)
+      val connection = connectionMap.get(consoleId)
       connectionMap.remove(consoleId)
       log.info(s"remove $consoleId console jdbc connection success")
       try {

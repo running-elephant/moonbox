@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 	value = "Cluster",
 	consumes = "application/json",
 	produces = "application/json", authorizations = Array(new Authorization("Bearer")))
-@Path("/cluster")
+@Path("/clusters")
 class ClusterRoute(override val loginService: LoginService, clusterService: ClusterService) extends SecurityRoute with SessionConverter {
 
 	@ApiOperation(value = "create a new cluster", nickname = "create", httpMethod = "POST")

@@ -21,7 +21,7 @@ import scala.util.{Failure, Success}
 	value = "Application",
 	consumes = "application/json",
 	produces = "application/json", authorizations = Array(new Authorization("Bearer")))
-@Path("/application")
+@Path("/applications")
 class ApplicationRoute(override val loginService: LoginService, appService: ApplicationService) extends SecurityRoute with SessionConverter {
 
 	@ApiOperation(value = "create a new application", nickname = "create", httpMethod = "POST")
