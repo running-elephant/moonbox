@@ -362,7 +362,8 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 			createApplication(
 				ApplicationEntity(
 					name = "app",
-					labels = Seq("common", "test"),
+					address = None,
+					organizationId = 2,
 					appType = "SPARK",
 					config = Map(),
 					state = "",
@@ -377,7 +378,8 @@ class JdbcDaoSuite extends FunSuite with ScalaFutures {
 				ApplicationEntity(
 					id = Some(1),
 					name = "app",
-					labels = Seq("common", "test"),
+					address = None,
+					organizationId = 2,
 					appType = "SPARK",
 					config = Map(),
 					state = "",

@@ -162,6 +162,47 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	// -----------------------------------------------------------------
+	// Cluster
+	// -----------------------------------------------------------------
+
+	def createCluster(cluster: ClusterEntity) = {
+		insert(cluster, clusters)
+	}
+
+	def deleteCluster(clusterId: Long) = {
+		delete[ClusterEntity, ClusterEntityTable](clusters, _.id === clusterId)
+	}
+
+	def updateCluster(clusterDefinition: ClusterEntity) = {
+		updateEntity[ClusterEntity, ClusterEntityTable](
+			clusters, _.id === clusterDefinition.id.get,
+			clusterDefinition
+		)
+	}
+
+	def getCluster(clusterId: Long) = {
+		queryOneOption[ClusterEntity, ClusterEntityTable](clusters, _.id === clusterId)
+	}
+
+	def getCluster(cluster: String) = {
+		queryOneOption[ClusterEntity, ClusterEntityTable](clusters, _.name === cluster)
+	}
+
+	def clusterExists(cluster: String) = {
+		exists[ClusterEntity, ClusterEntityTable](clusters, _.name === cluster)
+	}
+
+	def listClusters() = {
+		list[ClusterEntity, ClusterEntityTable](clusters)
+	}
+
+	def listClusters(pattern: String) = {
+		query[ClusterEntity, ClusterEntityTable](
+			clusters, _.name.like(pattern)
+		)
+	}
+
+	// -----------------------------------------------------------------
 	// Application
 	// -----------------------------------------------------------------
 

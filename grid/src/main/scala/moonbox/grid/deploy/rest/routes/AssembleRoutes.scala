@@ -9,14 +9,14 @@ import moonbox.grid.deploy.rest.service.{ApplicationService, ClusterService, Log
 import moonbox.grid.deploy.security.LoginManager
 
 class AssembleRoutes(
-                      conf: MbConf,
-                      jdbcCatalog: JdbcCatalog,
-                      actor: ActorRef
-                    )(
-                      implicit val actorSystem: ActorSystem,
-                      implicit val materializer: ActorMaterializer) extends Directives {
+	conf: MbConf,
+	jdbcCatalog: JdbcCatalog,
+	actor: ActorRef
+)(
+	implicit val actorSystem: ActorSystem,
+	implicit val materializer: ActorMaterializer) extends Directives {
 
-  private val loginService = new LoginService(new LoginManager(conf, jdbcCatalog))
+	private val loginService = new LoginService(new LoginManager(conf, jdbcCatalog))
 
 
   lazy val routes = {

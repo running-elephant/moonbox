@@ -23,9 +23,17 @@ package moonbox.catalog
 
 trait CatalogItem
 
+
+case class CatalogCluster(
+	name: String,
+	`type`: String,
+	environment: Map[String, String],
+	config: Map[String, String]
+) extends CatalogItem
+
 case class CatalogApplication(
 	name: String,
-	labels: Seq[String],
+	org: String,
 	appType: String,
 	state: String,
 	config: Map[String, String]

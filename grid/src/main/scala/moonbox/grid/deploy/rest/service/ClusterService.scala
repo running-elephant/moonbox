@@ -1,11 +1,38 @@
 package moonbox.grid.deploy.rest.service
 
-import akka.actor.ActorRef
+import moonbox.catalog.AbstractCatalog.User
+import moonbox.catalog.{CatalogCluster, JdbcCatalog}
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.rest.entities.Node
+import moonbox.grid.deploy.rest.entities.Cluster
+import moonbox.grid.deploy.rest.routes.SessionConverter
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-class ClusterService(actorRef: ActorRef) extends MbLogging {
-	def clusterInfo(): Seq[Node] = {
-		Seq(Node(address = "localhost", nodeType = "Master", state = "running", startTime = "2019-10-24 12:23:00", updateTime = "2019-10-24 12:24:00"))
+class ClusterService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
+
+	def createCluster(cluster: Cluster)(implicit user: User): Future[Unit] = {
+		Future {
+			catalog.createCluster(
+				CatalogCluster(
+					name = cluster.name,
+					`type` = cluster.`type`,
+					environment = cluster.environment,
+					config = cluster.config
+				)
+			)
+		}
+	}
+
+	def updateCluster(cluster: Cluster)(implicit user: User): Future[Unit] = {
+		Future {
+			catalog.createCluster(
+				CatalogCluster(
+					name = cluster.name,
+					`type` = cluster.`type`,
+					environment = cluster.environment,
+					config = cluster.config
+				)
+			)
+		}
 	}
 }

@@ -23,6 +23,7 @@ package moonbox.grid.deploy
 import akka.actor.{ActorRef, Address}
 import moonbox.grid.deploy.app.{AppInfo, DriverDesc}
 import moonbox.grid.deploy.app.DriverState.DriverState
+import moonbox.grid.deploy.rest.entities.Node
 import moonbox.grid.timer.EventEntity
 
 
@@ -50,7 +51,9 @@ object DeployMessages {
 
 	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
 
-	/*case class WorkerStateResponse(id: String, drivers: Seq[(String, DriverDesc, Date)])*/
+	case object RequestClusterState extends DeployMessages
+
+	case class ClusterStateResponse(nodes: Seq[Node]) extends DeployMessages
 
 	case class WorkerSchedulerStateResponse(workerId: String, driverIds: Seq[String])
 
