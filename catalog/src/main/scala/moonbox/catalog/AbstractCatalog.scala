@@ -33,6 +33,38 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	import AbstractCatalog._
 
 	// ----------------------------------------------------------------------------
+	// Cluster
+	// ----------------------------------------------------------------------------
+	final def createCluster(
+		clusterDefinition: CatalogCluster)(implicit by: User): Unit = {
+		postToAll(CreateClusterPreEvent(clusterDefinition.name))
+		doCreateCluster(clusterDefinition)
+		postToAll(CreateClusterEvent(clusterDefinition.name))
+	}
+
+	final def dropCluster(cluster: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = {
+		postToAll(DropClusterPreEvent(cluster))
+		doDropCluster(cluster, ignoreIfNotExists)
+		postToAll(DropClusterEvent(cluster))
+	}
+
+	protected def doCreateCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit
+
+	protected def doDropCluster(cluster: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
+
+	def alterCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit
+
+	def getCluster(cluster: String): CatalogCluster
+
+	def getClusterOption(cluster: String): Option[CatalogCluster]
+
+	def clusterExists(cluster: String): Boolean
+
+	def listClusters(): Seq[CatalogCluster]
+
+	def listClusters(pattern: String): Seq[CatalogCluster]
+
+	// ----------------------------------------------------------------------------
 	// Application
 	// ----------------------------------------------------------------------------
 	final def createApplication(

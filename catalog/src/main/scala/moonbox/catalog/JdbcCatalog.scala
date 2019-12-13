@@ -114,6 +114,108 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     }
   }
 
+	// ----------------------------------------------------------------------------
+	// Cluster
+	// ----------------------------------------------------------------------------
+
+	override protected def doCreateCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.createCluster(
+			ClusterEntity(
+				name = clusterDefinition.name,
+				clusterType = clusterDefinition.`type`,
+				environment = clusterDefinition.environment,
+				config = clusterDefinition.config,
+				createBy = by.userId,
+				updateBy = by.userId
+			)
+		))
+	}
+
+	override protected def doDropCluster(cluster: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getCluster(cluster)).flatMap {
+			case Some(clusterEntity) =>
+				jdbcDao.action(jdbcDao.deleteCluster(clusterEntity.id.get))
+			case None =>
+				if (ignoreIfNotExists) Future(Unit)
+				else throw new NoSuchClusterException(cluster)
+		}
+	}
+
+	override def alterCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getCluster(clusterDefinition.name)).flatMap {
+			case Some(clusterEntity) =>
+				jdbcDao.action(
+					jdbcDao.updateCluster(
+						ClusterEntity(
+							id = clusterEntity.id,
+							name = clusterDefinition.name,
+							clusterType = clusterDefinition.`type`,
+							environment = clusterDefinition.environment,
+							config = clusterDefinition.config,
+							createBy = clusterEntity.createBy,
+							createTime = clusterEntity.createTime,
+							updateBy = by.userId,
+							updateTime = Utils.now
+						)
+					)
+				)
+			case None =>
+				throw new NoSuchClusterException(clusterDefinition.name)
+		}
+	}
+
+	override def getCluster(cluster: String): CatalogCluster = await {
+		jdbcDao.action(jdbcDao.getCluster(cluster)).map {
+			case Some(clusterEntity) =>
+				CatalogCluster(
+					name = clusterEntity.name,
+			    `type` = clusterEntity.clusterType,
+					environment = clusterEntity.environment,
+					config = clusterEntity.config
+				)
+			case None =>
+				throw new NoSuchClusterException(cluster)
+		}
+	}
+
+	override def getClusterOption(cluster: String): Option[CatalogCluster] = await {
+		jdbcDao.action(jdbcDao.getCluster(cluster)).map { _.map { clusterEntity =>
+			CatalogCluster(
+				name = clusterEntity.name,
+				`type` = clusterEntity.clusterType,
+				environment = clusterEntity.environment,
+				config = clusterEntity.config
+			)
+		}
+		}
+	}
+
+	override def clusterExists(cluster: String): Boolean = await {
+		jdbcDao.action(jdbcDao.clusterExists(cluster))
+	}
+
+	override def listClusters(): Seq[CatalogCluster] = await {
+		jdbcDao.action(jdbcDao.listClusters()).map(_.map { clusterEntity =>
+			CatalogCluster(
+				name = clusterEntity.name,
+				`type` = clusterEntity.clusterType,
+				environment = clusterEntity.environment,
+				config = clusterEntity.config
+			)
+		})
+	}
+
+	override def listClusters(pattern: String): Seq[CatalogCluster] = await {
+		jdbcDao.action(jdbcDao.listClusters(pattern)).map(_.map { clusterEntity =>
+			CatalogCluster(
+				name = clusterEntity.name,
+				`type` = clusterEntity.clusterType,
+				environment = clusterEntity.environment,
+				config = clusterEntity.config
+			)
+		})
+	}
+
   // ----------------------------------------------------------------------------
   // Application
   // ----------------------------------------------------------------------------
@@ -122,7 +224,8 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.createApplication(
       ApplicationEntity(
         name = appDefinition.name,
-        labels = appDefinition.labels,
+        address = None,
+				organizationId = by.orgId,
         appType = appDefinition.appType,
         config = appDefinition.config,
 				state = appDefinition.state,
@@ -140,7 +243,8 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
             ApplicationEntity(
               id = appEntity.id,
               name = appDefinition.name,
-              labels = appDefinition.labels,
+              address = appEntity.address,
+							organizationId = appEntity.organizationId,
               appType = appDefinition.appType,
               config = appDefinition.config,
 							state = appDefinition.state,
@@ -159,7 +263,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   override def listApplications(): Seq[CatalogApplication] = await {
     jdbcDao.action(jdbcDao.listApplications()).map(_.map(appEntity => CatalogApplication(
       name = appEntity.name,
-      labels = appEntity.labels,
+			org = organizationName(appEntity.organizationId),
       appType = appEntity.appType,
 			state = appEntity.state,
       config = appEntity.config
@@ -170,7 +274,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.listApplications(pattern)).map(_.map(appEntity =>
       CatalogApplication(
         name = appEntity.name,
-        labels = appEntity.labels,
+				org = organizationName(appEntity.organizationId),
         appType = appEntity.appType,
 				state = appEntity.state,
         config = appEntity.config
@@ -195,7 +299,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.getApplication(app)).map(_.map(appEntity =>
       CatalogApplication(
         name = appEntity.name,
-        labels = appEntity.labels,
+				org = organizationName(appEntity.organizationId),
         appType = appEntity.appType,
 				state = appEntity.state,
         config = appEntity.config
@@ -208,7 +312,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       case Some(appEntity) =>
         CatalogApplication(
           name = appEntity.name,
-          labels = appEntity.labels,
+					org = organizationName(appEntity.organizationId),
           appType = appEntity.appType,
 					state = appEntity.state,
           config = appEntity.config

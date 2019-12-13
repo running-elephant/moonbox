@@ -140,6 +140,20 @@ case class DropApplicationPreEvent(
 case class DropApplicationEvent(
 	name: String) extends ApplicationEvent
 
+trait ClusterEvent extends CatalogEvent
+
+case class CreateClusterPreEvent(
+	name: String) extends ClusterEvent
+
+case class CreateClusterEvent(
+	name: String) extends ClusterEvent
+
+case class DropClusterPreEvent(
+	name: String) extends ClusterEvent
+
+case class DropClusterEvent(
+	name: String) extends ClusterEvent
+
 
 trait OrganizationEvent extends CatalogEvent
 

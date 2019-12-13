@@ -195,7 +195,8 @@ case class VariableEntity(
 case class ApplicationEntity(
 	id: Option[Long] = None,
 	name: String,
-	labels: Seq[String],
+	address: Option[String],
+	organizationId: Long,
 	appType: String,
 	config: Map[String, String],
 	state: String,
@@ -203,6 +204,18 @@ case class ApplicationEntity(
 	createTime: Long = Utils.now,
 	updateBy: Long,
 	updateTime: Long = Utils.now) extends CatalogEntity
+
+case class ClusterEntity(
+	id: Option[Long] = None,
+	name: String,
+	clusterType: String,
+	environment: Map[String, String],
+	config: Map[String, String],
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now
+) extends CatalogEntity
 
 case class GroupEntity(
 	id: Option[Long] = None,

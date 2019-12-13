@@ -64,5 +64,8 @@ class NoSuchAvailableTableException(table: String, user: String)
 class NoSuchApplicationException(app: String)
 	extends Exception(s"Application '$app' not found")
 
+class NoSuchClusterException(cluster: String)
+		extends Exception(s"Cluster '$cluster' not found")
+
 class NoSuchGroupException(group: String)
 	extends Exception(s"Group '$group' not found")
