@@ -16,11 +16,12 @@ class LoginService(loginManager: LoginManager) extends MbLogging {
   // time unit: ms
   private val LOGIN_TIMEOUT_SECOND = loginManager.conf.get(LOGIN_TIMEOUT) / 1000
 
-	def login(user: String, password: String): Future[Either[String, Throwable]] = {
+	def login(user: String, password: String): Future[Either[LoginResult, Throwable]] = {
 		try {
 			val session = loginManager.login(user, password)
 			val token = generateToken(session)
-			Future(Left(token))
+			val roleType = session("roleType")
+			Future(Left(LoginResult(token, roleType.toInt)))
 		} catch {
 			case e: Throwable => Future(Right(e))
 		}

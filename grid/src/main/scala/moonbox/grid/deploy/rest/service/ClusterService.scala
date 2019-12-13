@@ -42,5 +42,9 @@ class ClusterService(catalog: JdbcCatalog) extends SessionConverter with MbLoggi
 		}
 	}
 
-	def listClusters()(implicit user: User)
+	def listClusters()(implicit user: User): Future[Seq[Cluster]] = {
+		Future {
+			Seq.empty
+		}
+	}
 }
