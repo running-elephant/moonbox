@@ -92,8 +92,6 @@ class MoonboxMaster(
 	private var tcpServer: Option[TcpServer] = None
 	private var tcpServerBoundPort: Option[Int] = None
 
-
-
 	// for test
 	private def launchDrivers(): Unit = {
 		try {
