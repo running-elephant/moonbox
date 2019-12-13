@@ -25,7 +25,7 @@ class AssembleRoutes(
         new LoginRoute(loginService).route ~
           new LogoutRoute().route ~
           pathPrefix("cluster") {
-            new ClusterRoute(loginService, new ClusterService(actor)).route
+            new ClusterRoute(loginService, new ClusterService(jdbcCatalog)).route
           } ~
           pathPrefix("application") {
             new ApplicationRoute(loginService, new ApplicationService(jdbcCatalog)).route
