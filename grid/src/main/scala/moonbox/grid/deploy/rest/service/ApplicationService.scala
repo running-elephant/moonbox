@@ -4,7 +4,6 @@ import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.{CatalogApplication, JdbcCatalog}
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.rest.entities.Application
-import moonbox.grid.deploy.security.Session
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -17,14 +16,13 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 	/** create application in catalog
 		*
 		* @param app application definition
-		* @param session session
+		* @param user User
 		* @return
 		*/
-	def createApplication(app: Application, session: Session): Future[Unit] = {
-		implicit val user = sessionConverter(session)
+	def createApplication(app: Application)(implicit user: User): Future[Unit] = {
 		Future {
-			catalog.createApplication(CatalogApplication(name= app.appName,
-				labels = Seq(),
+			catalog.createApplication(CatalogApplication(name = app.appName,
+				org = user.org,
 				appType = app.appType,
 				state = "",
 				config = app.config))
@@ -34,14 +32,13 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 	/**
 		*
 		* @param app
-		* @param session
+		* @param user
 		* @return
 		*/
-	def updateApplication(app: Application, session: Session): Future[Unit] = {
-		implicit val user = sessionConverter(session)
+	def updateApplication(app: Application)(implicit user: User): Future[Unit] = {
 		Future {
-			catalog.alterApplication(CatalogApplication(name= app.appName,
-				labels = Seq(),
+			catalog.alterApplication(CatalogApplication(name = app.appName,
+				org = user.org,
 				appType = app.appType,
 				state = "",
 				config = app.config))
@@ -51,11 +48,10 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 	/**
 		*
 		* @param appName
-		* @param session
+		* @param user
 		* @return
 		*/
-	def getApplication(appName: String, session: Session): Future[Option[Application]] = {
-		implicit val user = sessionConverter(session)
+	def getApplication(appName: String)(implicit user: User): Future[Option[Application]] = {
 		Future {
 			catalog.getApplicationOption(appName).map(app =>
 				Application(appName = app.name, appType = app.appType, state = Some(app.state), config = app.config))
@@ -64,10 +60,10 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 
 	/**
 		*
-		* @param session
+		* @param user
 		* @return
 		*/
-	def listApplication(session: Session): Future[Seq[Application]] = {
+	def listApplication(implicit user: User): Future[Seq[Application]] = {
 		Future {
 			catalog.listApplications().map { app =>
 				Application(appName = app.name, appType = app.appType, state = Some(app.state), config = app.config)
@@ -75,7 +71,4 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 		}
 	}
 
-	private def sessionConverter(session: Session): User = {
-		User(session("orgId").toLong, session("org"), session("userId").toLong, session("user"))
-	}
 }

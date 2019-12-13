@@ -21,9 +21,9 @@ import scala.util.{Failure, Success}
 	consumes = "application/json",
 	produces = "application/json", authorizations = Array(new Authorization("Bearer")))
 @Path("/application")
-class ApplicationRoute(override val loginService: LoginService, appService: ApplicationService) extends SecurityRoute {
+class ApplicationRoute(override val loginService: LoginService, appService: ApplicationService) extends SecurityRoute with SessionConverter {
 
-	@ApiOperation(value = "Add a new application", nickname = "create", httpMethod = "POST")
+	@ApiOperation(value = "create a new application", nickname = "create", httpMethod = "POST")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "Create Application", value = "Create Application Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Application")
 	))
@@ -34,10 +34,10 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def createApp = (session: Session) => {
+	def createApplication = (session: Session) => {
 		post {
 			entity(as[Application]) { in =>
-				onComplete(appService.createApplication(in, session)) {
+				onComplete(appService.createApplication(in)(session)) {
 					case Success(_) =>
 						complete(OK, Response(code = 200, msg = "Success"))
 					case Failure(e) =>
@@ -47,7 +47,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
-	@ApiOperation(value = "Update a application", nickname = "update", httpMethod = "PUT")
+	@ApiOperation(value = "update exist application", nickname = "update", httpMethod = "PUT")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "Update Application", value = "Update Application Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Application")
 	))
@@ -56,10 +56,10 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def updateApp = (session: Session) => {
+	def updateApplication = (session: Session) => {
 		post {
 			entity(as[Application]) { in =>
-				onComplete(appService.createApplication(in, session)) {
+				onComplete(appService.createApplication(in)(session)) {
 					case Success(_) =>
 						complete(OK, Response(code = 200, msg = "Success"))
 					case Failure(e) =>
@@ -69,7 +69,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
-	@ApiOperation(value = "Get a application", nickname = "getApp", httpMethod = "GET")
+	@ApiOperation(value = "get application by name", nickname = "getApp", httpMethod = "GET")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "appName", value = "application name", required = true, paramType = "path", dataType = "string")
 	))
@@ -80,9 +80,9 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}")
-	def getApp = (session: Session) => path(Segment) { appName =>
+	def getApplication = (session: Session) => path(Segment) { appName =>
 		get {
-			onComplete(appService.getApplication(appName, session)) {
+			onComplete(appService.getApplication(appName)(session)) {
 				case Success(appOption) =>
 					appOption match {
 						case Some(app) =>
@@ -96,14 +96,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
-	@ApiOperation(value = "List applications", nickname = "listApps", httpMethod = "GET", responseContainer = "set")
+	@ApiOperation(value = "list all applications", nickname = "listApps", httpMethod = "GET", responseContainer = "set")
 	@ApiResponses(Array(
 		new ApiResponse(code = 200, message = "OK"),
 		new ApiResponse(code = 404, message = "Not found"),
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
-	def listApps = (session: Session) => get {
+	def listApplications = (session: Session) => get {
 		onComplete(appService.listApplication(session)) {
 			case Success(apps) =>
 				complete(OK, Response(code = 200, msg = "Success", payload = Some(apps)))
@@ -112,7 +112,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
-	@ApiOperation(value = "Delete a application", nickname = "delete", httpMethod = "DELETE")
+	@ApiOperation(value = "delete application by name", nickname = "delete", httpMethod = "DELETE")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "appName", value = "application name", required = true, dataType = "string", paramType = "path")
 	))
@@ -123,14 +123,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}")
-	def deleteApp = (session: Session) => path(Segment) { appName =>
+	def deleteApplication = (session: Session) => path(Segment) { appName =>
 		delete {
 			logInfo("delete" + appName)
 			complete(OK)
 		}
 	}
 
-	@ApiOperation(value = "Start a application", nickname = "start", httpMethod = "PUT")
+	@ApiOperation(value = "start application by name", nickname = "start", httpMethod = "PUT")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "appName", value = "application name", required = true, dataType = "string", paramType = "path")
 	))
@@ -141,14 +141,14 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}/start")
-	def startApp = (session: Session) => path(Segment / "start") { appName =>
+	def startApplication = (session: Session) => path(Segment / "start") { appName =>
 		put {
 			logInfo("start" + appName)
 			complete(OK)
 		}
 	}
 
-	@ApiOperation(value = "Stop a application", nickname = "stop", httpMethod = "PUT")
+	@ApiOperation(value = "stop application by name", nickname = "stop", httpMethod = "PUT")
 	@ApiImplicitParams(Array(
 		new ApiImplicitParam(name = "appName", value = "application name", required = true, dataType = "string", paramType = "path")
 	))
@@ -159,7 +159,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		new ApiResponse(code = 500, message = "internal server error")
 	))
 	@Path("/{appName}/stop")
-	def stopApp = (session: Session) => path(Segment / "stop") { appName =>
+	def stopApplication = (session: Session) => path(Segment / "stop") { appName =>
 		put {
 			logInfo("stop" + appName)
 			complete(OK)
@@ -167,6 +167,6 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	}
 
 	override def createSecurityRoute: Array[Session => Route] = Array(
-		createApp, deleteApp, getApp, listApps, startApp, stopApp
+		createApplication, deleteApplication, getApplication, listApplications, startApplication, stopApplication
 	)
 }

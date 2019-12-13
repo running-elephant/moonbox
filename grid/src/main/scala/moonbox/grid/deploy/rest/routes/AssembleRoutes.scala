@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import moonbox.catalog.JdbcCatalog
 import moonbox.common.MbConf
-import moonbox.grid.deploy.rest.service.{ApplicationService, ClusterService, LoginService}
+import moonbox.grid.deploy.rest.service.{ApplicationService, ClusterService, GridService, LoginService}
 import moonbox.grid.deploy.security.LoginManager
 
 class AssembleRoutes(
@@ -24,8 +24,11 @@ class AssembleRoutes(
 		pathPrefix("api" / "v1") {
 			new LoginRoute(loginService).route ~
 			new LogoutRoute().route ~
+			pathPrefix("grid") {
+				new GridRoute(loginService, new GridService(actor)).route
+			} ~
 			pathPrefix("cluster") {
-				new ClusterRoute(loginService, new ClusterService(actor)).route
+				new ClusterRoute(loginService, new ClusterService(jdbcCatalog)).route
 			} ~
 			pathPrefix("application") {
 				new ApplicationRoute(loginService, new ApplicationService(jdbcCatalog)).route

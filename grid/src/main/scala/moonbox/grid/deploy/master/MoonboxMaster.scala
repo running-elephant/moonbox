@@ -36,6 +36,7 @@ import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.app._
 import moonbox.grid.deploy.messages.Message._
 import moonbox.grid.deploy.rest.RestServer
+import moonbox.grid.deploy.rest.entities.Node
 import moonbox.grid.deploy.transport.TcpServer
 import moonbox.grid.deploy.worker.{LaunchUtils, WorkerState}
 import moonbox.grid.timer.{EventHandler, TimedEventService, TimedEventServiceImpl}
@@ -302,6 +303,11 @@ class MoonboxMaster(
 				case None =>
 					logWarning("Worker state from unknown worker: " + workerId)
 			}
+
+
+		case RequestClusterState =>
+			val nodes = workers.map(w => Node(w.address.hostPort, "Worker", w.state.toString, "", new Date(w.lastHeartbeat).toString))
+			sender() ! ClusterStateResponse(nodes.toSeq)
 
 		case RegisterApplication(id, appLabel, appHost, appPort, appRef, appAddress, dataPort, appType) =>
 			logInfo(s"Application $id try registering: $appAddress")

@@ -19,6 +19,7 @@ class SwaggerRoute(
 		typeOf[LoginRoute],
 		typeOf[LogoutRoute],
 		typeOf[ApplicationRoute],
+		typeOf[GridRoute],
 		typeOf[ClusterRoute]
 	)
 
