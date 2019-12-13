@@ -13,6 +13,7 @@ import scala.util.{Failure, Success}
 
 /**
 	* ApplicationRoute is responsible for create/delete/update/list and start/stop applications
+	*
 	* @param loginService
 	*/
 
@@ -125,7 +126,13 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	@Path("/{appName}")
 	def deleteApplication = (session: Session) => path(Segment) { appName =>
 		delete {
-			logInfo("delete" + appName)
+			logInfo("delete " + appName)
+			onComplete(appService.deleteApplication(appName)) {
+				case Success(_) =>
+					complete(OK, Response(code = 200, msg = "Success"))
+				case Failure(e) =>
+					complete(OK, Response(code = 451, msg = e.getMessage))
+			}
 			complete(OK)
 		}
 	}
@@ -143,8 +150,13 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	@Path("/{appName}/start")
 	def startApplication = (session: Session) => path(Segment / "start") { appName =>
 		put {
-			logInfo("start" + appName)
-			complete(OK)
+			logInfo("start " + appName)
+			onComplete(appService.startApplication(appName)) {
+				case Success(_) =>
+					complete(OK, Response(code = 200, msg = "Success"))
+				case Failure(e) =>
+					complete(OK, Response(code = 451, msg = e.getMessage))
+			}
 		}
 	}
 
@@ -161,8 +173,13 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 	@Path("/{appName}/stop")
 	def stopApplication = (session: Session) => path(Segment / "stop") { appName =>
 		put {
-			logInfo("stop" + appName)
-			complete(OK)
+			logInfo("stop " + appName)
+			onComplete(appService.stopApplication(appName)) {
+				case Success(_) =>
+					complete(OK, Response(code = 200, msg = "Success"))
+				case Failure(e) =>
+					complete(OK, Response(code = 451, msg = e.getMessage))
+			}
 		}
 	}
 

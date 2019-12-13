@@ -1,4 +1,5 @@
 package moonbox.grid.deploy.rest.routes
+
 import javax.ws.rs.Path
 
 import akka.http.scaladsl.model.StatusCodes._
@@ -14,10 +15,10 @@ import scala.util.{Failure, Success}
 
 
 @Api(
-value = "Grid",
-consumes = "application/json",
-produces = "application/json",
-authorizations = Array(new Authorization("Bearer")))
+	value = "Grid",
+	consumes = "application/json",
+	produces = "application/json",
+	authorizations = Array(new Authorization("Bearer")))
 @Path("/grid")
 class GridRoute(override val loginService: LoginService, gridService: GridService) extends SecurityRoute {
 

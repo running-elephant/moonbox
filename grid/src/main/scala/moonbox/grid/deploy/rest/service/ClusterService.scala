@@ -35,4 +35,12 @@ class ClusterService(catalog: JdbcCatalog) extends SessionConverter with MbLoggi
 			)
 		}
 	}
+
+	def deleteCluster(cluster: String)(implicit user: User): Future[Unit] = {
+		Future {
+			catalog.dropCluster(cluster, ignoreIfNotExists = false)
+		}
+	}
+
+	def listClusters()(implicit user: User)
 }

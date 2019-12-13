@@ -1,9 +1,11 @@
 package moonbox.grid.deploy.rest.service
 
+import akka.actor.ActorRef
 import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.{CatalogApplication, JdbcCatalog}
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.rest.entities.Application
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -11,11 +13,11 @@ import scala.concurrent.Future
 	*
 	* @param catalog
 	*/
-class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
+class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLogging {
 
 	/** create application in catalog
 		*
-		* @param app application definition
+		* @param app  application definition
 		* @param user User
 		* @return
 		*/
@@ -56,6 +58,18 @@ class ApplicationService(catalog: JdbcCatalog) extends MbLogging {
 			catalog.getApplicationOption(appName).map(app =>
 				Application(appName = app.name, appType = app.appType, state = Some(app.state), config = app.config))
 		}
+	}
+
+	def deleteApplication(appName: String): Future[Unit] = {
+		Future()
+	}
+
+	def startApplication(appName: String): Future[Unit] = {
+		Future()
+	}
+
+	def stopApplication(appName: String): Future[Unit] = {
+		Future()
 	}
 
 	/**

@@ -87,6 +87,7 @@ trait EntityComponent extends DatabaseComponent {
 		columnPrivileges,
 		variables,
 		applications,
+		clusters,
 		groups,
 		groupUserRels
 	)

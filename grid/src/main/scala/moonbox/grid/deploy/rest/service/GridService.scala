@@ -13,6 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class GridService(actorRef: ActorRef) extends MbLogging {
 	private implicit val timeout = new Timeout(30, TimeUnit.SECONDS)
+
 	def clusterState(): Future[Seq[Node]] = {
 		actorRef.ask(RequestClusterState).mapTo[ClusterStateResponse].map(_.nodes)
 	}
