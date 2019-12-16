@@ -59,6 +59,16 @@ object MoonboxConnectionCache extends MbLogging {
     }
   }
 
+  def clearConnection: Unit = {
+    val iter = connectionMap.entrySet().iterator()
+    while (iter.hasNext) {
+      val entry = iter.next()
+      if (entry.getValue.isClosed) {
+        connectionMap.remove(entry.getKey)
+      }
+    }
+  }
+
   private def newConnection(url: String, props: Map[String, String]): Connection = {
     Class.forName("moonbox.jdbc.MbDriver")
     val properties = new Properties()

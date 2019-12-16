@@ -25,7 +25,7 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
 
   private lazy val statementMap = new ConcurrentHashMap[String, Statement]
   private implicit val timeout = new Timeout(30, TimeUnit.SECONDS)
-  private var tcpServer: String = _
+  private final val tcpServer: String = getTcpServer
 
   /** execute sql
     *
@@ -129,20 +129,15 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
   }
 
   private def getTcpServer: String = {
-    if (tcpServer != null) tcpServer
-    else {
-      synchronized {
-        val address = Await.result(actorRef.ask(RequestMasterAddress).mapTo[MasterAddress], timeout.duration)
-        if (address.tcpServer.nonEmpty) {
-          tcpServer = address.tcpServer.get
-          tcpServer
-        }
-        else throw new Exception("Moonbox TcpServer is not enabled.")
-      }
+    val address = Await.result(actorRef.ask(RequestMasterAddress).mapTo[MasterAddress], timeout.duration)
+    if (address.tcpServer.nonEmpty) {
+      address.tcpServer.get
+    } else {
+      throw new Exception("Moonbox TcpServer is not enabled.")
     }
   }
 
   private def getConnectionUrl: String = {
-    s"jdbc:moonbox://$getTcpServer/default"
+    s"jdbc:moonbox://$tcpServer/default"
   }
 }
