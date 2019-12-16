@@ -213,7 +213,7 @@ class OracleDataSystem(props: Map[String, String])
 	)
 
 	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-		throw new Exception("Unsupport operation: insert with datatalbe.")
+		throw new Exception("Unsupport operation: insert with datatable.")
 	}
 
 	private def socket: (String, Int) = {
