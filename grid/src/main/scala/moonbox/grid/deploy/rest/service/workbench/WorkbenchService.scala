@@ -34,57 +34,59 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
     * @return Future[ExecuteResult] future sql execute result
     */
   def executeQuery(executeRequest: ExecuteRequest, session: Session): Future[ExecuteResponse] = {
-    var startTime: Long = 0l
-    var endTime: Long = 0l
-    var msg: String = ""
-    var columnList = Seq.empty[String]
-    val dataList = new ListBuffer[Map[String, Any]]
-    var response: ExecuteResponse = null
-    val props = executeRequest.props
-    checkProps(props)
-    val newProps = props ++ Map("user" -> s"${session("org")}@${session("user")}", "password" -> session("password"))
+    Future {
+      var startTime: Long = 0l
+      var endTime: Long = 0l
+      var msg: String = ""
+      var columnList = Seq.empty[String]
+      val dataList = new ListBuffer[Map[String, Any]]
+      var response: ExecuteResponse = null
+      val props = executeRequest.props
+      checkProps(props)
+      val newProps = props ++ Map("user" -> s"${session("org")}@${session("user")}", "password" -> session("password"))
 
-    try {
-      startTime = System.currentTimeMillis()
-      val conn = MoonboxConnectionCache.getConnection(executeRequest.consoleId, getConnectionUrl, newProps)
+      try {
+        startTime = System.currentTimeMillis()
+        val conn = MoonboxConnectionCache.getConnection(executeRequest.consoleId, getConnectionUrl, newProps)
 
-      val statement = conn.createStatement()
-      statementMap.put(executeRequest.consoleId, statement)
+        val statement = conn.createStatement()
+        statementMap.put(executeRequest.consoleId, statement)
 
-      statement.setMaxRows(props("maxrows").toInt)
+        statement.setMaxRows(props("maxrows").toInt)
 
-      props.get("fetchsize").map(_ => statement.setFetchSize(_))
-      props.get("querytimeout").map(_ => statement.setQueryTimeout(_))
+        props.get("fetchsize").map(_ => statement.setFetchSize(_))
+        props.get("querytimeout").map(_ => statement.setQueryTimeout(_))
 
-      val resultSet = statement.executeQuery(executeRequest.sql)
+        val resultSet = statement.executeQuery(executeRequest.sql)
 
-      val meta = resultSet.getMetaData
-      val columnCount = meta.getColumnCount
-      columnList = Range(0, columnCount).map(index => meta.getColumnName(index + 1))
+        val meta = resultSet.getMetaData
+        val columnCount = meta.getColumnCount
+        columnList = Range(0, columnCount).map(index => meta.getColumnName(index + 1))
 
-      while (resultSet.next()) {
-        val row = Range(0, columnCount).map(index => (columnList(index), resultSet.getObject(index + 1))).toMap
-        dataList.append(row)
-      }
-      endTime = System.currentTimeMillis()
-      statementMap.remove(executeRequest.consoleId)
-      msg = s"${dataList.size} Rows Returned."
-    } catch {
-      case ex: Exception =>
-        log.error("execute query failed", ex)
+        while (resultSet.next()) {
+          val row = Range(0, columnCount).map(index => (columnList(index), resultSet.getObject(index + 1))).toMap
+          dataList.append(row)
+        }
         endTime = System.currentTimeMillis()
-        msg = s"Failed: ${ex.getMessage}."
-    } finally {
-      val duration = (endTime - startTime).toFloat / 1000
-      val info = s"Duration: ${duration}s\nResult: $msg."
-      response = if (dataList.nonEmpty) {
-        val result = ExecuteResult(columns = columnList.toList, data = dataList.toList, size = dataList.size)
-        ExecuteResponse(Some(result), info)
-      } else {
-        ExecuteResponse(info = info)
+        statementMap.remove(executeRequest.consoleId)
+        msg = s"${dataList.size} Rows Returned."
+      } catch {
+        case ex: Exception =>
+          log.error("execute query failed", ex)
+          endTime = System.currentTimeMillis()
+          msg = s"Failed: ${ex.getMessage}."
+      } finally {
+        val duration = (endTime - startTime).toFloat / 1000
+        val info = s"Duration: ${duration}s\nResult: $msg."
+        response = if (dataList.nonEmpty) {
+          val result = ExecuteResult(columns = columnList.toList, data = dataList.toList, size = dataList.size)
+          ExecuteResponse(Some(result), info)
+        } else {
+          ExecuteResponse(info = info)
+        }
       }
+      response
     }
-    Future(response)
   }
 
   /**
@@ -93,16 +95,17 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
     * @return
     */
   def cancelQuery(consoleId: String): Future[Unit] = {
-    try {
-      if (statementMap.contains(consoleId)) {
-        statementMap.get(consoleId).cancel()
-        statementMap.remove(consoleId)
+    Future {
+      try {
+        if (statementMap.contains(consoleId)) {
+          statementMap.get(consoleId).cancel()
+          statementMap.remove(consoleId)
+        }
+      } catch {
+        case ex: Exception =>
+          log.error(s"cancel $consoleId query failed", ex)
+          throw ex
       }
-      Future()
-    } catch {
-      case ex: Exception =>
-        log.error(s"cancel $consoleId query failed", ex)
-        Future.failed(ex)
     }
   }
 
@@ -123,9 +126,9 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
     * @return
     */
   private def checkProps(props: Map[String, String]): Unit = {
-    require(props.contains("apptype"), "props should have apptype key")
-    //    require(props.contains("appname"), "props should have appname key")
-    require(props.contains("maxrows"), "props should have maxrows key")
+    require(props.contains("apptype"), "props must have apptype key")
+    //    require(props.contains("appname"), "props must have appname key")
+    require(props.contains("maxrows"), "props must have maxrows key")
   }
 
   private def getTcpServer: String = {

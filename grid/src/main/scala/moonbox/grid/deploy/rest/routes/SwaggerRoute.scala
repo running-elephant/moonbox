@@ -7,7 +7,7 @@ import akka.stream.ActorMaterializer
 import com.github.swagger.akka.model.{Info, License}
 import com.github.swagger.akka.{HasActorSystem, SwaggerHttpService}
 import io.swagger.models.ExternalDocs
-import io.swagger.models.auth.{ApiKeyAuthDefinition, In, OAuth2Definition, SecuritySchemeDefinition}
+import io.swagger.models.auth.{ApiKeyAuthDefinition, In, SecuritySchemeDefinition}
 
 import scala.reflect.runtime.universe._
 
@@ -22,7 +22,8 @@ class SwaggerRoute(
 		typeOf[GridRoute],
 		typeOf[ClusterRoute],
 		typeOf[WorkbenchRoute],
-		typeOf[OrganizationRoute]
+		typeOf[OrganizationRoute],
+		typeOf[SaRoute]
 	)
 
 	override val basePath: String = "api/v1"

@@ -20,8 +20,6 @@
 
 package moonbox.grid.deploy.rest
 
-import java.math.BigInteger
-
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -31,45 +29,18 @@ import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.config._
 import moonbox.grid.deploy.rest.routes.AssembleRoutes
 import moonbox.grid.deploy.rest.service.workbench.MoonboxConnectionCache
-import org.json4s.{CustomSerializer, JInt, JString, Serializer}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 class RestServer(host: String, port: Int, conf: MbConf, catalog: JdbcCatalog, masterRef: ActorRef,
-                 implicit val akkaSystem: ActorSystem) extends JsonSerializer with MbLogging {
+                 implicit val akkaSystem: ActorSystem) extends MbLogging {
 
   private val maxRetries: Int = conf.get(PORT_MAX_RETRIES)
   private val clearConnectionCacheInterval = 10.seconds
   private var bindingFuture: Future[ServerBinding] = _
   private implicit val materializer = ActorMaterializer()
-
-  override def customFormats: Traversable[Serializer[_]] = {
-    Seq(
-      new CustomSerializer[java.sql.Date](_ => ( {
-        case JInt(s) => new java.sql.Date(s.longValue())
-      }, {
-        case x: java.sql.Date => JString(x.toString)
-      }
-      )
-      ),
-      new CustomSerializer[java.math.BigDecimal](_ => ( {
-        case JString(s) => new java.math.BigDecimal(s)
-      }, {
-        case b: java.math.BigDecimal => JString(b.toString)
-      }
-      )
-      ),
-      new CustomSerializer[java.math.BigInteger](_ => ( {
-        case JString(s) => new BigInteger(s)
-      }, {
-        case b: java.math.BigInteger => JString(b.toString)
-      }
-      )
-      )
-    )
-  }
 
   private def createRoutes(localAddress: String) = {
     new AssembleRoutes(conf, catalog, masterRef).routes // ~

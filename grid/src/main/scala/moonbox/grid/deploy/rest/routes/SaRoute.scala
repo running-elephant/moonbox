@@ -5,32 +5,32 @@ import javax.ws.rs.Path
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Route
 import io.swagger.annotations.{ApiResponse, ApiResponses, _}
-import moonbox.grid.deploy.rest.entities.{BatchOpSeq, Organization, Response}
-import moonbox.grid.deploy.rest.service.{LoginService, OrganizationService}
+import moonbox.grid.deploy.rest.entities._
+import moonbox.grid.deploy.rest.service.{LoginService, SaService}
 import moonbox.grid.deploy.security.Session
 
 import scala.util.{Failure, Success}
 
 @Api(
-  value = "Organization",
+  value = "Organization-Sa",
   consumes = "application/json",
   produces = "application/json", authorizations = Array(new Authorization("Bearer")))
-@Path("/orgs")
-class OrganizationRoute(override val loginService: LoginService, orgService: OrganizationService) extends SecurityRoute with SessionConverter {
+@Path("/sas")
+class SaRoute(override val loginService: LoginService, saService: SaService) extends SecurityRoute with SessionConverter {
 
-  @ApiOperation(value = "create a new org", nickname = "create", httpMethod = "POST")
+  @ApiOperation(value = "create a new sa", nickname = "create", httpMethod = "POST")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "Create Org", value = "Create Org Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Organization")
+    new ApiImplicitParam(name = "Create Sa", value = "Create Sa Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.OrgSa")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def createOrg = (session: Session) => {
+  def createSa = (session: Session) => {
     post {
-      entity(as[Organization]) { org =>
-        onComplete(orgService.createOrg(org)(session)) {
+      entity(as[OrgSa]) { sa =>
+        onComplete(saService.createSa(sa)(session)) {
           case Success(_) =>
             complete(OK, Response(code = 200, msg = "Success"))
           case Failure(e) =>
@@ -40,19 +40,19 @@ class OrganizationRoute(override val loginService: LoginService, orgService: Org
     }
   }
 
-  @ApiOperation(value = "update org", nickname = "update", httpMethod = "PUT")
+  @ApiOperation(value = "update sa", nickname = "update", httpMethod = "PUT")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "Update Org", value = "Update Org Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Organization")
+    new ApiImplicitParam(name = "Update Sa", value = "Update Sa Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.OrgSa")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def updateOrg = (session: Session) => {
+  def updateSa = (session: Session) => {
     put {
-      entity(as[Organization]) { org =>
-        onComplete(orgService.updateOrg(org)(session)) {
+      entity(as[OrgSa]) { sa =>
+        onComplete(saService.updateSa(sa)(session)) {
           case Success(_) =>
             complete(OK, Response(code = 200, msg = "Success"))
           case Failure(e) =>
@@ -62,20 +62,20 @@ class OrganizationRoute(override val loginService: LoginService, orgService: Org
     }
   }
 
-  @ApiOperation(value = "delete org cascade by name", nickname = "delete", httpMethod = "DELETE")
+  @ApiOperation(value = "delete sa by name", nickname = "delete", httpMethod = "DELETE")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "Org Name List", value = "Org Name List Parameter", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.BatchOpSeq")
+    new ApiImplicitParam(name = "Sa List", value = "Sa List Parameter", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.BatchOpSaSeq")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def deleteOrgsCascade = (session: Session) => {
+  def deleteSas = (session: Session) => {
     delete {
-      entity(as[BatchOpSeq]) {
+      entity(as[BatchOpSaSeq]) {
         batchOp =>
-          onComplete(orgService.deleteOrgsCascade(batchOp)(session)) {
+          onComplete(saService.deleteSas(batchOp)(session)) {
             case Success(_) =>
               complete(OK, Response(code = 200, msg = "Success"))
             case Failure(e) =>
@@ -85,38 +85,39 @@ class OrganizationRoute(override val loginService: LoginService, orgService: Org
     }
   }
 
-  @ApiOperation(value = "get org by name", nickname = "get", httpMethod = "GET")
+  @ApiOperation(value = "get sa", nickname = "get", httpMethod = "GET")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "orgName", value = "org name", required = true, paramType = "path", dataType = "string")
+    new ApiImplicitParam(name = "orgName", value = "sa org name", required = true, paramType = "path", dataType = "string"),
+    new ApiImplicitParam(name = "saName", value = "sa name", required = true, paramType = "path", dataType = "string")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  @Path("/{orgName}")
-  def getOrg = (session: Session) => path(Segment) { orgName =>
+  @Path("/{orgName}/{saName}")
+  def getSa = (session: Session) => path(Segment / Segment) { (orgName, saName) =>
     get {
-      onComplete(orgService.getOrg(orgName)(session)) {
-        case Success(org) =>
-          complete(OK, Response(code = 200, msg = "Success", payload = Some(org)))
+      onComplete(saService.getSa(orgName, saName)(session)) {
+        case Success(sa) =>
+          complete(OK, Response(code = 200, msg = "Success", payload = Some(sa)))
         case Failure(e) =>
           complete(OK, Response(code = 451, msg = e.getMessage))
       }
     }
   }
 
-  @ApiOperation(value = "list orgs", nickname = "list", httpMethod = "GET")
+  @ApiOperation(value = "list sas", nickname = "list", httpMethod = "GET")
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def listOrgs = (session: Session) => {
+  def listSas = (session: Session) => {
     get {
-      onComplete(orgService.listOrgs()(session)) {
-        case Success(orgs) =>
-          complete(OK, Response(code = 200, msg = "Success", payload = Some(orgs)))
+      onComplete(saService.listSas()(session)) {
+        case Success(sas) =>
+          complete(OK, Response(code = 200, msg = "Success", payload = Some(sas)))
         case Failure(e) =>
           complete(OK, Response(code = 451, msg = e.getMessage))
       }
@@ -124,6 +125,6 @@ class OrganizationRoute(override val loginService: LoginService, orgService: Org
   }
 
   override protected def createSecurityRoute: Array[(Session) => Route] = Array(
-    createOrg, updateOrg, getOrg, deleteOrgsCascade, listOrgs
+    createSa, updateSa, getSa, deleteSas, listSas
   )
 }

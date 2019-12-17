@@ -1,3 +1,7 @@
 package moonbox.grid.deploy.rest.entities
 
-case class Organization(name: String, config: Map[String, String], comment: Option[String])
+import java.sql.Date
+
+case class Organization(name: String, config: Map[String, String], description: Option[String])
+
+case class DateTest(date: Date = new Date(System.currentTimeMillis()))

@@ -37,6 +37,8 @@ class AssembleRoutes(
             new WorkbenchRoute(loginService, new WorkbenchService(actor, jdbcCatalog)).route
           } ~ pathPrefix("orgs") {
           new OrganizationRoute(loginService, new OrganizationService(jdbcCatalog)).route
+        } ~ pathPrefix("sas") {
+          new SaRoute(loginService, new SaService(jdbcCatalog)).route
         }
       }
   }

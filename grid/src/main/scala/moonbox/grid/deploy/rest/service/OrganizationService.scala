@@ -3,7 +3,7 @@ package moonbox.grid.deploy.rest.service
 import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.{CatalogOrganization, JdbcCatalog}
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.rest.entities.Organization
+import moonbox.grid.deploy.rest.entities._
 import moonbox.grid.deploy.rest.routes.SessionConverter
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -13,11 +13,12 @@ class OrganizationService(catalog: JdbcCatalog) extends SessionConverter with Mb
 
   def createOrg(org: Organization)(implicit user: User): Future[Unit] = {
     Future {
+      checkProps(org.config)
       catalog.createOrganization(
         CatalogOrganization(
           name = org.name,
           config = org.config,
-          description = org.comment
+          description = org.description
         ), false
       )
     }
@@ -29,27 +30,33 @@ class OrganizationService(catalog: JdbcCatalog) extends SessionConverter with Mb
         CatalogOrganization(
           name = org.name,
           config = org.config,
-          description = org.comment
+          description = org.description
         )
       )
     }
   }
 
-  def deleteOrgCascade(org: String)(implicit user: User): Future[Unit] = {
+  def deleteOrgsCascade(batchOp: BatchOpSeq)(implicit user: User): Future[Unit] = {
     Future {
-      catalog.dropOrganization(org, ignoreIfNotExists = false, cascade = true)
+      batchOp.names.foreach(org => catalog.dropOrganization(org, ignoreIfNotExists = false, cascade = true))
     }
   }
 
-  def getOrg(org: String)(implicit user: User): Future[CatalogOrganization] = {
+  def getOrg(org: String)(implicit user: User): Future[DateTest] = {
     Future {
-      catalog.getOrganization(org)
+      DateTest()
     }
   }
 
   def listOrgs()(implicit user: User): Future[Seq[CatalogOrganization]] = {
     Future {
-      catalog.listOrganizations()
+      catalog.listOrganizations().sortBy(_.updateTime.get.toString).reverse
     }
+  }
+
+  private def checkProps(props: Map[String, String]): Unit = {
+    require(props.contains("total.memory"), "config must have total.memory key")
+    require(props.contains("total.cores"), "config must have total.cores key")
+    require(props.contains("spark.sql.permission"), "config must have spark.sql.permission key")
   }
 }
