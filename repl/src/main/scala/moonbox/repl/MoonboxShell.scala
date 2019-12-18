@@ -219,7 +219,7 @@ object MoonboxShell {
 	private def remoteExecute(sql: String): Unit = {
 		val statement = connection.createStatement()
 		statement.setFetchSize(fetchSize)
-		statement.setQueryTimeout(timeout * 1000)
+		statement.setQueryTimeout(timeout)
 		try {
 			val rs = statement.executeQuery(sql)
 			val rsMeta = rs.getMetaData

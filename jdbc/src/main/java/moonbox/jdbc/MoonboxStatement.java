@@ -27,7 +27,7 @@ public class MoonboxStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    ExecutionResultPB execute = conn.getClient().execute(Utils.splitSQLs(sql), maxRows, fetchSize, queryTimeout * 1000);
+    ExecutionResultPB execute = conn.getClient().execute(Utils.splitSQLs(sql), maxRows, fetchSize, queryTimeout);
     return new MoonboxResultSet(conn, this, new MoonboxResult(conn, this, execute));
   }
 

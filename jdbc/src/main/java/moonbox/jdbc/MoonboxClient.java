@@ -132,7 +132,7 @@ public class MoonboxClient {
       }
     });
     try {
-      ByteBuf byteBuf = result.get(queryTimeout, TimeUnit.MILLISECONDS);
+      ByteBuf byteBuf = result.get(queryTimeout, TimeUnit.SECONDS);
       return ExecutionResultPB.getDefaultInstance()
           .getParserForType()
           .parseFrom(Utils.byteBufToByteArray(byteBuf));
