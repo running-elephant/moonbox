@@ -42,15 +42,17 @@ class OrganizationService(catalog: JdbcCatalog) extends SessionConverter with Mb
     }
   }
 
-  def getOrg(org: String)(implicit user: User): Future[DateTest] = {
+  def getOrg(org: String)(implicit user: User): Future[CatalogOrganization] = {
     Future {
-      DateTest()
+      catalog.getOrganization(org)
     }
   }
 
   def listOrgs()(implicit user: User): Future[Seq[CatalogOrganization]] = {
     Future {
-      catalog.listOrganizations().sortBy(_.updateTime.get.toString).reverse
+      catalog.listOrganizations()
+        .filter(_.name != "SYSTEM")
+        .sortBy(_.updateTime.get.toString).reverse
     }
   }
 

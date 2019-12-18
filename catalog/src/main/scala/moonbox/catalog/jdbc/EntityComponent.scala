@@ -64,6 +64,7 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val functionResources = TableQuery[FunctionResourceEntityTable]
 	protected final val procedures = TableQuery[ProcedureEntityTable]
 	protected final val timedEvents = TableQuery[TimedEventEntityTable]
+	protected final val queries = TableQuery[QueryEntityTable]
 	protected final val databasePrivileges = TableQuery[DatabasePrivilegeEntityTable]
 	protected final val tablePrivileges = TableQuery[TablePrivilegeEntityTable]
 	protected final val columnPrivileges = TableQuery[ColumnPrivilegeEntityTable]
@@ -82,6 +83,7 @@ trait EntityComponent extends DatabaseComponent {
 		functionResources,
 		procedures,
 		timedEvents,
+		queries,
 		databasePrivileges,
 		tablePrivileges,
 		columnPrivileges,
@@ -213,6 +215,23 @@ trait EntityComponent extends DatabaseComponent {
 		def procedure = column[Long]("procedure")
 		override def * = (id.?, name, organizationId, definer, schedule, enable, description, procedure, createBy,
 			createTime, updateBy, updateTime) <> (TimedEventEntity.tupled, TimedEventEntity.unapply)
+	}
+
+	class QueryEntityTable(tag: Tag) extends BaseTable[QueryEntity](tag, "queries") {
+
+		implicit val seqColumnType = MappedColumnType.base[Seq[String], String](
+			// Seq to String
+			seq => seq.mkString("; "),
+			// String to Seq
+			string => string.split("; ").map(_.trim)
+		)
+
+		def name = column[String]("name")
+		def text = column[String]("text")
+		def organizationId = column[Long]("organizationId")
+		def description = column[Option[String]]("description")
+		override def * = (id.?, name, text, organizationId, description, createBy,
+			createTime, updateBy, updateTime) <> (QueryEntity.tupled, QueryEntity.unapply)
 	}
 
 	class DatabasePrivilegeEntityTable(tag: Tag) extends BaseTable[DatabasePrivilegeEntity](tag, "database_privileges") {

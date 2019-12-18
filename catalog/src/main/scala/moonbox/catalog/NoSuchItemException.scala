@@ -32,6 +32,9 @@ class NoSuchProcedureException(proc: String)
 class NoSuchTimedEventException(event: String)
 	extends Exception(s"Scheduler '$event' not found")
 
+class NoSuchQueryException(query: String)
+	extends Exception(s"Query '$query' not found")
+
 class NoSuchTableException(db: String, table: String)
 	extends Exception(s"Table or view '$table' not found in database '$db'")
 

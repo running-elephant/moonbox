@@ -886,6 +886,123 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   }
 
   // ----------------------------------------------------------------------------
+  // Query -- belong to organization
+  // ----------------------------------------------------------------------------
+
+  protected override def doCreateQuery(queryDefinition: CatalogQuery,
+                                       ignoreIfExists: Boolean)(implicit by: User): Unit = await {
+
+    jdbcDao.action(jdbcDao.queryExists(by.orgId, queryDefinition.name)).flatMap {
+      case true =>
+        ignoreIfExists match {
+          case true => Future(Unit)
+          case false => throw new ProcedureExistsException(queryDefinition.name)
+        }
+      case false =>
+        jdbcDao.action(jdbcDao.createQuery(QueryEntity(
+          name = queryDefinition.name,
+          text = queryDefinition.text,
+          organizationId = by.orgId,
+          description = queryDefinition.description,
+          createBy = by.userId,
+          updateBy = by.userId
+        )))
+    }
+  }
+
+  protected override def doDropQuery(query: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
+
+    jdbcDao.action(jdbcDao.getQuery(by.orgId, query)).flatMap {
+      case Some(queryEntity) =>
+        jdbcDao.action(jdbcDao.deleteQuery(queryEntity.id.get))
+      case None =>
+        ignoreIfNotExists match {
+          case true => Future(Unit)
+          case false => throw new NoSuchQueryException(query)
+        }
+    }
+  }
+
+  override def alterQuery(queryDefinition: CatalogQuery)(implicit by: User): Unit = await {
+
+    jdbcDao.action(jdbcDao.getQuery(by.orgId, queryDefinition.name)).flatMap {
+      case Some(queryEntity) =>
+        jdbcDao.action(jdbcDao.updateQuery(QueryEntity(
+          id = queryEntity.id,
+          name = queryDefinition.name,
+          text = queryDefinition.text,
+          organizationId = by.orgId,
+          description = queryDefinition.description,
+          createBy = queryEntity.createBy,
+          createTime = queryEntity.createTime,
+          updateBy = by.userId,
+          updateTime = Utils.now
+        )))
+      case None =>
+        throw new NoSuchQueryException(queryDefinition.name)
+    }
+
+  }
+
+  override def getQuery(query: String)(implicit by: User): CatalogQuery = await {
+    jdbcDao.action(
+      jdbcDao.getQuery(by.orgId, query)).map {
+      case Some(queryEntity) =>
+        CatalogQuery(
+          name = query,
+          text = queryEntity.text,
+          description = queryEntity.description,
+          owner = Some(userName(queryEntity.createBy))
+        )
+      case None => throw new NoSuchQueryException(query)
+    }
+  }
+
+  override def getQueryOption(query: String)(implicit by: User): Option[CatalogQuery] = await {
+    jdbcDao.action(
+      jdbcDao.getQuery(by.orgId, query)
+    ).map(_.map { queryEntity =>
+      CatalogQuery(
+        name = query,
+        text = queryEntity.text,
+        description = queryEntity.description,
+        owner = Some(userName(queryEntity.createBy))
+      )
+    })
+  }
+
+  override def queryExists(query: String)(implicit by: User): Boolean = await {
+    jdbcDao.action(jdbcDao.queryExists(by.orgId, query))
+  }
+
+  override def listQueries()(implicit by: User): Seq[CatalogQuery] = await {
+    jdbcDao.action(
+      jdbcDao.listQueries(by.orgId)
+    ).map(_.sortBy(_.updateTime).reverse
+      .map { queryEntity =>
+        CatalogQuery(
+          name = queryEntity.name,
+          text = queryEntity.text,
+          description = queryEntity.description,
+          owner = Some(userName(queryEntity.createBy))
+        )
+      })
+  }
+
+  override def listQueries(pattern: String)(implicit by: User): Seq[CatalogQuery] = await {
+    jdbcDao.action(
+      jdbcDao.listQueries(by.orgId, pattern)
+    ).map(_.map { queryEntity =>
+      CatalogQuery(
+        name = queryEntity.name,
+        text = queryEntity.text,
+        description = queryEntity.description,
+        owner = Some(userName(queryEntity.createBy))
+      )
+    })
+  }
+
+  // ----------------------------------------------------------------------------
   // timedevent -- belong to organization
   // ----------------------------------------------------------------------------
 

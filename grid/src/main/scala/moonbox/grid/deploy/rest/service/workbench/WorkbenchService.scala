@@ -6,10 +6,12 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import moonbox.catalog.JdbcCatalog
+import moonbox.catalog.AbstractCatalog.User
+import moonbox.catalog.{CatalogQuery, JdbcCatalog}
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.DeployMessages.{MasterAddress, RequestMasterAddress}
 import moonbox.grid.deploy.rest.entities._
+import moonbox.grid.deploy.rest.routes.SessionConverter
 import moonbox.grid.deploy.security.Session
 
 import scala.collection.mutable.ListBuffer
@@ -21,7 +23,7 @@ import scala.concurrent.{Await, Future}
   * @param actorRef
   * @param catalog
   */
-class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLogging {
+class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends SessionConverter with MbLogging {
 
   private lazy val statementMap = new ConcurrentHashMap[String, Statement]
   private implicit val timeout = new Timeout(30, TimeUnit.SECONDS)
@@ -33,7 +35,7 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
     * @param session        session
     * @return Future[ExecuteResult] future sql execute result
     */
-  def executeQuery(executeRequest: ExecuteRequest, session: Session): Future[ExecuteResponse] = {
+  def executeConsole(executeRequest: ExecuteRequest, session: Session): Future[ExecuteResponse] = {
     Future {
       var startTime: Long = 0l
       var endTime: Long = 0l
@@ -69,15 +71,15 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
         }
         endTime = System.currentTimeMillis()
         statementMap.remove(executeRequest.consoleId)
-        msg = s"${dataList.size} Rows Returned."
+        msg = s"${dataList.size} Row(s) Returned"
       } catch {
         case ex: Exception =>
           log.error("execute query failed", ex)
           endTime = System.currentTimeMillis()
-          msg = s"Failed: ${ex.getMessage}."
+          msg = s"Failed: ${ex.getMessage}"
       } finally {
         val duration = (endTime - startTime).toFloat / 1000
-        val info = s"Duration: ${duration}s\nResult: $msg."
+        val info = s"Duration: ${duration}s\nResult: $msg"
         response = if (dataList.nonEmpty) {
           val result = ExecuteResult(columns = columnList.toList, data = dataList.toList, size = dataList.size)
           ExecuteResponse(Some(result), info)
@@ -94,7 +96,7 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
     * @param consoleId
     * @return
     */
-  def cancelQuery(consoleId: String): Future[Unit] = {
+  def cancelConsole(consoleId: String): Future[Unit] = {
     Future {
       try {
         if (statementMap.contains(consoleId)) {
@@ -117,6 +119,62 @@ class WorkbenchService(actorRef: ActorRef, catalog: JdbcCatalog) extends MbLoggi
   def closeConnection(consoleId: String): Future[Unit] = {
     Future {
       MoonboxConnectionCache.removeConnection(consoleId)
+    }
+  }
+
+
+  /**
+    *
+    * @param query
+    * @return
+    */
+  def createQuery(query: Query)(implicit user: User): Future[Unit] = {
+    Future {
+      catalog.createQuery(CatalogQuery(query.name, query.text, query.description),
+        ignoreIfExists = false)
+    }
+  }
+
+  /**
+    *
+    * @param query
+    * @return
+    */
+  def updateQuery(query: Query)(implicit user: User): Future[Unit] = {
+    Future {
+      catalog.alterQuery(CatalogQuery(query.name, query.text, query.description))
+    }
+  }
+
+  /**
+    *
+    * @param query
+    * @return
+    */
+  def deleteQuery(query: String)(implicit user: User): Future[Unit] = {
+    Future {
+      catalog.dropQuery(query, ignoreIfNotExists = false)
+    }
+  }
+
+  /**
+    *
+    * @param query
+    * @return
+    */
+  def getQuery(query: String)(implicit user: User): Future[CatalogQuery] = {
+    Future {
+      catalog.getQuery(query)
+    }
+  }
+
+  /**
+    *
+    * @return
+    */
+  def listQueries()(implicit user: User): Future[Seq[CatalogQuery]] = {
+    Future {
+      catalog.listQueries()
     }
   }
 

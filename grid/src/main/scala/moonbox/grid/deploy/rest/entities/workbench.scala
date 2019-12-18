@@ -12,5 +12,4 @@ case class ReconnectRequest(props: Map[String, String])
 
 case class CancelRequest(consoleId: String)
 
-case class Query(id: Long, name: String, desc: Option[String], sql: String)
-
+case class Query(name: String, text: String, description: Option[String] = None)

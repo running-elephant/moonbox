@@ -485,6 +485,59 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	// -----------------------------------------------------------------
+	// Query
+	// -----------------------------------------------------------------
+
+	def createQuery(query: QueryEntity) = {
+		insert[QueryEntity, QueryEntityTable](query, queries)
+	}
+
+	def deleteQuery(queryId: Long) = {
+		delete[QueryEntity, QueryEntityTable](queries, _.id === queryId)
+	}
+
+def deleteQuery(organizationId: Long, query: String) = {
+		delete[QueryEntity, QueryEntityTable](
+			queries, t => t.organizationId === organizationId && t.name === query)
+	}
+
+	def deleteQueries(organizationId: Long) = {
+		delete[QueryEntity, QueryEntityTable](
+			queries, _.organizationId === organizationId
+		)
+	}
+
+
+	def updateQuery(queryDefinition: QueryEntity) = {
+		updateEntity[QueryEntity, QueryEntityTable](
+			queries, t => t.id === queryDefinition.id.get, queryDefinition
+		)
+	}
+
+	def getQuery(queryId: Long) = {
+		queryOneOption[QueryEntity, QueryEntityTable](queries, _.id === queryId)
+	}
+
+	def getQuery(organizationId: Long, query: String) = {
+		queryOneOption[QueryEntity, QueryEntityTable](
+			queries, t => t.organizationId === organizationId && t.name === query)
+	}
+
+	def queryExists(organizationId: Long, query: String) = {
+		exists[QueryEntity, QueryEntityTable](
+			queries, t => t.organizationId === organizationId && t.name === query)
+	}
+
+	def listQueries(organizationId: Long) = {
+		query[QueryEntity, QueryEntityTable](queries, _.organizationId === organizationId)
+	}
+
+	def listQueries(organizationId: Long, pattern: String) = {
+		query[QueryEntity, QueryEntityTable](
+			queries, t => t.organizationId === organizationId && t.name.like(pattern))
+	}
+
+	// -----------------------------------------------------------------
 	// timedevent
 	// -----------------------------------------------------------------
 	def createTimedEvent(event: TimedEventEntity) = {
