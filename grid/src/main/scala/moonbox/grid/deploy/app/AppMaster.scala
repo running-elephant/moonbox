@@ -3,21 +3,25 @@ package moonbox.grid.deploy.app
 import java.util.ServiceLoader
 import java.util.concurrent.ConcurrentHashMap
 
+import moonbox.catalog.JdbcCatalog
 import moonbox.common.MbLogging
+import moonbox.grid.deploy.security.Session
 
 import scala.collection.mutable
 import scala.util.Random
 
-abstract class AppMaster extends MbLogging {
+abstract class AppMaster(jdbcCatalog: JdbcCatalog) extends MbLogging {
 
 	// AppMasterManager.registerAppMaster(this)
 
-	def selectApp(apps: mutable.HashSet[AppInfo], appName: Option[String]): Option[AppInfo] = {
+	def selectApp(apps: mutable.HashSet[AppInfo], session: Session, appName: Option[String]): Option[AppInfo] = {
+		val org = session("org")
+		val appsInOrg = apps.filter(app => app.id.startsWith(org) && app.appType == typeName)
 		appName match {
 			case Some(name) =>
-				Random.shuffle(apps.filter(_.appType == typeName)).find(_.id == name)
+				Random.shuffle(appsInOrg).find(_.id == name)
 			case None =>
-				Random.shuffle(apps.filter(_.appType == typeName)).headOption
+				Random.shuffle(appsInOrg).headOption
 		}
 	}
 
@@ -58,8 +62,10 @@ object AppMasterManager extends MbLogging {
 	}
 
 	def registerAppMaster(appManager: AppMaster): Unit = {
-		registeredDrivers.putIfAbsent(appManager.typeName, appManager)
-		logInfo(s"register AppManager: $appManager.")
+		if (!registeredDrivers.contains(appManager.typeName)) {
+			registeredDrivers.put(appManager.typeName, appManager)
+			logInfo(s"register AppManager: ${appManager.getClass.getSimpleName}.")
+		}
 	}
 
 	def getAppMaster(typeName: String): Option[AppMaster] = {

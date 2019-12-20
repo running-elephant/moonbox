@@ -24,6 +24,7 @@ import akka.actor.{ActorRef, Address}
 import moonbox.grid.deploy.app.DriverDesc
 import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.rest.entities.Node
+import moonbox.grid.deploy.security.Session
 import moonbox.grid.timer.EventEntity
 
 
@@ -31,117 +32,122 @@ sealed trait DeployMessages extends Serializable
 
 object DeployMessages {
 
-  case object ElectedLeader extends DeployMessages
+	case object ElectedLeader extends DeployMessages
 
-  case object RevokedLeadership extends DeployMessages
+	case object RevokedLeadership extends DeployMessages
 
-  case class BeginRecovery() extends DeployMessages
+	case class BeginRecovery() extends DeployMessages
 
-  case object CompleteRecovery extends DeployMessages
+	case object CompleteRecovery extends DeployMessages
 
-  case object CheckForWorkerTimeOut extends DeployMessages
+	case object CheckForWorkerTimeOut extends DeployMessages
 
-  case class RegisterWorker(
-                             id: String,
-                             host: String,
-                             port: Int,
-                             worker: ActorRef,
-                             address: Address) extends DeployMessages {
-  }
+	case class RegisterWorker(
+		id: String,
+		host: String,
+		port: Int,
+		worker: ActorRef,
+		address: Address) extends DeployMessages {
+	}
 
-  case class MasterChanged(masterRef: ActorRef) extends DeployMessages
+	case class MasterChanged(masterRef: ActorRef) extends DeployMessages
 
-  case object RequestMasterAddress extends DeployMessages
+	case class WorkerSchedulerStateResponse(workerId: String, driverIds: Seq[String])
 
-  case class MasterAddress(master: String, restServer: Option[String], tcpServer: Option[String]) extends DeployMessages
+	case class WorkerLatestState(workerId: String, driverIds: Seq[String]) extends DeployMessages
 
-  case object RequestClusterState extends DeployMessages
+	case class Heartbeat(workerId: String, worker: ActorRef) extends DeployMessages
 
-  case class ClusterStateResponse(nodes: Seq[Node]) extends DeployMessages
+	case class ReconnectWorker(masterRef: ActorRef) extends DeployMessages
 
-  case class WorkerSchedulerStateResponse(workerId: String, driverIds: Seq[String])
+	sealed trait RegisterWorkerResponse
 
-  case class WorkerLatestState(workerId: String, driverIds: Seq[String]) extends DeployMessages
+	case class RegisteredWorker(masterAddress: ActorRef) extends DeployMessages with RegisterWorkerResponse
 
-  case class Heartbeat(workerId: String, worker: ActorRef) extends DeployMessages
+	case object MasterInStandby extends DeployMessages with RegisterWorkerResponse with RegisterApplicationResponse
 
-  case class ReconnectWorker(masterRef: ActorRef) extends DeployMessages
+	case class RegisterWorkerFailed(message: String) extends DeployMessages with RegisterWorkerResponse
 
-  sealed trait RegisterWorkerResponse
+	case object SendHeartbeat extends DeployMessages
 
-  case class RegisteredWorker(masterAddress: ActorRef) extends DeployMessages with RegisterWorkerResponse
+	case class LaunchDriver(driverId: String, desc: DriverDesc) extends DeployMessages
 
-  case object MasterInStandby extends DeployMessages with RegisterWorkerResponse with RegisterApplicationResponse
+	case class DriverStateChanged(
+		driverId: String,
+		state: DriverState,
+		appId: Option[String],
+		exception: Option[Exception])
+			extends DeployMessages
 
-  case class RegisterWorkerFailed(message: String) extends DeployMessages with RegisterWorkerResponse
+	case class KillDriver(driverId: String) extends DeployMessages
 
-  case object SendHeartbeat extends DeployMessages
+	case class RegisterApplication(
+		driverId: String,
+		host: String,
+		port: Int,
+		endpoint: ActorRef,
+		address: Address,
+		dataPort: Int,
+		appType: String
+	)
 
-  case class LaunchDriver(driverId: String, desc: DriverDesc) extends DeployMessages
+	sealed trait RegisterApplicationResponse
 
-  case class DriverStateChanged(
-                                 driverId: String,
-                                 state: DriverState,
-                                 appId: Option[String],
-                                 exception: Option[Exception])
-    extends DeployMessages
+	case class RegisteredApplication(masterRef: ActorRef) extends RegisterApplicationResponse
 
-  case class KillDriver(driverId: String) extends DeployMessages
+	case class RegisterApplicationFailed(message: String) extends RegisterApplicationResponse
 
-  case class RegisterApplication(
-                                  id: String,
-                                  label: String,
-                                  host: String,
-                                  port: Int,
-                                  endpoint: ActorRef,
-                                  address: Address,
-                                  dataPort: Int,
-                                  appType: String
-                                )
+	case class ApplicationStateResponse(driverId: String) extends DeployMessages
 
-  sealed trait RegisterApplicationResponse
+	case class RegisterTimedEvent(event: EventEntity)
 
-  case class RegisteredApplication(masterRef: ActorRef) extends RegisterApplicationResponse
+	sealed trait RegisterTimedEventResponse
 
-  case class RegisterApplicationFailed(message: String) extends RegisterApplicationResponse
+	case class RegisteredTimedEvent(masterRef: ActorRef) extends RegisterTimedEventResponse
 
-  case class ApplicationStateResponse(driverId: String) extends DeployMessages
+	case class RegisterTimedEventFailed(message: String) extends RegisterTimedEventResponse
 
-  case class RegisterTimedEvent(event: EventEntity)
+	case class UnregisterTimedEvent(group: String, name: String)
 
-  sealed trait RegisterTimedEventResponse
+	sealed trait UnregisterTimedEventResponse
 
-  case class RegisteredTimedEvent(masterRef: ActorRef) extends RegisterTimedEventResponse
+	case class UnregisteredTimedEvent(masterRef: ActorRef) extends UnregisterTimedEventResponse
 
-  case class RegisterTimedEventFailed(message: String) extends RegisterTimedEventResponse
-
-  case class UnregisterTimedEvent(group: String, name: String)
-
-  sealed trait UnregisterTimedEventResponse
-
-  case class UnregisteredTimedEvent(masterRef: ActorRef) extends UnregisterTimedEventResponse
-
-  case class UnregisterTimedEventFailed(message: String) extends UnregisterTimedEventResponse
+	case class UnregisterTimedEventFailed(message: String) extends UnregisterTimedEventResponse
 
 
-  case class RequestSubmitDriver(driverDesc: DriverDesc) extends DeployMessages
+	case class RequestSubmitDriver(driverName: String, driverDesc: DriverDesc) extends DeployMessages
 
-  case class SubmitDriverResponse(
-                                   master: ActorRef, success: Boolean, driverId: Option[String], message: String) extends DeployMessages
+	case class SubmitDriverResponse(
+		master: ActorRef, success: Boolean, driverId: Option[String], message: String) extends DeployMessages
 
-  case class RequestKillDriver(driverId: String) extends DeployMessages
+	case class RequestKillDriver(driverId: String) extends DeployMessages
 
-  case class KillDriverResponse(master: ActorRef, driverId: String, success: Boolean, message: String)
-    extends DeployMessages
+	case class KillDriverResponse(master: ActorRef, driverId: String, success: Boolean, message: String)
+			extends DeployMessages
 
-  case class RequestDriverStatus(driverId: String) extends DeployMessages
+	case class RequestDriverStatus(driverId: String) extends DeployMessages
 
-  case class DriverStatusResponse(found: Boolean, state: Option[DriverState],
-                                  workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
+	case class DriverStatusResponse(driverId: String, startTime: Option[Long], state: Option[DriverState],
+		workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
 
-  case class RequestApplicationAddress(appType: String, appName: Option[String]) extends DeployMessages
+	case class RequestAllDriverStatus(pattern: Option[String] = None) extends DeployMessages
 
-  case class ApplicationAddressResponse(found: Boolean,
-                                        host: Option[String] = None, port: Option[Int] = None, exception: Option[Exception] = None) extends DeployMessages
+	case class AllDriverStatusResponse(driverStatus: Seq[DriverStatusResponse], exception: Option[Exception]) extends DeployMessages
+
+	// rest server to master
+	case object RequestMasterAddress extends DeployMessages
+
+	case class MasterAddress(master: String, restServer: Option[String], tcpServer: Option[String]) extends DeployMessages
+
+	case object RequestClusterState extends DeployMessages
+
+	case class ClusterStateResponse(nodes: Seq[Node]) extends DeployMessages
+
+	// jdbc server to master
+	case class RequestApplicationAddress(session: Session, appType: String, appName: Option[String]) extends DeployMessages
+
+	case class ApplicationAddressResponse(found: Boolean,
+		host: Option[String] = None, port: Option[Int] = None, exception: Option[Exception] = None) extends DeployMessages
 
 }

@@ -56,3 +56,9 @@ class ProcedureExistsException(proc: String)
 class TimedEventExistsException(event: String)
 	extends ExistsException(s"Event $event already exists")
 
+class ApplicationExistsException(app: String)
+	extends ExistsException(s"Application $app already exists")
+
+class ClusterExistsException(cluster: String)
+	extends ExistsException(s"Cluster $cluster already exists")
+

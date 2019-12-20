@@ -68,9 +68,9 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	// Application
 	// ----------------------------------------------------------------------------
 	final def createApplication(
-		appDefinition: CatalogApplication)(implicit by: User): Unit = {
+		appDefinition: CatalogApplication, ignoreIfExists: Boolean)(implicit by: User): Unit = {
 		postToAll(CreateApplicationPreEvent(appDefinition.name))
-		doCreateApplication(appDefinition)
+		doCreateApplication(appDefinition, ignoreIfExists)
 		postToAll(CreateApplicationEvent(appDefinition.name))
 	}
 
@@ -80,7 +80,7 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 		postToAll(DropApplicationEvent(app))
 	}
 
-	protected def doCreateApplication(appDefinition: CatalogApplication)(implicit by: User): Unit
+	protected def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean)(implicit by: User): Unit
 
 	protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit
 
@@ -90,11 +90,15 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def getApplicationOption(app: String): Option[CatalogApplication]
 
-	def applicationExists(app: String): Boolean
+	def applicationExists(app: String)(implicit by: User): Boolean
 
-	def listApplications(): Seq[CatalogApplication]
+	def listApplications()(implicit by: User): Seq[CatalogApplication]
 
-	def listApplications(pattern: String): Seq[CatalogApplication]
+	def listApplications(pattern: String)(implicit by: User): Seq[CatalogApplication]
+
+	def listAllApplications(): Seq[CatalogApplication]
+
+	def listAllApplications(startOnBoot: Boolean): Seq[CatalogApplication]
 
 	// ----------------------------------------------------------------------------
 	// Organization

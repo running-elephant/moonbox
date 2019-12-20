@@ -193,17 +193,18 @@ case class VariableEntity(
                            updateTime: Long = Utils.now) extends CatalogEntity
 
 case class ApplicationEntity(
-                              id: Option[Long] = None,
-                              name: String,
-                              address: Option[String],
-                              organizationId: Long,
-                              appType: String,
-                              config: Map[String, String],
-                              state: String,
-                              createBy: Long,
-                              createTime: Long = Utils.now,
-                              updateBy: Long,
-                              updateTime: Long = Utils.now) extends CatalogEntity
+	id: Option[Long] = None,
+	name: String,
+	address: Option[String],
+	appType: String,
+	clusterId: Option[Long],
+	config: Map[String, String],
+	organizationId: Long,
+	startOnBoot: Boolean,
+	createBy: Long,
+	createTime: Long = Utils.now,
+	updateBy: Long,
+	updateTime: Long = Utils.now) extends CatalogEntity
 
 case class ClusterEntity(
                           id: Option[Long] = None,

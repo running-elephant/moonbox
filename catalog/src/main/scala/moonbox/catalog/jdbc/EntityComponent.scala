@@ -271,11 +271,12 @@ trait EntityComponent extends DatabaseComponent {
 	class ApplicationEntityTable(tag: Tag) extends BaseTable[ApplicationEntity](tag, "applications") {
 		def name = column[String]("name")
 		def address = column[Option[String]]("address")
-		def organizationId = column[Long]("organizationId")
 		def appType = column[String]("appType")
-		def state = column[String]("state")
+		def clusterId = column[Option[Long]]("clusterId")
 		def config = column[Map[String, String]]("config")
-		override def * = (id.?, name, address, organizationId, appType, config, state, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
+		def organizationId = column[Long]("organizationId")
+		def startOnBoot = column[Boolean]("enable")
+		override def * = (id.?, name, address, appType, clusterId, config, organizationId, startOnBoot, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
 	}
 
 	class ClusterEntityTable(tag: Tag) extends BaseTable[ClusterEntity](tag, "clusters") {

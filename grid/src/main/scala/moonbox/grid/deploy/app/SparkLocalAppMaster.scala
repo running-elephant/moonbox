@@ -1,6 +1,8 @@
 package moonbox.grid.deploy.app
 
-class SparkLocalAppMaster extends AppMaster {
+import moonbox.catalog.JdbcCatalog
+
+class SparkLocalAppMaster(jdbcCatalog: JdbcCatalog) extends AppMaster(jdbcCatalog) {
 
 	override def createDriverDesc(config: Map[String, String]): DriverDesc = new SparkLocalDriverDesc(config)
 

@@ -4,7 +4,7 @@ import javax.ws.rs.Path
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Route
-import io.swagger.annotations.{ApiResponse, ApiResponses, _}
+import io.swagger.annotations._
 import moonbox.grid.deploy.rest.entities.{Cluster, Response}
 import moonbox.grid.deploy.rest.service.{ClusterService, LoginService}
 import moonbox.grid.deploy.security.Session
@@ -20,12 +20,10 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 
 	@ApiOperation(value = "create a new cluster", nickname = "create", httpMethod = "POST")
 	@ApiImplicitParams(Array(
-		new ApiImplicitParam(name = "Create Cluster", value = "Create Cluster Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Cluster")
+		new ApiImplicitParam(name = "create Cluster", value = "Create Cluster Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.Cluster")
 	))
 	@ApiResponses(Array(
 		new ApiResponse(code = 200, message = "OK"),
-		new ApiResponse(code = 210, message = "Wrong password"),
-		new ApiResponse(code = 404, message = "Not found"),
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
@@ -33,8 +31,11 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 		post {
 			entity(as[Cluster]) { cluster =>
 				onComplete(clusterService.createCluster(cluster)(session)) {
-					case Success(_) =>
-						complete(OK, Response(code = 200, msg = "Success"))
+					case Success(either) =>
+						either.fold(
+							_ => complete(OK, Response(code = 200, msg = "Success")),
+							exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+						)
 					case Failure(e) =>
 						complete(OK, Response(code = 451, msg = e.getMessage))
 				}
@@ -48,8 +49,6 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 	))
 	@ApiResponses(Array(
 		new ApiResponse(code = 200, message = "OK"),
-		new ApiResponse(code = 210, message = "Wrong password"),
-		new ApiResponse(code = 404, message = "Not found"),
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
@@ -57,8 +56,11 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 		put {
 			entity(as[Cluster]) { cluster =>
 				onComplete(clusterService.updateCluster(cluster)(session)) {
-					case Success(_) =>
-						complete(OK, Response(code = 200, msg = "Success"))
+					case Success(either) =>
+						either.fold(
+							_ => complete(OK, Response(code = 200, msg = "Success")),
+							exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+						)
 					case Failure(e) =>
 						complete(OK, Response(code = 451, msg = e.getMessage))
 				}
@@ -72,7 +74,6 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 	))
 	@ApiResponses(Array(
 		new ApiResponse(code = 200, message = "OK"),
-		new ApiResponse(code = 404, message = "Not found"),
 		new ApiResponse(code = 451, message = "request process failed"),
 		new ApiResponse(code = 500, message = "internal server error")
 	))
@@ -80,7 +81,37 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 	def deleteCluster = (session: Session) => path(Segment) { cluster =>
 		delete {
 			logInfo("")
-			complete(OK)
+			onComplete(clusterService.deleteCluster(cluster)(session)) {
+				case Success(either) =>
+					either.fold(
+						_ => complete(OK, Response(code = 200, msg = "Success")),
+						exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+					)
+				case Failure(e) => complete(OK, Response(code = 451, msg = e.getMessage))
+			}
+		}
+	}
+
+	@ApiOperation(value = "get cluster by name", nickname = "getCluster", httpMethod = "GET")
+	@ApiImplicitParams(Array(
+		new ApiImplicitParam(name = "clusterName", value = "cluster name", required = true, paramType = "path", dataType = "string")
+	))
+	@ApiResponses(Array(
+		new ApiResponse(code = 200, message = "OK"),
+		new ApiResponse(code = 451, message = "request process failed"),
+		new ApiResponse(code = 500, message = "internal server error")
+	))
+	@Path("/{clusterName}")
+	def getCluster = (session: Session) => path(Segment) { cluster =>
+		get {
+			onComplete(clusterService.getCluster(cluster)(session)) {
+				case Success(either) =>
+					either.fold(
+						cluster => complete(OK, Response(code = 200, msg = "Success", payload = Some(cluster))),
+						exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+					)
+				case Failure(e) => complete(OK, Response(code = 451, msg = e.getMessage))
+			}
 		}
 	}
 
@@ -92,12 +123,19 @@ class ClusterRoute(override val loginService: LoginService, clusterService: Clus
 	))
 	def listClusters = (session: Session) => {
 		get {
-			logInfo("listClusters")
-			complete(OK)
+			logInfo("list Clusters")
+			onComplete(clusterService.listClusters()(session)) {
+				case Success(either) =>
+					either.fold(
+						clusters => complete(OK, Response(code = 200, msg = "Success", payload = Some(clusters))),
+						exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+					)
+				case Failure(e) => complete(OK, Response(code = 451, msg = e.getMessage))
+			}
 		}
 	}
 
 	override protected def createSecurityRoute: Array[(Session) => Route] = Array(
-		createCluster, updateCluster, deleteCluster, listClusters
+		createCluster, updateCluster, deleteCluster, getCluster, listClusters
 	)
 }

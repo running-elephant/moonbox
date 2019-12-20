@@ -73,11 +73,7 @@ case class SparkLocalDriverDesc(config: Map[String, String]) extends LongRunDriv
 	override def name: String = "sparklocal"
 }
 
-case class SparkClusterDriverDesc(
-	driverId: String,
-	label: String,
-	masters: Array[String],
-	config: Map[String, String]) extends LongRunDriverDesc {
+case class SparkClusterDriverDesc(config: Map[String, String]) extends LongRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("client")
@@ -88,13 +84,7 @@ case class SparkClusterDriverDesc(
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark."))
-			++ Map(
-			"driverId" -> driverId,
-			"appLabel" -> label,
-			"masters" -> masters.mkString(";"),
-			"applicationType" -> "DISTRIBUTED"
-		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		config.filterKeys(key => !key.startsWith("spark.")).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {

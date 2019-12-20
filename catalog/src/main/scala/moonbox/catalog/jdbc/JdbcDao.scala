@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -214,6 +214,10 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 		delete[ApplicationEntity, ApplicationEntityTable](applications, _.id === applicationId)
 	}
 
+	def deleteApplication(application: String) = {
+		delete[ApplicationEntity, ApplicationEntityTable](applications, _.name === application)
+	}
+
 	def updateApplication(appDefinition: ApplicationEntity) = {
 		updateEntity[ApplicationEntity, ApplicationEntityTable](
 			applications, _.id === appDefinition.id.get,
@@ -233,14 +237,42 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 		exists[ApplicationEntity, ApplicationEntityTable](applications, _.name === application)
 	}
 
-	def listApplications() = {
-		list[ApplicationEntity, ApplicationEntityTable](applications)
+	def listApplications(organizationId: Long) = {
+		applications.filter(_.organizationId === organizationId).join(organizations).on {
+			case (app, org) => app.organizationId === org.id
+		}.joinLeft(clusters).on {
+			case ((app, org), cluster) => app.clusterId === cluster.id
+		}.result
+		// query[ApplicationEntity, ApplicationEntityTable](applications, _.organizationId === organizationId)
 	}
 
-	def listApplications(pattern: String) = {
-		query[ApplicationEntity, ApplicationEntityTable](
-			applications, _.name.like(pattern)
-		)
+	def listApplications(organizationId: Long, pattern: String) = {
+		applications.filter(app => app.organizationId === organizationId && app.name.like(pattern)).join(organizations).on {
+			case (app, org) => app.organizationId === org.id
+		}.joinLeft(clusters).on {
+			case ((app, org), cluster) => app.clusterId === cluster.id
+		}.result
+		/*query[ApplicationEntity, ApplicationEntityTable](
+			applications, app => app.organizationId === organizationId && app.name.like(pattern)
+		)*/
+	}
+
+	def listAllApplications() = {
+		applications.join(organizations).on {
+			case (app, org) => app.organizationId === org.id
+		}.joinLeft(clusters).on {
+			case ((app, org), cluster) => app.clusterId === cluster.id
+		}.result
+		// list[ApplicationEntity, ApplicationEntityTable](applications)
+	}
+
+	def listAllApplications(startOnBoot: Boolean) = {
+		applications.filter(_.startOnBoot === startOnBoot).join(organizations).on {
+			case (apps, orgs) => apps.organizationId === orgs.id
+		}.joinLeft(clusters).on {
+			case ((app, org), cluster) => app.clusterId === cluster.id
+		}.result
+		// query[ApplicationEntity, ApplicationEntityTable](applications, _.name.like(pattern))
 	}
 
 	// -----------------------------------------------------------------
@@ -287,14 +319,15 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	def listOrganizations() = {
-		list[OrganizationEntity, OrganizationEntityTable](organizations)
+		query[OrganizationEntity, OrganizationEntityTable](organizations, _.name =!= "SYSTEM")
 	}
 
 	def listOrganizations(pattern: String) = {
 		query[OrganizationEntity, OrganizationEntityTable](
-			organizations, _.name.like(pattern)
+			organizations, org => org.name =!= "SYSTEM" && org.name.like(pattern)
 		)
 	}
+
 
 	// -----------------------------------------------------------------
 	// User
@@ -407,12 +440,14 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	def listUsers(organizationId: Long) = {
-		query[UserEntity, UserEntityTable](users,  _.organizationId === organizationId)
+		users.filter(_.organizationId === organizationId).join(users).on(_.createBy === _.id).result
+		// query[UserEntity, UserEntityTable](users,  _.organizationId === organizationId)
 	}
 
 	def listUsers(organizationId: Long, pattern: String) = {
-		query[UserEntity, UserEntityTable](
-			users,  t => t.organizationId === organizationId && t.name.like(pattern))
+		users.filter(t => t.organizationId === organizationId && t.name.like(pattern)).join(users).on(_.createBy === _.id).result
+		/*query[UserEntity, UserEntityTable](
+			users,  t => t.organizationId === organizationId && t.name.like(pattern))*/
 	}
 
 	def listSas() = {
@@ -476,12 +511,14 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
 	}
 
 	def listProcedures(organizationId: Long) = {
-		query[ProcedureEntity, ProcedureEntityTable](procedures, _.organizationId === organizationId)
+		procedures.filter(t => t.organizationId === organizationId).join(users).on(_.createBy === _.id).result
+		// query[ProcedureEntity, ProcedureEntityTable](procedures, _.organizationId === organizationId)
 	}
 
 	def listProcedures(organizationId: Long, pattern: String) = {
-		query[ProcedureEntity, ProcedureEntityTable](
-			procedures, t => t.organizationId === organizationId && t.name.like(pattern))
+		procedures.filter(t => t.organizationId === organizationId && t.name.like(pattern)).join(users).on(_.createBy === _.id).result
+		/*query[ProcedureEntity, ProcedureEntityTable](
+			procedures, t => t.organizationId === organizationId && t.name.like(pattern))*/
 	}
 
 	// -----------------------------------------------------------------
@@ -661,13 +698,19 @@ def deleteQuery(organizationId: Long, query: String) = {
 			databases, t => t.organizationId === organizationId && t.name === database)
 	}
 
+	def listDatabaseIds(organizationId: Long) = {
+		databases.filter(t => t.organizationId === organizationId).map(_.id).result
+	}
+
 	def listDatabases(organizationId: Long) = {
-		query[DatabaseEntity, DatabaseEntityTable](databases, _.organizationId === organizationId)
+		databases.filter(t => t.organizationId === organizationId).join(users.filter(_.organizationId === organizationId)).on(_.createBy === _.id).result
+		//query[DatabaseEntity, DatabaseEntityTable](databases, _.organizationId === organizationId)
 	}
 
 	def listDatabases(organizationId: Long, pattern: String) = {
-		query[DatabaseEntity, DatabaseEntityTable](
-			databases, t => t.organizationId === organizationId && t.name.like(pattern))
+		databases.filter(t => t.organizationId === organizationId && t.name.like(pattern)).join(users.filter(_.organizationId === organizationId)).on(_.createBy === _.id).result
+		/*query[DatabaseEntity, DatabaseEntityTable](
+			databases, t => t.organizationId === organizationId && t.name.like(pattern))*/
 	}
 
 	// -----------------------------------------------------------------
@@ -722,12 +765,14 @@ def deleteQuery(organizationId: Long, query: String) = {
 	}
 
 	def listTables(databaseId: Long) = {
-		query[TableEntity, TableEntityTable](tables, _.databaseId === databaseId)
+		tables.filter(t => t.databaseId === databaseId).join(users).on(_.createBy === _.id).result
+		//query[TableEntity, TableEntityTable](tables, _.databaseId === databaseId)
 	}
 
 	def listTables(databaseId: Long, pattern: String) = {
-		query[TableEntity, TableEntityTable](
-			tables, t => t.databaseId === databaseId && t.name.like(pattern))
+		tables.filter(t => t.databaseId === databaseId && t.name.like(pattern)).join(users).on(_.createBy === _.id).result
+		/*query[TableEntity, TableEntityTable](
+			tables, t => t.databaseId === databaseId && t.name.like(pattern))*/
 	}
 
 	// -----------------------------------------------------------------
@@ -1079,10 +1124,19 @@ def deleteQuery(organizationId: Long, query: String) = {
 	}
 
 	def getGroupUserRelsByGroup(groupId: Long) = {
-		query[GroupUserRelEntity, GroupUserRelEntityTable](
+		groupUserRels.filter(_.groupId === groupId).join(users).on(_.userId === _.id).map {case (rel, user) => user.name}.result
+		/*query[GroupUserRelEntity, GroupUserRelEntityTable](
 			groupUserRels,
 			_.groupId === groupId
-		)
+		)*/
+	}
+
+	def getGroupUserRelsByGroup(groupId: Long, pattern: String) = {
+		groupUserRels.filter(_.groupId === groupId).join(users).on(_.userId === _.id).map {case (rel, user) => user.name}.filter(_.like(pattern)).result
+		/*query[GroupUserRelEntity, GroupUserRelEntityTable](
+			groupUserRels,
+			_.groupId === groupId
+		)*/
 	}
 
 }

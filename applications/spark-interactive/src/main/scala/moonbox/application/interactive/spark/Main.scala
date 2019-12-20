@@ -48,8 +48,6 @@ object Main extends MbLogging {
 		val driverId = conf.get("driverId").getOrElse(throw new NoSuchElementException("driverId"))
 		val masters = conf.get("masters").map(_.split(";")).getOrElse(throw new NoSuchElementException("masters"))
 		val appType = conf.get("appType").getOrElse(throw new NoSuchElementException("appType"))
-		val appLabel = conf.get("appLabel").getOrElse("common")
-
 
 		conf.set("moonbox.rpc.akka.remote.netty.tcp.hostname", Utils.localHostName())
 		conf.set("moonbox.rpc.akka.remote.netty.tcp.port", "0")
@@ -70,7 +68,7 @@ object Main extends MbLogging {
 
 		try {
 			system.actorOf(Props(
-				classOf[Main], driverId, masters, conf, appLabel, appType
+				classOf[Main], driverId, masters, conf, appType
 			), name = "interactive")
 		} catch {
 			case e: Exception =>
@@ -85,7 +83,6 @@ class Main(
 	driverId: String,
 	masterAddresses: Array[String],
 	val conf: MbConf,
-	appLabel: String,
 	appType: String
 ) extends MbActor with LogMessage with MbLogging {
 
@@ -386,7 +383,6 @@ class Main(
 		logInfo(s"Try registering with master $masterRpcAddress.")
 		context.system.actorSelection(masterRpcAddress).tell(RegisterApplication(
 			driverId,
-			appLabel,
 			host,
 			port,
 			self,
