@@ -445,7 +445,7 @@ class MoonboxMaster(
 				sender() ! KillDriverResponse(self, driverId, success = false, msg)
 			} else {
 				logInfo("Asked to kill driver " + driverId)
-				val driver = (waitingDrivers ++ drivers).find(_.id == driverId)
+				val driver = drivers.find(_.id == driverId)
 				driver match {
 					case Some(d) =>
 						if (waitingDrivers.contains(d)) {
@@ -470,14 +470,14 @@ class MoonboxMaster(
 			if (state != RecoveryState.ACTIVE) {
 				val msg = s"Current state is not active: $state. " +
 						"Can only request driver status in ALIVE state."
-				sender() ! DriverStatusResponse(driverId, None, None, None, None, Some(new Exception(msg)))
+				sender() ! DriverStatusResponse(found = false, driverId, None, None, None, None, None, Some(new Exception(msg)))
 			} else {
-				(waitingDrivers ++ drivers ++ completedDrivers).find(_.id == driverId) match {
+				(drivers ++ completedDrivers).find(_.id == driverId) match {
 					case Some(driver) =>
-						sender() ! DriverStatusResponse(driverId, Some(driver.startTime), Some(driver.state),
+						sender() ! DriverStatusResponse(found = true, driverId, Some(driver.desc.name), Some(driver.startTime), Some(driver.state),
 							driver.worker.map(_.id), driver.worker.map(w => s"${w.host}:${w.port}"), driver.exception)
 					case None =>
-						sender() ! DriverStatusResponse(driverId, None, None, None, None, None)
+						sender() ! DriverStatusResponse(found = false, driverId, None, None, None, None, None, None)
 				}
 			}
 
@@ -489,16 +489,16 @@ class MoonboxMaster(
 			} else {
 				val allDrivers = pattern match {
 					case Some(p) =>
-						(waitingDrivers ++ drivers ++ completedDrivers).filter(_.id.startsWith(p))
+						(drivers ++ completedDrivers).filter(_.id.startsWith(p))
 					case None =>
-						waitingDrivers ++ drivers ++ completedDrivers
+						drivers ++ completedDrivers
 				}
 				val response = allDrivers.map { driver =>
-					DriverStatusResponse(driver.id, Some(driver.startTime), Some(driver.state),
+					DriverStatusResponse(found = true, driver.id, Some(driver.desc.name), Some(driver.startTime), Some(driver.state),
 						driver.worker.map(_.id), driver.worker.map(w => s"${w.host}:${w.port}"), driver.exception)
 				}
 
-				sender() ! AllDriverStatusResponse(response, None)
+				sender() ! AllDriverStatusResponse(response.toSeq, None)
 			}
 
 		case RequestApplicationAddress(session, appType, appName) =>

@@ -8,6 +8,7 @@ import moonbox.grid.deploy.rest.routes.SessionConverter
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import DateFormatUtils.formatDate
 
 class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
 
@@ -34,7 +35,7 @@ class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
   def listSas()(implicit user: User): Future[Seq[OrgSaDetail]] = {
     Future {
       catalog.listSas()
-        .map(user => OrgSaDetail(user.org, user.name, user.createTime.get, user.updateTime.get))
+        .map(user => OrgSaDetail(user.org, user.name, user.createTime.map(formatDate).get, user.updateTime.map(formatDate).get))
         .sortBy(_.updateTime.toString).reverse
     }
   }
@@ -42,7 +43,7 @@ class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
   def getSa(org: String, sa: String)(implicit user: User): Future[OrgSaDetail] = {
     Future {
       val catalogUser = catalog.getUser(org, sa)
-      OrgSaDetail(catalogUser.org, catalogUser.name, catalogUser.createTime.get, catalogUser.updateTime.get)
+      OrgSaDetail(catalogUser.org, catalogUser.name, catalogUser.createTime.map(formatDate).get, catalogUser.updateTime.map(formatDate).get)
     }
   }
 }

@@ -20,11 +20,9 @@
 
 package moonbox.catalog
 
-import java.sql.Timestamp
-
+import java.util.Date
 
 trait CatalogItem
-
 
 case class CatalogCluster(
 	name: String,
@@ -40,8 +38,8 @@ case class CatalogApplication(
 	cluster: Option[String],
 	config: Map[String, String],
 	startOnBoot: Boolean,
-	createTime: Option[Long] = None,
-	updateTime: Option[Long] = None
+	createTime: Option[Date] = None,
+	updateTime: Option[Date] = None
 ) extends CatalogItem
 
 
@@ -82,8 +80,8 @@ case class CatalogOrganization(
 	name: String,
 	config: Map[String, String],
 	description: Option[String] = None,
-	createTime: Option[Timestamp] = None,
-	updateTime: Option[Timestamp] = None) extends CatalogItem
+	createTime: Option[Date] = None,
+	updateTime: Option[Date] = None) extends CatalogItem
 
 case class CatalogUser(
 	org: String,
@@ -98,8 +96,8 @@ case class CatalogUser(
 	isSA: Boolean = false,
 	configuration: Map[String, String] = Map(),
 	createBy: Option[String] = None,
-	createTime: Option[Timestamp] = None,
-	updateTime: Option[Timestamp] = None
+	createTime: Option[Date] = None,
+	updateTime: Option[Date] = None
 ) extends CatalogItem
 
 case class CatalogFunction(

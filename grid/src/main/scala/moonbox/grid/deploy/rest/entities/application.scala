@@ -1,7 +1,5 @@
 package moonbox.grid.deploy.rest.entities
 
-import java.util.Date
-
 case class ApplicationIn(
 	appName: String,
 	appType: String,
@@ -17,10 +15,16 @@ case class ApplicationOut(
 	appName: String,
 	appType: String,
 	config: Map[String, String],
-	createTime: Option[Date],
-	startTime: Option[Date],
-	needReload: Option[Boolean],
+	createTime: Option[String],
+	updateTime: Option[String],
+	startOnBoot: Boolean
+)
+
+case class ApplicationInfo(
+	name: String,
+	appType: String,
+	startTime: Option[String],
 	state: Option[String],
 	worker: Option[String],
-	startOnBoot: Boolean
+	exception: Option[String]
 )

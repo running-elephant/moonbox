@@ -20,15 +20,13 @@
 
 package moonbox.catalog
 
-import java.sql.Timestamp
-import java.util.Locale
+import java.util.{Date, Locale}
 
 import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.config._
 import moonbox.catalog.jdbc._
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -39,7 +37,7 @@ object JdbcCatalog {
 
 	val DEFAULT_DATABASE = "default"
 
-	implicit def long2Timestamp(time: Long): Timestamp = new Timestamp(time)
+	implicit def timestampToDate(time: Long): Date = new Date(time)
 
 }
 
