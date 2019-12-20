@@ -61,10 +61,16 @@ class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler 
 		val session = openSession.getSession.getSessionMap
 		val user = session.get("user")
 		val org = session.get("org")
-		val runner = new Runner(sessionId, org, user, Option(configMap.get("database")), mbConf, configMap.asScala.toMap, actorRef)
-		sessionIdToRunner.put(sessionId, runner)
-		val responsePB: OpenSessionResponsePB = OpenSessionResponsePB.newBuilder.setSessionId(sessionId).build
-		context.reply(Unpooled.wrappedBuffer(responsePB.toByteArray))
+		logInfo(s"$org@$user ask to open session.")
+		Future(new Runner(sessionId, org, user, Option(configMap.get("database")), mbConf, configMap.asScala.toMap, actorRef)).onComplete {
+			case Success(runner) =>
+				sessionIdToRunner.put(sessionId, runner)
+				val responsePB: OpenSessionResponsePB = OpenSessionResponsePB.newBuilder.setSessionId(sessionId).build
+				logInfo(s"session $sessionId opened for user $org@$user.")
+				context.reply(Unpooled.wrappedBuffer(responsePB.toByteArray))
+			case Failure(e) =>
+				context.sendFailure(e)
+		}
 	}
 
 	private def handleCloseSession(closeSession: CloseSessionRequestPB, context: RpcCallContext) {
@@ -98,8 +104,12 @@ class SparkServerHandler(mbConf: MbConf, actorRef: ActorRef) extends RpcHandler 
 		val sessionId = resultRequest.getSessionId
 		Option(sessionIdToRunner.get(sessionId)) match {
 			case Some(runner) =>
-				val fetchResult = runner.fetchResultData()
-				context.reply(Unpooled.wrappedBuffer(constructExecuteResult(fetchResult).toByteArray))
+				Future(runner.fetchResultData()).onComplete {
+					case Success(fetchResult) =>
+						context.reply(Unpooled.wrappedBuffer(constructExecuteResult(fetchResult).toByteArray))
+					case Failure(e) =>
+						context.sendFailure(e)
+				}
 			case None =>
 				throw new RuntimeException("session lost, please reconnect.")
 		}
