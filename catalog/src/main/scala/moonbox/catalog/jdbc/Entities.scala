@@ -51,17 +51,6 @@ case class TableEntity(
                         updateBy: Long,
                         updateTime: Long = Utils.now) extends CatalogEntity
 
-/*case class ViewEntity(
-	id: Option[Long] = None,
-	name: String,
-	databaseId: Long,
-	description: Option[String],
-	cmd: String,
-	createBy: Long,
-	createTime: Long = Utils.now,
-	updateBy: Long,
-	updateTime: Long = Utils.now) extends CatalogEntity*/
-
 case class OrganizationEntity(
                                id: Option[Long] = None,
                                name: String,

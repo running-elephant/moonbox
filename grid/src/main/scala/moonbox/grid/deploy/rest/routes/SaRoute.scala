@@ -31,8 +31,11 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
     post {
       entity(as[OrgSa]) { sa =>
         onComplete(saService.createSa(sa)(session)) {
-          case Success(_) =>
-            complete(OK, Response(code = 200, msg = "Success"))
+          case Success(either) =>
+            either.fold(
+              _ => complete(OK, Response(code = 200, msg = "Success")),
+              exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+            )
           case Failure(e) =>
             complete(OK, Response(code = 451, msg = e.getMessage))
         }
@@ -53,8 +56,11 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
     put {
       entity(as[OrgSa]) { sa =>
         onComplete(saService.updateSa(sa)(session)) {
-          case Success(_) =>
-            complete(OK, Response(code = 200, msg = "Success"))
+          case Success(either) =>
+            either.fold(
+              _ => complete(OK, Response(code = 200, msg = "Success")),
+              exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+            )
           case Failure(e) =>
             complete(OK, Response(code = 451, msg = e.getMessage))
         }
@@ -76,8 +82,11 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
       entity(as[BatchOpSaSeq]) {
         batchOp =>
           onComplete(saService.deleteSas(batchOp)(session)) {
-            case Success(_) =>
-              complete(OK, Response(code = 200, msg = "Success"))
+            case Success(either) =>
+              either.fold(
+                _ => complete(OK, Response(code = 200, msg = "Success")),
+                exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+              )
             case Failure(e) =>
               complete(OK, Response(code = 451, msg = e.getMessage))
           }
@@ -99,8 +108,11 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
   def getSa = (session: Session) => path(Segment / Segment) { (orgName, saName) =>
     get {
       onComplete(saService.getSa(orgName, saName)(session)) {
-        case Success(sa) =>
-          complete(OK, Response(code = 200, msg = "Success", payload = Some(sa)))
+        case Success(either) =>
+          either.fold(
+            sa => complete(OK, Response(code = 200, msg = "Success", payload = Some(sa))),
+            exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+          )
         case Failure(e) =>
           complete(OK, Response(code = 451, msg = e.getMessage))
       }
@@ -116,8 +128,11 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
   def listSas = (session: Session) => {
     get {
       onComplete(saService.listSas()(session)) {
-        case Success(sas) =>
-          complete(OK, Response(code = 200, msg = "Success", payload = Some(sas)))
+        case Success(either) =>
+          either.fold(
+            sas => complete(OK, Response(code = 200, msg = "Success", payload = Some(sas))),
+            exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+          )
         case Failure(e) =>
           complete(OK, Response(code = 451, msg = e.getMessage))
       }

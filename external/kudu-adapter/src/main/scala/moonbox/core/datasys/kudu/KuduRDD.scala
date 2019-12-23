@@ -47,10 +47,6 @@ class KuduRDD(val kuduContext: KuduContext,
     // each will take place at the closet replica from the executor. In this
     // case, to ensure the consistency of such scan, we use READ_AT_SNAPSHOT
     // read mode without setting a timestamp.
-    if (scanLocality == ReplicaSelection.CLOSEST_REPLICA) {
-      builder.replicaSelection(ReplicaSelection.CLOSEST_REPLICA)
-        .readMode(AsyncKuduScanner.ReadMode.READ_AT_SNAPSHOT)
-    }
 
     for (predicate <- predicates) {
       builder.addPredicate(predicate)

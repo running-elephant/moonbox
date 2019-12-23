@@ -559,7 +559,14 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def listGroupUser(group: String, pattern: String)(implicit by: User): CatalogGroupUserRel
 
 
-	override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
-		listener.onEvent(event)
-	}
+  override protected def doPostEvent(listener: CatalogEventListener, event: CatalogEvent): Unit = {
+    listener.onEvent(event)
+  }
+
+	def listDatabasePrivileges()(implicit by: User): Seq[CatalogDatabasePrivilege]
+
+	def listTablePrivileges()(implicit by: User): Seq[CatalogTablePrivilege]
+
+	def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilege]
+
 }

@@ -19,30 +19,33 @@ class AssembleRoutes(
 
   private val loginService = new LoginService(new LoginManager(conf, jdbcCatalog))
 
-	lazy val routes = {
-		new SwaggerRoute().route ~
-				pathPrefix("api" / "v1") {
-					new LoginRoute(loginService).route ~
-							new LogoutRoute().route ~
-							pathPrefix("grids") {
-								new GridRoute(loginService, new GridService(actor)).route
-							} ~
-							pathPrefix("clusters") {
-								new ClusterRoute(loginService, new ClusterService(jdbcCatalog)).route
-							} ~
-							pathPrefix("organizations") {
-								new OrganizationRoute(loginService, new OrganizationService(jdbcCatalog)).route
-							} ~
-							pathPrefix("applications") {
-								new ApplicationRoute(loginService, new ApplicationService(jdbcCatalog, actor)).route
-							} ~
-							pathPrefix("sas") {
-								new SaRoute(loginService, new SaService(jdbcCatalog)).route
-							} ~
-							pathPrefix("workbench") {
-								new WorkbenchRoute(loginService, new WorkbenchService(actor, jdbcCatalog)).route
-							}
-				}
-	}
+  lazy val routes = {
+    new SwaggerRoute().route ~
+      pathPrefix("api" / "v1") {
+        new LoginRoute(loginService).route ~
+          new LogoutRoute().route ~
+          pathPrefix("grids") {
+            new GridRoute(loginService, new GridService(actor)).route
+          } ~
+          pathPrefix("clusters") {
+            new ClusterRoute(loginService, new ClusterService(jdbcCatalog)).route
+          } ~
+          pathPrefix("applications") {
+            new ApplicationRoute(loginService, new ApplicationService(jdbcCatalog, actor)).route
+          } ~
+          pathPrefix("workbench") {
+            new WorkbenchRoute(loginService, new WorkbenchService(actor, jdbcCatalog)).route
+          } ~
+          pathPrefix("organizations") {
+            new OrganizationRoute(loginService, new OrganizationService(jdbcCatalog)).route
+          } ~
+          pathPrefix("sas") {
+            new SaRoute(loginService, new SaService(jdbcCatalog)).route
+          } ~
+          pathPrefix("privileges") {
+            new PrivilegeRoute(loginService, new PrivilegeService(jdbcCatalog)).route
+          }
+      }
+  }
 
 }

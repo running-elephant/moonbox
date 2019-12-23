@@ -165,6 +165,14 @@ case class CatalogTablePrivilege(
 	privileges: Seq[String]
 ) extends CatalogItem
 
+case class CatalogOriginColumnPrivilege(
+	user: String,
+	database: String,
+	table: String,
+	column: String,
+	privilegeType: String
+) extends CatalogItem
+
 case class CatalogColumnPrivilege(
 	user: String,
 	database: String,
@@ -186,4 +194,3 @@ case class CatalogGroupUserRel(
 	group: String,
 	users: Seq[String]
 )
-
