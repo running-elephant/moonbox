@@ -98,17 +98,17 @@ class PrivilegeService(catalog: JdbcCatalog) extends SessionConverter with MbLog
   private def getRolePrivileges(user: CatalogUser) = {
     val privilegeSeq = new ListBuffer[String]
 
-    if (user.grantAccount) privilegeSeq.append("grantAccount")
+    if (user.grantAccount) privilegeSeq.append("GrantAccount")
 
-    if (user.grantDcl) privilegeSeq.append("grantDcl")
+    if (user.grantDcl) privilegeSeq.append("GrantDCL")
 
-    if (user.grantDdl) privilegeSeq.append("grantDdl")
+    if (user.grantDdl) privilegeSeq.append("GrantDDL")
 
-    if (user.account) privilegeSeq.append("account")
+    if (user.account) privilegeSeq.append("Account")
 
-    if (user.dcl) privilegeSeq.append("dcl")
+    if (user.dcl) privilegeSeq.append("DCL")
 
-    if (user.ddl) privilegeSeq.append("ddl")
+    if (user.ddl) privilegeSeq.append("DDL")
 
     privilegeSeq.mkString(",")
   }
