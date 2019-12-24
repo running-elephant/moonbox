@@ -27,7 +27,6 @@
         <module>catalog</module>
         <module>catalyst</module>
         <module>core</module>
-        <module>wizard</module>
         <module>grid</module>
         <module>jdbc</module>
         <module>repl</module>

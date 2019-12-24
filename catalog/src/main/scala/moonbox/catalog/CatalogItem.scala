@@ -165,7 +165,7 @@ case class CatalogTablePrivilege(
 	privileges: Seq[String]
 ) extends CatalogItem
 
-case class CatalogOriginColumnPrivilege(
+case class CatalogColumnPrivilegeEntity(
 	user: String,
 	database: String,
 	table: String,

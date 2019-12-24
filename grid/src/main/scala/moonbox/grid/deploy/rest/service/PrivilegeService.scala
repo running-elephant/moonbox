@@ -44,9 +44,52 @@ class PrivilegeService(catalog: JdbcCatalog) extends SessionConverter with MbLog
     }
   }
 
-  def listColumnPrivileges()(implicit user: User): Future[Either[Seq[CatalogColumnPrivilege], Throwable]] = {
+  def listColumnPrivileges()(implicit user: User): Future[Either[Seq[ColumnPrivilege], Throwable]] = {
     try {
-      Future(Left(catalog.listColumnPrivileges()))
+      val catalogColumnPrivileges = catalog.listColumnPrivileges()
+
+      val columnPrivilegeSeq = new ListBuffer[ColumnPrivilege]
+
+      if (catalogColumnPrivileges.nonEmpty) {
+        var currentUser: String = catalogColumnPrivileges.head.user
+        var currentDb: String = catalogColumnPrivileges.head.database
+        var currentTable: String = catalogColumnPrivileges.head.table
+        var currentPrivilegeType: String = catalogColumnPrivileges.head.privilegeType
+        val columnSeq = new ListBuffer[String]
+        for (privilege <- catalogColumnPrivileges) {
+          if (privilege.user == currentUser && privilege.database == currentDb && privilege.table == currentTable && privilege.privilegeType == currentPrivilegeType) {
+            columnSeq.append(privilege.column)
+          } else {
+            columnPrivilegeSeq.append(
+              ColumnPrivilege(
+                user = currentUser,
+                database = currentDb,
+                table = currentTable,
+                columns = columnSeq.mkString(","),
+                privilege = currentPrivilegeType)
+            )
+
+            currentUser = privilege.user
+            currentDb = privilege.database
+            currentTable = privilege.table
+            currentPrivilegeType = privilege.privilegeType
+            columnSeq.clear()
+            columnSeq.append(privilege.column)
+          }
+        }
+
+        columnPrivilegeSeq.append(
+          ColumnPrivilege(
+            user = currentUser,
+            database = currentDb,
+            table = currentTable,
+            columns = columnSeq.mkString(","),
+            privilege = currentPrivilegeType
+          )
+        )
+      }
+
+      Future(Left(columnPrivilegeSeq))
     } catch {
       case e: Throwable => Future(Right(e))
     }

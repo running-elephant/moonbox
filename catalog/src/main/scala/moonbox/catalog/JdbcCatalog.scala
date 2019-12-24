@@ -2442,60 +2442,62 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   }
 
 
-  override def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilege] = await {
+  override def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilegeEntity] = await {
     jdbcDao.action(jdbcDao.listColumnPrivileges(by.orgId)).map(
       privilegeEntities => {
-        val privileges = privilegeEntities.map {
+        privilegeEntities.map {
           case (((userEntity, columnPrivilegeEntity), tableEntity), databaseEntity) =>
-            CatalogOriginColumnPrivilege(
+            CatalogColumnPrivilegeEntity(
               user = userEntity.name,
               database = databaseEntity.name,
               table = tableEntity.name,
               column = columnPrivilegeEntity.column,
               privilegeType = columnPrivilegeEntity.privilegeType
             )
-        }.sortBy(privilege => (privilege.user, privilege.database, privilege.table, privilege.column))
+        }.sortBy(privilege => (privilege.user, privilege.database, privilege.table, privilege.privilegeType))
 
-        val catalogColumnPrivilegeSeq = new ListBuffer[CatalogColumnPrivilege]
-
-        if (privileges.nonEmpty) {
-          var currentUser: String = privileges.head.user
-          var currentDb: String = privileges.head.database
-          var currentTable: String = privileges.head.table
-          var currentColumn: String = privileges.head.column
-          val privilegeTypeSeq = new ListBuffer[String]
-          for (privilege <- privileges) {
-            if (privilege.user == currentUser && privilege.database == currentDb && privilege.table == currentTable && privilege.column == currentColumn) {
-              privilegeTypeSeq.append(privilege.privilegeType)
-            } else {
-              catalogColumnPrivilegeSeq.append(
-                CatalogColumnPrivilege(
-                  user = currentUser,
-                  database = currentDb,
-                  table = currentTable,
-                  privilege = Map(currentColumn -> privilegeTypeSeq)
-                )
-              )
-
-              currentUser = privilege.user
-              currentDb = privilege.database
-              currentTable = privilege.table
-              currentColumn = privilege.column
-              privilegeTypeSeq.clear()
-              privilegeTypeSeq.append(privilege.privilegeType)
-            }
-          }
-
-          catalogColumnPrivilegeSeq.append(
-            CatalogColumnPrivilege(
-              user = currentUser,
-              database = currentDb,
-              table = currentTable,
-              privilege = Map(currentColumn -> privilegeTypeSeq)
-            )
-          )
-        }
-        catalogColumnPrivilegeSeq
+        //        privileges.foreach(privilege => println(privilege.user, privilege.column, privilege.privilegeType))
+        //
+        //        val catalogColumnPrivilegeSeq = new ListBuffer[CatalogColumnPrivilege]
+        //
+        //        if (privileges.nonEmpty) {
+        //          var currentUser: String = privileges.head.user
+        //          var currentDb: String = privileges.head.database
+        //          var currentTable: String = privileges.head.table
+        //          var currentColumn: String = privileges.head.column
+        //          val privilegeTypeSeq = new ListBuffer[String]
+        //          for (privilege <- privileges) {
+        //            if (privilege.user == currentUser && privilege.database == currentDb && privilege.table == currentTable && privilege.column == currentColumn) {
+        //              privilegeTypeSeq.append(privilege.privilegeType)
+        //            } else {
+        //              catalogColumnPrivilegeSeq.append(
+        //                CatalogColumnPrivilege(
+        //                  user = currentUser,
+        //                  database = currentDb,
+        //                  table = currentTable,
+        //                  privilege = Map(currentColumn -> privilegeTypeSeq)
+        //                )
+        //              )
+        //
+        //              currentUser = privilege.user
+        //              currentDb = privilege.database
+        //              currentTable = privilege.table
+        //              currentColumn = privilege.column
+        //              privilegeTypeSeq.clear()
+        //              privilegeTypeSeq.append(privilege.privilegeType)
+        //            }
+        //          }
+        //
+        //          catalogColumnPrivilegeSeq.append(
+        //            CatalogColumnPrivilege(
+        //              user = currentUser,
+        //              database = currentDb,
+        //              table = currentTable,
+        //              privilege = Map(currentColumn -> privilegeTypeSeq)
+        //            )
+        //          )
+        //        }
+        //        catalogColumnPrivilegeSeq
       }
     )
   }

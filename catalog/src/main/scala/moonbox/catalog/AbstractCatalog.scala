@@ -567,6 +567,6 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def listTablePrivileges()(implicit by: User): Seq[CatalogTablePrivilege]
 
-	def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilege]
+	def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilegeEntity]
 
 }

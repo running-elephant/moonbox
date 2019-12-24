@@ -5,3 +5,10 @@ case class RolePrivilege(user: String,
                          privileges: String,
                          createBy: String,
                          createTime: String)
+
+
+case class ColumnPrivilege(user: String,
+                           database: String,
+                           table: String,
+                           columns: String,
+                           privilege: String)
