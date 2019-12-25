@@ -58,8 +58,13 @@ class ClusterService(catalog: JdbcCatalog) extends SessionConverter with MbLoggi
 
 	def deleteCluster(cluster: String)(implicit user: User): Future[Either[Unit, Throwable]] = {
 		try {
-			catalog.dropCluster(cluster, ignoreIfNotExists = false)
-			Future(Left(Unit))
+			val clusterInUse = catalog.applicationUsingClusterExists(cluster)
+			if (!clusterInUse) {
+				catalog.dropCluster(cluster, ignoreIfNotExists = false)
+				Future(Left(Unit))
+			} else {
+				Future(Right(new RuntimeException(s"Cluster $cluster is referenced by some apps.")))
+			}
 		} catch  {
 			case e: Throwable => Future(Right(e))
 		}
