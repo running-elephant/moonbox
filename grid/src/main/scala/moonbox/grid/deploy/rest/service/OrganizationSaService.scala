@@ -10,7 +10,7 @@ import moonbox.grid.deploy.rest.service.DateFormatUtils.formatDate
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
+class OrganizationSaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
 
   def createSa(sa: OrgSa)(implicit user: User): Future[Either[Unit, Throwable]] = {
     try {
@@ -22,7 +22,16 @@ class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
     }
   }
 
-  def updateSa(sa: OrgSa)(implicit user: User): Future[Either[Unit, Throwable]] = {
+  def updateName(orgSa: OrgSaRename)(implicit user: User): Future[Either[Unit, Throwable]] = {
+    try {
+      catalog.renameUser(orgSa.org, orgSa.user, orgSa.newUser)
+      Future(Left(Unit))
+    } catch {
+      case e: Throwable => Future(Right(e))
+    }
+  }
+
+  def updatePassword(sa: OrgSa)(implicit user: User): Future[Either[Unit, Throwable]] = {
     try {
       val catalogUser = CatalogUser(org = sa.org, name = sa.name, password = PasswordEncryptor.encryptSHA(sa.password.get))
       catalog.alterUser(catalogUser)
@@ -45,6 +54,7 @@ class SaService(catalog: JdbcCatalog) extends SessionConverter with MbLogging {
     try {
       Future(Left(
         catalog.listSas()
+          .filter(_.name != "ROOT")
           .map(user => OrgSaDetail(user.org, user.name, user.createTime.map(formatDate).get, user.updateTime.map(formatDate).get))
           .sortBy(_.updateTime.toString).reverse
       ))

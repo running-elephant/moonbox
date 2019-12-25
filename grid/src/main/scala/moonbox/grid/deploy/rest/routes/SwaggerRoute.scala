@@ -23,7 +23,7 @@ class SwaggerRoute(
 		typeOf[ClusterRoute],
 		typeOf[WorkbenchRoute],
 		typeOf[OrganizationRoute],
-		typeOf[SaRoute],
+		typeOf[OrganizationSaRoute],
 		typeOf[PrivilegeRoute]
 	)
 

@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Route
 import io.swagger.annotations.{ApiResponse, ApiResponses, _}
 import moonbox.grid.deploy.rest.entities._
-import moonbox.grid.deploy.rest.service.{LoginService, SaService}
+import moonbox.grid.deploy.rest.service.{LoginService, OrganizationSaService}
 import moonbox.grid.deploy.security.Session
 
 import scala.util.{Failure, Success}
@@ -15,8 +15,8 @@ import scala.util.{Failure, Success}
   value = "Organization-Sa",
   consumes = "application/json",
   produces = "application/json", authorizations = Array(new Authorization("Bearer")))
-@Path("/sas")
-class SaRoute(override val loginService: LoginService, saService: SaService) extends SecurityRoute with SessionConverter {
+@Path("sas")
+class OrganizationSaRoute(override val loginService: LoginService, saService: OrganizationSaService) extends SecurityRoute with SessionConverter {
 
   @ApiOperation(value = "create a new sa", nickname = "create", httpMethod = "POST")
   @ApiImplicitParams(Array(
@@ -43,19 +43,46 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
     }
   }
 
-  @ApiOperation(value = "update sa", nickname = "update", httpMethod = "PUT")
+  @ApiOperation(value = "update sa name", nickname = "rename", httpMethod = "PUT")
   @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "Update Sa", value = "Update Sa Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.OrgSa")
+    new ApiImplicitParam(name = "Update Sa Name", value = "Update Sa Name Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.OrgSaRename")
   ))
   @ApiResponses(Array(
     new ApiResponse(code = 200, message = "OK"),
     new ApiResponse(code = 451, message = "Request process failed"),
     new ApiResponse(code = 500, message = "Internal server error")
   ))
-  def updateSa = (session: Session) => {
+  @Path("/rename")
+  def updateName = (session: Session) => {
     put {
-      entity(as[OrgSa]) { sa =>
-        onComplete(saService.updateSa(sa)(session)) {
+      entity(as[OrgSaRename]) { rename =>
+        onComplete(saService.updateName(rename)(session)) {
+          case Success(either) =>
+            either.fold(
+              _ => complete(OK, Response(code = 200, msg = "Success")),
+              exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+            )
+          case Failure(e) =>
+            complete(OK, Response(code = 451, msg = e.getMessage))
+        }
+      }
+    }
+  }
+
+  @ApiOperation(value = "update sa password", nickname = "alterPassword", httpMethod = "PUT")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "Update Sa Password", value = "Update Sa Password Parameter Information", required = true, paramType = "body", dataType = "moonbox.grid.deploy.rest.entities.OrgSaRename")
+  ))
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "OK"),
+    new ApiResponse(code = 451, message = "Request process failed"),
+    new ApiResponse(code = 500, message = "Internal server error")
+  ))
+  @Path("/alterpassword")
+  def updatePassword = (session: Session) => {
+    put {
+      entity(as[OrgSa]) { orgSa =>
+        onComplete(saService.updatePassword(orgSa)(session)) {
           case Success(either) =>
             either.fold(
               _ => complete(OK, Response(code = 200, msg = "Success")),
@@ -140,6 +167,6 @@ class SaRoute(override val loginService: LoginService, saService: SaService) ext
   }
 
   override protected def createSecurityRoute: Array[(Session) => Route] = Array(
-    createSa, updateSa, getSa, deleteSas, listSas
+    createSa, updateName, updatePassword, getSa, deleteSas, listSas
   )
 }

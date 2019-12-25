@@ -40,7 +40,7 @@ class AssembleRoutes(
             new OrganizationRoute(loginService, new OrganizationService(jdbcCatalog)).route
           } ~
           pathPrefix("sas") {
-            new SaRoute(loginService, new SaService(jdbcCatalog)).route
+            new OrganizationSaRoute(loginService, new OrganizationSaService(jdbcCatalog)).route
           } ~
           pathPrefix("privileges") {
             new PrivilegeRoute(loginService, new PrivilegeService(jdbcCatalog)).route
