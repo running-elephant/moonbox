@@ -111,7 +111,7 @@ class MoonboxWorker(
 					logError(s"Asked to kill unknown driver $driverId")
 			}
 
-		case driverStateChanged@DriverStateChanged(driverId, state, appId, exception) =>
+		case driverStateChanged@DriverStateChanged(driverId, state, appId, exception, time) =>
 			handleDriverStateChanged(driverStateChanged)
 
 		case e => println(e)

@@ -21,6 +21,7 @@
 package moonbox.grid.deploy
 
 import akka.actor.{ActorRef, Address}
+import moonbox.common.util.Utils
 import moonbox.grid.deploy.app.DriverDesc
 import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.rest.entities.Node
@@ -76,8 +77,9 @@ object DeployMessages {
 		driverId: String,
 		state: DriverState,
 		appId: Option[String],
-		exception: Option[Exception])
-			extends DeployMessages
+		exception: Option[Exception],
+		time: Long = Utils.now
+	) extends DeployMessages
 
 	case class KillDriver(driverId: String) extends DeployMessages
 
@@ -128,7 +130,7 @@ object DeployMessages {
 
 	case class RequestDriverStatus(driverId: String) extends DeployMessages
 
-	case class DriverStatusResponse(found: Boolean, driverId: String, driverType: Option[String], startTime: Option[Long], state: Option[DriverState],
+	case class DriverStatusResponse(found: Boolean, driverId: String, driverType: Option[String], startTime: Option[Long], state: Option[DriverState], updateTime: Option[Long],
 		workerId: Option[String], workerHostPort: Option[String], exception: Option[Exception])
 
 	case class RequestAllDriverStatus(pattern: Option[String] = None) extends DeployMessages

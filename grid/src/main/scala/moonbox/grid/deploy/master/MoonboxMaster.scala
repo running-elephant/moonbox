@@ -360,13 +360,14 @@ class MoonboxMaster(
 		case CheckForWorkerTimeOut =>
 			timeOutDeadWorkers()
 
-		case DriverStateChanged(driverId, driverState, appId, exception) =>
+		case DriverStateChanged(driverId, driverState, appId, exception, time) =>
 			driverState match {
 				case DriverState.ERROR | DriverState.FINISHED | DriverState.LOST | DriverState.KILLED | DriverState.FAILED =>
-					removeDriver(driverId, driverState, appId, exception)
+					removeDriver(driverId, driverState, appId, exception, time)
 				case _ =>
 					drivers.find(_.id == driverId).foreach { d =>
 						d.state = driverState
+						d.updateTime = time
 						d.appId = appId
 					}
 			}
@@ -470,14 +471,23 @@ class MoonboxMaster(
 			if (state != RecoveryState.ACTIVE) {
 				val msg = s"Current state is not active: $state. " +
 						"Can only request driver status in ALIVE state."
-				sender() ! DriverStatusResponse(found = false, driverId, None, None, None, None, None, Some(new Exception(msg)))
+				sender() ! DriverStatusResponse(
+					found = false,
+					driverId = driverId,
+					driverType = None,
+					startTime = None,
+					state = None,
+					updateTime = None,
+					workerId = None,
+					workerHostPort = None,
+					exception = Some(new Exception(msg)))
 			} else {
 				(drivers ++ completedDrivers).find(_.id == driverId) match {
 					case Some(driver) =>
-						sender() ! DriverStatusResponse(found = true, driverId, Some(driver.desc.name), Some(driver.startTime), Some(driver.state),
+						sender() ! DriverStatusResponse(found = true, driverId, Some(driver.desc.name), Some(driver.startTime), Some(driver.state), Some(driver.updateTime),
 							driver.worker.map(_.id), driver.worker.map(w => s"${w.host}:${w.port}"), driver.exception)
 					case None =>
-						sender() ! DriverStatusResponse(found = false, driverId, None, None, None, None, None, None)
+						sender() ! DriverStatusResponse(found = false, driverId, None, None, None, None, None, None, None)
 				}
 			}
 
@@ -494,7 +504,7 @@ class MoonboxMaster(
 						drivers ++ completedDrivers
 				}
 				val response = allDrivers.map { driver =>
-					DriverStatusResponse(found = true, driver.id, Some(driver.desc.name), Some(driver.startTime), Some(driver.state),
+					DriverStatusResponse(found = true, driver.id, Some(driver.desc.name), Some(driver.startTime), Some(driver.state), Some(driver.updateTime),
 						driver.worker.map(_.id), driver.worker.map(w => s"${w.host}:${w.port}"), driver.exception)
 				}
 
@@ -759,7 +769,7 @@ class MoonboxMaster(
 
 		for (driver <- worker.drivers.values) {
 			logInfo(s"Remove driver ${driver.id} because it's worker disconnected.")
-			removeDriver(driver.id, DriverState.ERROR, driver.appId, None)
+			removeDriver(driver.id, DriverState.ERROR, driver.appId, None, driver.updateTime)
 		}
 
 		persistenceEngine.removeWorker(worker)
@@ -846,7 +856,7 @@ class MoonboxMaster(
 		driver.state = DriverState.SUBMITTING
 	}
 
-	private def removeDriver(driverId: String, state: DriverState, appId: Option[String], exception: Option[Exception]) {
+	private def removeDriver(driverId: String, state: DriverState, appId: Option[String], exception: Option[Exception], time: Long) {
 		drivers.find(_.id == driverId) match {
 			case Some(driver) =>
 				logInfo(s"Removing driver: $driverId. Final state $state")
@@ -855,6 +865,7 @@ class MoonboxMaster(
 				completedDrivers += driver
 				persistenceEngine.removeDriver(driver)
 				driver.state = state
+				driver.updateTime = time
 				driver.exception = exception
 				driver.appId = appId
 				driver.worker.foreach(_.removeDriver(driver))
