@@ -491,6 +491,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.applicationExists(app))
   }
 
+	override def applicationUsingClusterExists(cluster: String): Boolean = await {
+		jdbcDao.action(jdbcDao.applicationUsingClusterExists(clusterId(cluster)))
+	}
+
   override protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
     jdbcDao.action(jdbcDao.getApplication(app)).flatMap {
       case Some(appEntity) =>
@@ -563,6 +567,21 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       )
     })
   }
+
+	override def listApplicationsByCluster(cluster: String): Seq[CatalogApplication] = await {
+		jdbcDao.action(jdbcDao.listApplicationsByCluster(clusterId(cluster))).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
+			CatalogApplication(
+				name = appEntity.name,
+				org = orgEntity.name,
+				cluster = clusterEntity.map(_.name),
+				appType = appEntity.appType,
+				config = appEntity.config,
+				createTime = Some(appEntity.createTime),
+				updateTime = Some(appEntity.updateTime),
+				startOnBoot = appEntity.startOnBoot
+			)
+		})
+	}
 
   // ----------------------------------------------------------------------------
   // Organization

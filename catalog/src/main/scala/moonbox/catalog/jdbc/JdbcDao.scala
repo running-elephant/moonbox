@@ -238,6 +238,10 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
     exists[ApplicationEntity, ApplicationEntityTable](applications, _.name === application)
   }
 
+	def applicationUsingClusterExists(clusterId: Long) = {
+		exists[ApplicationEntity, ApplicationEntityTable](applications, app => app.clusterId.isDefined && app.clusterId.get === clusterId)
+	}
+
   def listApplications(organizationId: Long) = {
     applications.filter(_.organizationId === organizationId).join(organizations).on {
       case (app, org) => app.organizationId === org.id
@@ -275,6 +279,14 @@ class JdbcDao(override val conf: MbConf) extends EntityComponent with MbLogging 
     }.result
     // query[ApplicationEntity, ApplicationEntityTable](applications, _.name.like(pattern))
   }
+
+	def listApplicationsByCluster(clusterId: Long) = {
+		applications.filter(_.clusterId === clusterId).join(organizations).on {
+			case (apps, orgs) => apps.organizationId === orgs.id
+		}.joinLeft(clusters).on {
+			case ((app, org), cluster) => app.clusterId === cluster.id
+		}.result
+	}
 
   // -----------------------------------------------------------------
   // Organization

@@ -92,6 +92,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 
 	def applicationExists(app: String)(implicit by: User): Boolean
 
+	def applicationUsingClusterExists(cluster: String): Boolean
+
 	def listApplications()(implicit by: User): Seq[CatalogApplication]
 
 	def listApplications(pattern: String)(implicit by: User): Seq[CatalogApplication]
@@ -99,6 +101,8 @@ abstract class AbstractCatalog extends ListenerBus[CatalogEventListener, Catalog
 	def listAllApplications(): Seq[CatalogApplication]
 
 	def listAllApplications(startOnBoot: Boolean): Seq[CatalogApplication]
+
+	def listApplicationsByCluster(cluster: String): Seq[CatalogApplication]
 
 	// ----------------------------------------------------------------------------
 	// Organization

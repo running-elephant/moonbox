@@ -40,7 +40,11 @@ case class CatalogApplication(
 	startOnBoot: Boolean,
 	createTime: Option[Date] = None,
 	updateTime: Option[Date] = None
-) extends CatalogItem
+) extends CatalogItem {
+	def fullName() = {
+		s"$org-$name"
+	}
+}
 
 
 case class CatalogDatabase(
