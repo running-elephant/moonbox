@@ -10,12 +10,11 @@ import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.{CatalogApplication, JdbcCatalog}
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.DeployMessages._
-import moonbox.grid.deploy.app.AppMasterManager
+import moonbox.grid.deploy.app.{AppMasterManager, DriverState}
 import moonbox.grid.deploy.rest.entities.{ApplicationIn, ApplicationInfo, ApplicationOut}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
 import DateFormatUtils.formatDate
 
 /**
@@ -64,6 +63,7 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 					appName = app.name,
 					appType = app.appType,
 					config = app.config,
+					cluster = app.cluster,
 					createTime = app.createTime.map(formatDate),
 					updateTime = app.updateTime.map(formatDate),
 					startOnBoot = app.startOnBoot
@@ -74,12 +74,18 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 		}
 	}
 
-	def deleteApplication(appName: String)(implicit user: User): Future[Either[Unit, Throwable]] = Future {
+	def deleteApplication(appName: String)(implicit user: User): Future[Either[Unit, Throwable]] = {
 		try {
-			catalog.dropApplication(appName, ignoreIfNotExists = false)
-			Left(Unit)
+			val app = catalog.getApplication(appName)
+			actorRef.ask(RequestDriverStatus(app.fullName())).mapTo[DriverStatusResponse].map { status =>
+				if (!status.found || (status.found && status.state.isDefined && DriverState.isFinished(status.state.get))) {
+					Left (catalog.dropApplication(appName, ignoreIfNotExists = false))
+				} else {
+					Right(new Exception(s"Application $appName has been started already. "))
+				}
+			}
 		} catch {
-			case e: Throwable => Right(e)
+			case e: Throwable => Future(Right(e))
 		}
 	}
 
@@ -97,6 +103,7 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 						appName = app.name,
 						appType = app.appType,
 						config = app.config,
+						cluster = app.cluster,
 						createTime = app.createTime.map(formatDate),
 						updateTime = app.updateTime.map(formatDate),
 						startOnBoot = app.startOnBoot
@@ -111,19 +118,25 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 	def startApplication(appName: String)(implicit user: User): Future[Either[String, Throwable]] =  {
 		try {
 			val app = catalog.getApplication(appName)
-			val config = app.cluster match {
-				case Some(cluster) =>
-					catalog.getCluster(cluster).config ++ app.config
-				case None =>
-					app.config
-			}
-			AppMasterManager.getAppMaster(app.appType) match {
-				case Some(appMaster) =>
-					actorRef.ask(
-						RequestSubmitDriver(app.org + "-" + app.name, appMaster.createDriverDesc(config))
-					).mapTo[SubmitDriverResponse].map { res => Left(res.message) }
-				case None =>
-					Future(Right(new Exception(s"no suitable app master for app type ${app.appType}")))
+			actorRef.ask(RequestDriverStatus(app.fullName())).mapTo[DriverStatusResponse].flatMap { status =>
+				if (!status.found || (status.found && status.state.isDefined && DriverState.isFinished(status.state.get))) {
+					val config = app.cluster match {
+						case Some(cluster) =>
+							catalog.getCluster(cluster).config ++ app.config
+						case None =>
+							app.config
+					}
+					AppMasterManager.getAppMaster(app.appType) match {
+						case Some(appMaster) =>
+							actorRef.ask(
+								RequestSubmitDriver(app.fullName(), appMaster.createDriverDesc(config))
+							).mapTo[SubmitDriverResponse].map { res => Left(res.message) }
+						case None =>
+							Future(Right(new Exception(s"no suitable app master for app type ${app.appType}")))
+					}
+				} else {
+					Future(Right(new Exception(s"Application $appName has been started already. ")))
+				}
 			}
 		} catch {
 			case e: Throwable => Future(Right(e))
@@ -133,7 +146,7 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 	def stopApplication(appName: String)(implicit user: User): Future[Either[String, Throwable]] = {
 		try {
 			val app = catalog.getApplication(appName)
-			actorRef.ask(RequestKillDriver(app.org + "-" + appName)).mapTo[KillDriverResponse].map(res => Left(res.message))
+			actorRef.ask(RequestKillDriver(app.fullName())).mapTo[KillDriverResponse].map(res => Left(res.message))
 		} catch {
 			case e: Throwable => Future(Right(e))
 		}
@@ -155,6 +168,7 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 							appType = res.driverType.get,
 							startTime = res.startTime.map(d => formatDate(new Date(d))),
 							state = res.state.map(_.toString),
+							updateTime = res.updateTime.map(t => formatDate(new Date(t))),
 							worker = res.workerHostPort,
 							exception = res.exception.map(_.getMessage)
 						)
