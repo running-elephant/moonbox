@@ -103,7 +103,7 @@ class OrganizationRoute(override val loginService: LoginService, organizationSer
 		delete {
 			entity(as[BatchOpSeq]) {
 				batchOp =>
-					onComplete(organizationService.deleteOrganizations(batchOp.names)(session)) {
+					onComplete(organizationService.deleteOrganizations(batchOp)(session)) {
 						case Success(either) =>
 							either.fold(
 								_ => complete(OK, Response(code = 200, msg = "Success")),
