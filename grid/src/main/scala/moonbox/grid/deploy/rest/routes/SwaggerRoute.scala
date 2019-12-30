@@ -25,7 +25,8 @@ class SwaggerRoute(
 		typeOf[OrganizationRoute],
 		typeOf[OrganizationSaRoute],
 		typeOf[PrivilegeRoute],
-		typeOf[LogRoute]
+		typeOf[LogRoute],
+		typeOf[StatsRoute]
 	)
 
 	override val basePath: String = "api/v1"

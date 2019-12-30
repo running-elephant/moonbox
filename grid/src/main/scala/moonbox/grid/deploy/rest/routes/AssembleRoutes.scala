@@ -47,6 +47,9 @@ class AssembleRoutes(
           } ~
           pathPrefix("logs") {
             new LogRoute(loginService, new LogService(conf)).route
+          } ~
+          pathPrefix("stats") {
+            new StatsRoute(loginService, new StatsService(jdbcCatalog, actor)).route
           }
       }
   }

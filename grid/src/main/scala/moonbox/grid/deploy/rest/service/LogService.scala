@@ -17,7 +17,7 @@ class LogService(conf: MbConf) extends SessionConverter with MbLogging {
   private val sshPwd = Option(System.getenv("MOONBOX_SSH_PASSWORD"))
   private val sshPort = Option(System.getenv("MOONBOX_SSH_OPTS")).map(_.split("-p").head.split("\\s+").head.toInt)
 
-  private val filePlaceholder = "LOG_FILE"
+  private val FILE_PLACEHOLDER = "LOG_FILE"
   private val supportedCmd = Seq("tail", "head", "cat")
   private val defaultCmd = s"tail -n2000"
 
@@ -35,7 +35,7 @@ class LogService(conf: MbConf) extends SessionConverter with MbLogging {
   }
 
   private def buildViewLogCmd(host: String, file: String, cmd: Option[String]): String = {
-    val finalCmd = cmd.getOrElse(s"$defaultCmd $file").replace(filePlaceholder, file)
+    val finalCmd = cmd.getOrElse(s"$defaultCmd $file").replace(FILE_PLACEHOLDER, file)
     checkCmd(finalCmd)
     finalCmd
   }
