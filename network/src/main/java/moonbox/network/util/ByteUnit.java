@@ -16,7 +16,7 @@
  */
 package moonbox.network.util;
 
-public enum ByteUnits {
+public enum ByteUnit {
   BYTE (1),
   KiB (1024L),
   MiB ((long) Math.pow(1024L, 2L)),
@@ -24,18 +24,18 @@ public enum ByteUnits {
   TiB ((long) Math.pow(1024L, 4L)),
   PiB ((long) Math.pow(1024L, 5L));
 
-  ByteUnits(long multiplier) {
+  ByteUnit(long multiplier) {
     this.multiplier = multiplier;
   }
 
   // Interpret the provided number (d) with suffix (u) as this unit type.
   // E.g. KiB.interpret(1, MiB) interprets 1MiB as its KiB representation = 1024k
-  public long convertFrom(long d, ByteUnits u) {
+  public long convertFrom(long d, ByteUnit u) {
     return u.convertTo(d, this);
   }
 
   // Convert the provided number (d) interpreted as this unit type to unit type (u).
-  public long convertTo(long d, ByteUnits u) {
+  public long convertTo(long d, ByteUnit u) {
     if (multiplier > u.multiplier) {
       long ratio = multiplier / u.multiplier;
       if (Long.MAX_VALUE / ratio < d) {

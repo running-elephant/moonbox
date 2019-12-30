@@ -11,19 +11,19 @@ import java.util.regex.Pattern;
 
 public class JavaUtils {
 
-  private static final ImmutableMap<String, ByteUnits> byteSuffixes =
-          ImmutableMap.<String, ByteUnits>builder()
-                  .put("b", ByteUnits.BYTE)
-                  .put("k", ByteUnits.KiB)
-                  .put("kb", ByteUnits.KiB)
-                  .put("m", ByteUnits.MiB)
-                  .put("mb", ByteUnits.MiB)
-                  .put("g", ByteUnits.GiB)
-                  .put("gb", ByteUnits.GiB)
-                  .put("t", ByteUnits.TiB)
-                  .put("tb", ByteUnits.TiB)
-                  .put("p", ByteUnits.PiB)
-                  .put("pb", ByteUnits.PiB)
+  private static final ImmutableMap<String, ByteUnit> byteSuffixes =
+          ImmutableMap.<String, ByteUnit>builder()
+                  .put("b", ByteUnit.BYTE)
+                  .put("k", ByteUnit.KiB)
+                  .put("kb", ByteUnit.KiB)
+                  .put("m", ByteUnit.MiB)
+                  .put("mb", ByteUnit.MiB)
+                  .put("g", ByteUnit.GiB)
+                  .put("gb", ByteUnit.GiB)
+                  .put("t", ByteUnit.TiB)
+                  .put("tb", ByteUnit.TiB)
+                  .put("p", ByteUnit.PiB)
+                  .put("pb", ByteUnit.PiB)
                   .build();
 
   public static ByteBuf stringToBytes(String s) {
@@ -50,7 +50,7 @@ public class JavaUtils {
    * Convert a passed byte string (e.g. 50b, 100kb, or 250mb) to the given. If no suffix is
    * provided, a direct conversion to the provided unit is attempted.
    */
-  public static long byteStringAs(String str, ByteUnits unit) {
+  public static long byteStringAs(String str, ByteUnit unit) {
     String lower = str.toLowerCase(Locale.ROOT).trim();
 
     try {
@@ -91,7 +91,7 @@ public class JavaUtils {
    * If no suffix is provided, the passed number is assumed to be in bytes.
    */
   public static long byteStringAsBytes(String str) {
-    return byteStringAs(str, ByteUnits.BYTE);
+    return byteStringAs(str, ByteUnit.BYTE);
   }
 
   /**
@@ -101,7 +101,7 @@ public class JavaUtils {
    * If no suffix is provided, the passed number is assumed to be in kibibytes.
    */
   public static long byteStringAsKb(String str) {
-    return byteStringAs(str, ByteUnits.KiB);
+    return byteStringAs(str, ByteUnit.KiB);
   }
 
   /**
@@ -111,7 +111,7 @@ public class JavaUtils {
    * If no suffix is provided, the passed number is assumed to be in mebibytes.
    */
   public static long byteStringAsMb(String str) {
-    return byteStringAs(str, ByteUnits.MiB);
+    return byteStringAs(str, ByteUnit.MiB);
   }
 
   /**
@@ -121,7 +121,7 @@ public class JavaUtils {
    * If no suffix is provided, the passed number is assumed to be in gibibytes.
    */
   public static long byteStringAsGb(String str) {
-    return byteStringAs(str, ByteUnits.GiB);
+    return byteStringAs(str, ByteUnit.GiB);
   }
 
 }
