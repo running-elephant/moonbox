@@ -44,6 +44,9 @@ class AssembleRoutes(
           } ~
           pathPrefix("privileges") {
             new PrivilegeRoute(loginService, new PrivilegeService(jdbcCatalog)).route
+          } ~
+          pathPrefix("logs") {
+            new LogRoute(loginService, new LogService(conf)).route
           }
       }
   }

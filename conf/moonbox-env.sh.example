@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export MOONBOX_SSH_USER=""
+export MOONBOX_SSH_PASSWORD=""
 export MOONBOX_SSH_OPTS="-p 22"
 export JAVA_HOME=path/to/installed/dir
 export SPARK_HOME=path/to/installed/dir
