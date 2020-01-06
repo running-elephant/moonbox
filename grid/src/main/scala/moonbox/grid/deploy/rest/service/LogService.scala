@@ -13,12 +13,12 @@ import scala.concurrent.Future
 
 class LogService(conf: MbConf) extends SessionConverter with MbLogging {
 
-  private val sshUser = Option(System.getenv("MOONBOX_SSH_USER")).getOrElse(System.getenv("USER"))
-  private val sshPwd = Option(System.getenv("MOONBOX_SSH_PASSWORD"))
-  private val sshPort = Option(System.getenv("MOONBOX_SSH_OPTS")).map(_.split("-p").head.split("\\s+").head.toInt)
+  private lazy val sshUser = Option(System.getenv("MOONBOX_SSH_USER")).getOrElse(System.getenv("USER"))
+  private lazy val sshPwd = Option(System.getenv("MOONBOX_SSH_PASSWORD"))
+  private lazy val sshPort = Option(System.getenv("MOONBOX_SSH_OPTS")).map(_.substring(2).toInt)
 
   private val FILE_PLACEHOLDER = "LOG_FILE"
-  private val supportedCmd = Seq("tail", "head", "cat")
+  private val supportedCmd = Seq("tail", "head")
   private val defaultCmd = s"tail -n2000"
 
   import LogUtils._
@@ -44,10 +44,10 @@ class LogService(conf: MbConf) extends SessionConverter with MbLogging {
     val cmdArray = cmd.trim.split("\\s+")
     val headCmd = cmdArray.head.toLowerCase
     if (supportedCmd.contains(headCmd)) {
-      if (!cmdArray(1).matches("-n\\d"))
-        throw new Exception(s"$cmd not supported, just support tail -n, head -n tail -n command")
+      if (!cmdArray(1).matches("-n\\d+"))
+        throw new Exception(s"$cmd not supported, just support tail -n, head -n command")
     } else {
-      throw new Exception(s"$cmd not supported, just support tail -n, head -n tail -n command")
+      throw new Exception(s"$cmd not supported, just support tail -n, head -n command")
     }
   }
 

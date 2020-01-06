@@ -94,14 +94,9 @@ class PrivilegeRoute(override val loginService: LoginService, privilegeService: 
         case Success(either) =>
           either.fold(
             columnPrivileges => complete(OK, Response(code = 200, msg = "Success", payload = Some(columnPrivileges))),
-            exception =>
-              {
-                log.error("", exception)
-                complete(OK, Response(code = 451, msg = exception.getMessage))
-              }
+            exception => complete(OK, Response(code = 451, msg = exception.getMessage))
           )
         case Failure(e) =>
-          log.error("", e)
           complete(OK, Response(code = 451, msg = e.getMessage))
       }
     }
