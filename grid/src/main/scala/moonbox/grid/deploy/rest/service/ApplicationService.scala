@@ -11,7 +11,7 @@ import moonbox.catalog.{CatalogApplication, JdbcCatalog}
 import moonbox.common.MbLogging
 import moonbox.grid.deploy.DeployMessages._
 import moonbox.grid.deploy.app.{AppMasterManager, DriverState}
-import moonbox.grid.deploy.rest.entities.{ApplicationIn, ApplicationInfo, ApplicationOut}
+import moonbox.grid.deploy.rest.entities.{ApplicationIn, ApplicationInfo, ApplicationOut, ApplicationTemplate}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -132,7 +132,7 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 								RequestSubmitDriver(app.fullName(), appMaster.createDriverDesc(config))
 							).mapTo[SubmitDriverResponse].map { res => Left(res.message) }
 						case None =>
-							Future(Right(new Exception(s"no suitable app master for app type ${app.appType}")))
+							Future(Right(new Exception(s"No suitable app master for app type ${app.appType}")))
 					}
 				} else {
 					Future(Right(new Exception(s"Application $appName has been started already. ")))
@@ -176,5 +176,9 @@ class ApplicationService(catalog: JdbcCatalog, actorRef: ActorRef) extends MbLog
 					Left(appInfos)
 			}
 		})
+	}
+
+	def getApplicationTemplates(implicit user: User): Future[Either[Seq[ApplicationTemplate], Throwable]] = Future {
+		Left(AppMasterManager.getAppMaters().map(am => ApplicationTemplate(am.typeName, am.configTemplate)))
 	}
 }

@@ -102,28 +102,18 @@ case class SparkClusterDriverDesc(config: Map[String, String]) extends LongRunDr
 	override def name: String = "sparkcluster"
 }
 
-case class SparkBatchDriverDesc(
-	org: String,
-	username: String,
-	sqls: Seq[String],
-	config: Map[String, String]
-) extends OnceRunDriverDesc {
+case class SparkBatchDriverDesc(config: Map[String, String]) extends OnceRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("cluster")
 	override def mainClass = "moonbox.application.batch.spark.Main"
 
 	override def toString: String = {
-		s"DriverDescription ($master ${deployMode.get} $username ${sqls.mkString(";")})"
+		s"DriverDescription ($master ${deployMode.get})"
 	}
 
 	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark."))
-			++ Map(
-			"org" -> org,
-			"username" -> username,
-			"sqls" -> sqls.mkString(";")
-		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
+		config.filterKeys(key => !key.startsWith("spark.")).toSeq.flatMap { case (k, v) => Seq(k, v) }
 	}
 
 	override def toConf: Map[String, String] = {

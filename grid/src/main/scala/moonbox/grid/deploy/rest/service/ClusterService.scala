@@ -3,8 +3,9 @@ package moonbox.grid.deploy.rest.service
 import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.{CatalogCluster, JdbcCatalog}
 import moonbox.common.MbLogging
-import moonbox.grid.deploy.rest.entities.Cluster
+import moonbox.grid.deploy.rest.entities.{Cluster, ClusterTemplate}
 import moonbox.grid.deploy.rest.routes.SessionConverter
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -84,6 +85,10 @@ class ClusterService(catalog: JdbcCatalog) extends SessionConverter with MbLoggi
 		} catch {
 			case e: Throwable => Future(Right(e))
 		}
+	}
+
+	def getClusterTemplates()(implicit user: User): Future[Either[Seq[ClusterTemplate], Throwable]] = Future {
+			Left(Seq())
 	}
 
 }

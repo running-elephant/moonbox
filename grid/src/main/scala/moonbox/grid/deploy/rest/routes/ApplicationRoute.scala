@@ -249,7 +249,7 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
-	@ApiOperation(value = "get running application info", nickname = "templates", httpMethod = "GET")
+	@ApiOperation(value = "get running application info", nickname = "appInfo", httpMethod = "GET", responseContainer = "set")
 	@ApiResponses(Array(
 		new ApiResponse(code = 200, message = "OK"),
 		new ApiResponse(code = 451, message = "request process failed"),
@@ -271,7 +271,36 @@ class ApplicationRoute(override val loginService: LoginService, appService: Appl
 		}
 	}
 
+	@ApiOperation(value = "get application templates", nickname = "templates", httpMethod = "GET", responseContainer = "set")
+	@ApiResponses(Array(
+		new ApiResponse(code = 200, message = "OK"),
+		new ApiResponse(code = 451, message = "request process failed"),
+		new ApiResponse(code = 500, message = "internal server error")
+	))
+	@Path("/templates")
+	def applicationTemplate = (session: Session) => path("templates") {
+		get {
+			logInfo("get application templates")
+			onComplete(appService.getApplicationTemplates(session)) {
+				case Success(either) =>
+					either.fold(
+						templates => complete(OK, Response(code = 200, msg = "Success", payload = Some(templates))),
+						exception => complete(OK, Response(code = 451, msg = exception.getMessage))
+					)
+				case Failure(e) =>
+					complete(OK, Response(code = 451, msg = e.getMessage))
+			}
+		}
+	}
+
 	override def createSecurityRoute: Array[Session => Route] = Array(
-		applicationInfos, createApplication, deleteApplication, getApplication, listApplications, startApplication, stopApplication
+		applicationInfos,
+		applicationTemplate,
+		createApplication,
+		deleteApplication,
+		getApplication,
+		listApplications,
+		startApplication,
+		stopApplication
 	)
 }

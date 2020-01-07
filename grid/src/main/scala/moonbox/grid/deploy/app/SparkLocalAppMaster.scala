@@ -6,7 +6,10 @@ class SparkLocalAppMaster(jdbcCatalog: JdbcCatalog) extends AppMaster(jdbcCatalo
 
 	override def createDriverDesc(config: Map[String, String]): DriverDesc = new SparkLocalDriverDesc(config)
 
-	override def configTemplate: Map[String, String] = Map()
+	override def configTemplate: Map[String, String] = Map(
+		"spark.driver.cores" -> (Runtime.getRuntime.availableProcessors() / 2).toString,
+		"spark.driver.memory" -> "2g"
+	)
 
 	override def typeName: String = "sparklocal"
 

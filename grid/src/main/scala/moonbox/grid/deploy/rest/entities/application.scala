@@ -31,3 +31,5 @@ case class ApplicationInfo(
 	worker: Option[String],
 	exception: Option[String]
 )
+
+case class ApplicationTemplate(name: String, config: Map[String, String])

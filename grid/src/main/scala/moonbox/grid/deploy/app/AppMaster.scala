@@ -9,6 +9,7 @@ import moonbox.grid.deploy.security.Session
 
 import scala.collection.mutable
 import scala.util.Random
+import scala.collection.JavaConverters._
 
 abstract class AppMaster(jdbcCatalog: JdbcCatalog) extends MbLogging {
 
@@ -44,7 +45,7 @@ abstract class AppMaster(jdbcCatalog: JdbcCatalog) extends MbLogging {
 }
 
 object AppMasterManager extends MbLogging {
-	private val registeredDrivers = new ConcurrentHashMap[String, AppMaster]
+	private val registeredAppMasters = new ConcurrentHashMap[String, AppMaster]
 
 	loadInitialAppMasters()
 
@@ -62,14 +63,18 @@ object AppMasterManager extends MbLogging {
 	}
 
 	def registerAppMaster(appManager: AppMaster): Unit = {
-		if (!registeredDrivers.contains(appManager.typeName)) {
-			registeredDrivers.put(appManager.typeName, appManager)
+		if (!registeredAppMasters.contains(appManager.typeName)) {
+			registeredAppMasters.put(appManager.typeName, appManager)
 			logInfo(s"register AppManager: ${appManager.getClass.getSimpleName}.")
 		}
 	}
 
 	def getAppMaster(typeName: String): Option[AppMaster] = {
-		Option(registeredDrivers.get(typeName))
+		Option(registeredAppMasters.get(typeName))
+	}
+
+	def getAppMaters(): Seq[AppMaster] = {
+		registeredAppMasters.values().asScala.toSeq
 	}
 
 }

@@ -104,7 +104,7 @@ class MoonboxMaster(
 				}
 				AppMasterManager.getAppMaster(app.appType) match {
 					case Some(appMaster) =>
-						self ! RequestSubmitDriver(app.org + "-" + app.name, appMaster.createDriverDesc(config))
+						self ! RequestSubmitDriver(app.fullName(), appMaster.createDriverDesc(config))
 					case None =>
 						logWarning(s"no suitable app master for app type ${app.appType}")
 				}
@@ -194,6 +194,7 @@ class MoonboxMaster(
 
 		AppMasterManager.registerAppMaster(new SparkLocalAppMaster(catalog))
 		AppMasterManager.registerAppMaster(new SparkClusterAppMaster(catalog))
+		AppMasterManager.registerAppMaster(new SparkBatchAppMaster(catalog))
 
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 	}
@@ -419,8 +420,8 @@ class MoonboxMaster(
 		case service: ServiceMessage =>
 			handleServiceMessage.apply(service)
 
-		case management: ManagementMessage =>
-			handleManagementMessage.apply(management)
+		/*case management: ManagementMessage =>
+			handleManagementMessage.apply(management)*/
 
 		case RequestSubmitDriver(driverName, driverDesc) =>
 			if (state != RecoveryState.ACTIVE) {
@@ -428,7 +429,7 @@ class MoonboxMaster(
 						"Can only accept driver submission in ALIVE state."
 				sender() ! SubmitDriverResponse(self, false, None, msg)
 			} else {
-				logInfo("Driver submitted " + driverDesc.toString)
+				logInfo(s"Driver submitted $driverName " + driverDesc.toString)
 				val driver = createDriver(driverName, driverDesc)
 				persistenceEngine.addDriver(driver)
 				waitingDrivers += driver
@@ -526,8 +527,7 @@ class MoonboxMaster(
 			}
 			sender() ! response
 
-		// for test
-		case s: SubmitDriverResponse =>
+		case s: SubmitDriverResponse => logInfo(s"${s.driverId} " + s.message)
 
 		case e => logWarning("Unknown message: " + e.toString)
 
@@ -647,30 +647,6 @@ class MoonboxMaster(
 					logWarning(msg)
 					sender() ! LineageFailed(msg)
 			}
-	}
-
-	private def handleManagementMessage: Receive = {
-		case ClusterInfoRequest =>
-			val clusterInfo = workers.toSeq.map { worker =>
-				Seq(
-					worker.host,
-					worker.port.toString,
-					worker.state.toString,
-					s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
-				)
-			}
-			sender() ! ClusterInfoResponse(clusterInfo)
-		case AppsInfoRequest =>
-			val appsInfo = apps.toSeq.map { app =>
-				Seq(
-					app.id,
-					app.host,
-					app.port.toString,
-					app.state.toString,
-					app.appType.toString
-				)
-			}
-			sender() ! AppsInfoResponse(appsInfo)
 	}
 
 	override def onDisconnected(remoteAddress: Address): Unit = {
