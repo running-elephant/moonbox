@@ -38,7 +38,7 @@ object Main extends MbLogging {
 				username = v
 			case (k, v) if k.equals("org") =>
 				org = v
-			case (k, v) if k.equals("sqls") =>
+			case (k, v) if k.equals("script") =>
 				sqls = v.trim.stripSuffix(";").split(";")
 			case (k, v) =>
 				conf.set(k, v)
