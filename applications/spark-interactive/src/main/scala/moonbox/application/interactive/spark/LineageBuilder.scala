@@ -24,7 +24,7 @@ class LineageBuilder {
     if (tableNodeMap.contains(tableNodeKey)) {
       tableNodeMap(tableNodeKey)
     } else {
-      genCurrentId
+      genNextId
       tableNodeMap.put(database + "." + table, id)
       tableNodeBuffer.append(DagNode(id,
         database = database,
@@ -66,7 +66,7 @@ class LineageBuilder {
     }
   }
 
-  private def genCurrentId: Int = {
+  private def genNextId: Int = {
     id += 1
     id
   }

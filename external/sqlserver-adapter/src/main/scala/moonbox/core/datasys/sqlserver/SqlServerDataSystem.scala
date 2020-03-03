@@ -121,13 +121,15 @@ class SqlServerDataSystem(props: Map[String, String])
 		val sqlBuilder = new MbSqlBuilder(plan, new MbSqlServerDialect)
 		val sql = sqlBuilder.toSQL
 		logInfo(s"pushdown sql : $sql")
+
+		val schema = sqlBuilder.finalLogicalPlan.schema
+
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
 			sql,
-			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs): _*)
-		)
-		val schema = sqlBuilder.finalLogicalPlan.schema
+			schema,
+			(rs, schema) => MbJdbcRDD.resultSetToRows(rs, schema))
 		sparkSession.createDataFrame(rdd, schema)
 	}
 

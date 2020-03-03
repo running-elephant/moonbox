@@ -20,54 +20,23 @@
 
 package moonbox.grid.deploy.security
 
-import moonbox.catalog.{CatalogUser, JdbcCatalog, PasswordEncryptor}
-import moonbox.common.{MbConf, MbLogging}
-import moonbox.grid.deploy.security.RoleType.RoleType
+import moonbox.catalog.{JdbcCatalog, PasswordEncryptor}
+import moonbox.common.MbConf
 
-class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login with MbLogging {
+class CatalogLogin(conf: MbConf, catalog: JdbcCatalog) extends Login {
 
-  override def doLogin(username: String, password: String): Session = {
-    val (org, user) = parseUsername(username)
-    catalog.getUserOption(org, user) match {
-      case Some(catalogUser) =>
-        if (catalogUser.password == PasswordEncryptor.encryptSHA(password)) {
-          val orgId = catalog.organizationId(org)
-          val userId = catalog.userId(orgId, user)
-          val roleType = getRoleType(catalogUser)
-          Session.builder
-            .put("org", org)
-            .put("orgId", s"$orgId")
-            .put("user", user)
-            .put("userId", s"$userId")
-            .put("roleType", s"${roleType.toString}")
-            .put("password", s"$password")
-            .build()
-        }
-        else {
-          throw new PasswordNotMatchException
-        }
-      case _ => throw new UserNotFoundException(username)
-    }
-  }
+	Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+		override def run(): Unit = {
+			if (catalog != null) {
+				catalog.close()
+			}
+		}
+	}))
 
-  private def parseUsername(username: String): (String, String) = {
-    if (username.equalsIgnoreCase("root")) {
-      ("SYSTEM", username)
-    } else {
-      val orgUser = username.split("@")
-      if (orgUser.length != 2) {
-        throw new UsernameFormatException(username)
-      } else {
-        val org = orgUser(0)
-        val user = orgUser(1)
-        (org, user)
-      }
-    }
-  }
-
-  private def getRoleType(user: CatalogUser): RoleType = {
-    if (user.org == "SYSTEM" && user.name == "ROOT") RoleType.ROOT
-    else if (user.isSA) RoleType.SA
-    else RoleType.NORMAL
-  }
+	override def doLogin(org: String, username: String, password: String): Boolean = {
+		catalog.getUserOption(org, username) match {
+			case Some(user) if user.password == PasswordEncryptor.encryptSHA(password) => true
+			case _ => false
+		}
+	}
 }

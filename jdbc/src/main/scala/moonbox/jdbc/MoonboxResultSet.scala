@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -354,4 +353,3 @@ class MoonboxResultSet(conn: MoonboxConnection,
     cal.set(Calendar.MILLISECOND, millis)
   }
 }
-*/

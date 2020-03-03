@@ -53,7 +53,7 @@ class MbClickHouseDialect extends MbDialect {
   }
 
   override def maybeQuote(name: String): String = {
-    if (name.contains("#") || name.contains("(")) quote(name)
+    if (name.contains("#") || name.contains("(") || name.contains(".")) quote(name)
     else name
   }
 

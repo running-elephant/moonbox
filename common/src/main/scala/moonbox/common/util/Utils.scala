@@ -29,8 +29,12 @@ import java.util.{Collections, Date, Properties, Map => JMap}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import moonbox.common.MbLogging
+import org.apache.commons.io.FileUtils
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
+import scala.util.control.NonFatal
 
 object Utils extends MbLogging {
 
@@ -256,21 +260,11 @@ object Utils extends MbLogging {
 	}
 
 	def formatDate(time: Long): String =  {
-		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd")
-		simpleFormat.format(new Date(time))
-	}
-
-	def formatDate(date: Date): String =  {
-		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd")
-		simpleFormat.format(date)
-	}
-
-	def formatTimestamp(time: Long): String =  {
 		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		simpleFormat.format(new Date(time))
 	}
 
-	def formatTimestamp(date: Date): String =  {
+	def formatDate(date: Date): String =  {
 		val simpleFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		simpleFormat.format(date)
 	}
@@ -303,4 +297,12 @@ object Utils extends MbLogging {
 		source.filter(name => pattern.r.pattern.matcher(name).matches())
 	}
 
+	def tryLogNonFatalError(block: => Unit) {
+		try {
+			block
+		} catch {
+			case NonFatal(t) =>
+				logError(s"Uncaught exception in thread ${Thread.currentThread().getName}", t)
+		}
+	}
 }

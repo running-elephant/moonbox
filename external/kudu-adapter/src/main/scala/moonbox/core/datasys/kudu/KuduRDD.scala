@@ -43,11 +43,6 @@ class KuduRDD(val kuduContext: KuduContext,
       .setFaultTolerant(isFaultTolerant)
       .cacheBlocks(true)
 
-    // A scan is partitioned to multiple ones. If scan locality is enabled,
-    // each will take place at the closet replica from the executor. In this
-    // case, to ensure the consistency of such scan, we use READ_AT_SNAPSHOT
-    // read mode without setting a timestamp.
-
     for (predicate <- predicates) {
       builder.addPredicate(predicate)
     }

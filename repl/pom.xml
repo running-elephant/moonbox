@@ -5,7 +5,7 @@
     <parent>
         <artifactId>moonbox-parent_2.11</artifactId>
         <groupId>edp.moonbox</groupId>
-        <version>0.3.0-beta</version>
+        <version>0.3.0-beta-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-jdbc_2.11</artifactId>
+            <artifactId>moonbox-client_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

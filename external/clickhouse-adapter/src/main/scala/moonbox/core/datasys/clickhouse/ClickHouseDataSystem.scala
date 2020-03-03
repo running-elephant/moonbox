@@ -26,15 +26,14 @@ import java.util.Properties
 
 import moonbox.common.MbLogging
 import moonbox.core.datasys.{DataSystem, DataTable, Insertable, Pushdownable}
-import moonbox.core.util.MbIterator
 import org.apache.spark.sql.catalyst.expressions.aggregate._
-import org.apache.spark.sql.catalyst.expressions.{Abs, Acos, Add, Alias, And, Asin, Atan, AttributeReference, BitwiseAnd, BitwiseNot, BitwiseOr, BitwiseXor, CaseWhen, CaseWhenBase, CaseWhenCodegen, Cast, Cbrt, Ceil, Concat, Cos, CurrentDatabase, CurrentDate, CurrentTimestamp, DayOfMonth, Divide, EqualTo, EulerNumber, Exp, Floor, GreaterThan, GreaterThanOrEqual, Hex, Hour, If, In, IsNotNull, IsNull, Length, LessThan, LessThanOrEqual, Literal, Log, Log10, Log2, Lower, Minute, Month, Multiply, Not, Or, Pi, Pow, RLike, Rand, RegExpExtract, RegExpReplace, Remainder, Round, Second, ShiftLeft, ShiftRight, Sin, SortOrder, Sqrt, StringLocate, StringReverse, Subtract, Tan, ToDate, UnaryMinus, Unhex, Upper, Year}
+import org.apache.spark.sql.catalyst.expressions.{Abs, Acos, Add, Alias, And, Asin, Atan, AttributeReference, BitwiseAnd, BitwiseNot, BitwiseOr, BitwiseXor, CaseWhen, CaseWhenCodegen, Cast, Cbrt, Ceil, Concat, Cos, CurrentDatabase, CurrentDate, CurrentTimestamp, DayOfMonth, Divide, EqualTo, EulerNumber, Exp, Floor, GreaterThan, GreaterThanOrEqual, Hex, Hour, If, In, IsNotNull, IsNull, Length, LessThan, LessThanOrEqual, Literal, Log, Log10, Log2, Lower, Minute, Month, Multiply, Not, Or, Pi, Pow, RLike, Rand, RegExpExtract, RegExpReplace, Remainder, Round, Second, ShiftLeft, ShiftRight, Sin, SortOrder, Sqrt, StringLocate, StringReverse, Subtract, Tan, ToDate, UnaryMinus, Unhex, Upper, Year}
 import org.apache.spark.sql.catalyst.plans._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils
 import org.apache.spark.sql.rdd.MbJdbcRDD
 import org.apache.spark.sql.sqlbuilder.{MbClickHouseDialect, MbSqlBuilder}
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -144,14 +143,15 @@ class ClickHouseDataSystem(props: Map[String, String])
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
 		val sqlBuilder = new MbSqlBuilder(plan, new MbClickHouseDialect)
 		val sql = sqlBuilder.toSQL
-		logInfo(s"pushdown sql : $sql")
+		val schema = sqlBuilder.finalLogicalPlan.schema
+		logInfo(s"pushdown sql: $sql")
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
 			sql,
-			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs): _*)
-		)
-		val schema = sqlBuilder.finalLogicalPlan.schema
+			schema,
+			(rs, schema) => MbJdbcRDD.resultSetToRows(rs, schema))
+
 		sparkSession.createDataFrame(rdd, schema)
 	}
 

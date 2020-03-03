@@ -3,7 +3,7 @@
   <parent>
     <artifactId>moonbox-parent_2.11</artifactId>
     <groupId>edp.moonbox</groupId>
-    <version>0.3.0-beta</version>
+    <version>0.3.0-beta-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -92,7 +92,7 @@
     <dependency>
       <groupId>edp.moonbox</groupId>
       <artifactId>moonbox-grid_2.11</artifactId>
-      <version>0.3.0-beta</version>
+      <version>0.3.0-beta-SNAPSHOT</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -100,12 +100,20 @@
           <groupId>edp.moonbox</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>moonbox-network_2.11</artifactId>
+          <artifactId>moonbox-protocol_2.11</artifactId>
           <groupId>edp.moonbox</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>moonbox-protocol_2.11</artifactId>
-          <groupId>edp.moonbox</groupId>
+          <artifactId>netty-all</artifactId>
+          <groupId>io.netty</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>akka-actor_2.11</artifactId>
+          <groupId>com.typesafe.akka</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>akka-remote_2.11</artifactId>
+          <groupId>com.typesafe.akka</groupId>
         </exclusion>
         <exclusion>
           <artifactId>akka-http-core_2.11</artifactId>
@@ -114,10 +122,6 @@
         <exclusion>
           <artifactId>akka-http_2.11</artifactId>
           <groupId>com.typesafe.akka</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>swagger-akka-http_2.11</artifactId>
-          <groupId>com.github.swagger-akka-http</groupId>
         </exclusion>
         <exclusion>
           <artifactId>json4s-jackson_2.11</artifactId>
@@ -146,10 +150,6 @@
         <exclusion>
           <artifactId>quartz</artifactId>
           <groupId>org.quartz-scheduler</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jsch</artifactId>
-          <groupId>com.jcraft</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -204,12 +204,12 @@
           <groupId>org.apache.hadoop</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>htrace-core</artifactId>
-          <groupId>org.htrace</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>jsch</artifactId>
           <groupId>com.jcraft</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>htrace-core</artifactId>
+          <groupId>org.htrace</groupId>
         </exclusion>
       </exclusions>
     </dependency>

@@ -32,9 +32,6 @@ class NoSuchProcedureException(proc: String)
 class NoSuchTimedEventException(event: String)
 	extends Exception(s"Scheduler '$event' not found")
 
-class NoSuchQueryException(query: String)
-	extends Exception(s"Query '$query' not found")
-
 class NoSuchTableException(db: String, table: String)
 	extends Exception(s"Table or view '$table' not found in database '$db'")
 
@@ -66,9 +63,6 @@ class NoSuchAvailableTableException(table: String, user: String)
 
 class NoSuchApplicationException(app: String)
 	extends Exception(s"Application '$app' not found")
-
-class NoSuchClusterException(cluster: String)
-		extends Exception(s"Cluster '$cluster' not found")
 
 class NoSuchGroupException(group: String)
 	extends Exception(s"Group '$group' not found")

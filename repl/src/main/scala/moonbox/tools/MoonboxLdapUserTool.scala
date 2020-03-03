@@ -2,17 +2,14 @@ package moonbox.tools
 
 import java.security.MessageDigest
 
-/**
-  * Created by swallow on 2019/9/12.
-  */
 object MoonboxLdapUserTool {
 
   private val KEY_SHA = "SHA"
   private val hexDigits = (0 to 9).++('a' to 'f').map(_.toString)
 
   def main(args: Array[String]): Unit = {
-    assert(args.length == 1 && args.head.endsWith("@creditease.cn"), "please input one ldap user email")
-    val pwd = encryptSHA(args.head.stripSuffix("@creditease.cn"))
+    assert(args.length == 1 && args.head.toLowerCase().endsWith("@creditease.cn"), "please input one ldap user email")
+    val pwd = encryptSHA(args.head.toLowerCase().stripSuffix("@creditease.cn"))
     println(s"user ${args.head} password: $pwd")
   }
 

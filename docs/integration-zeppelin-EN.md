@@ -6,7 +6,7 @@ title: Integration Zeppelin
 #### Acquisition of Related JAR
 
 - Download [moonbox-jdbc_2.11-0.3.0.jar](https://github.com/edp963/moonbox/releases)
-- Download [moonbox-zeppelin-interpreter-0.3.0.jar](https://github.com/edp963/moonbox/releases/download/0.3.0-beta/moonbox-zeppelin-interpreter-0.7-0.3.0-beta.jar)
+- Download [moonbox-zeppelin-interpreter-0.3.0.jar](https://github.com/edp963/moonbox/releases/download/0.3.0-beta-SNAPSHOT/moonbox-zeppelin-interpreter-0.7-0.3.0-beta-SNAPSHOT.jar)
 
 #### Configuration
    

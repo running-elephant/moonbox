@@ -29,70 +29,74 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Row, SparkEngine}
 
 class MoonboxSession(
-	conf: MbConf,
-	org: String,
-	username: String,
-	defaultDb: Option[String] = None,
-	sessionConfig: Map[String, String] = Map()) extends MbLogging {
+                      conf: MbConf,
+                      org: String,
+                      username: String,
+                      defaultDb: Option[String] = None,
+                      sessionConfig: Map[String, String] = Map()) extends MbLogging {
 
-	import MoonboxSession._
+  import MoonboxSession._
 
-	private val parser = new MoonboxParser()
+  private val parser = new MoonboxParser()
 
-	val catalog = new MoonboxCatalog(conf).setCurrentUser(org, username)
+  val catalog = new MoonboxCatalog(conf).setCurrentUser(org, username)
 
-	val engine = new SparkEngine(conf, catalog)
+  var engine = new SparkEngine(conf, catalog)
 
-	initializeDatabase()
+  initializeDatabase()
 
-	def cancelJob(jobLabel: String): Unit = {
-		engine.cancelJobGroup(jobLabel)
-	}
+  def cancelJob(jobLabel: String): Unit = {
+    engine.cancelJobGroup(jobLabel)
+  }
 
-	def parsedCommand(sql: String): MbCommand = {
-		val command = parser.parsePlan(sql)
-		CommandChecker.check(command, catalog)
-		command
-	}
+  def parsedCommand(sql: String): MbCommand = {
+    val command = parser.parsePlan(sql)
+    CommandChecker.check(command, catalog)
+    command
+  }
 
-	def sql(sqlText: String, maxRows: Int): DataResult = {
-		sql("", sqlText, maxRows)
-	}
+  def sql(sqlText: String, maxRows: Int): DataResult = {
+    sql("", sqlText, maxRows)
+  }
 
-	def sql(jobLabel: String, sql: String, maxRows: Int): DataResult = {
-		engine.setJobGroup(jobLabel,
-			s"""| $org@$username<br/>
-			    | $sql
+  def sql(jobLabel: String, sql: String, maxRows: Int): DataResult = {
+    engine.setJobGroup(jobLabel,
+      s"""| $org@$username<br/>
+          			    | $sql
 			 """.stripMargin)
-		try {
-			engine.sql(sql, maxRows)
-		} finally {
-			engine.clearJobGroup()
-		}
-	}
+    try {
+      engine.sql(sql, maxRows)
+    } finally {
+      engine.clearJobGroup()
+    }
+  }
 
-	def sqlSchema(sql: String): StructType = {
-		engine.sqlSchema(sql)
-	}
+  def sqlSchema(sql: String): StructType = {
+    engine.sqlSchema(sql)
+  }
 
-	def tableSchema(table: String, database: String): StructType = {
-		val catalogTable = catalog.getTable(database, table)
-		if (catalogTable.tableType == CatalogTableType.TABLE) {
-			engine.tableSchema(table, Some(database))
-		} else {
-			engine.viewSchema(table, Some(database), catalogTable.viewText.get)
-		}
-	}
+  def unresolvedSqlSchema(sql: String): StructType = {
+    engine.unresolvedSqlSchema(sql)
+  }
 
-	private def initializeDatabase(): Unit = {
-		defaultDb.foreach { db =>
-			catalog.setCurrentDb(db)
-			engine.registerDatabase(db)
-			engine.setCurrentDatabase(db)
-		}
-	}
+  def tableSchema(table: String, database: String): StructType = {
+    val catalogTable = catalog.getTable(database, table)
+    if (catalogTable.tableType == CatalogTableType.TABLE) {
+      engine.tableSchema(table, Some(database))
+    } else {
+      engine.viewSchema(table, Some(database), catalogTable.viewText.get)
+    }
+  }
+
+  private def initializeDatabase(): Unit = {
+    defaultDb.foreach { db =>
+      catalog.setCurrentDb(db)
+      engine.registerDatabase(db)
+      engine.setCurrentDatabase(db)
+    }
+  }
 }
 
 object MoonboxSession extends MbLogging {
-	type  DataResult = (Iterator[Row], StructType)
+  type DataResult = (Iterator[Row], StructType)
 }

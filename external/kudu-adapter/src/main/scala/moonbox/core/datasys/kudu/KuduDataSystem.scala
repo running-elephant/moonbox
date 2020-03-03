@@ -153,6 +153,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	}
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
+		logInfo("kudu build scan")
 		val context = new KuduContext(masterAddress(), sparkSession.sparkContext)
 		val faultTolerantScanner = props.getOrElse(FAULT_TOLERANT_SCANNER, "false").toBoolean
 		val table = context.syncClient.openTable(tableName())
@@ -163,6 +164,7 @@ class KuduDataSystem(props: Map[String, String]) extends DataSystem(props) with 
 	}
 
 	override def buildQuery(plan: LogicalPlan, sparkSession: SparkSession): DataTable = {
+		logInfo("kudu whole pushdown")
 		val kuduClient = new KuduContext(masterAddress(), sparkSession.sparkContext).syncClient
 
 		val kuduTable = kuduClient.openTable(tableName())

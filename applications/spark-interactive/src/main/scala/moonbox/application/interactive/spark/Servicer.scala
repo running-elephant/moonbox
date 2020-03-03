@@ -54,7 +54,7 @@ class Servicer(
 
   def sample(sql: String): SampleResponse = {
     try {
-      val result = mbSession.sql(sql, 20)
+      val result = mbSession.sql(sql.stripSuffix(";"), 20)
       SampleSuccessed(result._2.json, iteratorToSeq(result._1).map(_.toSeq))
     } catch {
       case e: Exception =>
@@ -64,7 +64,7 @@ class Servicer(
 
   def translate(sql: String): TranslateResponse = {
     try {
-      val parsed = mbSession.engine.parsePlan(sql)
+      val parsed = mbSession.engine.parsePlan(sql.stripSuffix(";"))
       mbSession.engine.injectTableFunctions(parsed)
       val analyzed = mbSession.engine.analyzePlan(parsed)
       val connectionUrl = analyzed.collectLeaves().toList match {
@@ -95,7 +95,7 @@ class Servicer(
   def verify(sqls: Seq[String]): VerifyResponse = {
     val result = sqls.map { sql =>
       try {
-        val parsed = mbSession.engine.parsePlan(sql)
+        val parsed = mbSession.engine.parsePlan(sql.stripSuffix(";"))
         mbSession.engine.injectTableFunctions(parsed)
         val analyzed = mbSession.engine.analyzePlan(parsed)
         mbSession.engine.checkAnalysis(analyzed)
@@ -112,8 +112,8 @@ class Servicer(
   def resources(sqls: Seq[String]): TableResourcesResponses = {
     val result = sqls.map { sql =>
       try {
-        val (output, inputs) = mbSession.engine.unresolvedTablesInSQL(sql)
-        val functions = mbSession.engine.unresolvedFunctionsInSQL(sql)
+        val (output, inputs) = mbSession.engine.unresolvedTablesInSQL(sql.stripSuffix(";"))
+        val functions = mbSession.engine.unresolvedFunctionsInSQL(sql.stripSuffix(";"))
 
         TableResourcesSuccessed(
           inputs.map(_.unquotedString),
@@ -127,14 +127,25 @@ class Servicer(
     TableResourcesResponses(success = true, result = Some(result))
   }
 
-  def schema(sql: String): SchemaResponse = {
-    try {
-      val schema = mbSession.sqlSchema(sql)
-      SchemaSuccessed(schema.json)
-    } catch {
-      case e: Exception =>
-        SchemaFailed(e.getMessage)
+  def schema(sqls: Seq[String], analyzable: Option[Boolean]): SchemaResponses = {
+    val result = sqls.map {
+      sql => {
+        try {
+          val schema = analyzable.getOrElse(true) match {
+            case true =>
+              mbSession.sqlSchema(sql.stripSuffix(";"))
+            case false =>
+              mbSession.unresolvedSqlSchema(sql.stripSuffix(";"))
+          }
+          val fields = schema.map(structField => SchemaField(structField.name, structField.dataType.simpleString, structField.nullable))
+          SchemaSuccessed(schema.typeName, fields)
+        } catch {
+          case e: Exception =>
+            SchemaFailed(e.getMessage)
+        }
+      }
     }
+    SchemaResponses(success = true, result = Some(result))
   }
 
   def lineage(sqls: Seq[String]): LineageResponse = {
@@ -155,35 +166,28 @@ class Servicer(
     val lineageBuilder = new LineageBuilder
     val parsedPlan = mbSession.engine.parsePlan(sql)
     var targetTableNodeId: Int = 0
-    parsedPlan match {
-      case insert: InsertIntoTable =>
-        mbSession.engine.injectTableFunctions(insert)
-        val analyzedPlan = mbSession.engine.analyzePlan(insert)
-        val query = analyzedPlan match {
-          case datasource: InsertIntoDataSourceCommand =>
-            targetTableNodeId = lineageBuilder.genTableNode(datasource.logicalRelation.catalogTable.get)
-            datasource.query
-//          case hiveTable: InsertIntoHiveTable =>
-//            targetTableNodeId = lineageBuilder.genTableNode(hiveTable.table)
-//            hiveTable.query
-          case hadoopFs: InsertIntoHadoopFsRelationCommand =>
-            targetTableNodeId = lineageBuilder.genTableNode(hadoopFs.catalogTable.get)
-            hadoopFs.query
-          case _ =>
-            throw new Exception("Lineage analysis is not supported for this sql")
-        }
-        queryDag(lineageBuilder, targetTableNodeId, query)
-        SqlDag(dag_table = lineageBuilder.buildTableDag,
-          dag_col = DagEntity(Nil, Nil))
+    mbSession.engine.injectTableFunctions(parsedPlan)
+    val analyzedPlan = mbSession.engine.analyzePlan(parsedPlan)
+    val query = analyzedPlan match {
+      case datasource: InsertIntoDataSourceCommand =>
+        targetTableNodeId = lineageBuilder.genTableNode(datasource.logicalRelation.catalogTable.get)
+        datasource.query
+      case hadoopFs: InsertIntoHadoopFsRelationCommand =>
+        targetTableNodeId = lineageBuilder.genTableNode(hadoopFs.catalogTable.get)
+        hadoopFs.query
       case _ =>
         throw new Exception("Lineage analysis is not supported for this sql")
     }
+    queryDag(lineageBuilder, targetTableNodeId, query)
+    SqlDag(dag_table = lineageBuilder.buildTableDag,
+      dag_col = DagEntity(Nil, Nil))
   }
 
   def queryDag(lineageBuilder: LineageBuilder, targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
 
     def genDag(targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
       logicalPlan match {
+        // can't adjust sequence
         case relation: LogicalRelation =>
           val sourceTableNodeId = lineageBuilder.genTableNode(relation.catalogTable.get)
           lineageBuilder.putTableNodeEdge(sourceTableNodeId, targetTableNodeId)
@@ -202,6 +206,4 @@ class Servicer(
 
     genDag(targetTableNodeId, logicalPlan)
   }
-
-
 }

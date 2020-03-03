@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -95,4 +94,3 @@ class MoonboxResultSetMetaData(resultSet: MoonboxResultSet,
 
 	override def isWrapperFor(iface: Class[_]) = iface != null && iface.isAssignableFrom(getClass)
 }
-*/

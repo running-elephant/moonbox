@@ -255,10 +255,6 @@ class MoonboxCatalog(val conf: MbConf) extends MbLogging {
 	}
 
 	def dropDatabase(database: String, ignoreIfNotExists: Boolean, cascade: Boolean): Unit = {
-		val dbName = formatDatabaseName(database)
-		if (dbName == JdbcCatalog.DEFAULT_DATABASE) {
-			throw new Exception(s"Can not drop default database")
-		}
 		jdbcCatalog.dropDatabase(database, ignoreIfNotExists, cascade)
 	}
 

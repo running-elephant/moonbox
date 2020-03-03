@@ -23,15 +23,16 @@ package org.apache.spark.sql
 
 import java.io.File
 
-import moonbox.catalog.{CatalogTableType => TableType, _}
+import moonbox.catalog._
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
-import moonbox.core.MoonboxCatalog
 import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
+import moonbox.core.{HookRunner, MoonboxCatalog}
+import moonbox.hook.HookContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.analyze.MbAnalyzer
-import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
+import org.apache.spark.sql.catalyst.analysis.{DatabaseAlreadyExistsException, TableAlreadyExistsException, UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
 import org.apache.spark.sql.catalyst.expressions.{Literal, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -43,13 +44,15 @@ import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive._
 import org.apache.spark.sql.hive.execution.InsertIntoHiveTable
 import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
-import org.apache.spark.sql.optimizer.{MbOptimizer, WholePushdown}
+import org.apache.spark.sql.optimizer.{MbOptimizer, MbPruneFilters, WholePushdown}
 import org.apache.spark.sql.rewrite.CTESubstitution
-import org.apache.spark.sql.types.{IntegerType, StructType}
+import org.apache.spark.sql.types.{IntegerType, NullType, StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.spark_project.guava.util.concurrent.Striped
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
@@ -77,6 +80,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     builder.config(StaticSQLConf.WAREHOUSE_PATH.key,
       "file://" + Utils.getMoonboxHomeOption.getOrElse("/tmp") + File.separator +
         "spark-warehouse" + File.separator + mbCatalog.getCurrentOrg)
+    injectOptimizerRule(builder)
     injectResolutionRule(builder)
     injectPostHocResolutionRule(builder)
     injectCheckRule(builder)
@@ -135,6 +139,17 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   private def injectPlannerStrategy(builder: SparkSession.Builder): Unit = {
     hivePlannerStrategy.foreach { strategy =>
       builder.withExtensions(_.injectPlannerStrategy(strategy))
+    }
+  }
+
+  /**
+    * inject optimizer rules
+    *
+    * @param builder SparkSession.Builder
+    */
+  private def injectOptimizerRule(builder: SparkSession.Builder): Unit = {
+    optimizerRule.foreach { rule =>
+      builder.withExtensions(_.injectOptimizerRule(rule))
     }
   }
 
@@ -270,6 +285,10 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     analyzePlan(parsedPlan).schema
   }
 
+  def unresolvedSqlSchema(sql: String): StructType = {
+    StructType(parsePlan(sql).output.map(attribute => StructField(name = attribute.name, dataType = NullType)))
+  }
+
   private def alterLogicalPlanPartition(logicalPlan: LogicalPlan, props: Map[String, String]): LogicalPlan = {
     if (props.contains("repartitionNums")) {
       Repartition(props("repartitionNums").toInt, shuffle = true, logicalPlan)
@@ -278,6 +297,22 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     } else {
       logicalPlan
     }
+  }
+
+  private def resolveTables(logicalPlan: LogicalPlan): Seq[String] = {
+    val tables = ListBuffer.empty[String]
+    logicalPlan.transformDown({
+      case relation: LogicalRelation =>
+        tables.append(resolveTable(relation.catalogTable.get))
+        relation
+    })
+    tables
+  }
+
+  // table form like [db].name
+  private def resolveTable(catalog: catalyst.catalog.CatalogTable): String = {
+    if (catalog.identifier.database.isEmpty) s"${mbCatalog.getCurrentDb}.${catalog.qualifiedName}"
+    else catalog.qualifiedName
   }
 
   /**
@@ -289,59 +324,76 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     */
 
   def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
+    var outputTable: String = null
+    var inputTables = Seq.empty[String]
     val parsedPlan = parsePlan(sql)
     injectTableFunctions(parsedPlan)
-
     val unlimited = maxRows < 0
-    parsedPlan match {
-      case runnable: RunnableCommand =>
-        val dataFrame = createDataFrame(runnable)
-        (dataFrame.collect().toIterator, dataFrame.schema)
-      case other =>
-        // may throw PrivilegeAnalysisException
-        val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
-        val limitPlan = analyzedPlan match {
-          case insert: InsertIntoDataSourceCommand =>
-            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.logicalRelation.catalogTable.get.storage.properties))
-          case insert: InsertIntoHadoopFsRelationCommand =>
-            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.catalogTable.get.storage.properties))
-          case insert: InsertIntoHiveTable =>
-            insert.copy(query = alterLogicalPlanPartition(insert.query, insert.table.storage.properties))
-          case _ if unlimited =>
-            analyzedPlan
-          case _ =>
-            GlobalLimit(
-              Literal(maxRows, IntegerType),
-              LocalLimit(Literal(maxRows, IntegerType),
-                analyzedPlan))
-        }
+    if (parsedPlan.isInstanceOf[RunnableCommand]) {
+      val dataFrame = createDataFrame(parsedPlan)
+      (dataFrame.collect().toIterator, dataFrame.schema)
+    }
+    else {
+      val limitPlan = parsedPlan match {
+        case _ =>
+          // may throw PrivilegeAnalysisException
+          val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
+          analyzedPlan match {
+            case insert: InsertIntoDataSourceCommand =>
+              outputTable = resolveTable(insert.logicalRelation.catalogTable.get)
+              inputTables = resolveTables(insert.query)
+              insert.copy(query = alterLogicalPlanPartition(insert.query, insert.logicalRelation.catalogTable.get.storage.properties))
+            case insert: InsertIntoHadoopFsRelationCommand =>
+              outputTable = resolveTable(insert.catalogTable.get)
+              inputTables = resolveTables(insert.query)
+              insert.copy(query = alterLogicalPlanPartition(insert.query, insert.catalogTable.get.storage.properties))
+            case insert: InsertIntoHiveTable =>
+              outputTable = resolveTable(insert.table)
+              inputTables = resolveTables(insert.query)
+              insert.copy(query = alterLogicalPlanPartition(insert.query, insert.table.storage.properties))
+            case _ if unlimited =>
+              inputTables = resolveTables(analyzedPlan)
+              analyzedPlan
+            case _ =>
+              inputTables = resolveTables(analyzedPlan)
+              GlobalLimit(
+                Literal(maxRows, IntegerType),
+                LocalLimit(Literal(maxRows, IntegerType),
+                  analyzedPlan))
+          }
+      }
 
-        val optimizedPlan = optimizePlan(limitPlan)
+      val hookContext = new HookContext(mbCatalog.getCurrentOrg, mbCatalog.catalogUser.name, sql, inputTables.toSet, outputTable)
+      hookContext.setHookType(hookContext.HookType.POST_EXEC_HOOK)
 
-        if (pushdownEnable) {
-          try {
-            pushdownPlan(optimizedPlan) match {
-              case WholePushdown(child, queryable) =>
-                val qe = sparkSession.sessionState.executePlan(child)
-                qe.assertAnalyzed()
-                val dataTable = queryable.buildQuery(child, sparkSession)
-                (dataTable.iterator, dataTable.schema)
-              case plan =>
-                val dataFrame = createDataFrame(plan)
-                (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
-            }
-          } catch {
-            case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
-              throw e
-            case e: Exception if pushdownEnable =>
-              logError("Execute pushdown failed, Retry without pushdown optimize.", e)
-              val dataFrame = createDataFrame(optimizedPlan)
+      val optimizedPlan = optimizePlan(limitPlan)
+
+      val result = if (pushdownEnable) {
+        try {
+          pushdownPlan(optimizedPlan) match {
+            case WholePushdown(child, queryable) =>
+              val qe = sparkSession.sessionState.executePlan(child)
+              qe.assertAnalyzed()
+              val dataTable = queryable.buildQuery(child, sparkSession)
+              (dataTable.iterator, dataTable.schema)
+            case plan =>
+              val dataFrame = createDataFrame(plan)
               (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
           }
-        } else {
-          val dataFrame = createDataFrame(optimizedPlan)
-          (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
+        } catch {
+          case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
+            throw e
+          case e: Exception if pushdownEnable =>
+            logError("Execute pushdown failed, Retry without pushdown optimize.", e)
+            val dataFrame = createDataFrame(optimizedPlan)
+            (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
         }
+      } else {
+        val dataFrame = createDataFrame(optimizedPlan)
+        (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
+      }
+      Future(HookRunner.runPostExecHooks(hookContext))
+      result
     }
   }
 
@@ -351,7 +403,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         dataFrame.cache()
         val iter = dataFrame.toLocalIterator()
         new Iterator[Row] {
-
           override def hasNext: Boolean = {
             val ifHasNext = iter.hasNext
             if (!ifHasNext) dataFrame.unpersist()
@@ -396,22 +447,24 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       case None => // do nothing
     }
 
-    tables.filterNot { identifier =>
-      identifier.database match {
-        case Some(db) =>
-          sparkSession.catalog.tableExists(db, identifier.table)
-        case None =>
-          sparkSession.catalog.tableExists(identifier.table)
-      }
+    tables.filterNot {
+      identifier =>
+        identifier.database match {
+          case Some(db) =>
+            sparkSession.catalog.tableExists(db, identifier.table)
+          case None =>
+            sparkSession.catalog.tableExists(identifier.table)
+        }
     }.foreach(registerTable)
 
-    functions.filterNot { identifier =>
-      identifier.database match {
-        case Some(db) =>
-          sparkSession.catalog.functionExists(db, identifier.funcName)
-        case None =>
-          sparkSession.catalog.functionExists(identifier.funcName)
-      }
+    functions.filterNot {
+      identifier =>
+        identifier.database match {
+          case Some(db) =>
+            sparkSession.catalog.functionExists(db, identifier.funcName)
+          case None =>
+            sparkSession.catalog.functionExists(identifier.funcName)
+        }
     }.foreach(registerFunction)
   }
 
@@ -621,7 +674,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val currentDb = mbCatalog.getCurrentDb
     val db = table.database.getOrElse(currentDb)
     val catalogTable = mbCatalog.getTable(db, table.table)
-    if (catalogTable.tableType == TableType.VIEW) {
+    if (catalogTable.tableType == moonbox.catalog.CatalogTableType.VIEW) {
       injectTableFunctions(parsePlan(catalogTable.viewText.get))
       registerView(table, catalogTable.viewText.get)
     } else {
@@ -646,8 +699,14 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param db database name
     */
   def registerDatabase(db: String): Unit = {
-    if (!sessionState.catalog.databaseExists(db)) {
-      createDataFrame(s"create database if not exists ${db}")
+    try {
+      if (!sessionState.catalog.databaseExists(db)) {
+        createDataFrame(s"create database if not exists ${
+          db
+        }")
+      }
+    } catch {
+      case _: DatabaseAlreadyExistsException => //good
     }
   }
 
@@ -658,10 +717,14 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param props           connection or other parameters
     */
   def registerTable(tableIdentifier: TableIdentifier, props: Map[String, String]): Unit = {
-    if (props("type") == "hive") {
-      registerHiveTable(tableIdentifier, props)
-    } else {
-      registerDatasourceTable(tableIdentifier, props)
+    try {
+      if (props("type") == "hive") {
+        registerHiveTable(tableIdentifier, props)
+      } else {
+        registerDatasourceTable(tableIdentifier, props)
+      }
+    } catch {
+      case _: TableAlreadyExistsException => //good
     }
   }
 
@@ -674,7 +737,9 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   private def registerDatasourceTable(table: TableIdentifier, props: Map[String, String]): Unit = {
     setRemoteHadoopConf(mergeRemoteHadoopConf(props))
     val schema = props.get("schema").map(s => s"($s)").getOrElse("")
-    val options = props.map { case (k, v) => s"'$k' '$v'" }.mkString(",")
+    val options = props.map {
+      case (k, v) => s"'$k' '$v'"
+    }.mkString(",")
 
     // for compatibility
     val partition = props.get("partitionColumns").orElse(
@@ -682,8 +747,12 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     // val partition = props.get("partitionColumns").map(s => s"PARTITIONED BY ($s)").getOrElse("")
     val sql =
       s"""
-         			   |create table if not exists ${table.quotedString}$schema
-         			   |using ${DataSystem.lookupDataSource(props("type"))}
+         			   |create table if not exists ${
+        table.quotedString
+      }$schema
+         			   |using ${
+        DataSystem.lookupDataSource(props("type"))
+      }
          			   |options($options)
          			   |$partition
 			 """.stripMargin
@@ -701,7 +770,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val hiveClient = HiveClientUtils.getHiveClient(props)
     val hiveCatalogTable = hiveClient.getTable(props("hivedb"), props("hivetable"))
 
-    logInfo(s"hive table $table catalog: $hiveCatalogTable")
+    logInfo(s"hive table $table catalog:  $hiveCatalogTable")
 
     if (hiveCatalogTable.tableType == CatalogTableType.VIEW) {
       injectTableFunctions(parsePlan(hiveCatalogTable.viewText.get))
@@ -710,7 +779,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       )
     } else {
       val path = hiveCatalogTable.storage.locationUri.get.toString
-      setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
+      setRemoteHadoopConf(mergeRemoteHadoopConf(props) ++ Map("path" -> path))
 
       val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
@@ -729,6 +798,9 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         ignoreIfExists = true
       )
     }
+  }
+
+  def registerExternalView(catalog: catalyst.catalog.CatalogTable, sqlText: String): Unit = {
 
   }
 
@@ -741,7 +813,9 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   def registerView(tableIdentifier: TableIdentifier, sqlText: String): Unit = {
     val createViewSql =
       s"""
-         			   |create or replace view ${tableIdentifier.quotedString} as
+         			   |create or replace view ${
+        tableIdentifier.quotedString
+      } as
          			   |$sqlText
 			 """.stripMargin
     createDataFrame(createViewSql)
@@ -753,31 +827,38 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param func
     */
   def registerFunction(func: CatalogFunction): Unit = {
-    val funcName = s"${func.database}.${func.name}"
-    val (nonSourceResources, sourceResources) = func.resources.partition { resource =>
-      resource.resourceType match {
-        case _: NonSourceResource => true
-        case _: SourceResource => false
-      }
+    val funcName = s"${
+      func.database
+    }.${
+      func.name
+    }"
+    val (nonSourceResources, sourceResources) = func.resources.partition {
+      resource =>
+        resource.resourceType match {
+          case _: NonSourceResource => true
+          case _: SourceResource => false
+        }
     }
-    val loadResources = nonSourceResources.map { nonSource =>
-      nonSource.resourceType match {
-        case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
-        case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
-        case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
-      }
+    val loadResources = nonSourceResources.map {
+      nonSource =>
+        nonSource.resourceType match {
+          case JarResource => SparkFunctionResource(SparkJarResource, nonSource.uri)
+          case FileResource => SparkFunctionResource(SparkFileResource, nonSource.uri)
+          case ArchiveResource => SparkFunctionResource(SparkArchiveResource, nonSource.uri)
+        }
     }
     sessionState.catalog.loadFunctionResources(loadResources)
     if (sourceResources.nonEmpty) {
-      sourceResources.foreach { source =>
-        source.resourceType match {
-          case ScalaResource =>
-            sessionState.functionRegistry.registerFunction(
-              funcName, UdfUtils.scalaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-          case _ =>
-            sessionState.functionRegistry.registerFunction(
-              funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
-        }
+      sourceResources.foreach {
+        source =>
+          source.resourceType match {
+            case ScalaResource =>
+              sessionState.functionRegistry.registerFunction(
+                funcName, UdfUtils.scalaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+            case _ =>
+              sessionState.functionRegistry.registerFunction(
+                funcName, UdfUtils.javaSourceFunctionBuilder(funcName, source.uri, func.className, func.methodName))
+          }
       }
     } else {
       sessionState.functionRegistry.registerFunction(
@@ -815,6 +896,10 @@ object SparkEngine extends MbLogging {
     }
     conf
   }
+
+  private val optimizerRule = Seq[RuleBuilder](
+    (session: SparkSession) => MbPruneFilters(session)
+  )
 
   private val hiveCheckRule = Seq[CheckRuleBuilder](
     (session: SparkSession) => PreWriteCheck
@@ -864,6 +949,12 @@ object SparkEngine extends MbLogging {
       } else {
         logInfo("Using an exists sparkContext.")
       }
+    }
+  }
+
+  def stop: Unit = {
+    if (sparkContext != null && !sparkContext.isStopped) {
+      sparkContext.stop()
     }
   }
 

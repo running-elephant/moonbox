@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -249,4 +248,3 @@ class MoonboxDatabaseMetaData(connection: MoonboxConnection) extends DatabaseMet
 	override def unwrap[T](iface: Class[T]): T = ???
 	override def isWrapperFor(iface: Class[_]): Boolean = ???
 }
-*/

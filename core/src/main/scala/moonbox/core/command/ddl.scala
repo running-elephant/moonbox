@@ -417,14 +417,13 @@ case class DropFunction(
 
     val database = mbSession.catalog.getDatabase(function.database.getOrElse(getCurrentDb))
 
-    if (mbSession.catalog.databaseExists(database.name)) {
-      mbSession.catalog.dropFunction(
-        database.name,
-        function.funcName,
-        ignoreIfNotExists)
-    }
+    mbSession.catalog.dropFunction(
+      database.name,
+      function.funcName,
+      ignoreIfNotExists)
 
-    mbSession.engine.catalog.dropFunction(function, ignoreIfNotExists = true)
+    if (mbSession.engine.catalog.databaseExists(database.name))
+      mbSession.engine.catalog.dropFunction(function, ignoreIfNotExists = true)
 
     Seq.empty[Row]
   }

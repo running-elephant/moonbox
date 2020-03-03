@@ -40,6 +40,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRenameOrganization(MqlBaseParser.RenameOrganizationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameOrganization(MqlBaseParser.RenameOrganizationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetOrganizationName(MqlBaseParser.SetOrganizationNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetOrganizationName(MqlBaseParser.SetOrganizationNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetOrganizationOptions(MqlBaseParser.SetOrganizationOptionsContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -83,6 +107,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCreateSa(MqlBaseParser.CreateSaContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRenameSa(MqlBaseParser.RenameSaContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameSa(MqlBaseParser.RenameSaContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetSaName(MqlBaseParser.SetSaNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetSaName(MqlBaseParser.SetSaNameContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -280,6 +328,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRenameUser(MqlBaseParser.RenameUserContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameUser(MqlBaseParser.RenameUserContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetUserName(MqlBaseParser.SetUserNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetUserName(MqlBaseParser.SetUserNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetUserPassword(MqlBaseParser.SetUserPasswordContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -323,6 +395,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCreateGroup(MqlBaseParser.CreateGroupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRenameGroup(MqlBaseParser.RenameGroupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameGroup(MqlBaseParser.RenameGroupContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetGroupName(MqlBaseParser.SetGroupNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetGroupName(MqlBaseParser.SetGroupNameContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -383,6 +479,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitMountTable(MqlBaseParser.MountTableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRenameTable(MqlBaseParser.RenameTableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameTable(MqlBaseParser.RenameTableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetTableName(MqlBaseParser.SetTableNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetTableName(MqlBaseParser.SetTableNameContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -467,6 +587,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCreateDatabase(MqlBaseParser.CreateDatabaseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRenameDatabase(MqlBaseParser.RenameDatabaseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameDatabase(MqlBaseParser.RenameDatabaseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetDatabaseName(MqlBaseParser.SetDatabaseNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetDatabaseName(MqlBaseParser.SetDatabaseNameContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -580,6 +724,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRenameProcedure(MqlBaseParser.RenameProcedureContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameProcedure(MqlBaseParser.RenameProcedureContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetProcedureName(MqlBaseParser.SetProcedureNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetProcedureName(MqlBaseParser.SetProcedureNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetProcedureQuerys(MqlBaseParser.SetProcedureQuerysContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -616,6 +784,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRenameEvent(MqlBaseParser.RenameEventContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRenameEvent(MqlBaseParser.RenameEventContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetDefiner(MqlBaseParser.SetDefinerContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -623,6 +803,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitSetDefiner(MqlBaseParser.SetDefinerContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSetEventName(MqlBaseParser.SetEventNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSetEventName(MqlBaseParser.SetEventNameContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

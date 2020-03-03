@@ -279,7 +279,7 @@ case class GrantResourceToUser(
 					case ColumnSelectPrivilege(column) =>
 						column.map((_, SelectPrivilege.NAME))
 					case ColumnUpdatePrivilege(column) =>
-						column.map((_, UpdatePrivilege.NAME))
+						column.map((_, SelectPrivilege.NAME))
 				}
 
 				// check column exists or not

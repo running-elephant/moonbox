@@ -11,17 +11,17 @@ single
 mql
     : CREATE (ORG|ORGANIZATION) (IF NOT EXISTS)?
         name=identifier (COMMENT comment=STRING)? (OPTIONS propertyList)?                       # createOrganization
-    //| RENAME (ORG|ORGANIZATION) name=identifier TO newName=identifier                           # renameOrganization
-    //| ALTER (ORG|ORGANIZATION) name=identifier RENAME TO newName=identifier                     # setOrganizationName
+    | RENAME (ORG|ORGANIZATION) name=identifier TO newName=identifier                           # renameOrganization
+    | ALTER (ORG|ORGANIZATION) name=identifier RENAME TO newName=identifier                     # setOrganizationName
     | ALTER (ORG|ORGANIZATION) name=identifier SET OPTIONS propertyList                         # setOrganizationOptions
     | ALTER (ORG|ORGANIZATION) name=identifier SET COMMENT comment=STRING                       # setOrganizationComment
     | DROP (ORG|ORGANIZATION) (IF EXISTS)? name=identifier (CASCADE)?                           # dropOrganization
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)?
         org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)?                       # createSa
-    //| RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier     # renameSa
-    //| ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
-    //    RENAME TO newName=identifier                                                            # setSaName
+    | RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier     # renameSa
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
+        RENAME TO newName=identifier                                                            # setSaName
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
         IDENTIFIED BY pwd=password                                                              # setSaPassword
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier SET OPTIONS propertyList   # setSaOptions
@@ -46,15 +46,15 @@ mql
 
     | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password
         (OPTIONS propertyList)?                                                                 # createUser
-    //| RENAME USER name=identifier TO newName=identifier                                         # renameUser
-    //| ALTER USER name=identifier RENAME TO newName=identifier                                   # setUserName
+    | RENAME USER name=identifier TO newName=identifier                                         # renameUser
+    | ALTER USER name=identifier RENAME TO newName=identifier                                   # setUserName
     | ALTER USER name=identifier IDENTIFIED BY pwd=password                                     # setUserPassword
     | ALTER USER name=identifier SET OPTIONS propertyList                                       # setUserOptions
     | DROP USER (IF EXISTS)? name=identifier                                                    # dropUser
 
     | CREATE GROUP (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                   # createGroup
-    //| RENAME GROUP name=identifier TO newName=identifier                                        # renameGroup
-    //| ALTER GROUP name=identifier RENAME TO newName=identifier                                  # setGroupName
+    | RENAME GROUP name=identifier TO newName=identifier                                        # renameGroup
+    | ALTER GROUP name=identifier RENAME TO newName=identifier                                  # setGroupName
     | ALTER GROUP name=identifier SET COMMENT comment=STRING                                    # setGroupComment
     | ALTER GROUP name=identifier addUser                                                       # addGroupUser
     | ALTER GROUP name=identifier removeUser                                                    # removeGroupUser
@@ -62,8 +62,8 @@ mql
 
     | MOUNT STREAM? TABLE (IF NOT EXISTS)? tableIdentifier ('('columns=colTypeList')')?
         OPTIONS propertyList                                                                    # mountTable
-    //| RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                              # renameTable
-    //| ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                        # setTableName
+    | RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                              # renameTable
+    | ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                        # setTableName
     | ALTER TABLE name=tableIdentifier SET OPTIONS propertyList                                 # setTableProperties
     | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                           # unmountTable
 
@@ -73,8 +73,8 @@ mql
     | REFRESH DATABASE name=identifier                                                          # refreshDatabase
 
     | CREATE DATABASE (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                # createDatabase
-    //| RENAME DATABASE name=identifier TO newName=identifier                                     # renameDatabase
-    //| ALTER DATABASE name=identifier RENAME TO newName=identifier                               # setDatabaseName
+    | RENAME DATABASE name=identifier TO newName=identifier                                     # renameDatabase
+    | ALTER DATABASE name=identifier RENAME TO newName=identifier                               # setDatabaseName
     | ALTER DATABASE name=identifier SET COMMENT comment=STRING                                 # setDatabaseComment
     | DROP DATABASE (IF EXISTS)? name=identifier (CASCADE)?                                     # dropDatabase
     | USE db=identifier                                                                         # useDatabase
@@ -91,17 +91,17 @@ mql
     | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
 
     | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds  # createProcedure
-    //| RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
-    //| ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
+    | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
+    | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
     | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys
     | DROP   (PROC | PROCEDURE) (IF EXISTS)? name=identifier                                    # dropProcedure
 
     | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT
         cronExpression=STRING
         (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL proc=identifier                   # createEvent
-    //| RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
+    | RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
     | ALTER DEFINER definer EVENT name=identifier                                               # setDefiner
-    //| ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
+    | ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
     | ALTER EVENT name=identifier ON SCHEDULE AT cronExpression=STRING                          # setEventSchedule
     | ALTER EVENT name=identifier (ENABLE | DISABLE)                                            # setEventEnable
     | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
@@ -145,7 +145,7 @@ mql
     //| INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? coalesceSpec? AS? query                 # insertInto
     | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS? query             # createTemporaryView
     //| query                                                                                     # mqlQuery
-    | statement=(SELECT | WITH | INSERT | SET | ANALYZE | REFRESH).*?                                                                             # statement
+    | statement=(SELECT | WITH | INSERT | SET | ANALYZE | REFRESH | SHOW).*?                                                                             # statement
     ;
 
 procCmds

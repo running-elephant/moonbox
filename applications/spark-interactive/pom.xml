@@ -5,7 +5,7 @@
     <parent>
         <artifactId>moonbox-parent_2.11</artifactId>
         <groupId>edp.moonbox</groupId>
-        <version>0.3.0-beta</version>
+        <version>0.3.0-beta-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -15,11 +15,6 @@
     <name>Moonbox Project Spark Interactive Application</name>
 
     <dependencies>
-        <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-network_2.11</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-protocol_2.11</artifactId>

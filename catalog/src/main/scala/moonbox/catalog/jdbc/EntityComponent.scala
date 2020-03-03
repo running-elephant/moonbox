@@ -64,13 +64,11 @@ trait EntityComponent extends DatabaseComponent {
 	protected final val functionResources = TableQuery[FunctionResourceEntityTable]
 	protected final val procedures = TableQuery[ProcedureEntityTable]
 	protected final val timedEvents = TableQuery[TimedEventEntityTable]
-	protected final val queries = TableQuery[QueryEntityTable]
 	protected final val databasePrivileges = TableQuery[DatabasePrivilegeEntityTable]
 	protected final val tablePrivileges = TableQuery[TablePrivilegeEntityTable]
 	protected final val columnPrivileges = TableQuery[ColumnPrivilegeEntityTable]
 	protected final val variables = TableQuery[VariableEntityTable]
 	protected final val applications = TableQuery[ApplicationEntityTable]
-	protected final val clusters = TableQuery[ClusterEntityTable]
 	protected final val groups = TableQuery[GroupEntityTable]
 	protected final val groupUserRels = TableQuery[GroupUserRelEntityTable]
 
@@ -83,13 +81,11 @@ trait EntityComponent extends DatabaseComponent {
 		functionResources,
 		procedures,
 		timedEvents,
-		queries,
 		databasePrivileges,
 		tablePrivileges,
 		columnPrivileges,
 		variables,
 		applications,
-		clusters,
 		groups,
 		groupUserRels
 	)
@@ -217,23 +213,6 @@ trait EntityComponent extends DatabaseComponent {
 			createTime, updateBy, updateTime) <> (TimedEventEntity.tupled, TimedEventEntity.unapply)
 	}
 
-	class QueryEntityTable(tag: Tag) extends BaseTable[QueryEntity](tag, "queries") {
-
-		implicit val seqColumnType = MappedColumnType.base[Seq[String], String](
-			// Seq to String
-			seq => seq.mkString("; "),
-			// String to Seq
-			string => string.split("; ").map(_.trim)
-		)
-
-		def name = column[String]("name")
-		def text = column[String]("text")
-		def organizationId = column[Long]("organizationId")
-		def description = column[Option[String]]("description")
-		override def * = (id.?, name, text, organizationId, description, createBy,
-			createTime, updateBy, updateTime) <> (QueryEntity.tupled, QueryEntity.unapply)
-	}
-
 	class DatabasePrivilegeEntityTable(tag: Tag) extends BaseTable[DatabasePrivilegeEntity](tag, "database_privileges") {
 		def userId = column[Long]("userId")
 		def databaseId = column[Long]("databaseId")
@@ -270,21 +249,11 @@ trait EntityComponent extends DatabaseComponent {
 
 	class ApplicationEntityTable(tag: Tag) extends BaseTable[ApplicationEntity](tag, "applications") {
 		def name = column[String]("name")
-		def address = column[Option[String]]("address")
+		def labels = column[Seq[String]]("labels")
 		def appType = column[String]("appType")
-		def clusterId = column[Option[Long]]("clusterId")
+		def state = column[String]("state")
 		def config = column[Map[String, String]]("config")
-		def organizationId = column[Long]("organizationId")
-		def startOnBoot = column[Boolean]("enable")
-		override def * = (id.?, name, address, appType, clusterId, config, organizationId, startOnBoot, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
-	}
-
-	class ClusterEntityTable(tag: Tag) extends BaseTable[ClusterEntity](tag, "clusters") {
-		def name = column[String]("name")
-		def clusterType = column[String]("cluster_type")
-		def environment = column[Map[String, String]]("environment")
-		def config = column[Map[String, String]]("config")
-		override def * = (id.?, name, clusterType, environment, config, createBy, createTime, updateBy, updateTime) <> (ClusterEntity.tupled, ClusterEntity.unapply)
+		override def * = (id.?, name, labels, appType, config, state, createBy, createTime, updateBy, updateTime) <> (ApplicationEntity.tupled, ApplicationEntity.unapply)
 	}
 
 	class GroupEntityTable(tag: Tag) extends BaseTable[GroupEntity](tag, "groups") {

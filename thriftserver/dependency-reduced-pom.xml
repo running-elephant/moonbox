@@ -3,7 +3,7 @@
   <parent>
     <artifactId>moonbox-parent_2.11</artifactId>
     <groupId>edp.moonbox</groupId>
-    <version>0.3.0-beta</version>
+    <version>0.3.0-beta-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>moonbox-thriftserver_2.11</artifactId>
@@ -75,6 +75,10 @@
         <exclusion>
           <artifactId>hadoop-annotations</artifactId>
           <groupId>org.apache.hadoop</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>guava</artifactId>
+          <groupId>com.google.guava</groupId>
         </exclusion>
         <exclusion>
           <artifactId>commons-cli</artifactId>
@@ -197,6 +201,10 @@
           <groupId>org.apache.curator</groupId>
         </exclusion>
         <exclusion>
+          <artifactId>jsr305</artifactId>
+          <groupId>com.google.code.findbugs</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>htrace-core</artifactId>
           <groupId>org.htrace</groupId>
         </exclusion>
@@ -303,10 +311,6 @@
           <groupId>org.roaringbitmap</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>scala-library</artifactId>
-          <groupId>org.scala-lang</groupId>
-        </exclusion>
-        <exclusion>
           <artifactId>json4s-jackson_2.11</artifactId>
           <groupId>org.json4s</groupId>
         </exclusion>
@@ -405,6 +409,10 @@
         <exclusion>
           <artifactId>commons-math3</artifactId>
           <groupId>org.apache.commons</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jsr305</artifactId>
+          <groupId>com.google.code.findbugs</groupId>
         </exclusion>
         <exclusion>
           <artifactId>commons-net</artifactId>
@@ -571,6 +579,10 @@
           <groupId>org.codehaus.jackson</groupId>
         </exclusion>
         <exclusion>
+          <artifactId>guava</artifactId>
+          <groupId>com.google.guava</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>avro</artifactId>
           <groupId>org.apache.avro</groupId>
         </exclusion>
@@ -627,6 +639,10 @@
           <groupId>org.apache.thrift</groupId>
         </exclusion>
         <exclusion>
+          <artifactId>guava</artifactId>
+          <groupId>com.google.guava</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>commons-lang</artifactId>
           <groupId>commons-lang</groupId>
         </exclusion>
@@ -669,10 +685,6 @@
         <exclusion>
           <artifactId>scala-parser-combinators_2.11</artifactId>
           <groupId>org.scala-lang.modules</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>scala-library</artifactId>
-          <groupId>org.scala-lang</groupId>
         </exclusion>
       </exclusions>
     </dependency>

@@ -5,18 +5,18 @@ title: Deployment
 
 ### Preparing the Development Env
 
-- Install Apache Spark 2.2.0 (Moonbox-0.3.0-beta only supports Apache Spark 2.2.0 at present; other versions will be compatible later).
+- Install Apache Spark 2.2.0 (Moonbox-0.3.0-beta-SNAPSHOT only supports Apache Spark 2.2.0 at present; other versions will be compatible later).
 
 - Install and start MySQL; enable remote access.
 - Make sure you have performed SSH login without password on each installation node.
 
 ### Download
-[moonbox-0.3.0-beta download](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
+[moonbox-0.3.0-beta-SNAPSHOT download](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta-SNAPSHOT)
 
 ### Decompression
 
 ```
-tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
+tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
 ```
 
 ### Modifying the Configuration Files

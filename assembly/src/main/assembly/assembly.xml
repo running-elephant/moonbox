@@ -57,12 +57,6 @@
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>
-                ${project.parent.basedir}/swagger-ui
-            </directory>
-            <outputDirectory>swagger-ui</outputDirectory>
-        </fileSet>
-        <fileSet>
             <outputDirectory>logs</outputDirectory>
             <excludes><exclude>**/*</exclude></excludes>
         </fileSet>

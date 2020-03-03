@@ -54,7 +54,6 @@ import org.apache.hive.service.cli.session.SessionManager;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServlet;
-import org.eclipse.jetty.http.HttpHeader;
 import org.ietf.jgss.*;
 
 import javax.servlet.ServletException;
@@ -122,7 +121,6 @@ public class ThriftHttpServlet extends TServlet {
         String clientUserName = null;
         String clientIpAddress;
         boolean requireNewCookie = false;
-
         try {
             // If the cookie based authentication is already enabled, parse the
             // request and validate the request cookies.
@@ -198,7 +196,6 @@ public class ThriftHttpServlet extends TServlet {
             SessionManager.clearIsLocal();
             SessionManager.clearFetchSize();
             SessionManager.clearQueryTimeout();
-            SessionManager.clearParameterMap();
         }
     }
 
@@ -563,39 +560,39 @@ public class ThriftHttpServlet extends TServlet {
     }
 
     private void extractHttpHeader(HttpServletRequest request) {
-        Enumeration<String> headerNames = request.getHeaderNames();
-        HashMap<String, String> headerMap = new HashMap<>();
-        while (headerNames.hasMoreElements()) {
-            String key = headerNames.nextElement();
-            String value = request.getHeader(key);
-            LOG.info("http header key=" + key + ", value=" + value);
-            headerMap.put(key, value);
-        }
-        SessionManager.setParameterMap(headerMap);
+//        Enumeration<String> headerNames = request.getHeaderNames();
+//        HashMap<String, String> headerMap = new HashMap<>();
+//        while (headerNames.hasMoreElements()) {
+//            String key = headerNames.nextElement();
+//            String value = request.getHeader(key);
+//            LOG.info("http header key=" + key + ", value=" + value);
+//            headerMap.put(key, value);
+//        }
+//        SessionManager.setParameterMap(headerMap);
 
-//        String org = request.getHeader("org");
-//        SessionManager.setOrg(org);
-//        LOG.debug("client org: " + org);
-//
-//        String maxRows = request.getHeader("maxRows");
-//        if (maxRows != null) {
-//            SessionManager.setMaxRows(Integer.valueOf(maxRows));
-//        }
-//
-//        String isLocal = request.getHeader("islocal");
-//        if (isLocal != null) {
-//            SessionManager.setIsLocal(Boolean.valueOf(isLocal));
-//        }
-//
-//        String fetchSize = request.getHeader("fetchSize");
-//        if (fetchSize != null) {
-//            SessionManager.setFetchSize(Integer.valueOf(fetchSize));
-//        }
-//
-//        String queryTimeout = request.getHeader("queryTimeout");
-//        if (fetchSize != null) {
-//            SessionManager.setQueryTimeout(Integer.valueOf(queryTimeout));
-//        }
+        String org = request.getHeader("org");
+        SessionManager.setOrg(org);
+        LOG.debug("client org: " + org);
+
+        String maxRows = request.getHeader("maxrows");
+        if (maxRows != null) {
+            SessionManager.setMaxRows(Integer.valueOf(maxRows));
+        }
+
+        String isLocal = request.getHeader("islocal");
+        if (isLocal != null) {
+            SessionManager.setIsLocal(Boolean.valueOf(isLocal));
+        }
+
+        String fetchSize = request.getHeader("fetchsize");
+        if (fetchSize != null) {
+            SessionManager.setFetchSize(Integer.valueOf(fetchSize));
+        }
+
+        String queryTimeout = request.getHeader("query_timeout");
+        if (queryTimeout != null) {
+            SessionManager.setQueryTimeout(Integer.valueOf(queryTimeout));
+        }
 
     }
 

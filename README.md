@@ -33,7 +33,7 @@ Moonbox supports creating UDF/UDAF not only with JAR files, but also with Source
 Moonbox provides time-scheduling event function. User defines time-scheduling event with DDL, defines scheduling strategy with crontab expression, and embeds quartz in the backend for time-scheduling event.    
 
 # Latest Release
-Please download the latest [RELEASE](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
+Please download the latest [RELEASE](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta-SNAPSHOT)
 
 ## Get Help
 The fastest way to get response from our developers is to send email to our mail list edp_support@groups.163.com, and welcome to join our WeChat group for online discussion.

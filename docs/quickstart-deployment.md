@@ -12,12 +12,12 @@ title: Deploying
 - 各安装节点已经配置ssh免密登录
 
 #### 下载
-[moonbox-0.3.0-beta下载](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta)
+[moonbox-0.3.0-beta下载](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta-SNAPSHOT)
 
 #### 解压
 
 ```
-tar -zxvf moonbox-assembly_2.11-0.3.0-beta-dist.tar.gz
+tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
 ```
 
 #### 修改配置文件

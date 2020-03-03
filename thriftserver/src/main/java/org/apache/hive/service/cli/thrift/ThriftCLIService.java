@@ -651,6 +651,9 @@ public abstract class ThriftCLIService extends AbstractService implements TCLISe
       resp.setResults(rowSet.toTRowSet());
       resp.setHasMoreRows(false);
       resp.setStatus(OK_STATUS);
+    } catch (NullPointerException ne) {
+        LOG.debug("Error fetching results caused by " + ne.getMessage());
+        resp.setStatus(HiveSQLException.toTStatus(ne));
     } catch (Exception e) {
       LOG.warn("Error fetching results: ", e);
       resp.setStatus(HiveSQLException.toTStatus(e));

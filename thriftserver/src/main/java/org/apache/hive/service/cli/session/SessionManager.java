@@ -53,7 +53,10 @@ import org.apache.hive.service.server.ThreadFactoryWithGarbageCleanup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -404,7 +407,7 @@ public class SessionManager extends CompositeService {
     private static ThreadLocal<Integer> threadLocalMaxRows = new ThreadLocal<Integer>() {
         @Override
         protected Integer initialValue() {
-            return Integer.MIN_VALUE;
+            return null;
         }
     };
 
@@ -442,7 +445,7 @@ public class SessionManager extends CompositeService {
     private static ThreadLocal<Integer> threadLocalFetchSize = new ThreadLocal<Integer>() {
         @Override
         protected Integer initialValue() {
-            return Integer.MIN_VALUE;
+            return null;
         }
     };
 
@@ -461,26 +464,7 @@ public class SessionManager extends CompositeService {
     private static ThreadLocal<Integer> threadLocalQueryTimeout = new ThreadLocal<Integer>() {
         @Override
         protected Integer initialValue() {
-            return Integer.MIN_VALUE;
-        }
-    };
-
-    public static void setParameterMap(HashMap<String, String> parameterMap) {
-        threadLocalParameterMap.set(parameterMap);
-    }
-
-    public static HashMap<String, String> getParameterMap() {
-        return threadLocalParameterMap.get();
-    }
-
-    public static void clearParameterMap() {
-        threadLocalParameterMap.remove();
-    }
-
-    public static ThreadLocal<HashMap<String, String>> threadLocalParameterMap = new ThreadLocal<HashMap<String, String>>() {
-        @Override
-        protected HashMap<String, String> initialValue() {
-            return new HashMap<>();
+            return null;
         }
     };
 

@@ -30,14 +30,17 @@ trait DriverDesc {
 	def appResource: String
 	def toAppArgs: Seq[String]
 	def toConf: Map[String, String]
-	def name: String
 }
 
 trait LongRunDriverDesc extends DriverDesc
 
 trait OnceRunDriverDesc extends DriverDesc
 
-case class SparkLocalDriverDesc(config: Map[String, String]) extends LongRunDriverDesc {
+case class SparkLocalDriverDesc(
+	driverId: String,
+	label: String,
+	masters: Array[String],
+	config: Map[String, String]) extends LongRunDriverDesc {
 
 	override def master = {
 		val cores = Runtime.getRuntime.availableProcessors()
@@ -45,9 +48,7 @@ case class SparkLocalDriverDesc(config: Map[String, String]) extends LongRunDriv
 		val configured = specialized.map(_.toInt).getOrElse(cores / 2)
 		Some(s"local[$configured]")
 	}
-
 	override def deployMode = None
-
 	override def mainClass = "moonbox.application.interactive.spark.Main"
 
 	override def toString: String = {
@@ -55,7 +56,13 @@ case class SparkLocalDriverDesc(config: Map[String, String]) extends LongRunDriv
 	}
 
 	override def toAppArgs: Seq[String] = {
-		config.filterKeys(key => !key.startsWith("spark.")).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		(config.filterKeys(key => !key.startsWith("spark."))
+			++ Map(
+			"driverId" -> driverId,
+			"appLabel" -> label,
+			"masters" -> masters.mkString(";"),
+			"applicationType" -> "CENTRALIZED"
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
@@ -69,11 +76,13 @@ case class SparkLocalDriverDesc(config: Map[String, String]) extends LongRunDriv
 			throw new Exception("Interactive app jar does not found in env.")
 		)
 	}
-
-	override def name: String = "sparklocal"
 }
 
-case class SparkClusterDriverDesc(config: Map[String, String]) extends LongRunDriverDesc {
+case class SparkClusterDriverDesc(
+	driverId: String,
+	label: String,
+	masters: Array[String],
+	config: Map[String, String]) extends LongRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("client")
@@ -84,7 +93,13 @@ case class SparkClusterDriverDesc(config: Map[String, String]) extends LongRunDr
 	}
 
 	override def toAppArgs: Seq[String] = {
-		config.filterKeys(key => !key.startsWith("spark.")).toSeq.flatMap { case (k, v) => Seq(k, v)}
+		(config.filterKeys(key => !key.startsWith("spark."))
+			++ Map(
+			"driverId" -> driverId,
+			"appLabel" -> label,
+			"masters" -> masters.mkString(";"),
+			"applicationType" -> "DISTRIBUTED"
+		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
 	}
 
 	override def toConf: Map[String, String] = {
@@ -98,22 +113,30 @@ case class SparkClusterDriverDesc(config: Map[String, String]) extends LongRunDr
 			throw new Exception("Interactive app jar does not found in env.")
 		)
 	}
-
-	override def name: String = "sparkcluster"
 }
 
-case class SparkBatchDriverDesc(config: Map[String, String]) extends OnceRunDriverDesc {
+case class SparkBatchDriverDesc(
+	org: String,
+	username: String,
+	sqls: Seq[String],
+	config: Map[String, String]
+) extends OnceRunDriverDesc {
 
 	override def master = Some("yarn")
 	override def deployMode = Some("cluster")
 	override def mainClass = "moonbox.application.batch.spark.Main"
 
 	override def toString: String = {
-		s"DriverDescription ($master ${deployMode.get})"
+		s"DriverDescription ($master ${deployMode.get} $username ${sqls.mkString(";")})"
 	}
 
 	override def toAppArgs: Seq[String] = {
-		config.filterKeys(key => !key.startsWith("spark.")).toSeq.flatMap { case (k, v) => Seq(k, v) }
+		(config.filterKeys(key => !key.startsWith("spark."))
+			++ Map(
+			"org" -> org,
+			"username" -> username,
+			"sqls" -> sqls.mkString(";")
+		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
 	}
 
 	override def toConf: Map[String, String] = {
@@ -125,8 +148,6 @@ case class SparkBatchDriverDesc(config: Map[String, String]) extends OnceRunDriv
 			throw new Exception("batch app jar does not found in env.")
 		)
 	}
-
-	override def name: String = "sparkbatch"
 }
 
 case class HiveBatchDriverDesc(
@@ -165,7 +186,5 @@ case class HiveBatchDriverDesc(
 			throw new Exception("hive app jar does not found in env.")
 		)
 	}
-
-	override def name: String = "hivebatch"
 }
 

@@ -20,7 +20,7 @@
 
 package moonbox.catalog
 
-import java.util.{Date, Locale}
+import java.util.Locale
 
 import moonbox.catalog.AbstractCatalog.User
 import moonbox.catalog.config._
@@ -28,19 +28,13 @@ import moonbox.catalog.jdbc._
 import moonbox.common.util.Utils
 import moonbox.common.{MbConf, MbLogging}
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.language.implicitConversions
 
 
 object JdbcCatalog {
-
   val DEFAULT_DATABASE = "default"
-
-  implicit def timestampToDate(time: Long): Date = new Date(time)
-
 }
 
 class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
@@ -73,20 +67,6 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.getOrganization(orgId)).map {
       case Some(orgEntity) => orgEntity.name
       case None => throw new IllegalStateException("organization not exists referenced by user")
-    }
-  }
-
-  def clusterId(cluster: String): Long = await {
-    jdbcDao.action(jdbcDao.getCluster(cluster)).map {
-      case Some(clusterEntity) => clusterEntity.id.get
-      case None => throw new NoSuchClusterException(cluster)
-    }
-  }
-
-  def clusterName(clusterId: Long): String = await {
-    jdbcDao.action(jdbcDao.getCluster(clusterId)).map {
-      case Some(clusterEntity) => clusterEntity.name
-      case None => throw new IllegalStateException(s"cluster is deleted.")
     }
   }
 
@@ -135,365 +115,71 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   }
 
   // ----------------------------------------------------------------------------
-  // Query -- belong to organization
+  // Application
   // ----------------------------------------------------------------------------
 
-  protected override def doCreateQuery(queryDefinition: CatalogQuery,
-                                       ignoreIfExists: Boolean)(implicit by: User): Unit = await {
-
-    jdbcDao.action(jdbcDao.queryExists(by.orgId, queryDefinition.name)).flatMap {
-      case true =>
-        ignoreIfExists match {
-          case true => Future(Unit)
-          case false => throw new ProcedureExistsException(queryDefinition.name)
-        }
-      case false =>
-        jdbcDao.action(jdbcDao.createQuery(QueryEntity(
-          name = queryDefinition.name,
-          text = queryDefinition.text,
-          organizationId = by.orgId,
-          description = queryDefinition.description,
-          createBy = by.userId,
-          updateBy = by.userId
-        )))
-    }
-  }
-
-  protected override def doDropQuery(query: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
-
-    jdbcDao.action(jdbcDao.getQuery(by.orgId, query)).flatMap {
-      case Some(queryEntity) =>
-        jdbcDao.action(jdbcDao.deleteQuery(queryEntity.id.get))
-      case None =>
-        ignoreIfNotExists match {
-          case true => Future(Unit)
-          case false => throw new NoSuchQueryException(query)
-        }
-    }
-  }
-
-  override def alterQuery(queryDefinition: CatalogQuery)(implicit by: User): Unit = await {
-
-    jdbcDao.action(jdbcDao.getQuery(by.orgId, queryDefinition.name)).flatMap {
-      case Some(queryEntity) =>
-        jdbcDao.action(jdbcDao.updateQuery(QueryEntity(
-          id = queryEntity.id,
-          name = queryDefinition.name,
-          text = queryDefinition.text,
-          organizationId = by.orgId,
-          description = queryDefinition.description,
-          createBy = queryEntity.createBy,
-          createTime = queryEntity.createTime,
-          updateBy = by.userId,
-          updateTime = Utils.now
-        )))
-      case None =>
-        throw new NoSuchQueryException(queryDefinition.name)
-    }
-
-  }
-
-  override def getQuery(query: String)(implicit by: User): CatalogQuery = await {
-    jdbcDao.action(
-      jdbcDao.getQuery(by.orgId, query)).map {
-      case Some(queryEntity) =>
-        CatalogQuery(
-          name = query,
-          text = queryEntity.text,
-          description = queryEntity.description,
-          owner = Some(userName(queryEntity.createBy))
-        )
-      case None => throw new NoSuchQueryException(query)
-    }
-  }
-
-  override def getQueryOption(query: String)(implicit by: User): Option[CatalogQuery] = await {
-    jdbcDao.action(
-      jdbcDao.getQuery(by.orgId, query)
-    ).map(_.map { queryEntity =>
-      CatalogQuery(
-        name = query,
-        text = queryEntity.text,
-        description = queryEntity.description,
-        owner = Some(userName(queryEntity.createBy))
-      )
-    })
-  }
-
-  override def queryExists(query: String)(implicit by: User): Boolean = await {
-    jdbcDao.action(jdbcDao.queryExists(by.orgId, query))
-  }
-
-  override def listQueries()(implicit by: User): Seq[CatalogQuery] = await {
-    jdbcDao.action(
-      jdbcDao.listQueries(by.orgId)
-    ).map(_.sortBy(_.updateTime).reverse
-      .map { queryEntity =>
-        CatalogQuery(
-          name = queryEntity.name,
-          text = queryEntity.text,
-          description = queryEntity.description,
-          owner = Some(userName(queryEntity.createBy))
-        )
-      })
-  }
-
-  override def listQueries(pattern: String)(implicit by: User): Seq[CatalogQuery] = await {
-    jdbcDao.action(
-      jdbcDao.listQueries(by.orgId, pattern)
-    ).map(_.map { queryEntity =>
-      CatalogQuery(
-        name = queryEntity.name,
-        text = queryEntity.text,
-        description = queryEntity.description,
-        owner = Some(userName(queryEntity.createBy))
-      )
-    })
-  }
-
-  // ----------------------------------------------------------------------------
-  // Cluster
-  // ----------------------------------------------------------------------------
-
-  override protected def doCreateCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.createCluster(
-      ClusterEntity(
-        name = clusterDefinition.name,
-        clusterType = clusterDefinition.`type`,
-        environment = clusterDefinition.environment,
-        config = clusterDefinition.config,
+  override protected def doCreateApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
+    jdbcDao.action(jdbcDao.createApplication(
+      ApplicationEntity(
+        name = appDefinition.name,
+        labels = appDefinition.labels,
+        appType = appDefinition.appType,
+        config = appDefinition.config,
+				state = appDefinition.state,
         createBy = by.userId,
         updateBy = by.userId
       )
     ))
   }
 
-  override protected def doDropCluster(cluster: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getCluster(cluster)).flatMap {
-      case Some(clusterEntity) =>
-        jdbcDao.action(jdbcDao.deleteCluster(clusterEntity.id.get))
-      case None =>
-        if (ignoreIfNotExists) Future(Unit)
-        else throw new NoSuchClusterException(cluster)
-    }
-  }
-
-  override def alterCluster(clusterDefinition: CatalogCluster)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getCluster(clusterDefinition.name)).flatMap {
-      case Some(clusterEntity) =>
+  override def alterApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
+    jdbcDao.action(jdbcDao.getApplication(appDefinition.name)).flatMap {
+      case Some(appEntity) =>
         jdbcDao.action(
-          jdbcDao.updateCluster(
-            ClusterEntity(
-              id = clusterEntity.id,
-              name = clusterDefinition.name,
-              clusterType = clusterDefinition.`type`,
-              environment = clusterDefinition.environment,
-              config = clusterDefinition.config,
-              createBy = clusterEntity.createBy,
-              createTime = clusterEntity.createTime,
+          jdbcDao.updateApplication(
+            ApplicationEntity(
+              id = appEntity.id,
+              name = appDefinition.name,
+              labels = appDefinition.labels,
+              appType = appDefinition.appType,
+              config = appDefinition.config,
+							state = appDefinition.state,
+              createBy = appEntity.createBy,
+              createTime = appEntity.createTime,
               updateBy = by.userId,
               updateTime = Utils.now
             )
           )
         )
       case None =>
-        throw new NoSuchClusterException(clusterDefinition.name)
-    }
-  }
-
-  override def getCluster(cluster: String): CatalogCluster = await {
-    jdbcDao.action(jdbcDao.getCluster(cluster)).map {
-      case Some(clusterEntity) =>
-        CatalogCluster(
-          name = clusterEntity.name,
-          `type` = clusterEntity.clusterType,
-          environment = clusterEntity.environment,
-          config = clusterEntity.config
-        )
-      case None =>
-        throw new NoSuchClusterException(cluster)
-    }
-  }
-
-  override def getClusterOption(cluster: String): Option[CatalogCluster] = await {
-    jdbcDao.action(jdbcDao.getCluster(cluster)).map {
-      _.map { clusterEntity =>
-        CatalogCluster(
-          name = clusterEntity.name,
-          `type` = clusterEntity.clusterType,
-          environment = clusterEntity.environment,
-          config = clusterEntity.config
-        )
-      }
-    }
-  }
-
-  override def clusterExists(cluster: String): Boolean = await {
-    jdbcDao.action(jdbcDao.clusterExists(cluster))
-  }
-
-  override def listClusters(): Seq[CatalogCluster] = await {
-    jdbcDao.action(jdbcDao.listClusters()).map(_.map { clusterEntity =>
-      CatalogCluster(
-        name = clusterEntity.name,
-        `type` = clusterEntity.clusterType,
-        environment = clusterEntity.environment,
-        config = clusterEntity.config
-      )
-    })
-  }
-
-  override def listClusters(pattern: String): Seq[CatalogCluster] = await {
-    jdbcDao.action(jdbcDao.listClusters(pattern)).map(_.map { clusterEntity =>
-      CatalogCluster(
-        name = clusterEntity.name,
-        `type` = clusterEntity.clusterType,
-        environment = clusterEntity.environment,
-        config = clusterEntity.config
-      )
-    })
-  }
-
-  // ----------------------------------------------------------------------------
-  // Application
-  // ----------------------------------------------------------------------------
-
-  override protected def doCreateApplication(appDefinition: CatalogApplication, ignoreIfExists: Boolean)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.applicationExists(appDefinition.name)).flatMap {
-      case true =>
-        ignoreIfExists match {
-          case true => Future(Unit)
-          case false => throw new ApplicationExistsException(appDefinition.name)
-        }
-      case false =>
-        appDefinition.cluster match {
-          case Some(cluster) =>
-            jdbcDao.action(jdbcDao.getCluster(cluster)).flatMap {
-              case Some(clusterEntity) =>
-                jdbcDao.action(jdbcDao.createApplication(
-                  ApplicationEntity(
-                    name = appDefinition.name,
-                    address = None,
-                    organizationId = organizationId(appDefinition.org),
-                    appType = appDefinition.appType,
-                    clusterId = clusterEntity.id,
-                    config = appDefinition.config,
-                    startOnBoot = appDefinition.startOnBoot,
-                    createBy = by.userId,
-                    updateBy = by.userId
-                  )
-                ))
-              case None =>
-                throw new NoSuchClusterException(cluster)
-            }
-          case None =>
-            jdbcDao.action(jdbcDao.createApplication(
-              ApplicationEntity(
-                name = appDefinition.name,
-                address = None,
-                organizationId = organizationId(appDefinition.org),
-                appType = appDefinition.appType,
-                clusterId = None,
-                config = appDefinition.config,
-                startOnBoot = appDefinition.startOnBoot,
-                createBy = by.userId,
-                updateBy = by.userId
-              )
-            ))
-        }
-    }
-  }
-
-  override def alterApplication(appDefinition: CatalogApplication)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getApplication(appDefinition.name)).flatMap {
-      case Some(appEntity) =>
-        appDefinition.cluster match {
-          case Some(cluster) =>
-            jdbcDao.action(jdbcDao.getCluster(cluster)).flatMap {
-              case Some(clusterEntity) =>
-                jdbcDao.action(
-                  jdbcDao.updateApplication(
-                    ApplicationEntity(
-                      id = appEntity.id,
-                      name = appDefinition.name,
-                      address = appEntity.address,
-                      organizationId = organizationId(appDefinition.org),
-                      appType = appDefinition.appType,
-                      config = appDefinition.config,
-                      startOnBoot = appDefinition.startOnBoot,
-                      clusterId = clusterEntity.id,
-                      createBy = appEntity.createBy,
-                      createTime = appEntity.createTime,
-                      updateBy = by.userId,
-                      updateTime = Utils.now
-                    )
-                  )
-                )
-              case None =>
-                throw new NoSuchClusterException(cluster)
-            }
-          case None =>
-            jdbcDao.action(
-              jdbcDao.updateApplication(
-                ApplicationEntity(
-                  id = appEntity.id,
-                  name = appDefinition.name,
-                  address = appEntity.address,
-                  organizationId = organizationId(appDefinition.org),
-                  appType = appDefinition.appType,
-                  config = appDefinition.config,
-                  startOnBoot = appDefinition.startOnBoot,
-                  clusterId = None,
-                  createBy = appEntity.createBy,
-                  createTime = appEntity.createTime,
-                  updateBy = by.userId,
-                  updateTime = Utils.now
-                )
-              )
-            )
-        }
-      case None =>
         throw new NoSuchApplicationException(appDefinition.name)
     }
   }
 
-  override def listApplications()(implicit by: User): Seq[CatalogApplication] = await {
-    jdbcDao.action(jdbcDao.listApplications(by.orgId)).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
-      CatalogApplication(
-        name = appEntity.name,
-        org = orgEntity.name,
-        cluster = clusterEntity.map(_.name),
-        appType = appEntity.appType,
-        config = appEntity.config,
-        createTime = Some(appEntity.createTime),
-        updateTime = Some(appEntity.updateTime),
-        startOnBoot = appEntity.startOnBoot
-      )
-    })
+  override def listApplications(): Seq[CatalogApplication] = await {
+    jdbcDao.action(jdbcDao.listApplications()).map(_.map(appEntity => CatalogApplication(
+      name = appEntity.name,
+      labels = appEntity.labels,
+      appType = appEntity.appType,
+			state = appEntity.state,
+      config = appEntity.config
+    )))
   }
 
-  override def listApplications(pattern: String)(implicit by: User): Seq[CatalogApplication] = await {
-    jdbcDao.action(jdbcDao.listApplications(by.orgId, pattern)).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
+  override def listApplications(pattern: String): Seq[CatalogApplication] = await {
+    jdbcDao.action(jdbcDao.listApplications(pattern)).map(_.map(appEntity =>
       CatalogApplication(
         name = appEntity.name,
-        org = orgEntity.name,
-        cluster = clusterEntity.map(_.name),
+        labels = appEntity.labels,
         appType = appEntity.appType,
-        config = appEntity.config,
-        createTime = Some(appEntity.createTime),
-        updateTime = Some(appEntity.updateTime),
-        startOnBoot = appEntity.startOnBoot
-      )
-    })
+				state = appEntity.state,
+        config = appEntity.config
+      )))
   }
 
-  override def applicationExists(app: String)(implicit by: User): Boolean = await {
+  override def applicationExists(app: String): Boolean = await {
     jdbcDao.action(jdbcDao.applicationExists(app))
   }
-
-	override def applicationUsingClusterExists(cluster: String): Boolean = await {
-		jdbcDao.action(jdbcDao.applicationUsingClusterExists(clusterId(cluster)))
-	}
 
   override protected def doDropApplication(app: String, ignoreIfNotExists: Boolean)(implicit by: User): Unit = await {
     jdbcDao.action(jdbcDao.getApplication(app)).flatMap {
@@ -509,13 +195,10 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     jdbcDao.action(jdbcDao.getApplication(app)).map(_.map(appEntity =>
       CatalogApplication(
         name = appEntity.name,
-        org = organizationName(appEntity.organizationId),
+        labels = appEntity.labels,
         appType = appEntity.appType,
-        config = appEntity.config,
-        cluster = appEntity.clusterId.map(clusterName),
-        createTime = Some(appEntity.createTime),
-        updateTime = Some(appEntity.updateTime),
-        startOnBoot = appEntity.startOnBoot
+				state = appEntity.state,
+        config = appEntity.config
       )
     ))
   }
@@ -525,63 +208,15 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       case Some(appEntity) =>
         CatalogApplication(
           name = appEntity.name,
-          org = organizationName(appEntity.organizationId),
+          labels = appEntity.labels,
           appType = appEntity.appType,
-          config = appEntity.config,
-          cluster = appEntity.clusterId.map(clusterName),
-          createTime = Some(appEntity.createTime),
-          updateTime = Some(appEntity.updateTime),
-          startOnBoot = appEntity.startOnBoot
+					state = appEntity.state,
+          config = appEntity.config
         )
       case None =>
         throw new NoSuchApplicationException(app)
     }
   }
-
-  override def listAllApplications(): Seq[CatalogApplication] = await {
-    jdbcDao.action(jdbcDao.listAllApplications()).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
-      CatalogApplication(
-        name = appEntity.name,
-        org = orgEntity.name,
-        cluster = clusterEntity.map(_.name),
-        appType = appEntity.appType,
-        config = appEntity.config,
-        createTime = Some(appEntity.createTime),
-        updateTime = Some(appEntity.updateTime),
-        startOnBoot = appEntity.startOnBoot
-      )
-    })
-  }
-
-  override def listAllApplications(startOnBoot: Boolean): Seq[CatalogApplication] = await {
-    jdbcDao.action(jdbcDao.listAllApplications(startOnBoot)).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
-      CatalogApplication(
-        name = appEntity.name,
-        org = orgEntity.name,
-        cluster = clusterEntity.map(_.name),
-        appType = appEntity.appType,
-        config = appEntity.config,
-        createTime = Some(appEntity.createTime),
-        updateTime = Some(appEntity.updateTime),
-        startOnBoot = appEntity.startOnBoot
-      )
-    })
-  }
-
-	override def listApplicationsByCluster(cluster: String): Seq[CatalogApplication] = await {
-		jdbcDao.action(jdbcDao.listApplicationsByCluster(clusterId(cluster))).map(_.map { case ((appEntity, orgEntity), clusterEntity) =>
-			CatalogApplication(
-				name = appEntity.name,
-				org = orgEntity.name,
-				cluster = clusterEntity.map(_.name),
-				appType = appEntity.appType,
-				config = appEntity.config,
-				createTime = Some(appEntity.createTime),
-				updateTime = Some(appEntity.updateTime),
-				startOnBoot = appEntity.startOnBoot
-			)
-		})
-	}
 
   // ----------------------------------------------------------------------------
   // Organization
@@ -627,18 +262,18 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         if (cascade) {
           jdbcDao.actionTransactionally(
             for (
-            // delete groups and group user rels
-              _ <- jdbcDao.listGroups(catalogOrganization.id.get).map {
-                _.map { groupEntity =>
-                  jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get)
-                  jdbcDao.deleteGroup(groupEntity.id.get)
-                }
-              };
-              // delete tables and functions in database
-              _ <- jdbcDao.listDatabaseIds(catalogOrganization.id.get).map {
-                _.map { dbId =>
-                  jdbcDao.deleteTables(dbId)
-                  jdbcDao.deleteFunctions(dbId)
+							// delete groups and group user rels
+							_ <- jdbcDao.listGroups(catalogOrganization.id.get).map {
+								_.map { groupEntity =>
+									jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get)
+									jdbcDao.deleteGroup(groupEntity.id.get)
+								}
+							};
+            // delete tables and functions in database
+              _ <- jdbcDao.listDatabases(catalogOrganization.id.get).map {
+                _.map { dbEntity =>
+                  jdbcDao.deleteTables(dbEntity.id.get)
+                  jdbcDao.deleteFunctions(dbEntity.id.get)
                 }
               };
               // delete databases in organization
@@ -649,8 +284,6 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               _ <- jdbcDao.deleteTimedEvents(catalogOrganization.id.get);
               // delete procedures in organization
               _ <- jdbcDao.deleteProcedures(catalogOrganization.id.get);
-              // delete queries in organization
-              _ <- jdbcDao.deleteQueries(catalogOrganization.id.get);
               // delete organization
               _ <- jdbcDao.deleteOrganization(org)
             ) yield ()
@@ -662,7 +295,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
               users <- jdbcDao.listUsers(catalogOrganization.id.get);
               events <- jdbcDao.listTimedEvents(catalogOrganization.id.get);
               procedures <- jdbcDao.listProcedures(catalogOrganization.id.get);
-              groups <- jdbcDao.listGroups(catalogOrganization.id.get)
+							groups <- jdbcDao.listGroups(catalogOrganization.id.get)
             ) yield (databases, users, events, procedures, groups)
           ).map { case (databases, users, events, procedures, groups) =>
             if (databases.isEmpty && users.isEmpty && events.isEmpty && procedures.isEmpty && groups.isEmpty) {
@@ -801,7 +434,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       case Some(userEntity) =>
         jdbcDao.actionTransactionally(
           for (
-            _ <- jdbcDao.deleteGroupUserRelsByUser(userEntity.id.get);
+						_ <- jdbcDao.deleteGroupUserRelsByUser(userEntity.id.get);
             _ <- jdbcDao.deleteDatabasePrivilegeByUser(userEntity.id.get);
             _ <- jdbcDao.deleteTablePrivilegeByUser(userEntity.id.get);
             _ <- jdbcDao.deleteColumnPrivilegeByUser(userEntity.id.get);
@@ -875,9 +508,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(userName(userEntity.createBy)),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
       case None => throw new NoSuchUserException(s"$user in organization $org")
     }
@@ -898,9 +529,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(userName(userEntity.createBy)),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
     })
   }
@@ -910,7 +539,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   }
 
   override def listUsers(org: String): Seq[CatalogUser] = await {
-    jdbcDao.action(jdbcDao.listUsers(organizationId(org))).map(_.map { case (userEntity, createUserEntity) =>
+    jdbcDao.action(jdbcDao.listUsers(organizationId(org))).map(_.map { userEntity =>
       CatalogUser(
         org = org,
         name = userEntity.name,
@@ -923,15 +552,13 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(createUserEntity.name),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
     })
   }
 
   override def listUsers(org: String, pattern: String): Seq[CatalogUser] = await {
-    jdbcDao.action(jdbcDao.listUsers(organizationId(org), pattern)).map(_.map { case (userEntity, createUserEntity) =>
+    jdbcDao.action(jdbcDao.listUsers(organizationId(org), pattern)).map(_.map { userEntity =>
       CatalogUser(
         org = org,
         name = userEntity.name,
@@ -944,9 +571,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(createUserEntity.name),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
     })
   }
@@ -965,9 +590,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(userName(userEntity.createBy)),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
     })
   }
@@ -986,9 +609,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
         grantDcl = userEntity.grantDcl,
         isSA = userEntity.isSA,
         configuration = userEntity.configuration,
-        createBy = Some(userName(userEntity.createBy)),
-        createTime = Some(userEntity.createTime),
-        updateTime = Some(userEntity.updateTime)
+        createBy = Some(userName(userEntity.createBy))
       )
     })
   }
@@ -1110,13 +731,13 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   override def listProcedures()(implicit by: User): Seq[CatalogProcedure] = await {
     jdbcDao.action(
       jdbcDao.listProcedures(by.orgId)
-    ).map(_.map { case (procEntity, userEntity) =>
+    ).map(_.map { procEntity =>
       CatalogProcedure(
         name = procEntity.name,
         sqls = procEntity.cmds,
         lang = procEntity.lang,
         description = procEntity.description,
-        owner = Some(userEntity.name)
+        owner = Some(userName(procEntity.createBy))
       )
     })
   }
@@ -1124,13 +745,13 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   override def listProcedures(pattern: String)(implicit by: User): Seq[CatalogProcedure] = await {
     jdbcDao.action(
       jdbcDao.listProcedures(by.orgId, pattern)
-    ).map(_.map { case (procEntity, userEntity) =>
+    ).map(_.map { procEntity =>
       CatalogProcedure(
         name = procEntity.name,
         sqls = procEntity.cmds,
         lang = procEntity.lang,
         description = procEntity.description,
-        owner = Some(userEntity.name)
+        owner = Some(userName(procEntity.createBy))
       )
     })
   }
@@ -1436,25 +1057,25 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
   }
 
   override def listDatabases()(implicit by: User): Seq[CatalogDatabase] = await {
-    jdbcDao.action(jdbcDao.listDatabases(by.orgId)).map(_.map { case (dbEntity, userEntity) =>
+    jdbcDao.action(jdbcDao.listDatabases(by.orgId)).map(_.map { dbEntity =>
       CatalogDatabase(
         name = dbEntity.name,
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        owner = Some(userEntity.name)
+        owner = Some(userName(dbEntity.createBy))
       )
     })
   }
 
   override def listDatabases(pattern: String)(implicit by: User): Seq[CatalogDatabase] = await {
-    jdbcDao.action(jdbcDao.listDatabases(by.orgId, pattern)).map(_.map { case (dbEntity, userEntity) =>
+    jdbcDao.action(jdbcDao.listDatabases(by.orgId, pattern)).map(_.map { dbEntity =>
       CatalogDatabase(
         name = dbEntity.name,
         description = dbEntity.description,
         properties = dbEntity.properties,
         isLogical = dbEntity.isLogical,
-        owner = Some(userEntity.name)
+        owner = Some(userName(dbEntity.createBy))
       )
     })
   }
@@ -1659,7 +1280,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       jdbcDao.getDatabase(by.orgId, database)
     ).flatMap {
       case Some(dbEntity) =>
-        jdbcDao.action(jdbcDao.listTables(dbEntity.id.get)).map(_.map { case (tableEntity, userEntity) =>
+        jdbcDao.action(jdbcDao.listTables(dbEntity.id.get)).map(_.map { tableEntity =>
           CatalogTable(
             db = Some(database),
             name = tableEntity.name,
@@ -1669,7 +1290,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
             viewText = tableEntity.viewText,
             isStream = tableEntity.isStream,
             tableSize = tableEntity.tableSize,
-            owner = Some(userEntity.name)
+            owner = Some(userName(tableEntity.createBy))
           )
         })
       case None =>
@@ -1682,7 +1303,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
       jdbcDao.getDatabase(by.orgId, database)
     ).flatMap {
       case Some(dbEntity) =>
-        jdbcDao.action(jdbcDao.listTables(dbEntity.id.get, pattern)).map(_.map { case (tableEntity, userEntity) =>
+        jdbcDao.action(jdbcDao.listTables(dbEntity.id.get, pattern)).map(_.map { tableEntity =>
           CatalogTable(
             db = Some(database),
             name = tableEntity.name,
@@ -1692,7 +1313,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
             viewText = tableEntity.viewText,
             isStream = tableEntity.isStream,
             tableSize = tableEntity.tableSize,
-            owner = Some(userEntity.name)
+            owner = Some(userName(tableEntity.createBy))
           )
         })
       case None =>
@@ -2198,330 +1819,164 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     }
   }
 
-  // ----------------------------------------------------------------------------
-  // Group
-  // ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
+	// Group
+	// ----------------------------------------------------------------------------
 
   override protected def doCreateGroup(groupDefinition: CatalogGroup, ignoreIfExists: Boolean)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.groupExists(by.orgId, groupDefinition.name)).flatMap {
-      case true =>
-        if (ignoreIfExists) {
-          Future(Unit)
-        } else {
-          throw new GroupExistsException(groupDefinition.name)
-        }
-      case false =>
-        jdbcDao.action(
-          jdbcDao.createGroup(GroupEntity(
-            name = groupDefinition.name,
-            organizationId = by.orgId,
-            description = groupDefinition.desc,
-            createBy = by.userId,
-            updateBy = by.userId
-          ))
-        )
-    }
-  }
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, groupDefinition.name)).flatMap {
+			case true =>
+				if (ignoreIfExists) {
+					Future(Unit)
+				} else {
+					throw new GroupExistsException(groupDefinition.name)
+				}
+			case false =>
+				jdbcDao.action(
+					jdbcDao.createGroup(GroupEntity(
+						name = groupDefinition.name,
+						organizationId = by.orgId,
+						description = groupDefinition.desc,
+						createBy = by.userId,
+						updateBy = by.userId
+					))
+				)
+		}
+	}
 
-  override protected def doRenameGroup(group: String, newGroup: String)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.groupExists(by.orgId, group)).flatMap {
-      case false => throw new NoSuchGroupException(group)
-      case true =>
-        jdbcDao.action(jdbcDao.groupExists(by.orgId, newGroup)).flatMap {
-          case true => throw new GroupExistsException(newGroup)
-          case false =>
-            jdbcDao.action(jdbcDao.renameGroup(by.orgId, group, newGroup)(by.userId))
-        }
-    }
-  }
+	override protected def doRenameGroup(group: String, newGroup: String)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, group)).flatMap {
+			case false => throw new NoSuchGroupException(group)
+			case true =>
+				jdbcDao.action(jdbcDao.groupExists(by.orgId, newGroup)).flatMap {
+					case true => throw new GroupExistsException(newGroup)
+					case false =>
+						jdbcDao.action(jdbcDao.renameGroup(by.orgId, group, newGroup)(by.userId))
+				}
+		}
+	}
 
-  override def listGroups()(implicit by: User): Seq[CatalogGroup] = await {
-    jdbcDao.action(jdbcDao.listGroups(by.orgId)).map(_.map(groupEntity =>
-      CatalogGroup(groupEntity.name, groupEntity.description)))
-  }
+	override def listGroups()(implicit by: User): Seq[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.listGroups(by.orgId)).map(_.map(groupEntity =>
+			CatalogGroup(groupEntity.name, groupEntity.description)))
+	}
 
-  override def listGroups(pattern: String)(implicit by: User): Seq[CatalogGroup] = await {
-    jdbcDao.action(jdbcDao.listGroups(by.orgId, pattern)).map(_.map(groupEntity =>
-      CatalogGroup(groupEntity.name, groupEntity.description)))
-  }
+	override def listGroups(pattern: String)(implicit by: User): Seq[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.listGroups(by.orgId, pattern)).map(_.map(groupEntity =>
+			CatalogGroup(groupEntity.name, groupEntity.description)))
+	}
 
-  override def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, groupDefinition.name)).flatMap {
-      case None => throw new NoSuchGroupException(groupDefinition.name)
-      case Some(groupEntity) =>
-        jdbcDao.action(jdbcDao.updateGroup(
-          groupEntity.copy(updateBy = by.userId, updateTime = Utils.now)
-        ))
-    }
-  }
+	override def alterGroup(groupDefinition: CatalogGroup)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupDefinition.name)).flatMap {
+			case None => throw new NoSuchGroupException(groupDefinition.name)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.updateGroup(
+					groupEntity.copy(updateBy = by.userId, updateTime = Utils.now)
+				))
+		}
+	}
 
-  override def getGroup(group: String)(implicit by: User): CatalogGroup = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map {
-      case None => throw new NoSuchGroupException(group)
-      case Some(groupEntity) =>
-        CatalogGroup(
-          groupEntity.name,
-          groupEntity.description
-        )
-    }
-  }
+	override def getGroup(group: String)(implicit by: User): CatalogGroup = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				CatalogGroup(
+					groupEntity.name,
+					groupEntity.description
+				)
+		}
+	}
 
-  override def getGroupOption(group: String)(implicit by: User): Option[CatalogGroup] = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map(_.map(groupEntity =>
-      CatalogGroup(
-        groupEntity.name,
-        groupEntity.description
-      )
-    ))
-  }
+	override def getGroupOption(group: String)(implicit by: User): Option[CatalogGroup] = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).map(_.map(groupEntity =>
+			CatalogGroup(
+				groupEntity.name,
+				groupEntity.description
+			)
+		))
+	}
 
-  override protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
-      case None =>
-        if (ignoreIfNotExists) Future(Unit)
-        else throw new NoSuchGroupException(group)
-      case Some(groupEntity) =>
-        jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
-          if (rels.nonEmpty) {
-            if (!cascade) throw new NonEmptyException(group)
-            else {
-              jdbcDao.actionTransactionally(
-                jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get).flatMap(_ => jdbcDao.deleteGroup(groupEntity.id.get))
-              )
-            }
-          } else {
-            jdbcDao.action(jdbcDao.deleteGroup(groupEntity.id.get))
-          }
-        }
-    }
-  }
+	override protected def doDropGroup(group: String, ignoreIfNotExists: Boolean, cascade: Boolean)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None =>
+				if (ignoreIfNotExists) Future(Unit)
+				else throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
+					if (rels.nonEmpty) {
+						if (!cascade) throw new NonEmptyException(group)
+						else {
+							jdbcDao.actionTransactionally(
+								jdbcDao.deleteGroupUserRelsByGroup(groupEntity.id.get).flatMap(_ => jdbcDao.deleteGroup(groupEntity.id.get))
+							)
+						}
+					} else {
+						jdbcDao.action(jdbcDao.deleteGroup(groupEntity.id.get))
+					}
+				}
+		}
+	}
 
-  override def groupExists(group: String)(implicit by: User): Boolean = await {
-    jdbcDao.action(jdbcDao.groupExists(by.orgId, group))
-  }
+	override def groupExists(group: String)(implicit by: User): Boolean = await {
+		jdbcDao.action(jdbcDao.groupExists(by.orgId, group))
+	}
 
-  override protected def doCreateGroupUserRel(groupUserRels: CatalogGroupUserRel)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRels.group)).flatMap {
-      case None => throw new NoSuchGroupException(groupUserRels.group)
-      case Some(groupEntity) =>
-        jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
-          jdbcDao.action(jdbcDao.createGroupUserRel(
-            groupUserRels.users.filterNot(rels.contains).map(user => userId(by.orgId, user)).map(id =>
-              GroupUserRelEntity(
-                groupId = groupEntity.id.get,
-                userId = id,
-                createBy = by.userId,
-                updateBy = by.userId
-              )
-            ): _*
-          ))
-        }
-    }
-  }
+	override protected def doCreateGroupUserRel(groupUserRels: CatalogGroupUserRel)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRels.group)).flatMap {
+			case None => throw new NoSuchGroupException(groupUserRels.group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).flatMap { rels =>
+					jdbcDao.action(jdbcDao.createGroupUserRel(
+						groupUserRels.users.map(user => userId(by.orgId, user)).filterNot(rels.map(_.userId).contains).map(id =>
+							GroupUserRelEntity(
+								groupId = groupEntity.id.get,
+								userId = id,
+								createBy = by.userId,
+								updateBy = by.userId
+							)
+						):_*
+					))
+				}
+		}
+	}
 
-  override protected def doDropGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRel.group)).flatMap {
-      case None => throw new NoSuchGroupException(groupUserRel.group)
-      case Some(groupEntity) =>
-        jdbcDao.action(
-          jdbcDao.deleteGroupUserRels(groupEntity.id.get, groupUserRel.users.map(user => userId(by.orgId, user)))
-        )
-    }
-  }
+	override protected def doDropGroupUserRel(groupUserRel: CatalogGroupUserRel)(implicit by: User): Unit = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, groupUserRel.group)).flatMap {
+			case None => throw new NoSuchGroupException(groupUserRel.group)
+			case Some(groupEntity) =>
+				jdbcDao.action(
+					jdbcDao.deleteGroupUserRels(groupEntity.id.get, groupUserRel.users.map(user => userId(by.orgId, user)))
+				)
+		}
+	}
 
-  override def listGroupUser(group: String)(implicit by: User): CatalogGroupUserRel = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
-      case None => throw new NoSuchGroupException(group)
-      case Some(groupEntity) =>
-        jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).map(users =>
-          CatalogGroupUserRel(
-            group = group,
-            users = users
-          )
-        )
-    }
-  }
+	override def listGroupUser(group: String)(implicit by: User): CatalogGroupUserRel = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).map(_.map(rel => userName(rel.userId))).map( users =>
+					CatalogGroupUserRel(
+						group = group,
+						users = users
+					)
+				)
+		}
+	}
 
-  override def listGroupUser(group: String, pattern: String)(implicit by: User): CatalogGroupUserRel = await {
-    jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
-      case None => throw new NoSuchGroupException(group)
-      case Some(groupEntity) =>
-        jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get, pattern)).map(users =>
-          CatalogGroupUserRel(
-            group = group,
-            users = users
-          )
-        )
-    }
-  }
+	override def listGroupUser(group: String, pattern: String)(implicit by: User): CatalogGroupUserRel = await {
+		jdbcDao.action(jdbcDao.getGroup(by.orgId, group)).flatMap {
+			case None => throw new NoSuchGroupException(group)
+			case Some(groupEntity) =>
+				jdbcDao.action(jdbcDao.getGroupUserRelsByGroup(groupEntity.id.get)).map(_.map(rel => userName(rel.userId))).map( users =>
+					CatalogGroupUserRel(
+						group = group,
+						users = Utils.filterPattern(users, Utils.escapeLikeRegex(pattern))
+					)
+				)
+		}
+	}
 
-
-  override def listDatabasePrivileges()(implicit by: User): Seq[CatalogDatabasePrivilege] = await {
-    jdbcDao.action(jdbcDao.listDatabasePrivileges(by.orgId)).map(
-      privilegeEntities => {
-        val privileges = privilegeEntities.map {
-          case ((userEntity, databasePrivilegeEntity), databaseEntity) =>
-            CatalogDatabasePrivilege(
-              user = userEntity.name,
-              database = databaseEntity.name,
-              privileges = Seq(databasePrivilegeEntity.privilegeType)
-            )
-        }.sortBy(privilege => (privilege.user, privilege.database))
-
-        val catalogDatabasePrivilegeSeq = new ListBuffer[CatalogDatabasePrivilege]
-        if (privileges.nonEmpty) {
-          var currentUser: String = privileges.head.user
-          var currentDb: String = privileges.head.database
-          val privilegeTypeSeq = new ListBuffer[String]
-          for (privilege <- privileges) {
-            if (privilege.user == currentUser && privilege.database == currentDb) {
-              privilegeTypeSeq.append(privilege.privileges.head)
-            } else {
-              catalogDatabasePrivilegeSeq.append(
-                CatalogDatabasePrivilege(
-                  user = currentUser,
-                  database = currentDb,
-                  privileges = privilegeTypeSeq
-                )
-              )
-
-              currentUser = privilege.user
-              currentDb = privilege.database
-              privilegeTypeSeq.clear()
-              privilegeTypeSeq.append(privilege.privileges.head)
-            }
-          }
-
-          catalogDatabasePrivilegeSeq.append(
-            CatalogDatabasePrivilege(
-              user = currentUser,
-              database = currentDb,
-              privileges = privilegeTypeSeq
-            )
-          )
-        }
-        catalogDatabasePrivilegeSeq
-      }
-    )
-  }
-
-  override def listTablePrivileges()(implicit by: User): Seq[CatalogTablePrivilege] = await {
-    jdbcDao.action(jdbcDao.listTablePrivileges(by.orgId)).map(
-      privilegeEntities => {
-        val privileges = privilegeEntities.map {
-          case (((userEntity, tablePrivilegeEntity), tableEntity), databaseEntity) =>
-            CatalogTablePrivilege(
-              user = userEntity.name,
-              database = databaseEntity.name,
-              table = tableEntity.name,
-              privileges = Seq(tablePrivilegeEntity.privilegeType)
-            )
-        }.sortBy(privilege => (privilege.user, privilege.database, privilege.table))
-
-        val catalogTablePrivilegeSeq = new ListBuffer[CatalogTablePrivilege]
-
-        if (privileges.nonEmpty) {
-          var currentUser: String = privileges.head.user
-          var currentDb: String = privileges.head.database
-          var currentTable: String = privileges.head.table
-          val privilegeTypeSeq = new ListBuffer[String]
-          for (privilege <- privileges) {
-            if (privilege.user == currentUser && privilege.database == currentDb && privilege.table == currentTable) {
-              privilegeTypeSeq.append(privilege.privileges.head)
-            } else {
-              catalogTablePrivilegeSeq.append(
-                CatalogTablePrivilege(
-                  user = currentUser,
-                  database = currentDb,
-                  table = currentTable,
-                  privileges = privilegeTypeSeq
-                )
-              )
-
-              currentUser = privilege.user
-              currentDb = privilege.database
-              currentTable = privilege.table
-              privilegeTypeSeq.clear()
-              privilegeTypeSeq.append(privilege.privileges.head)
-            }
-          }
-
-          catalogTablePrivilegeSeq.append(
-            CatalogTablePrivilege(
-              user = currentUser,
-              database = currentDb,
-              table = currentTable,
-              privileges = privilegeTypeSeq
-            )
-          )
-        }
-        catalogTablePrivilegeSeq
-      }
-    )
-  }
-
-
-  override def listColumnPrivileges()(implicit by: User): Seq[CatalogColumnPrivilegeEntity] = await {
-    jdbcDao.action(jdbcDao.listColumnPrivileges(by.orgId)).map(
-      privilegeEntities => {
-        privilegeEntities.map {
-          case (((userEntity, columnPrivilegeEntity), tableEntity), databaseEntity) =>
-            CatalogColumnPrivilegeEntity(
-              user = userEntity.name,
-              database = databaseEntity.name,
-              table = tableEntity.name,
-              column = columnPrivilegeEntity.column,
-              privilegeType = columnPrivilegeEntity.privilegeType
-            )
-        }.sortBy(privilege => (privilege.user, privilege.database, privilege.table, privilege.privilegeType))
-
-        //        privileges.foreach(privilege => println(privilege.user, privilege.column, privilege.privilegeType))
-        //
-        //        val catalogColumnPrivilegeSeq = new ListBuffer[CatalogColumnPrivilege]
-        //
-        //        if (privileges.nonEmpty) {
-        //          var currentUser: String = privileges.head.user
-        //          var currentDb: String = privileges.head.database
-        //          var currentTable: String = privileges.head.table
-        //          var currentColumn: String = privileges.head.column
-        //          val privilegeTypeSeq = new ListBuffer[String]
-        //          for (privilege <- privileges) {
-        //            if (privilege.user == currentUser && privilege.database == currentDb && privilege.table == currentTable && privilege.column == currentColumn) {
-        //              privilegeTypeSeq.append(privilege.privilegeType)
-        //            } else {
-        //              catalogColumnPrivilegeSeq.append(
-        //                CatalogColumnPrivilege(
-        //                  user = currentUser,
-        //                  database = currentDb,
-        //                  table = currentTable,
-        //                  privilege = Map(currentColumn -> privilegeTypeSeq)
-        //                )
-        //              )
-        //
-        //              currentUser = privilege.user
-        //              currentDb = privilege.database
-        //              currentTable = privilege.table
-        //              currentColumn = privilege.column
-        //              privilegeTypeSeq.clear()
-        //              privilegeTypeSeq.append(privilege.privilegeType)
-        //            }
-        //          }
-        //
-        //          catalogColumnPrivilegeSeq.append(
-        //            CatalogColumnPrivilege(
-        //              user = currentUser,
-        //              database = currentDb,
-        //              table = currentTable,
-        //              privilege = Map(currentColumn -> privilegeTypeSeq)
-        //            )
-        //          )
-        //        }
-        //        catalogColumnPrivilegeSeq
-      }
-    )
-  }
-
-  /**
+	/**
     * asynchronous to synchronous
     *
     * @param f asynchronous method

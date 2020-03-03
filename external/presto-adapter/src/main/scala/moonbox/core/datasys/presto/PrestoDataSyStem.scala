@@ -102,13 +102,16 @@ class PrestoDataSystem(props: Map[String, String]) extends DataSystem(props)
 
 	override def buildScan(plan: LogicalPlan, sparkSession: SparkSession): DataFrame = {
 		val sqlBuilder = new MbSqlBuilder(plan, new MbPrestoDialect)
+
+		val schema = sqlBuilder.finalLogicalPlan.schema
+
 		val rdd = new MbJdbcRDD(
 			sparkSession.sparkContext,
 			getConnection,
 			sqlBuilder.toSQL,
-			rs => Row(MbJdbcRDD.resultSetToObjectArray(rs):_*)
-		)
-		val schema = sqlBuilder.finalLogicalPlan.schema
+			schema,
+			(rs, schema) => MbJdbcRDD.resultSetToRows(rs, schema))
+
 		sparkSession.createDataFrame(rdd, schema)
 	}
 

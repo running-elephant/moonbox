@@ -20,31 +20,16 @@
 
 package moonbox.catalog
 
-import java.util.Date
 
 trait CatalogItem
 
-case class CatalogCluster(
-	name: String,
-	`type`: String,
-	environment: Map[String, String],
-	config: Map[String, String]
-) extends CatalogItem
-
 case class CatalogApplication(
 	name: String,
-	org: String,
+	labels: Seq[String],
 	appType: String,
-	cluster: Option[String],
-	config: Map[String, String],
-	startOnBoot: Boolean,
-	createTime: Option[Date] = None,
-	updateTime: Option[Date] = None
-) extends CatalogItem {
-	def fullName() = {
-		s"$org-$name"
-	}
-}
+	state: String,
+	config: Map[String, String]
+) extends CatalogItem
 
 
 case class CatalogDatabase(
@@ -57,7 +42,6 @@ case class CatalogDatabase(
 
 
 case class CatalogTableType(name: String)
-
 object CatalogTableType {
 	val TABLE = new CatalogTableType("TABLE")
 	val VIEW = new CatalogTableType("VIEW")
@@ -75,7 +59,7 @@ case class CatalogTable(
 	owner: Option[String] = None
 ) extends CatalogItem {
 
-	def database: String = db.getOrElse {
+	def database: String = db.getOrElse{
 		throw new Exception(s"table $name did not specify database")
 	}
 }
@@ -83,9 +67,7 @@ case class CatalogTable(
 case class CatalogOrganization(
 	name: String,
 	config: Map[String, String],
-	description: Option[String] = None,
-	createTime: Option[Date] = None,
-	updateTime: Option[Date] = None) extends CatalogItem
+	description: Option[String] = None) extends CatalogItem
 
 case class CatalogUser(
 	org: String,
@@ -99,9 +81,7 @@ case class CatalogUser(
 	grantDcl: Boolean = false,
 	isSA: Boolean = false,
 	configuration: Map[String, String] = Map(),
-	createBy: Option[String] = None,
-	createTime: Option[Date] = None,
-	updateTime: Option[Date] = None
+	createBy: Option[String] = None
 ) extends CatalogItem
 
 case class CatalogFunction(
@@ -114,7 +94,7 @@ case class CatalogFunction(
 	owner: Option[String] = None
 ) extends CatalogItem {
 
-	def database: String = db.getOrElse {
+	def database: String = db.getOrElse{
 		throw new Exception(s"function $name did not specify database")
 	}
 
@@ -126,7 +106,7 @@ case class CatalogFunctionResource(
 	resourceType: String,
 	resource: String) extends CatalogItem {
 
-	def database: String = db.getOrElse {
+	def database: String = db.getOrElse{
 		throw new Exception(s"function resource $func did not specify database")
 	}
 
@@ -136,13 +116,6 @@ case class CatalogProcedure(
 	name: String,
 	sqls: Seq[String],
 	lang: String,
-	description: Option[String] = None,
-	owner: Option[String] = None
-) extends CatalogItem
-
-case class CatalogQuery(
-	name: String,
-	text: String,
 	description: Option[String] = None,
 	owner: Option[String] = None
 ) extends CatalogItem
@@ -167,22 +140,14 @@ case class CatalogTablePrivilege(
 	database: String,
 	table: String,
 	privileges: Seq[String]
-) extends CatalogItem
-
-case class CatalogColumnPrivilegeEntity(
-	user: String,
-	database: String,
-	table: String,
-	column: String,
-	privilegeType: String
-) extends CatalogItem
+	) extends CatalogItem
 
 case class CatalogColumnPrivilege(
 	user: String,
 	database: String,
 	table: String,
 	privilege: Map[String, Seq[String]] // (column, Seq(privilegeType))
-) extends CatalogItem
+	) extends CatalogItem
 
 case class CatalogVariable(
 	user: String,

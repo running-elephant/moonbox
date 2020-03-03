@@ -33,8 +33,6 @@ class DriverInfo(
 
 	@transient var state: DriverState.Value = DriverState.WAITING
 
-	@transient var updateTime: Long = System.currentTimeMillis()
-
 	@transient var exception: Option[Exception] = None
 
 	@transient var worker: Option[WorkerInfo] = None
@@ -45,7 +43,6 @@ class DriverInfo(
 
 	private def init(): Unit = {
 		state = DriverState.WAITING
-		updateTime = System.currentTimeMillis()
 		worker = None
 		exception = None
 		appId = None

@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -44,6 +43,7 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     val username = newProps.getProperty(USER_KEY)
     val pwd = newProps.getProperty(PASSWORD_KEY)
     isLocal = Option(newProps.getProperty(IS_LOCAL_KEY)).exists(_.toBoolean)
+
     val (host, port) = parseHostsAndPorts(newProps.getProperty(HOSTS_AND_PORTS)).map { case (h, p) => (h, p.toInt) }.head
     val clientOptions = ClientOptions.builder()
       .options(newProps.asScala.toMap)
@@ -241,4 +241,3 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
 
   override def isWrapperFor(iface: Class[_]): Boolean = iface != null && iface.isAssignableFrom(getClass)
 }
-*/

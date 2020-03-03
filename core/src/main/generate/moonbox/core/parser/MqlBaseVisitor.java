@@ -24,6 +24,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateOrganization(MqlBaseParser.CreateOrganizationContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code renameOrganization}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameOrganization(MqlBaseParser.RenameOrganizationContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setOrganizationName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetOrganizationName(MqlBaseParser.SetOrganizationNameContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setOrganizationOptions}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -51,6 +65,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCreateSa(MqlBaseParser.CreateSaContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code renameSa}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameSa(MqlBaseParser.RenameSaContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setSaName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetSaName(MqlBaseParser.SetSaNameContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code setSaPassword}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -164,6 +192,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateUser(MqlBaseParser.CreateUserContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code renameUser}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameUser(MqlBaseParser.RenameUserContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setUserName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetUserName(MqlBaseParser.SetUserNameContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setUserPassword}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -191,6 +233,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCreateGroup(MqlBaseParser.CreateGroupContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code renameGroup}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameGroup(MqlBaseParser.RenameGroupContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setGroupName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetGroupName(MqlBaseParser.SetGroupNameContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code setGroupComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -226,6 +282,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitMountTable(MqlBaseParser.MountTableContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code renameTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameTable(MqlBaseParser.RenameTableContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setTableName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetTableName(MqlBaseParser.SetTableNameContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code setTableProperties}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -275,6 +345,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCreateDatabase(MqlBaseParser.CreateDatabaseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code renameDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameDatabase(MqlBaseParser.RenameDatabaseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setDatabaseName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetDatabaseName(MqlBaseParser.SetDatabaseNameContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code setDatabaseComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -339,6 +423,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateProcedure(MqlBaseParser.CreateProcedureContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code renameProcedure}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameProcedure(MqlBaseParser.RenameProcedureContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setProcedureName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetProcedureName(MqlBaseParser.SetProcedureNameContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setProcedureQuerys}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -360,12 +458,26 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitCreateEvent(MqlBaseParser.CreateEventContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setDefiner}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitSetDefiner(MqlBaseParser.SetDefinerContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSetEventName(MqlBaseParser.SetEventNameContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code setEventSchedule}
 	 * labeled alternative in {@link MqlBaseParser#mql}.

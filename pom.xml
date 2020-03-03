@@ -8,7 +8,7 @@
     <artifactId>moonbox-parent_2.11</artifactId>
     <packaging>pom</packaging>
     <name>Moonbox Project Parent POM</name>
-    <version>0.3.0-beta</version>
+    <version>0.3.0-beta-SNAPSHOT</version>
 
     <licenses>
         <license>
@@ -19,17 +19,19 @@
     </licenses>
 
     <modules>
+        <module>hook</module>
         <module>common</module>
         <module>network</module>
-        <module>protocol</module>
         <module>launcher</module>
         <module>testkit</module>
+        <module>protocol</module>
         <module>catalog</module>
         <module>catalyst</module>
         <module>core</module>
         <module>grid</module>
-        <module>jdbc</module>
+        <module>client</module>
         <module>repl</module>
+        <module>jdbc</module>
         <module>thriftserver</module>
 
         <module>external/spark-hbase-connector</module>
@@ -58,8 +60,14 @@
 
         <module>assembly</module>
 
-
     </modules>
+
+    <distributionManagement>
+        <repository>
+            <id>nexus-snapshots</id>
+            <url>http://nexus.creditease.corp/nexus/content/repositories/snapshots/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <main.basedir>${project.basedir}</main.basedir>

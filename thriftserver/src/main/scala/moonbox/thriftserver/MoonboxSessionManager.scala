@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +32,6 @@ import org.apache.hive.service.cli.session.{HiveSession, SessionManager}
 import org.apache.hive.service.cli.thrift.TProtocolVersion
 import org.apache.hive.service.cli.{HiveSQLException, SessionHandle}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, String]) extends SessionManager(null) with ReflectedCompositeService with MbLogging {
@@ -46,29 +45,32 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
   }
 
   private def initMoonboxConnection(sessionHandle: SessionHandle, sessionConf: java.util.Map[String, String], username: String, password: String) = {
-    logInfo("Initializing moonbox jdbc connection ...")
     val masterHost = serverConf.getOrElse(MOONBOX_SERVER_HOST_KEY, "localhost")
     val masterPort = serverConf.get(MOONBOX_SERVER_PORT_KEY).map(_.toInt).getOrElse(10010)
     val url = s"jdbc:moonbox://$masterHost:$masterPort"
-    val parameterMap = SessionManager.getParameterMap
+    logInfo(s"Initializing moonbox jdbc connection $url ...")
+    var conn: Connection = null
     val properties = new Properties()
-    parameterMap.keySet().toArray.foreach(key => properties.setProperty(key.toString, parameterMap.get(key)))
     properties.setProperty("user", username)
     properties.setProperty("password", password)
-
-    var conn: Connection = null
-
+    Option(SessionManager.getMaxRows).foreach(maxRows => properties.setProperty("maxrows", maxRows.toString))
+    Option(SessionManager.getFetchSize).foreach(fetchSize => properties.setProperty("fetchsize", fetchSize.toString))
+    Option(SessionManager.getQueryTimeout).foreach(queryTimeout => properties.setProperty("read_timeout", queryTimeout.toString))
+    Option(SessionManager.getIsLocal).foreach(islocal => properties.setProperty("islocal", islocal.toString))
     try {
       Class.forName("moonbox.jdbc.MbDriver")
       conn = DriverManager.getConnection(url, properties)
     } catch {
       case ex: Exception =>
         log.error("get moonbox jdbc connection failed", ex)
+        if (conn != null) {
+          try {
+            conn.close()
+          } catch {
+            case _: Exception => //nothing
+          }
+        }
         throw ex
-    } finally {
-      if (conn != null) {
-        conn.close()
-      }
     }
     moonboxSqlOperationManager.sessionHandleToMbJdbcConnection.put(sessionHandle, conn)
   }
@@ -81,8 +83,6 @@ class MoonboxSessionManager(hiveConf: HiveConf, serverConf: mutable.Map[String, 
                            withImpersonation: Boolean,
                            delegationToken: String) = {
     logInfo(s"Received openSession request from $ipAddress, user $username.")
-    logInfo(s"SessionConf: ${Option(sessionConf).map(_.asScala.toMap).getOrElse(Map.empty).mkString(", ")}")
-
     val orgUsername = SessionManager.getOrg + "@" + username
     val session = new MoonboxSession(protocol, orgUsername, password, hiveConf, ipAddress)
     session.setSessionManager(this)

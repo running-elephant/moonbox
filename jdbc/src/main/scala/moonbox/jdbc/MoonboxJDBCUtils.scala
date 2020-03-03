@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -68,4 +67,3 @@ object MoonboxJDBCUtils {
   }
 
 }
-*/

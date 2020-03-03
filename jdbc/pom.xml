@@ -5,7 +5,7 @@
     <parent>
         <artifactId>moonbox-parent_2.11</artifactId>
         <groupId>edp.moonbox</groupId>
-        <version>0.3.0-beta</version>
+        <version>0.3.0-beta-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,23 +20,13 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-network_2.11</artifactId>
+            <artifactId>moonbox-client_2.11</artifactId>
             <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.typesafe.akka</groupId>
-                    <artifactId>akka-actor_2.11</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.typesafe.akka</groupId>
-                    <artifactId>akka-remote_2.11</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
-            <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-protocol_2.11</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.11.8</version>
         </dependency>
     </dependencies>
 
@@ -70,14 +60,18 @@
                             </filters>
 
                             <relocations>
-                               <!-- <relocation>
+                                <relocation>
                                     <pattern>io.netty</pattern>
                                     <shadedPattern>io.moonbox_netty</shadedPattern>
-                                </relocation>-->
-                                <!--<relocation>
+                                </relocation>
+                                <relocation>
                                     <pattern>com.google.protobuf</pattern>
                                     <shadedPattern>moonbox.com.google.protobuf</shadedPattern>
-                                </relocation>-->
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.json</pattern>
+                                    <shadedPattern>moonbox.org.json</shadedPattern>
+                                </relocation>
                             </relocations>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>

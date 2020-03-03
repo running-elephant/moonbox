@@ -30,6 +30,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateOrganization(MqlBaseParser.CreateOrganizationContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code renameOrganization}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameOrganization(MqlBaseParser.RenameOrganizationContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameOrganization}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameOrganization(MqlBaseParser.RenameOrganizationContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setOrganizationName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetOrganizationName(MqlBaseParser.SetOrganizationNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setOrganizationName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetOrganizationName(MqlBaseParser.SetOrganizationNameContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setOrganizationOptions}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -77,6 +101,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCreateSa(MqlBaseParser.CreateSaContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code renameSa}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameSa(MqlBaseParser.RenameSaContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameSa}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameSa(MqlBaseParser.RenameSaContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setSaName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetSaName(MqlBaseParser.SetSaNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setSaName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetSaName(MqlBaseParser.SetSaNameContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code setSaPassword}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -270,6 +318,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateUser(MqlBaseParser.CreateUserContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code renameUser}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameUser(MqlBaseParser.RenameUserContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameUser}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameUser(MqlBaseParser.RenameUserContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setUserName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetUserName(MqlBaseParser.SetUserNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setUserName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetUserName(MqlBaseParser.SetUserNameContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setUserPassword}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -317,6 +389,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCreateGroup(MqlBaseParser.CreateGroupContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code renameGroup}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameGroup(MqlBaseParser.RenameGroupContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameGroup}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameGroup(MqlBaseParser.RenameGroupContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setGroupName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetGroupName(MqlBaseParser.SetGroupNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setGroupName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetGroupName(MqlBaseParser.SetGroupNameContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code setGroupComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -377,6 +473,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitMountTable(MqlBaseParser.MountTableContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code renameTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameTable(MqlBaseParser.RenameTableContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameTable(MqlBaseParser.RenameTableContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setTableName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetTableName(MqlBaseParser.SetTableNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setTableName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetTableName(MqlBaseParser.SetTableNameContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code setTableProperties}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -461,6 +581,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCreateDatabase(MqlBaseParser.CreateDatabaseContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code renameDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameDatabase(MqlBaseParser.RenameDatabaseContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameDatabase}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameDatabase(MqlBaseParser.RenameDatabaseContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setDatabaseName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetDatabaseName(MqlBaseParser.SetDatabaseNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setDatabaseName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetDatabaseName(MqlBaseParser.SetDatabaseNameContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code setDatabaseComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -570,6 +714,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateProcedure(MqlBaseParser.CreateProcedureContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code renameProcedure}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameProcedure(MqlBaseParser.RenameProcedureContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameProcedure}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameProcedure(MqlBaseParser.RenameProcedureContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setProcedureName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetProcedureName(MqlBaseParser.SetProcedureNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setProcedureName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetProcedureName(MqlBaseParser.SetProcedureNameContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setProcedureQuerys}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -606,6 +774,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitCreateEvent(MqlBaseParser.CreateEventContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code renameEvent}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRenameEvent(MqlBaseParser.RenameEventContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setDefiner}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -617,6 +797,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitSetDefiner(MqlBaseParser.SetDefinerContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterSetEventName(MqlBaseParser.SetEventNameContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code setEventName}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitSetEventName(MqlBaseParser.SetEventNameContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code setEventSchedule}
 	 * labeled alternative in {@link MqlBaseParser#mql}.

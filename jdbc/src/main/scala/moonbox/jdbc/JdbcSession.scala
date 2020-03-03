@@ -1,4 +1,3 @@
-/*
 /*-
  * <<
  * Moonbox
@@ -45,4 +44,3 @@ case class JdbcSession(moonboxClient: MoonboxClient,
     if (moonboxClient != null) moonboxClient.close()
   }
 }
-*/

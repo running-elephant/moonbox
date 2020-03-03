@@ -3,7 +3,7 @@
   <parent>
     <artifactId>moonbox-parent_2.11</artifactId>
     <groupId>edp.moonbox</groupId>
-    <version>0.3.0-beta</version>
+    <version>0.3.0-beta-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -49,7 +49,7 @@
     <dependency>
       <groupId>edp.moonbox</groupId>
       <artifactId>moonbox-core_2.11</artifactId>
-      <version>0.3.0-beta</version>
+      <version>0.3.0-beta-SNAPSHOT</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -58,6 +58,10 @@
         </exclusion>
         <exclusion>
           <artifactId>moonbox-catalog_2.11</artifactId>
+          <groupId>edp.moonbox</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>moonbox-hook_2.11</artifactId>
           <groupId>edp.moonbox</groupId>
         </exclusion>
         <exclusion>
@@ -73,6 +77,12 @@
           <groupId>org.antlr</groupId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kudu</groupId>
+      <artifactId>kudu-spark2_2.11</artifactId>
+      <version>1.8.0</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>

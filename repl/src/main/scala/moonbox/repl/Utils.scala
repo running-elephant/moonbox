@@ -23,146 +23,213 @@ package moonbox.repl
 import java.io.File
 
 import com.typesafe.config.ConfigFactory
-import scala.collection.JavaConverters._
+import org.json.JSONObject
+
+import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
 
 object Utils {
+  // name, type, nullable
+  def parseJson(json: String): Array[(String, String, Boolean)] = {
+    import scala.collection.JavaConversions._
+    val schemaObject = new JSONObject(json)
+    schemaObject.getJSONArray("fields").map {
+      case elem: JSONObject =>
+        val columnName = elem.getString("name")
+        val nullable = elem.getBoolean("nullable")
+        val columnType = elem.get("type") match {
+          case v: JSONObject => v.getString("type")
+          case s => s.toString
+        }
+        (columnName, columnType, nullable)
+      case _ => null
+    }.filter(_ != null).toArray
+  }
 
-	private def valueString(cell: Any): String = {
-		cell match {
-			case null => "null"
-			case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
-			case array: Array[_] => array.map(valueString).mkString("[", ", ", "]")
-			case seq: Seq[_] => seq.map(valueString).mkString("[", ", ", "]")
-			case map: java.util.Map[_, _] => map.asScala.map { case (k, v) =>
-				s"${valueString(k)}:${valueString(v)}" }.mkString("{", ", ", "}")
-			case _ => cell.toString
-		}
-	}
+  def splitSql(sql: String, splitter: Char): Seq[String] = {
+    val stack = new mutable.Stack[Char]()
+    val splitIndex = new ArrayBuffer[Int]()
+    for ((char, idx) <- sql.toCharArray.zipWithIndex) {
+      if (char == splitter) {
+        if (stack.isEmpty) splitIndex += idx
+      }
+      if (char == '(') stack.push('(')
+      if (char == ')') stack.pop()
+    }
+    splits(sql, splitIndex.toArray, 0, Nil).map(_.stripPrefix(splitter.toString).trim).filter(_.length > 0)
+  }
 
-	private def padWs(cell: String, len: Int, truncate: Int): String = {
-		var j = 0
-		var paddedCell: String = cell
-		while (j < len - cell.getBytes("GB2312").length) {
-			if (truncate > 0) {
-				paddedCell = " " + paddedCell
-			} else {
-				paddedCell = paddedCell + " "
-			}
-			j += 1
-		}
-		paddedCell
-	}
+  @tailrec
+  private def splits(sql: String, idxs: Array[Int], offset: Int, res: Seq[String]): Seq[String] = {
+    if (idxs.nonEmpty) {
+      val head = idxs.head
+      val (h, t) = sql.splitAt(head - offset)
+      splits(t, idxs.tail, head, h :: res.toList)
+    } else res
+  }
 
-	/**
-		*
-		* @param _data    rows of table
-		* @param schema   a sequence of column names
-		* @param _numRows default is 1000, denotes the max number of rows to show
-		* @param truncate 0 denotes not truncating
-		* @return
-		*/
-	def stringToShow(_data: Seq[Seq[Any]],
-		schema: Seq[String],
-		_numRows: Int = 1000,
-		truncate: Int = 0,
-		showPromote: Boolean = true,
-		showSchema: Boolean = true): String = {
-		val numRows = _numRows.max(0)
-		val data = _data.take(numRows)
-		// For array values, replace Seq and Array with square brackets
-		// For cells that are beyond `truncate` characters, replace it with the
-		// first `truncate-3` and "..."
-		var rows: Seq[Seq[String]] = data.map { row =>
-			row.map { cell =>
-				val str = valueString(cell)
-				if (truncate > 0 && str.length > truncate) {
-					// do not show ellipses for strings shorter than 4 characters.
-					if (truncate < 4) str.substring(0, truncate)
-					else str.substring(0, truncate - 3) + "..."
-				} else str
-			}: Seq[String]
-		}
-		if (schema.nonEmpty && showSchema) {
-			rows = schema +: rows
-		}
-		if (rows.isEmpty) {
-			return ""
-		}
-		val sb = new StringBuilder
-		val numCols = {
-			if (data.nonEmpty) {
-				math.max(schema.length, data.head.length)
-			} else {
-				schema.length
-			}
-		}
-		// Initialise the width of each column to a minimum value of '3'
-		val colWidths = Array.fill(numCols)(3)
-		// Compute the width of each column
-		for (row <- rows) {
-			for ((cell, i) <- row.zipWithIndex) {
-				colWidths(i) = math.max(colWidths(i), cell.getBytes("GB2312").length)
-			}
-		}
-		// Create SeparateLine
-		val sep: String = colWidths.map("-" * _).addString(sb, "+", "+", "+\n").toString()
-		// column names
-		rows.head.zipWithIndex.map { case (cell, i) =>
-			padWs(cell, colWidths(i), truncate)
-		}.addString(sb, "|", "|", "|\n")
-		// escape empty schema
-		if (schema.nonEmpty && showSchema) {
-			sb.append(sep)
-		}
-		// data
-		rows.tail.foreach {
-			_.zipWithIndex.map { case (cell, i) =>
-				padWs(cell, colWidths(i), truncate)
-			}.addString(sb, "|", "|", "|\n")
-		}
-		if (data.nonEmpty) {
-			sb.append(sep)
-		}
-		// For Data that has more than "numRows" records
-		if (showPromote) {
-			val message = if (data.size < numRows) {
-				s"${data.size} row(s) in set\n"
-			} else {
-				s"showing at most $numRows row(s)\n"
-			}
-			sb.append(message)
-		}
-		sb.toString()
-	}
+  def parseJson2(json: String): Unit = {
+    val jsonObject = new JSONObject(json)
+    jsonObject.getJSONArray("fields")
+  }
 
-	def showDataResult(schema: Option[Seq[String]], data: Option[Seq[Seq[Any]]], error: Option[String]): Unit = {
-		if (schema.isDefined && data.isDefined) {
-			println(stringToShow(data.get, schema.get))
-		}
-		if (error.isDefined) {
-			println(s"ERROR: ${error.get}")
-		}
-	}
+  private def cell2String(cell: Any): String = {
+    cell match {
+      case null => "null"
+      case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
+      case array: Array[_] => array.map(cell2String).mkString("[", ", ", "]")
+      case seq: Seq[_] => seq.map(cell2String).mkString("[", ", ", "]")
+      /*case d: java.sql.Date =>
+        new ThreadLocal[DateFormat]() {
+        override def initialValue() = {
+          new SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        }
+        }.get().format(d)
+      case ts: Timestamp =>
+        val formatted = new ThreadLocal[DateFormat]() {
+        override def initialValue() = {
+          new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        }
+        }.get().format(ts, Locale.US)
+        if (ts.toString.length > 19 && ts.toString.substring(19) != ".0") {
+        formatted + ts.toString.substring(19)
+        } else formatted*/
+      case _ => cell.toString
+    }
+  }
 
-	def secondToMs(timeout: Int): Int = {
-		timeout * 1000
-	}
+  private def padWs(cell: String, len: Int, truncate: Int): String = {
+    var j = 0
+    var paddedCell: String = cell
+    while (j < len - cell.getBytes("GB2312").length) {
+      if (truncate > 0) {
+        paddedCell = " " + paddedCell
+      } else {
+        paddedCell = paddedCell + " "
+      }
+      j += 1
+    }
+    paddedCell
+  }
 
-	def getJdbcDefaultPort(): Int = {
-		val moonboxHome = sys.env.get("MOONBOX_HOME")
-		moonboxHome.map { home =>
-			val configFilePath = s"$home${File.separator}conf${File.separator}moonbox-defaults.conf"
-			val file = new File(configFilePath)
-			if (!file.exists()) {
-				10010
-			} else {
-				val config = ConfigFactory.parseFile(file)
-				val restPort = if (config.hasPath("moonbox.deploy.tcp.port")) {
-					config.getInt("moonbox.deploy.tcp.port")
-				} else 10010
-				restPort
-			}
-		}.getOrElse(10010)
-	}
+  /**
+    *
+    * @param _data    rows of table
+    * @param schema   a sequence of column names
+    * @param _numRows default is 1000, denotes the max number of rows to show
+    * @param truncate 0 denotes not truncating
+    * @return
+    */
+  def stringToShow(_data: Seq[Seq[Any]],
+                   schema: Seq[String],
+                   _numRows: Int = 1000,
+                   truncate: Int = 0,
+                   showPromote: Boolean = true,
+                   showSchema: Boolean = true): String = {
+    val numRows = _numRows.max(0)
+    val data =
+      if (_numRows > 0) {
+        val numRows = _numRows.max(0)
+        _data.take(numRows)
+      } else {
+        _data
+      }
+    // For array values, replace Seq and Array with square brackets
+    // For cells that are beyond `truncate` characters, replace it with the
+    // first `truncate-3` and "..."
+    var rows: Seq[Seq[String]] = data.map { row =>
+      row.map { cell =>
+        val str = cell2String(cell)
+        if (truncate > 0 && str.length > truncate) {
+          // do not show ellipses for strings shorter than 4 characters.
+          if (truncate < 4) str.substring(0, truncate)
+          else str.substring(0, truncate - 3) + "..."
+        } else str
+      }: Seq[String]
+    }
+    if (schema.nonEmpty && showSchema) {
+      rows = schema +: rows
+    }
+    if (rows.isEmpty) {
+      return ""
+    }
+    val sb = new StringBuilder
+    val numCols = {
+      if (data.nonEmpty) {
+        math.max(schema.length, data.head.length)
+      } else {
+        schema.length
+      }
+    }
+    // Initialise the width of each column to a minimum value of '3'
+    val colWidths = Array.fill(numCols)(3)
+    // Compute the width of each column
+    for (row <- rows) {
+      for ((cell, i) <- row.zipWithIndex) {
+        colWidths(i) = math.max(colWidths(i), cell.getBytes("GB2312").length)
+      }
+    }
+    // Create SeparateLine
+    val sep: String = colWidths.map("-" * _).addString(sb, "+", "+", "+\n").toString()
+    // column names
+    rows.head.zipWithIndex.map { case (cell, i) =>
+      padWs(cell, colWidths(i), truncate)
+    }.addString(sb, "|", "|", "|\n")
+    // escape empty schema
+    if (schema.nonEmpty && showSchema) {
+      sb.append(sep)
+    }
+    // data
+    rows.tail.foreach {
+      _.zipWithIndex.map { case (cell, i) =>
+        padWs(cell, colWidths(i), truncate)
+      }.addString(sb, "|", "|", "|\n")
+    }
+    if (data.nonEmpty) {
+      sb.append(sep)
+    }
+    // For Data that has more than "numRows" records
+    if (showPromote) {
+      val message = if (data.size < numRows) {
+        s"${data.size} row(s) in set\n"
+      } else {
+        s"showing at most $numRows row(s)\n"
+      }
+      sb.append(message)
+    }
+    sb.toString()
+  }
+
+  def showDataResult(schema: Option[Seq[String]], data: Option[Seq[Seq[Any]]], error: Option[String]): Unit = {
+    if (schema.isDefined && data.isDefined) {
+      println(stringToShow(data.get, schema.get))
+    }
+    if (error.isDefined) {
+      println(s"ERROR: ${error.get}")
+    }
+  }
+
+  def secondToMs(timeout: Int): Int = {
+    timeout * 1000
+  }
+
+  def getJdbcDefaultPort(): Int = {
+    val moonboxHome = sys.env.get("MOONBOX_HOME")
+    moonboxHome.map { home =>
+      val configFilePath = s"$home${File.separator}conf${File.separator}moonbox-defaults.conf"
+      val file = new File(configFilePath)
+      if (!file.exists()) {
+        10010
+      } else {
+        val config = ConfigFactory.parseFile(file)
+        val restPort = if (config.hasPath("moonbox.deploy.tcp.port")) {
+          config.getInt("moonbox.deploy.tcp.port")
+        } else 10010
+        restPort
+      }
+    }.getOrElse(10010)
+  }
 
 }
