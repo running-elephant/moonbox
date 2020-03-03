@@ -42,8 +42,8 @@ import scala.reflect.ClassTag
  * @param config This is the config information to out HBase cluster
  */
 @InterfaceAudience.Public
-class JavaHBaseContext(@transient jsc: JavaSparkContext,
-                       @transient config: Configuration) extends Serializable {
+class JavaHBaseContext(@transient val jsc: JavaSparkContext,
+                       @transient val config: Configuration) extends Serializable {
   val hbaseContext = new HBaseContext(jsc.sc, config)
 
   /**

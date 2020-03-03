@@ -3,20 +3,77 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>edp.moonbox</groupId>
         <artifactId>moonbox-parent_2.11</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <groupId>edp.moonbox</groupId>
+        <version>0.3.0-beta</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-assembly_2.11</artifactId>
     <packaging>pom</packaging>
+    <name>Moonbox Project Assembly</name>
+
+
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
+        <sbt.project.name>assembly</sbt.project.name>
         <build.testJarPhase>none</build.testJarPhase>
         <build.copyDependenciesPhase>package</build.copyDependenciesPhase>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-common_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-catalog_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+             <groupId>edp.moonbox</groupId>
+             <artifactId>moonbox-core_2.11</artifactId>
+             <version>${project.version}</version>
+         </dependency>
+         <dependency>
+             <groupId>edp.moonbox</groupId>
+             <artifactId>moonbox-grid_2.11</artifactId>
+             <version>${project.version}</version>
+         </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-repl_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-catalyst_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-spark-batch_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-spark-interactive_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-thriftserver_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-jdbc_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>
@@ -55,6 +112,116 @@
 
     <profiles>
         <profile>
+            <id>mysql</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-mysql-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>oracle</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-oracle-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>sqlserver</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-sqlserver-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>kudu</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-kudu-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>hbase</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-hbase-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>es</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-elasticsearch-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>presto</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-presto-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>mongo</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-mongo-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>cassandra</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-cassandra-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>clickhouse</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-clickhouse-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>kafka</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-kafka-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>dist</id>
             <build>
                 <plugins>
@@ -81,6 +248,4 @@
             </build>
         </profile>
     </profiles>
-
-
 </project>

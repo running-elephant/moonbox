@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>moonbox-parent_2.11</artifactId>
+        <groupId>edp.moonbox</groupId>
+        <version>0.3.0-beta</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>moonbox-network_2.11</artifactId>
+
+    <name>Moonbox Project Network</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-common_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_2.11</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-remote_2.11</artifactId>
+        </dependency>
+    </dependencies>
+</project>

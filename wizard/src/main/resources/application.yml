@@ -1,0 +1,43 @@
+
+spring.mvc.async.request-timeout: 120000
+
+##catalog
+#spring.datasource.url: jdbc:mysql://localhost:3306/moonbox
+#spring.datasource.username: root
+#spring.datasource.password: 123456
+#spring.datasource.type: com.alibaba.druid.pool.DruidDataSource
+#spring.datasource.driver-class-name: com.mysql.jdbc.Driver
+#spring.datasource.initialSize: 10
+#spring.datasource.minIdle: 5
+#spring.datasource.maxActive: 20
+#spring.datasource.maxWait: 5000
+#spring.datasource.removeAbandoned: true
+#spring.datasource.removeAbandonedTimeout: 180
+#spring.datasource.timeBetweenEvictionRunsMillis: 30000
+#spring.datasource.minEvictableIdleTimeMillis: 30000
+#spring.datasource.validationQuery: SELECT 1
+#spring.datasource.testWhileIdle: true
+#spring.datasource.testOnBorrow: false
+#spring.datasource.testOnReturn: false
+#spring.datasource.connectionProperties: druid.stat.slowSqlMillis=100;druid.stat.logSlowSql=true
+#spring.datasource.connectionInitSqls: set names utf8mb4
+
+#tomcat server
+server.name: moonbox-mbw
+server.port: 8080
+server.tomcat.max-threads: 200
+server.tomcat.uri-encoding: utf-8
+server.tomcat.basedir: ${root}/logs/${server.name}
+server.tomcat.accesslog.enabled: true
+server.tomcat.accesslog.pattern: '%h %l %u %t &quot;%r&quot; %s %b'
+
+
+#log
+org.springframework.boot.logging.LoggingSystem: none
+logging.config: classpath:log4j2.xml
+
+##mybatis
+#mybatis.config-location: classpath:mybatis-config.xml
+#mybatis.mapper-locations: classpath:mybatis/*.xml
+#mybatis.type-aliases-package:
+#logging.level.moonbox.mbw.repository: debug

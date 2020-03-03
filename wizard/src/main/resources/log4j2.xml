@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="warn" xmlns:xi="http://www.w3.org/2001/XInclude">
+    <properties>
+        <property name="logPath">${sys:root}/logs/</property>
+        <property name="logLevel">INFO</property>
+    </properties>
+    <appenders>
+        <console name="CONSOLE" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="%d{yy-MM-dd HH:mm:ss,SSS} %-5p %t %c %l \#\# %m%n" />
+        </console>
+        <!--设置级别为INFO日志输出到info.log中-->
+        <RollingFile name="INFO" filename="${logPath}/moonbox-mbw.log"  append="true" filepattern="${logPath}/moonbox-mbw-%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p %t %c %l \#\# %m%n" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <!--<SizeBasedTriggeringPolicy size="512 MB" />-->
+            </Policies>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${logPath}" maxDepth="1">
+                    <IfFileName glob="moonbox-mbw-*.log" />
+                    <IfLastModified age="8d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </appenders>
+
+    <loggers>
+        <root level="${logLevel}">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="INFO"/>
+        </root>
+    </loggers>
+</configuration>

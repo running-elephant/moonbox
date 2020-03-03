@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>moonbox-parent_2.11</artifactId>
+        <groupId>edp.moonbox</groupId>
+        <version>0.3.0-beta</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>moonbox-protocol_2.11</artifactId>
+    <packaging>jar</packaging>
+    <name>Moonbox Project Protocol</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <protoSourceRoot>src/main/proto</protoSourceRoot>
+                    <outputDirectory>src/main/generate</outputDirectory>
+                    <clearOutputDirectory>true</clearOutputDirectory>
+                    <protocExecutable>protoc</protocExecutable>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

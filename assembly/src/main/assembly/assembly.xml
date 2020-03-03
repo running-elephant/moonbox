@@ -2,7 +2,7 @@
   <<
   Moonbox
   ==
-  Copyright (C) 2016 - 2017 EDP
+  Copyright (C) 2016 - 2019 EDP
   ==
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@
     <id>dist</id>
     <formats>
         <format>tar.gz</format>
+        <format>dir</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>moonbox-${project.version}</baseDirectory>
 
     <fileSets>
         <fileSet>
@@ -33,46 +35,77 @@
         </fileSet>
         <fileSet>
             <directory>
-                ${main.basedir}/sbin
-            </directory>
-            <outputDirectory>sbin</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>
-                ${main.basedir}/bin
+                ${project.parent.basedir}/bin
             </directory>
             <outputDirectory>bin</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>
-                ${main.basedir}/conf
+                ${project.parent.basedir}/sbin
             </directory>
+            <outputDirectory>sbin</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>
+                ${project.parent.basedir}/conf
+            </directory>
+            <excludes>
+                <exclude>moonbox-defaults.conf</exclude>
+                <exclude>moonbox-env.sh</exclude>
+                <exclude>slaves</exclude>
+            </excludes>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
-            <outputDirectory>log</outputDirectory>
+            <directory>
+                ${project.parent.basedir}/swagger-ui
+            </directory>
+            <outputDirectory>swagger-ui</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>logs</outputDirectory>
             <excludes><exclude>**/*</exclude></excludes>
         </fileSet>
     </fileSets>
 
     <dependencySets>
         <dependencySet>
-            <outputDirectory>lib</outputDirectory>
+            <excludes>
+                <exclude>edp.moonbox:moonbox-catalyst_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-core_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-*-adapter</exclude>
+                <exclude>edp.moonbox:moonbox-spark-batch_2.11</exclude>
+                <exclude>edp.moonbox:moonbox-spark-interactive_2.11</exclude>
+            </excludes>
+
+            <outputDirectory>libs</outputDirectory>
+            <useTransitiveDependencies>true</useTransitiveDependencies>
+            <unpack>false</unpack>
+            <scope>runtime</scope>
+            <useProjectArtifact>false</useProjectArtifact>
+        </dependencySet>
+        <dependencySet>
+            <includes>
+                <include>edp.moonbox:moonbox-catalyst_2.11</include>
+                <include>edp.moonbox:moonbox-core_2.11</include>
+                <include>edp.moonbox:moonbox-*-adapter</include>
+            </includes>
+            <outputDirectory>runtime</outputDirectory>
+            <useTransitiveDependencies>true</useTransitiveDependencies>
+            <unpack>false</unpack>
+            <scope>runtime</scope>
+            <useProjectArtifact>false</useProjectArtifact>
+        </dependencySet>
+        <dependencySet>
+            <includes>
+                <include>edp.moonbox:moonbox-spark-batch_2.11</include>
+                <include>edp.moonbox:moonbox-spark-interactive_2.11</include>
+            </includes>
+            <outputDirectory>apps</outputDirectory>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <unpack>false</unpack>
             <scope>runtime</scope>
             <useProjectArtifact>false</useProjectArtifact>
         </dependencySet>
     </dependencySets>
-
-    <files>
-        <file>
-            <source>${main.basedir}/common/target/moonbox-common_2.11-${project.parent.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>plugin</outputDirectory>
-        </file>
-        <file>
-            <source>${main.basedir}/core/target/moonbox-core_2.11-${project.parent.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>plugin</outputDirectory>
-        </file>
-    </files>
 </assembly>

@@ -1,0 +1,22 @@
+
+List of third-party dependencies grouped by their license type.
+
+    3-Clause BSD License:
+
+        * Protocol Buffers [Core] (com.google.protobuf:protobuf-java:3.6.1 - https://developers.google.com/protocol-buffers/protobuf-java/)
+
+    Apache 2.0:
+
+        * scalactic (org.scalactic:scalactic_2.11:3.0.0 - http://www.scalatest.org)
+        * scalatest (org.scalatest:scalatest_2.11:3.0.0 - http://www.scalatest.org)
+
+    BSD:
+
+        * Scala Library (org.scala-lang:scala-library:2.11.8 - http://www.scala-lang.org/)
+        * Scala Compiler (org.scala-lang:scala-reflect:2.11.8 - http://www.scala-lang.org/)
+        * scala-parser-combinators (org.scala-lang.modules:scala-parser-combinators_2.11:1.0.4 - http://www.scala-lang.org/)
+        * scala-xml (org.scala-lang.modules:scala-xml_2.11:1.0.5 - http://www.scala-lang.org/)
+
+    The JSON License:
+
+        * JSON in Java (org.json:json:20160212 - https://github.com/douglascrockford/JSON-java)

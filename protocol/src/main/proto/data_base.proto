@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package moonbox;
+
+option java_package = "moonbox.protocol.protobuf";
+option java_multiple_files = true;
+
+
+message StructFieldPB {
+    string name = 1;
+    DataTypePB data_type = 2;
+    bool nullable = 3;
+    string meta_data = 4;
+}
+
+message DataTypePB {
+    string type_name = 1;
+    oneof data_type {
+        ByteTypePB byte_type = 2;
+        ShortTypePB short_type = 3;
+        IntegerTypePB integer_type = 4;
+        LongTypePB long_type = 5;
+        FloatTypePB float_type = 6;
+        DoubleTypePB double_type = 7;
+        DecimalTypePB decimal_type = 8;
+        BooleanTypePB boolean_type = 9;
+        CharTypePB char_type = 10;
+        VarcharTypePB varchar_type = 11;
+        StringTypePB string_type = 12;
+        DateTypePB date_type = 13;
+        TimestampTypePB timestamp_type = 14;
+        BinaryTypePB binary_type = 15;
+        ArrayTypePB array_type = 16;
+        MapTypePB map_type = 17;
+        StructTypePB struc_type = 18;
+        ObjectTypePB object_type = 19;
+        NullTypePB null_type = 20;
+    }
+}
+
+
+// integer
+message ByteTypePB {}
+
+message ShortTypePB {}
+
+message IntegerTypePB {}
+
+message LongTypePB {}
+
+// fractional
+message FloatTypePB {}
+
+message DoubleTypePB {}
+
+message DecimalTypePB {
+    int32 scale = 1;
+    int32 precision = 2;
+}
+
+message BooleanTypePB {}
+
+message CharTypePB {}
+
+message VarcharTypePB {}
+
+message StringTypePB {}
+
+message DateTypePB {}
+
+message TimestampTypePB {}
+
+message BinaryTypePB {}
+
+message ArrayTypePB {
+    DataTypePB element_type = 1;
+}
+
+message MapTypePB {
+    DataTypePB key_type = 1;
+    DataTypePB value_type = 2;
+}
+
+message StructTypePB {
+    repeated StructFieldPB fields = 1;
+}
+
+message ObjectTypePB {}
+
+message NullTypePB {}
+
+
+message ResultDataPB {
+    StructTypePB schema = 1;
+    repeated RowPB rows = 2;
+}
+
+message RowPB {
+    repeated Value fields = 1;
+}
+
+message Value {
+    oneof kind {
+        bool boolean_value = 1;
+        int32 int_value = 2;  // byte, char, short, int
+        float float_value = 3;
+        int64 long_value = 4;  // long, timestamp, date
+        double double_value = 5;
+        string string_value = 6;
+        bytes bytes_value = 7;  // byte[] and other java objects
+        BigDecimalPB big_decimal_value = 8;
+        StructPB struct_value = 9;
+        ArrayPB array_value = 10;
+        MapPB map_value = 11;
+        NullPB null_value = 12;
+    }
+}
+
+message BigDecimalPB {
+    BigIntegerPB big_integer = 1;
+}
+
+message BigIntegerPB {
+    bytes int_vals = 1;
+}
+
+message StructPB {
+    RowPB row = 1;
+}
+
+message ArrayPB {
+    repeated Value values = 1;
+}
+
+message MapPB {
+    map<string, Value> values = 1;
+}
+
+enum NullPB {
+    // Null value.
+    NULL_VALUE = 0;
+}
+

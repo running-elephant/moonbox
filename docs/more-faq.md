@@ -1,0 +1,8 @@
+---
+layout: global
+title: FAQ
+---
+
+####
+
+####

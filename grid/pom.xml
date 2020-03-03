@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
     <parent>
         <artifactId>moonbox-parent_2.11</artifactId>
         <groupId>edp.moonbox</groupId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.3.0-beta</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-grid_2.11</artifactId>
+    <packaging>jar</packaging>
+    <name>Moonbox Project Grid</name>
+
 
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
@@ -20,90 +22,121 @@
     <dependencies>
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-core_${scala.library}</artifactId>
+            <artifactId>moonbox-common_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
             <groupId>edp.moonbox</groupId>
-            <artifactId>moonbox-common_${scala.library}</artifactId>
+            <artifactId>moonbox-launcher_2.11</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_${scala.library}</artifactId>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-catalog_2.11</artifactId>
+            <version>${project.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-contrib_${scala.library}</artifactId>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-network_2.11</artifactId>
+            <version>${project.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-cluster_${scala.library}</artifactId>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-protocol_2.11</artifactId>
+            <version>${project.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-cluster-tools_${scala.library}</artifactId>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-testkit_2.11</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-client</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-framework</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+        </dependency>
+        <!-- akka http -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http-core_2.11</artifactId>
         </dependency>
-
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http_2.11</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.json4s</groupId>
-            <artifactId>json4s-jackson_2.11</artifactId>
+            <groupId>com.github.swagger-akka-http</groupId>
+            <artifactId>swagger-akka-http_2.11</artifactId>
+            <version>0.9.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.javassist</groupId>
+                    <artifactId>javassist</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>annotations</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-jackson_2.11</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.8.6</version>
+        </dependency>
         <dependency>
             <groupId>de.heikoseeberger</groupId>
             <artifactId>akka-http-json4s_2.11</artifactId>
         </dependency>
+        <!-- akka http-->
+        <!-- JWT -->
         <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
+            <groupId>com.pauldijou</groupId>
+            <artifactId>jwt-core_${scala.library}</artifactId>
         </dependency>
-
-
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.library}</artifactId>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-native_2.11</artifactId>
         </dependency>
-
+        <!-- JWT -->
+        <!--quartz-->
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${scala.library}</artifactId>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
         </dependency>
-
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_${scala.library}</artifactId>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
         </dependency>
-
+        <!--SSH SHELL-->
         <dependency>
-            <groupId>org.scala-lang.modules</groupId>
-            <artifactId>scala-xml_2.11</artifactId>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.55</version>
         </dependency>
-
     </dependencies>
 </project>

@@ -20,13 +20,13 @@ package org.apache.spark.sql.execution.datasources.hbase
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import org.apache.hadoop.hbase.spark.SparkSQLPushDownFilter
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hbase._
 import org.apache.hadoop.hbase.classification.InterfaceAudience
 import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapred.TableOutputFormat
+import org.apache.hadoop.hbase.spark.SparkSQLPushDownFilter
 import org.apache.hadoop.hbase.types._
 import org.apache.hadoop.hbase.util.{Bytes, PositionedByteRange, SimplePositionedMutableByteRange}
 import org.apache.hadoop.mapred.JobConf
@@ -39,28 +39,28 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 import scala.collection.mutable
 
 /**
- * DefaultSource for integration with Spark's dataframe datasources.
- * This class will produce a relationProvider based on input given to it from spark
- *
- * This class needs to stay in the current package 'org.apache.hadoop.hbase.spark'
- * for Spark to match the hbase data source name.
- *
- * In all this DefaultSource support the following datasource functionality
- * - Scan range pruning through filter push down logic based on rowKeys
- * - Filter push down logic on HBase Cells
- * - Qualifier filtering based on columns used in the SparkSQL statement
- * - Type conversions of basic SQL types.  All conversions will be
- *   Through the HBase Bytes object commands.
- */
+  * DefaultSource for integration with Spark's dataframe datasources.
+  * This class will produce a relationProvider based on input given to it from spark
+  *
+  * This class needs to stay in the current package 'org.apache.hadoop.hbase.spark'
+  * for Spark to match the hbase data source name.
+  *
+  * In all this DefaultSource support the following datasource functionality
+  * - Scan range pruning through filter push down logic based on rowKeys
+  * - Filter push down logic on HBase Cells
+  * - Qualifier filtering based on columns used in the SparkSQL statement
+  * - Type conversions of basic SQL types.  All conversions will be
+  * Through the HBase Bytes object commands.
+  */
 @InterfaceAudience.Private
-class DefaultSource extends RelationProvider  with CreatableRelationProvider with Logging {
+class DefaultSource extends RelationProvider with CreatableRelationProvider with Logging {
   /**
-   * Is given input from SparkSQL to construct a BaseRelation
+    * Is given input from SparkSQL to construct a BaseRelation
     *
     * @param sqlContext SparkSQL context
-   * @param parameters Parameters given to us from SparkSQL
-   * @return           A BaseRelation Object
-   */
+    * @param parameters Parameters given to us from SparkSQL
+    * @return A BaseRelation Object
+    */
   override def createRelation(sqlContext: SQLContext,
                               parameters: Map[String, String]):
   BaseRelation = {
@@ -69,10 +69,10 @@ class DefaultSource extends RelationProvider  with CreatableRelationProvider wit
 
 
   override def createRelation(
-      sqlContext: SQLContext,
-      mode: SaveMode,
-      parameters: Map[String, String],
-      data: DataFrame): BaseRelation = {
+                               sqlContext: SQLContext,
+                               mode: SaveMode,
+                               parameters: Map[String, String],
+                               data: DataFrame): BaseRelation = {
     val relation = HBaseRelation(parameters, Some(data.schema))(sqlContext)
     relation.createTable()
     relation.insert(data, false)
@@ -81,17 +81,17 @@ class DefaultSource extends RelationProvider  with CreatableRelationProvider wit
 }
 
 /**
- * Implementation of Spark BaseRelation that will build up our scan logic
- * , do the scan pruning, filter push down, and value conversions
+  * Implementation of Spark BaseRelation that will build up our scan logic
+  * , do the scan pruning, filter push down, and value conversions
   *
-  * @param sqlContext              SparkSQL context
- */
+  * @param sqlContext SparkSQL context
+  */
 @InterfaceAudience.Private
-case class HBaseRelation (
-    @transient parameters: Map[String, String],
-    userSpecifiedSchema: Option[StructType]
-  )(@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedFilteredScan  with InsertableRelation  with Logging {
+case class HBaseRelation(
+                          @transient parameters: Map[String, String],
+                          userSpecifiedSchema: Option[StructType]
+                        )(@transient val sqlContext: SQLContext)
+  extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
   val timestamp = parameters.get(HBaseSparkConf.TIMESTAMP).map(_.toLong)
   val minTimestamp = parameters.get(HBaseSparkConf.TIMERANGE_START).map(_.toLong)
   val maxTimestamp = parameters.get(HBaseSparkConf.TIMERANGE_END).map(_.toLong)
@@ -101,10 +101,12 @@ case class HBaseRelation (
   @transient val encoder = JavaBytesEncoder.create(encoderClsName)
 
   val catalog = HBaseTableCatalog(parameters)
-  def tableName = catalog.name
+
+  def tableName = catalog.namespace + ":" + catalog.name
+
   val configResources = parameters.getOrElse(HBaseSparkConf.HBASE_CONFIG_LOCATION, "")
 
-  val useHBaseContext =  parameters.get(HBaseSparkConf.USE_HBASECONTEXT).map(_.toBoolean).getOrElse(HBaseSparkConf.DEFAULT_USE_HBASECONTEXT)
+  val useHBaseContext = parameters.get(HBaseSparkConf.USE_HBASECONTEXT).map(_.toBoolean).getOrElse(HBaseSparkConf.DEFAULT_USE_HBASECONTEXT)
   val usePushDownColumnFilter = parameters.get(HBaseSparkConf.PUSHDOWN_COLUMN_FILTER)
     .map(_.toBoolean).getOrElse(HBaseSparkConf.DEFAULT_PUSHDOWN_COLUMN_FILTER)
 
@@ -116,28 +118,28 @@ case class HBaseRelation (
   val cacheSize = parameters.get(HBaseSparkConf.QUERY_CACHEDROWS).map(_.toInt)
     .getOrElse(
       sqlContext.sparkContext.getConf.getInt(
-      HBaseSparkConf.QUERY_CACHEDROWS, -1))
+        HBaseSparkConf.QUERY_CACHEDROWS, -1))
   val batchNum = parameters.get(HBaseSparkConf.QUERY_BATCHSIZE).map(_.toInt)
     .getOrElse(sqlContext.sparkContext.getConf.getInt(
-    HBaseSparkConf.QUERY_BATCHSIZE,  -1))
+      HBaseSparkConf.QUERY_BATCHSIZE, -1))
 
-  val bulkGetSize =  parameters.get(HBaseSparkConf.BULKGET_SIZE).map(_.toInt)
+  val bulkGetSize = parameters.get(HBaseSparkConf.BULKGET_SIZE).map(_.toInt)
     .getOrElse(sqlContext.sparkContext.getConf.getInt(
-    HBaseSparkConf.BULKGET_SIZE,  HBaseSparkConf.DEFAULT_BULKGET_SIZE))
+      HBaseSparkConf.BULKGET_SIZE, HBaseSparkConf.DEFAULT_BULKGET_SIZE))
 
   //create or get latest HBaseContext
-  val hbaseContext:HBaseContext = if (useHBaseContext) {
+  val hbaseContext: HBaseContext = if (useHBaseContext) {
 
-    if(LatestHBaseContextCache.latest == null) {
+    if (LatestHBaseContextCache.latest == null) {
       LatestHBaseContextCache.latest = {
         val config = HBaseConfiguration.create()
         // TODO  changed
-        if(configResources.equals("")) {
+        if (configResources.equals("")) {
           config.set(HConstants.ZOOKEEPER_QUORUM, parameters.getOrElse(HConstants.ZOOKEEPER_QUORUM, throw new NoSuchElementException(s"${HConstants.ZOOKEEPER_QUORUM} must be config")))
           config.set(HConstants.ZOOKEEPER_CLIENT_PORT, parameters.getOrElse(HConstants.ZOOKEEPER_CLIENT_PORT, "2181"))
           config.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parameters.getOrElse(HConstants.ZOOKEEPER_ZNODE_PARENT, "/hbase"))
         } else {
-          configResources.split(",").foreach( r => config.addResource(new Path(r)))
+          configResources.split(",").foreach(r => config.addResource(new Path(r)))
         }
         new HBaseContext(sqlContext.sparkContext, config)
       }
@@ -145,32 +147,32 @@ case class HBaseRelation (
     LatestHBaseContextCache.latest
   } else {
     val config = HBaseConfiguration.create()
-    if(configResources.equals("")) {
+    if (configResources.equals("")) {
       config.set(HConstants.ZOOKEEPER_QUORUM, parameters.getOrElse(HConstants.ZOOKEEPER_QUORUM, throw new NoSuchElementException(s"${HConstants.ZOOKEEPER_QUORUM} must be config")))
       config.set(HConstants.ZOOKEEPER_CLIENT_PORT, parameters.getOrElse(HConstants.ZOOKEEPER_CLIENT_PORT, "2181"))
       config.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parameters.getOrElse(HConstants.ZOOKEEPER_ZNODE_PARENT, "/hbase"))
     } else {
-      configResources.split(",").foreach( r => config.addResource(new Path(r)))
+      configResources.split(",").foreach(r => config.addResource(new Path(r)))
     }
     new HBaseContext(sqlContext.sparkContext, config)
   }
 
   val wrappedConf = new SerializableConfiguration(hbaseContext.config)
+
   def hbaseConf = wrappedConf.value
 
   /**
-   * Generates a Spark SQL schema objeparametersct so Spark SQL knows what is being
-   * provided by this BaseRelation
-   *
-   * @return schema generated from the SCHEMA_COLUMNS_MAPPING_KEY value
-   */
+    * Generates a Spark SQL schema objeparametersct so Spark SQL knows what is being
+    * provided by this BaseRelation
+    *
+    * @return schema generated from the SCHEMA_COLUMNS_MAPPING_KEY value
+    */
   override val schema: StructType = userSpecifiedSchema.getOrElse(catalog.toDataType)
-
 
 
   def createTable() {
     val numReg = parameters.get(HBaseTableCatalog.newTable).map(x => x.toInt).getOrElse(0)
-    val startKey =  Bytes.toBytes(
+    val startKey = Bytes.toBytes(
       parameters.get(HBaseTableCatalog.regionStart)
         .getOrElse(HBaseTableCatalog.defaultRegionStart))
     val endKey = Bytes.toBytes(
@@ -195,7 +197,7 @@ case class HBaseRelation (
           admin.createTable(tableDesc, splitKeys)
 
         }
-      }finally {
+      } finally {
         admin.close()
         connection.close()
       }
@@ -217,14 +219,15 @@ case class HBaseRelation (
     jobConfig.set(TableOutputFormat.OUTPUT_TABLE, catalog.name)
     var count = 0
     val rkFields = catalog.getRowKey
-    val rkIdxedFields = rkFields.map{ case x =>
+    val rkIdxedFields = rkFields.map { case x =>
       (schema.fieldIndex(x.colName), x)
     }
     val colsIdxedFields = schema
       .fieldNames
-      .partition( x => rkFields.map(_.colName).contains(x))
+      .partition(x => rkFields.map(_.colName).contains(x))
       ._2.map(x => (schema.fieldIndex(x), catalog.getField(x)))
     val rdd = data.rdd
+
     def convertToPut(row: Row) = {
       // construct bytes for row key
       val rowBytes = rkIdxedFields.map { case (x, y) =>
@@ -248,6 +251,7 @@ case class HBaseRelation (
       count += 1
       (new ImmutableBytesWritable, put)
     }
+
     rdd.map(convertToPut(_)).saveAsHadoopDataset(jobConfig)
   }
 
@@ -261,7 +265,7 @@ case class HBaseRelation (
     * This is independent of which fields were requested from the key
     * Because we have all the data it's less complex to parse everything.
     *
-    * @param row the retrieved row from hbase.
+    * @param row       the retrieved row from hbase.
     * @param keyFields all of the fields in the row key, ORDERED by their order in the row key.
     */
   def parseRowKey(row: Array[Byte], keyFields: Seq[Field]): Map[Field, Any] = {
@@ -313,17 +317,17 @@ case class HBaseRelation (
   }
 
   /**
-   * Here we are building the functionality to populate the resulting RDD[Row]
-   * Here is where we will do the following:
-   * - Filter push down
-   * - Scan or GetList pruning
-   * - Executing our scan(s) or/and GetList to generate result
-   *
-   * @param requiredColumns The columns that are being requested by the requesting query
-   * @param filters         The filters that are being applied by the requesting query
-   * @return                RDD will all the results from HBase needed for SparkSQL to
-   *                        execute the query on
-   */
+    * Here we are building the functionality to populate the resulting RDD[Row]
+    * Here is where we will do the following:
+    * - Filter push down
+    * - Scan or GetList pruning
+    * - Executing our scan(s) or/and GetList to generate result
+    *
+    * @param requiredColumns The columns that are being requested by the requesting query
+    * @param filters         The filters that are being applied by the requesting query
+    * @return RDD will all the results from HBase needed for SparkSQL to
+    *         execute the query on
+    */
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
 
     val pushDownTuple = buildPushDownPredicatesResource(filters)
@@ -345,7 +349,7 @@ case class HBaseRelation (
     val requiredQualifierDefinitionList =
       new mutable.MutableList[Field]
 
-    requiredColumns.foreach( c => {
+    requiredColumns.foreach(c => {
       val field = catalog.getField(c)
       requiredQualifierDefinitionList += field
     })
@@ -360,7 +364,7 @@ case class HBaseRelation (
     //add points to getList
     pushDownRowKeyFilter.points.foreach(p => {
       val get = new Get(p)
-      requiredQualifierDefinitionList.foreach( d => {
+      requiredQualifierDefinitionList.foreach(d => {
         if (d.isRowKey)
           get.addColumn(d.cfBytes, d.colBytes)
       })
@@ -368,8 +372,8 @@ case class HBaseRelation (
     })
 
     val pushDownFilterJava = if (usePushDownColumnFilter && pushDownDynamicLogicExpression != null) {
-        Some(new SparkSQLPushDownFilter(pushDownDynamicLogicExpression,
-          valueArray, requiredQualifierDefinitionList, encoderClsName))
+      Some(new SparkSQLPushDownFilter(pushDownDynamicLogicExpression,
+        valueArray, requiredQualifierDefinitionList, encoderClsName))
     } else {
       None
     }
@@ -378,7 +382,7 @@ case class HBaseRelation (
     pushDownRowKeyFilter.ranges.foreach(hRdd.addRange(_))
 
     var resultRDD: RDD[Row] = {
-      val tmp = hRdd.map{ r =>
+      val tmp = hRdd.map { r =>
         val indexedFields = getIndexedProjections(requiredColumns).map(_._1)
         buildRow(indexedFields, r)
 
@@ -395,25 +399,25 @@ case class HBaseRelation (
       scan.setCacheBlocks(blockCacheEnable)
       scan.setBatch(batchNum)
       scan.setCaching(cacheSize)
-      requiredQualifierDefinitionList.foreach( d =>
+      requiredQualifierDefinitionList.foreach(d =>
         scan.addColumn(d.cfBytes, d.colBytes))
 
       val rdd = hbaseContext.hbaseRDD(TableName.valueOf(tableName), scan).map(r => {
         val indexedFields = getIndexedProjections(requiredColumns).map(_._1)
         buildRow(indexedFields, r._2)
       })
-      resultRDD=rdd
+      resultRDD = rdd
     }
     resultRDD
   }
 
   def buildPushDownPredicatesResource(filters: Array[Filter]):
   (RowKeyFilter, DynamicLogicExpression, Array[Array[Byte]]) = {
-    var superRowKeyFilter:RowKeyFilter = null
+    var superRowKeyFilter: RowKeyFilter = null
     val queryValueList = new mutable.MutableList[Array[Byte]]
     var superDynamicLogicExpression: DynamicLogicExpression = null
 
-    filters.foreach( f => {
+    filters.foreach(f => {
       val rowKeyFilter = new RowKeyFilter()
       val logicExpression = transverseFilterTree(rowKeyFilter, queryValueList, f)
       if (superDynamicLogicExpression == null) {
@@ -448,9 +452,9 @@ case class HBaseRelation (
     * "0 <= COLUMN < 2 OR Integer.MIN_VALUE <= COLUMN <= -1"
     */
 
-  def transverseFilterTree(parentRowKeyFilter:RowKeyFilter,
-                                  valueArray:mutable.MutableList[Array[Byte]],
-                                  filter:Filter): DynamicLogicExpression = {
+  def transverseFilterTree(parentRowKeyFilter: RowKeyFilter,
+                           valueArray: mutable.MutableList[Array[Byte]],
+                           filter: Filter): DynamicLogicExpression = {
     filter match {
       case EqualTo(attr, value) =>
         val field = catalog.getField(attr)
@@ -506,7 +510,7 @@ case class HBaseRelation (
           if (field.isRowKey) {
             val b = encoder.ranges(value)
             var inc = false
-            b.map(_.greater.map{x =>
+            b.map(_.greater.map { x =>
               val r = new RowKeyFilter(null,
                 new ScanRange(x.upper, true, x.low, inc))
               inc = true
@@ -530,7 +534,7 @@ case class HBaseRelation (
               new RowKeyFilter(null,
                 new ScanRange(x.upper, true, x.low, true))))
               .map { x =>
-                x.reduce{ (i, j) =>
+                x.reduce { (i, j) =>
                   i.mergeUnion(j)
                 }
               }.map(parentRowKeyFilter.mergeIntersect(_))
@@ -584,31 +588,31 @@ case class HBaseRelation (
 }
 
 /**
- * Construct to contain a single scan ranges information.  Also
- * provide functions to merge with other scan ranges through AND
- * or OR operators
- *
- * @param upperBound          Upper bound of scan
- * @param isUpperBoundEqualTo Include upper bound value in the results
- * @param lowerBound          Lower bound of scan
- * @param isLowerBoundEqualTo Include lower bound value in the results
- */
+  * Construct to contain a single scan ranges information.  Also
+  * provide functions to merge with other scan ranges through AND
+  * or OR operators
+  *
+  * @param upperBound          Upper bound of scan
+  * @param isUpperBoundEqualTo Include upper bound value in the results
+  * @param lowerBound          Lower bound of scan
+  * @param isLowerBoundEqualTo Include lower bound value in the results
+  */
 @InterfaceAudience.Private
-class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
-                var lowerBound:Array[Byte], var isLowerBoundEqualTo:Boolean)
+class ScanRange(var upperBound: Array[Byte], var isUpperBoundEqualTo: Boolean,
+                var lowerBound: Array[Byte], var isLowerBoundEqualTo: Boolean)
   extends Serializable {
 
   /**
-   * Function to merge another scan object through a AND operation
+    * Function to merge another scan object through a AND operation
     *
     * @param other Other scan object
-   */
-  def mergeIntersect(other:ScanRange): Unit = {
+    */
+  def mergeIntersect(other: ScanRange): Unit = {
     val upperBoundCompare = compareRange(upperBound, other.upperBound)
     val lowerBoundCompare = compareRange(lowerBound, other.lowerBound)
 
-    upperBound = if (upperBoundCompare <0) upperBound else other.upperBound
-    lowerBound = if (lowerBoundCompare >0) lowerBound else other.lowerBound
+    upperBound = if (upperBoundCompare < 0) upperBound else other.upperBound
+    lowerBound = if (lowerBoundCompare > 0) lowerBound else other.lowerBound
 
     isLowerBoundEqualTo = if (lowerBoundCompare == 0)
       isLowerBoundEqualTo && other.isLowerBoundEqualTo
@@ -620,17 +624,17 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
   }
 
   /**
-   * Function to merge another scan object through a OR operation
+    * Function to merge another scan object through a OR operation
     *
     * @param other Other scan object
-   */
-  def mergeUnion(other:ScanRange): Unit = {
+    */
+  def mergeUnion(other: ScanRange): Unit = {
 
     val upperBoundCompare = compareRange(upperBound, other.upperBound)
     val lowerBoundCompare = compareRange(lowerBound, other.lowerBound)
 
-    upperBound = if (upperBoundCompare >0) upperBound else other.upperBound
-    lowerBound = if (lowerBoundCompare <0) lowerBound else other.lowerBound
+    upperBound = if (upperBoundCompare > 0) upperBound else other.upperBound
+    lowerBound = if (lowerBoundCompare < 0) lowerBound else other.lowerBound
 
     isLowerBoundEqualTo = if (lowerBoundCompare == 0)
       isLowerBoundEqualTo || other.isLowerBoundEqualTo
@@ -642,29 +646,29 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
   }
 
   /**
-   * Common function to see if this scan over laps with another
-   *
-   * Reference Visual
-   *
-   * A                           B
-   * |---------------------------|
-   *   LL--------------LU
-   *        RL--------------RU
-   *
-   * A = lowest value is byte[0]
-   * B = highest value is null
-   * LL = Left Lower Bound
-   * LU = Left Upper Bound
-   * RL = Right Lower Bound
-   * RU = Right Upper Bound
-   *
-   * @param other Other scan object
-   * @return      True is overlap false is not overlap
-   */
-  def getOverLapScanRange(other:ScanRange): ScanRange = {
+    * Common function to see if this scan over laps with another
+    *
+    * Reference Visual
+    *
+    * A                           B
+    * |---------------------------|
+    * LL--------------LU
+    * RL--------------RU
+    *
+    * A = lowest value is byte[0]
+    * B = highest value is null
+    * LL = Left Lower Bound
+    * LU = Left Upper Bound
+    * RL = Right Lower Bound
+    * RU = Right Upper Bound
+    *
+    * @param other Other scan object
+    * @return True is overlap false is not overlap
+    */
+  def getOverLapScanRange(other: ScanRange): ScanRange = {
 
-    var leftRange:ScanRange = null
-    var rightRange:ScanRange = null
+    var leftRange: ScanRange = null
+    var rightRange: ScanRange = null
 
     // First identify the Left range
     // Also lower bound can't be null
@@ -695,8 +699,8 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
     * The leftRange.upperBound has to be larger than the rightRange's lowerBound.
     * Otherwise, there is no overlap.
     *
-    * @param left: The range with the smaller lowBound
-    * @param right: The range with the larger lowBound
+    * @param left  : The range with the smaller lowBound
+    * @param right : The range with the larger lowBound
     * @return Whether two ranges have overlap.
     */
 
@@ -705,14 +709,14 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
   }
 
   /**
-   * Special compare logic because we can have null values
-   * for left or right bound
-   *
-   * @param left  Left byte array
-   * @param right Right byte array
-   * @return      0 for equals 1 is left is greater and -1 is right is greater
-   */
-  def compareRange(left:Array[Byte], right:Array[Byte]): Int = {
+    * Special compare logic because we can have null values
+    * for left or right bound
+    *
+    * @param left  Left byte array
+    * @param right Right byte array
+    * @return 0 for equals 1 is left is greater and -1 is right is greater
+    */
+  def compareRange(left: Array[Byte], right: Array[Byte]): Int = {
     if (left == null && right == null) 0
     else if (left == null && right != null) 1
     else if (left != null && right == null) -1
@@ -720,10 +724,10 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
   }
 
   /**
-   *
-   * @return
-   */
-  def containsPoint(point:Array[Byte]): Boolean = {
+    *
+    * @return
+    */
+  def containsPoint(point: Array[Byte]): Boolean = {
     val lowerCompare = compareRange(point, lowerBound)
     val upperCompare = compareRange(point, upperBound)
 
@@ -733,7 +737,8 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
         (!isUpperBoundEqualTo && upperCompare < 0))
 
   }
-  override def toString:String = {
+
+  override def toString: String = {
     "ScanRange:(upperBound:" + Bytes.toString(upperBound) +
       ",isUpperBoundEqualTo:" + isUpperBoundEqualTo + ",lowerBound:" +
       Bytes.toString(lowerBound) + ",isLowerBoundEqualTo:" + isLowerBoundEqualTo + ")"
@@ -741,44 +746,44 @@ class ScanRange(var upperBound:Array[Byte], var isUpperBoundEqualTo:Boolean,
 }
 
 /**
- * Contains information related to a filters for a given column.
- * This can contain many ranges or points.
- *
- * @param currentPoint the initial point when the filter is created
- * @param currentRange the initial scanRange when the filter is created
- */
+  * Contains information related to a filters for a given column.
+  * This can contain many ranges or points.
+  *
+  * @param currentPoint the initial point when the filter is created
+  * @param currentRange the initial scanRange when the filter is created
+  */
 @InterfaceAudience.Private
-class ColumnFilter (currentPoint:Array[Byte] = null,
-                     currentRange:ScanRange = null,
-                     var points:mutable.MutableList[Array[Byte]] =
-                     new mutable.MutableList[Array[Byte]](),
-                     var ranges:mutable.MutableList[ScanRange] =
-                     new mutable.MutableList[ScanRange]() ) extends Serializable {
+class ColumnFilter(currentPoint: Array[Byte] = null,
+                   currentRange: ScanRange = null,
+                   var points: mutable.MutableList[Array[Byte]] =
+                   new mutable.MutableList[Array[Byte]](),
+                   var ranges: mutable.MutableList[ScanRange] =
+                   new mutable.MutableList[ScanRange]()) extends Serializable {
   //Collection of ranges
-  if (currentRange != null ) ranges.+=(currentRange)
+  if (currentRange != null) ranges.+=(currentRange)
 
   //Collection of points
   if (currentPoint != null) points.+=(currentPoint)
 
   /**
-   * This will validate a give value through the filter's points and/or ranges
-   * the result will be if the value passed the filter
-   *
-   * @param value       Value to be validated
-   * @param valueOffSet The offset of the value
-   * @param valueLength The length of the value
-   * @return            True is the value passes the filter false if not
-   */
-  def validate(value:Array[Byte], valueOffSet:Int, valueLength:Int):Boolean = {
+    * This will validate a give value through the filter's points and/or ranges
+    * the result will be if the value passed the filter
+    *
+    * @param value       Value to be validated
+    * @param valueOffSet The offset of the value
+    * @param valueLength The length of the value
+    * @return True is the value passes the filter false if not
+    */
+  def validate(value: Array[Byte], valueOffSet: Int, valueLength: Int): Boolean = {
     var result = false
 
-    points.foreach( p => {
+    points.foreach(p => {
       if (Bytes.equals(p, 0, p.length, value, valueOffSet, valueLength)) {
         result = true
       }
     })
 
-    ranges.foreach( r => {
+    ranges.foreach(r => {
       val upperBoundPass = r.upperBound == null ||
         (r.isUpperBoundEqualTo &&
           Bytes.compareTo(r.upperBound, 0, r.upperBound.length,
@@ -788,9 +793,9 @@ class ColumnFilter (currentPoint:Array[Byte] = null,
             value, valueOffSet, valueLength) > 0)
 
       val lowerBoundPass = r.lowerBound == null || r.lowerBound.length == 0
-        (r.isLowerBoundEqualTo &&
-          Bytes.compareTo(r.lowerBound, 0, r.lowerBound.length,
-            value, valueOffSet, valueLength) <= 0) ||
+      (r.isLowerBoundEqualTo &&
+        Bytes.compareTo(r.lowerBound, 0, r.lowerBound.length,
+          value, valueOffSet, valueLength) <= 0) ||
         (!r.isLowerBoundEqualTo &&
           Bytes.compareTo(r.lowerBound, 0, r.lowerBound.length,
             value, valueOffSet, valueLength) < 0)
@@ -801,35 +806,36 @@ class ColumnFilter (currentPoint:Array[Byte] = null,
   }
 
   /**
-   * This will allow us to merge filter logic that is joined to the existing filter
-   * through a OR operator
-   *
-   * @param other Filter to merge
-   */
-  def mergeUnion(other:ColumnFilter): Unit = {
-    other.points.foreach( p => points += p)
+    * This will allow us to merge filter logic that is joined to the existing filter
+    * through a OR operator
+    *
+    * @param other Filter to merge
+    */
+  def mergeUnion(other: ColumnFilter): Unit = {
+    other.points.foreach(p => points += p)
 
-    other.ranges.foreach( otherR => {
+    other.ranges.foreach(otherR => {
       var doesOverLap = false
-      ranges.foreach{ r =>
+      ranges.foreach { r =>
         if (r.getOverLapScanRange(otherR) != null) {
           r.mergeUnion(otherR)
           doesOverLap = true
-        }}
+        }
+      }
       if (!doesOverLap) ranges.+=(otherR)
     })
   }
 
   /**
-   * This will allow us to merge filter logic that is joined to the existing filter
-   * through a AND operator
-   *
-   * @param other Filter to merge
-   */
-  def mergeIntersect(other:ColumnFilter): Unit = {
+    * This will allow us to merge filter logic that is joined to the existing filter
+    * through a AND operator
+    *
+    * @param other Filter to merge
+    */
+  def mergeIntersect(other: ColumnFilter): Unit = {
     val survivingPoints = new mutable.MutableList[Array[Byte]]()
-    points.foreach( p => {
-      other.points.foreach( otherP => {
+    points.foreach(p => {
+      other.points.foreach(otherP => {
         if (Bytes.equals(p, otherP)) {
           survivingPoints.+=(p)
         }
@@ -839,8 +845,8 @@ class ColumnFilter (currentPoint:Array[Byte] = null,
 
     val survivingRanges = new mutable.MutableList[ScanRange]()
 
-    other.ranges.foreach( otherR => {
-      ranges.foreach( r => {
+    other.ranges.foreach(otherR => {
+      ranges.foreach(r => {
         if (r.getOverLapScanRange(otherR) != null) {
           r.mergeIntersect(otherR)
           survivingRanges += r
@@ -850,18 +856,18 @@ class ColumnFilter (currentPoint:Array[Byte] = null,
     ranges = survivingRanges
   }
 
-  override def toString:String = {
+  override def toString: String = {
     val strBuilder = new StringBuilder
     strBuilder.append("(points:(")
     var isFirst = true
-    points.foreach( p => {
+    points.foreach(p => {
       if (isFirst) isFirst = false
       else strBuilder.append(",")
       strBuilder.append(Bytes.toString(p))
     })
     strBuilder.append("),ranges:")
     isFirst = true
-    ranges.foreach( r => {
+    ranges.foreach(r => {
       if (isFirst) isFirst = false
       else strBuilder.append(",")
       strBuilder.append(r)
@@ -872,11 +878,11 @@ class ColumnFilter (currentPoint:Array[Byte] = null,
 }
 
 /**
- * A collection of ColumnFilters indexed by column names.
- *
- * Also contains merge commends that will consolidate the filters
- * per column name
- */
+  * A collection of ColumnFilters indexed by column names.
+  *
+  * Also contains merge commends that will consolidate the filters
+  * per column name
+  */
 @InterfaceAudience.Private
 class ColumnFilterCollection {
   val columnFilterMap = new mutable.HashMap[String, ColumnFilter]
@@ -886,13 +892,13 @@ class ColumnFilterCollection {
   }
 
   /**
-   * This will allow us to merge filter logic that is joined to the existing filter
-   * through a OR operator.  This will merge a single columns filter
-   *
-   * @param column The column to be merged
-   * @param other  The other ColumnFilter object to merge
-   */
-  def mergeUnion(column:String, other:ColumnFilter): Unit = {
+    * This will allow us to merge filter logic that is joined to the existing filter
+    * through a OR operator.  This will merge a single columns filter
+    *
+    * @param column The column to be merged
+    * @param other  The other ColumnFilter object to merge
+    */
+  def mergeUnion(column: String, other: ColumnFilter): Unit = {
     val existingFilter = columnFilterMap.get(column)
     if (existingFilter.isEmpty) {
       columnFilterMap.+=((column, other))
@@ -902,27 +908,27 @@ class ColumnFilterCollection {
   }
 
   /**
-   * This will allow us to merge all filters in the existing collection
-   * to the filters in the other collection.  All merges are done as a result
-   * of a OR operator
-   *
-   * @param other The other Column Filter Collection to be merged
-   */
-  def mergeUnion(other:ColumnFilterCollection): Unit = {
-    other.columnFilterMap.foreach( e => {
+    * This will allow us to merge all filters in the existing collection
+    * to the filters in the other collection.  All merges are done as a result
+    * of a OR operator
+    *
+    * @param other The other Column Filter Collection to be merged
+    */
+  def mergeUnion(other: ColumnFilterCollection): Unit = {
+    other.columnFilterMap.foreach(e => {
       mergeUnion(e._1, e._2)
     })
   }
 
   /**
-   * This will allow us to merge all filters in the existing collection
-   * to the filters in the other collection.  All merges are done as a result
-   * of a AND operator
-   *
-   * @param other The column filter from the other collection
-   */
-  def mergeIntersect(other:ColumnFilterCollection): Unit = {
-    other.columnFilterMap.foreach( e => {
+    * This will allow us to merge all filters in the existing collection
+    * to the filters in the other collection.  All merges are done as a result
+    * of a AND operator
+    *
+    * @param other The column filter from the other collection
+    */
+  def mergeIntersect(other: ColumnFilterCollection): Unit = {
+    other.columnFilterMap.foreach(e => {
       val existingColumnFilter = columnFilterMap.get(e._1)
       if (existingColumnFilter.isEmpty) {
         columnFilterMap += e
@@ -932,17 +938,17 @@ class ColumnFilterCollection {
     })
   }
 
-  override def toString:String = {
+  override def toString: String = {
     val strBuilder = new StringBuilder
-    columnFilterMap.foreach( e => strBuilder.append(e))
+    columnFilterMap.foreach(e => strBuilder.append(e))
     strBuilder.toString()
   }
 }
 
 /**
- * Status object to store static functions but also to hold last executed
- * information that can be used for unit testing.
- */
+  * Status object to store static functions but also to hold last executed
+  * information that can be used for unit testing.
+  */
 @InterfaceAudience.Private
 object DefaultSourceStaticUtils {
 
@@ -973,15 +979,15 @@ object DefaultSourceStaticUtils {
   // These values can be used in unit testing to make sure we are converting
   // The Spark SQL input correctly
   val lastFiveExecutionRules =
-    new ConcurrentLinkedQueue[ExecutionRuleForUnitTesting]()
+  new ConcurrentLinkedQueue[ExecutionRuleForUnitTesting]()
 
   /**
-   * This method is to populate the lastFiveExecutionRules for unit test perposes
-   * This method is not thread safe.
-   *
-   * @param rowKeyFilter           The rowKey Filter logic used in the last query
-   * @param dynamicLogicExpression The dynamicLogicExpression used in the last query
-   */
+    * This method is to populate the lastFiveExecutionRules for unit test perposes
+    * This method is not thread safe.
+    *
+    * @param rowKeyFilter           The rowKey Filter logic used in the last query
+    * @param dynamicLogicExpression The dynamicLogicExpression used in the last query
+    */
   def populateLatestExecutionRules(rowKeyFilter: RowKeyFilter,
                                    dynamicLogicExpression: DynamicLogicExpression): Unit = {
     lastFiveExecutionRules.add(new ExecutionRuleForUnitTesting(
@@ -992,15 +998,15 @@ object DefaultSourceStaticUtils {
   }
 
   /**
-   * This method will convert the result content from HBase into the
-   * SQL value type that is requested by the Spark SQL schema definition
-   *
-   * @param field              The structure of the SparkSQL Column
-   * @param r                       The result object from HBase
-   * @return                        The converted object type
-   */
+    * This method will convert the result content from HBase into the
+    * SQL value type that is requested by the Spark SQL schema definition
+    *
+    * @param field The structure of the SparkSQL Column
+    * @param r     The result object from HBase
+    * @return The converted object type
+    */
   def getValue(field: Field,
-      r: Result): Any = {
+               r: Result): Any = {
     if (field.isRowKey) {
       val row = r.getRow
 
@@ -1037,14 +1043,14 @@ object DefaultSourceStaticUtils {
   }
 
   /**
-   * This will convert the value from SparkSQL to be stored into HBase using the
-   * right byte Type
-   *
-   * @param value                   String value from SparkSQL
-   * @return                        Returns the byte array to go into HBase
-   */
+    * This will convert the value from SparkSQL to be stored into HBase using the
+    * right byte Type
+    *
+    * @param value String value from SparkSQL
+    * @return Returns the byte array to go into HBase
+    */
   def getByteValue(field: Field,
-      value: String): Array[Byte] = {
+                   value: String): Array[Byte] = {
     field.dt match {
       case IntegerType =>
         val result = new Array[Byte](Bytes.SIZEOF_INT)
@@ -1080,45 +1086,45 @@ object DefaultSourceStaticUtils {
 }
 
 /**
- * Contains information related to a filters for a given column.
- * This can contain many ranges or points.
- *
- * @param currentPoint the initial point when the filter is created
- * @param currentRange the initial scanRange when the filter is created
- */
+  * Contains information related to a filters for a given column.
+  * This can contain many ranges or points.
+  *
+  * @param currentPoint the initial point when the filter is created
+  * @param currentRange the initial scanRange when the filter is created
+  */
 @InterfaceAudience.Private
-class RowKeyFilter (currentPoint:Array[Byte] = null,
-                    currentRange:ScanRange =
-                    new ScanRange(null, true, new Array[Byte](0), true),
-                    var points:mutable.MutableList[Array[Byte]] =
-                    new mutable.MutableList[Array[Byte]](),
-                    var ranges:mutable.MutableList[ScanRange] =
-                    new mutable.MutableList[ScanRange]() ) extends Serializable {
+class RowKeyFilter(currentPoint: Array[Byte] = null,
+                   currentRange: ScanRange =
+                   new ScanRange(null, true, new Array[Byte](0), true),
+                   var points: mutable.MutableList[Array[Byte]] =
+                   new mutable.MutableList[Array[Byte]](),
+                   var ranges: mutable.MutableList[ScanRange] =
+                   new mutable.MutableList[ScanRange]()) extends Serializable {
   //Collection of ranges
-  if (currentRange != null ) ranges.+=(currentRange)
+  if (currentRange != null) ranges.+=(currentRange)
 
   //Collection of points
   if (currentPoint != null) points.+=(currentPoint)
 
   /**
-   * This will validate a give value through the filter's points and/or ranges
-   * the result will be if the value passed the filter
-   *
-   * @param value       Value to be validated
-   * @param valueOffSet The offset of the value
-   * @param valueLength The length of the value
-   * @return            True is the value passes the filter false if not
-   */
-  def validate(value:Array[Byte], valueOffSet:Int, valueLength:Int):Boolean = {
+    * This will validate a give value through the filter's points and/or ranges
+    * the result will be if the value passed the filter
+    *
+    * @param value       Value to be validated
+    * @param valueOffSet The offset of the value
+    * @param valueLength The length of the value
+    * @return True is the value passes the filter false if not
+    */
+  def validate(value: Array[Byte], valueOffSet: Int, valueLength: Int): Boolean = {
     var result = false
 
-    points.foreach( p => {
+    points.foreach(p => {
       if (Bytes.equals(p, 0, p.length, value, valueOffSet, valueLength)) {
         result = true
       }
     })
 
-    ranges.foreach( r => {
+    ranges.foreach(r => {
       val upperBoundPass = r.upperBound == null ||
         (r.isUpperBoundEqualTo &&
           Bytes.compareTo(r.upperBound, 0, r.upperBound.length,
@@ -1141,37 +1147,38 @@ class RowKeyFilter (currentPoint:Array[Byte] = null,
   }
 
   /**
-   * This will allow us to merge filter logic that is joined to the existing filter
-   * through a OR operator
-   *
-   * @param other Filter to merge
-   */
-  def mergeUnion(other:RowKeyFilter): RowKeyFilter = {
-    other.points.foreach( p => points += p)
+    * This will allow us to merge filter logic that is joined to the existing filter
+    * through a OR operator
+    *
+    * @param other Filter to merge
+    */
+  def mergeUnion(other: RowKeyFilter): RowKeyFilter = {
+    other.points.foreach(p => points += p)
 
-    other.ranges.foreach( otherR => {
+    other.ranges.foreach(otherR => {
       var doesOverLap = false
-      ranges.foreach{ r =>
+      ranges.foreach { r =>
         if (r.getOverLapScanRange(otherR) != null) {
           r.mergeUnion(otherR)
           doesOverLap = true
-        }}
+        }
+      }
       if (!doesOverLap) ranges.+=(otherR)
     })
     this
   }
 
   /**
-   * This will allow us to merge filter logic that is joined to the existing filter
-   * through a AND operator
-   *
-   * @param other Filter to merge
-   */
-  def mergeIntersect(other:RowKeyFilter): RowKeyFilter = {
+    * This will allow us to merge filter logic that is joined to the existing filter
+    * through a AND operator
+    *
+    * @param other Filter to merge
+    */
+  def mergeIntersect(other: RowKeyFilter): RowKeyFilter = {
     val survivingPoints = new mutable.MutableList[Array[Byte]]()
     val didntSurviveFirstPassPoints = new mutable.MutableList[Array[Byte]]()
     if (points == null || points.length == 0) {
-      other.points.foreach( otherP => {
+      other.points.foreach(otherP => {
         didntSurviveFirstPassPoints += otherP
       })
     } else {
@@ -1194,7 +1201,7 @@ class RowKeyFilter (currentPoint:Array[Byte] = null,
 
     if (ranges.length == 0) {
       didntSurviveFirstPassPoints.foreach(p => {
-          survivingPoints += p
+        survivingPoints += p
       })
     } else {
       ranges.foreach(r => {
@@ -1216,18 +1223,18 @@ class RowKeyFilter (currentPoint:Array[Byte] = null,
     this
   }
 
-  override def toString:String = {
+  override def toString: String = {
     val strBuilder = new StringBuilder
     strBuilder.append("(points:(")
     var isFirst = true
-    points.foreach( p => {
+    points.foreach(p => {
       if (isFirst) isFirst = false
       else strBuilder.append(",")
       strBuilder.append(Bytes.toString(p))
     })
     strBuilder.append("),ranges:")
     isFirst = true
-    ranges.foreach( r => {
+    ranges.foreach(r => {
       if (isFirst) isFirst = false
       else strBuilder.append(",")
       strBuilder.append(r)

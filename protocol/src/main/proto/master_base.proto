@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package moonbox;
+
+option java_package = "moonbox.protocol.protobuf";
+option java_multiple_files = true;
+
+message AccessRequestPB {
+    string username = 1;
+    string password = 2;
+    string app_type = 3;
+    string app_name = 4;
+}
+
+message AccessResponsePB {
+    HostPortPB host_port = 1;
+    SessionPB session = 2;
+}
+
+message SessionPB {
+    map<string, string> session = 1;
+}
+
+message HostPortPB {
+    string host = 1;
+    uint32 port = 2;
+}

@@ -16,37 +16,58 @@ specific language governing permissions and limitations
 under the License.
 
 This project includes:
+  Aeron under The Apache License, Version 2.0
+  Agrona under The Apache License, Version 2.0
   akka-actor under Apache License, Version 2.0
   akka-cluster under Apache License, Version 2.0
   akka-cluster-tools under Apache License, Version 2.0
-  akka-contrib under Apache License, Version 2.0
   akka-http under Apache-2.0
-  akka-http-core under Apache License, Version 2.0
+  akka-http-core under Apache-2.0
   akka-http-json4s under Apache-2.0
-  akka-parsing under Apache License, Version 2.0
-  akka-persistence under Apache License, Version 2.0
+  akka-parsing under Apache-2.0
   akka-protobuf under Apache License, Version 2.0
   akka-remote under Apache License, Version 2.0
   akka-stream under Apache License, Version 2.0
+  Antlr 3.4 Runtime under BSD License
   ANTLR 4 Runtime under The BSD License
+  AntLR Parser Generator under BSD License
+  ANTLR ST4 4.0.4 under BSD licence
+  ANTLR StringTemplate under BSD licence
+  AOP alliance under Public Domain
   aopalliance version 1.0 repackaged as a module under CDDL + GPLv2 with classpath exception
   Apache Avro under The Apache Software License, Version 2.0
   Apache Avro IPC under The Apache Software License, Version 2.0
   Apache Avro Mapred API under The Apache Software License, Version 2.0
+  Apache Commons BeanUtils under Apache License, Version 2.0
+  Apache Commons Codec under The Apache Software License, Version 2.0
   Apache Commons Collections under Apache License, Version 2.0
   Apache Commons Crypto under Apache License, Version 2.0
   Apache Commons Lang under Apache License, Version 2.0
+  Apache Commons Logging under The Apache Software License, Version 2.0
   Apache Commons Math under The Apache Software License, Version 2.0
   Apache Commons Pool under The Apache Software License, Version 2.0
+  Apache Derby Database Engine and Embedded JDBC Driver under Apache 2
   Apache Directory API ASN.1 API under The Apache Software License, Version 2.0
   Apache Directory LDAP API Utilities under The Apache Software License, Version 2.0
+  Apache Extras™ for Apache log4j™. under The Apache Software License, Version 2.0
   Apache Hadoop Annotations under The Apache Software License, Version 2.0
   Apache Hadoop Auth under The Apache Software License, Version 2.0
   Apache Hadoop Client under The Apache Software License, Version 2.0
   Apache Hadoop Common under The Apache Software License, Version 2.0
   Apache Hadoop HDFS under The Apache Software License, Version 2.0
+  Apache HBase - Annotations under The Apache Software License, Version 2.0
+  Apache HBase - Client under The Apache Software License, Version 2.0
+  Apache HBase - Common under The Apache Software License, Version 2.0
+  Apache HBase - Hadoop Compatibility under The Apache Software License, Version 2.0
+  Apache HBase - Hadoop Two Compatibility under The Apache Software License, Version 2.0
+  Apache HBase - Prefix Tree under The Apache Software License, Version 2.0
+  Apache HBase - Procedure under The Apache Software License, Version 2.0
+  Apache HBase - Protocol under The Apache Software License, Version 2.0
+  Apache HBase - Server under The Apache Software License, Version 2.0
+  Apache HttpAsyncClient under Apache License, Version 2.0
   Apache HttpClient under Apache License, Version 2.0
   Apache HttpCore under Apache License, Version 2.0
+  Apache HttpCore NIO under Apache License, Version 2.0
   Apache Ivy under The Apache Software License, Version 2.0
   Apache Log4j under The Apache Software License, Version 2.0
   Apache Parquet Column under The Apache Software License, Version 2.0
@@ -54,40 +75,75 @@ This project includes:
   Apache Parquet Encodings under The Apache Software License, Version 2.0
   Apache Parquet Format under The Apache Software License, Version 2.0
   Apache Parquet Hadoop under The Apache Software License, Version 2.0
+  Apache Parquet Hadoop Bundle (Incubating) under The Apache Software License, Version 2.0
   Apache Parquet Jackson under The Apache Software License, Version 2.0
+  Apache Thrift under The Apache Software License, Version 2.0
   Apache XBean :: ASM 5 shaded (repackaged) under null or null
+  Apache Yetus - Audience Annotations under Apache License, Version 2.0
   ApacheDS I18n under The Apache Software License, Version 2.0
   ApacheDS Protocol Kerberos Codec under The Apache Software License, Version 2.0
+  ASM Analysis under BSD
+  ASM Commons under BSD
+  ASM Core under BSD
+  ASM Tree under BSD
+  ASM Util under BSD
   base64 under Public domain
   Bean Validation API under The Apache Software License, Version 2.0
+  BoneCP :: Core Library under Apache v2
+  Bouncy Castle PKIX, CMS, EAC, TSP, PKCS, OCSP, CMP, and CRMF APIs under Bouncy Castle Licence
   Bouncy Castle Provider under Bouncy Castle Licence
-  calcite-all-1.8.0 under Apache License, Version 2.0
-  calcite-elasticsearch5-adapter under Apache License, Version 2.0
+  c3p0:JDBC DataSources/Resource Pools under GNU LESSER GENERAL PUBLIC LICENSE
+  Calcite Avatica under Apache License, Version 2.0
+  Calcite Core under Apache License, Version 2.0
+  Calcite Linq4j under Apache License, Version 2.0
   chill under Apache 2
   chill-java under Apache 2
   Commons BeanUtils Core under The Apache Software License, Version 2.0
   Commons CLI under The Apache Software License, Version 2.0
   Commons Codec under The Apache Software License, Version 2.0
+  Commons Collections under The Apache Software License, Version 2.0
   Commons Compiler under New BSD License
   Commons Compress under The Apache Software License, Version 2.0
   Commons Configuration under The Apache Software License, Version 2.0
+  Commons Daemon under The Apache Software License, Version 2.0
+  Commons DBCP under The Apache Software License, Version 2.0
   Commons IO under The Apache Software License, Version 2.0
   Commons Lang under The Apache Software License, Version 2.0
+  Commons Logging under The Apache Software License, Version 2.0
+  Commons Math under The Apache Software License, Version 2.0
   Commons Net under The Apache Software License, Version 2.0
+  Commons Pool under The Apache Software License, Version 2.0
   commons-beanutils under Apache License, Version 2.0
   Compress-LZF under Apache License 2.0
   config under Apache License, Version 2.0
+  cron-utils under Apache 2.0
   Curator Client under The Apache Software License, Version 2.0
   Curator Framework under The Apache Software License, Version 2.0
   Curator Recipes under The Apache Software License, Version 2.0
   Data Mapper for Jackson under The Apache Software License, Version 2.0
+  DataNucleus Core under The Apache Software License, Version 2.0
+  DataNucleus JDO API plugin under The Apache Software License, Version 2.0
+  DataNucleus RDBMS under The Apache Software License, Version 2.0
+  DataStax Java Driver for Apache Cassandra - Core under Apache 2
   Digester under The Apache Software License, Version 2.0
+  Disruptor Framework under The Apache Software License, Version 2.0
+  eigenbase-properties under Apache License, Version 2.0
+  EL under The Apache Software License, Version 2.0
   Elasticsearch Spark (for Spark 2.0) under The Apache Software License, Version 2.0
+  embedded-redis under The Apache Software License, Version 2.0
   empty under The Apache License, Version 2.0
+  fastparse under MIT license
+  fastparse-utils under MIT license
+  Findbugs Annotations under Apache License under Apache License, Version 2.0
   FindBugs-jsr305 under The Apache Software License, Version 2.0
+  Glassfish Jasper under CDDL 1.0
+  Glassfish Jasper API under Apache License Version 2.0
+  Google Guice - Core Library under The Apache Software License, Version 2.0
+  Google Guice - Extensions - Servlet under The Apache Software License, Version 2.0
   Graphite Integration for Metrics under Apache License 2.0
   Gson under The Apache Software License, Version 2.0
   Guava: Google Core Libraries for Java under The Apache Software License, Version 2.0
+  H2 Database Engine under MPL 2.0 or EPL 1.0
   hadoop-mapreduce-client-app under The Apache Software License, Version 2.0
   hadoop-mapreduce-client-common under The Apache Software License, Version 2.0
   hadoop-mapreduce-client-core under The Apache Software License, Version 2.0
@@ -97,6 +153,11 @@ This project includes:
   hadoop-yarn-client under The Apache Software License, Version 2.0
   hadoop-yarn-common under The Apache Software License, Version 2.0
   hadoop-yarn-server-common under The Apache Software License, Version 2.0
+  hadoop-yarn-server-web-proxy under The Apache Software License, Version 2.0
+  Hamcrest Core under New BSD License
+  HikariCP under The Apache Software License, Version 2.0
+  Hive Metastore under The Apache Software License, Version 2.0
+  Hive Query Language under The Apache Software License, Version 2.0
   HK2 API module under CDDL + GPLv2 with classpath exception
   HK2 Implementation Utilities under CDDL + GPLv2 with classpath exception
   htrace-core under The Apache Software License, Version 2.0
@@ -108,18 +169,29 @@ This project includes:
   jackson-databind under The Apache Software License, Version 2.0 or GNU Lesser General Public License, Version 2.1
   Jackson-module-paranamer under The Apache Software License, Version 2.0
   jackson-module-scala under The Apache Software License, Version 2.0
+  jamon-runtime under Mozilla Public License Version 1.1
   Janino under New BSD License
+  jasper-compiler under The Apache Software License, Version 2.0
+  jasper-runtime under The Apache Software License, Version 2.0
   Java Servlet API under CDDL + GPLv2 with classpath exception
+  Java Transaction API under Commons Development and Distribution License, Version 1.0
   java-xmlbuilder under Apache License, Version 2.0
+  JavaBeans Activation Framework (JAF) under Common Development and Distribution License (CDDL) v1.0
   JavaBeans(TM) Activation Framework under COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0
+  JavaEWAH under Apache 2
   JavaMail API (compat) under CDDL or GPLv2+CE
   Javassist under MPL 1.1 or LGPL 2.1 or Apache License 2.0
   javax.annotation API under CDDL + GPLv2 with classpath exception
+  javax.inject under The Apache Software License, Version 2.0
   javax.inject:1 as OSGi bundle under CDDL + GPLv2 with classpath exception
   javax.ws.rs-api under CDDL 1.1 or GPL2 w/ CPE
+  Javolution under BSD License
   JAX-RS provider for JSON content type under The Apache Software License, Version 2.0 or GNU Lesser General Public License (LGPL), Version 2.1
   JAXB API bundle for GlassFish V3 under CDDL 1.1 or GPL2 w/ CPE
+  JAXB RI under CDDL 1.1 or GPL2 w/ CPE
   JCL 1.1.1 implemented over SLF4J under MIT License
+  JCodings under MIT License
+  JDO API under Apache 2
   Jedis under MIT
   jersey-client under CDDL 1.1 or GPL2 w/ CPE
   jersey-container-servlet under CDDL+GPL License
@@ -128,37 +200,92 @@ This project includes:
   jersey-core-client under CDDL+GPL License
   jersey-core-common under CDDL+GPL License
   jersey-core-server under CDDL+GPL License
+  jersey-guice under CDDL 1.1 or GPL2 w/ CPE
+  jersey-json under CDDL 1.1 or GPL2 w/ CPE
   jersey-media-jaxb under CDDL+GPL License
   jersey-repackaged-guava under CDDL+GPL License
+  jersey-server under CDDL 1.1 or GPL2 w/ CPE
   JetS3t under Apache 2.0
+  Jettison under Apache License, Version 2.0
+  Jetty Server under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty SSLEngine under Apache License Version 2
   Jetty Utilities under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  jffi under The Apache Software License, Version 2.0
   JLine under BSD
+  JLine Bundle under The BSD License
+  jnr-constants under The Apache Software License, Version 2.0
+  jnr-ffi under The Apache Software License, Version 2.0
+  jnr-posix under Common Public License - v 1.0 or GNU General Public License Version 2 or GNU Lesser General Public License Version 2.1
+  jnr-x86asm under MIT License
+  Joda convert under Apache 2
+  Joda-Time under Apache 2
+  Jodd Core under The New BSD License
+  Joni under MIT License
+  JSch under BSD
+  JSON in Java under The JSON License
   json4s-ast under ASL
   json4s-core under ASL
   json4s-jackson under ASL
+  json4s-native under ASL
+  jsp-api under Commons Development and Distribution License, Version 1.0
+  JSR166e under CC0 1.0 Universal
   JUL to SLF4J bridge under MIT License
+  JUnit under Common Public License Version 1.0
   JVM Integration for Metrics under Apache License 2.0
+  jwt-core under Apache-2.0
+  jwt-core-impl under Apache-2.0
   Kryo Shaded under New BSD License
+  Kudu Java Client under Apache License, Version 2.0
+  Kudu Spark Bindings under Apache License, Version 2.0
   leveldbjni-all under The BSD 3-Clause License
   LZ4 and xxHash under The Apache Software License, Version 2.0
   Metrics Core under Apache License 2.0
+  Metrics Core Library under Apache License 2.0
   MinLog under New BSD License
-  moonbox-assembly_2.11 under Apache License, Version 2.0
-  moonbox-common_2.11 under Apache License, Version 2.0
-  moonbox-core_2.11 under Apache License, Version 2.0
-  moonbox-grid_2.11 under Apache License, Version 2.0
-  moonbox-parent_2.11 under Apache License, Version 2.0
+  mongo-spark-connector under Apache-2.0
+  MongoDB Java Driver under The Apache Software License, Version 2.0
+  Moonbox Project Assembly under Apache License, Version 2.0
+  Moonbox Project Catalyst under Apache License, Version 2.0
+  Moonbox Project Client under Apache License, Version 2.0
+  Moonbox Project Common under Apache License, Version 2.0
+  Moonbox Project Core under Apache License, Version 2.0
+  Moonbox Project Data Adapter Cassandra under Apache License, Version 2.0
+  Moonbox Project Data Adapter Elasticsearch under Apache License, Version 2.0
+  Moonbox Project Data Adapter Hbase under Apache License, Version 2.0
+  Moonbox Project Data Adapter Kudu under Apache License, Version 2.0
+  Moonbox Project Data Adapter Mongo under Apache License, Version 2.0
+  Moonbox Project Data Adapter MSSQL under Apache License, Version 2.0
+  Moonbox Project Data Adapter MySQL under Apache License, Version 2.0
+  Moonbox Project Data Adapter Oracle under Apache License, Version 2.0
+  Moonbox Project Data Adapter Presto under Apache License, Version 2.0
+  Moonbox Project Grid under Apache License, Version 2.0
+  Moonbox Project Hbase Connector under Apache License, Version 2.0
+  Moonbox Project JDBC under Apache License, Version 2.0
+  Moonbox Project Local Service under Apache License, Version 2.0
+  Moonbox Project Parent POM under Apache License, Version 2.0
+  Moonbox Project Presto Connector under Apache License, Version 2.0
+  Moonbox Project REPL under Apache License, Version 2.0
+  Moonbox Project Testkit under Apache License, Version 2.0
   MX4J under The Apache Software License, Version 2.0
   Netty under Apache License, Version 2.0
   Netty/All-in-One under Apache License, Version 2.0
+  Netty/Buffer under Apache License, Version 2.0
+  Netty/Codec under Apache License, Version 2.0
+  Netty/Common under Apache License, Version 2.0
+  Netty/Handler under Apache License, Version 2.0
+  Netty/Transport under Apache License, Version 2.0
   Objenesis under Apache 2
+  opencsv under Apache 2
   oro under Apache License, Version 2.0
   OSGi resource locator bundle - used by various API providers that rely on META-INF/services mechanism to locate providers. under CDDL + GPLv2 with classpath exception
   ParaNamer Core under BSD
+  presto-jdbc under Apache License 2.0
   Protocol Buffer Java API under New BSD license
   Py4J under The New BSD License
   pyrolite under MIT License
+  quartz under The Apache Software License, Version 2.0
   reactive-streams under CC0
+  rest under The Apache Software License, Version 2.0
   RoaringBitmap under Apache 2
   Scala Compiler under BSD 3-Clause
   Scala Library under BSD 3-Clause
@@ -171,9 +298,15 @@ This project includes:
   ServiceLocator Default Implementation under CDDL + GPLv2 with classpath exception
   SLF4J API Module under MIT License
   SLF4J LOG4J-12 Binding under MIT License
+  Slick under Two-clause BSD-style license
+  Slick-HikariCP under Two-clause BSD-style license
+  snappy under Apache License 2.0
+  Snappy for Java under The Apache Software License, Version 2.0
   snappy-java under The Apache Software License, Version 2.0
+  sourcecode under MIT
   Spark Project Catalyst under Apache 2.0 License
   Spark Project Core under Apache 2.0 License
+  Spark Project Hive under Apache 2.0 License
   Spark Project Launcher under Apache 2.0 License
   Spark Project Networking under Apache 2.0 License
   Spark Project Shuffle Streaming Service under Apache 2.0 License
@@ -182,11 +315,14 @@ This project includes:
   Spark Project Streaming under Apache 2.0 License
   Spark Project Tags under Apache 2.0 License
   Spark Project Unsafe under Apache 2.0 License
-  spark-hbase-connector under Apache License, Version 2.0
-  ssl-config-akka under Apache License, Version 2.0
+  Spark Project YARN under Apache 2.0 License
+  spark-cassandra-connector under Apache License 2.0
   ssl-config-core under Apache License, Version 2.0
+  StAX API under The Apache Software License, Version 2.0
   stream-lib under Apache License, Version 2.0
   Streaming API for XML under Sun Binary Code License
+  SUAsync Library under BSD
+  The Netty Project under Apache License, Version 2.0
   Uncommons Maths under Apache License, Version 2.0
   univocity-parsers under Apache 2
   Xerces2 Java Parser under The Apache Software License, Version 2.0

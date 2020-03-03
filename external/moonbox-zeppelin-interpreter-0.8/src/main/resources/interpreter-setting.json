@@ -1,0 +1,62 @@
+[
+  {
+    "group": "moonbox-interpreter",
+    "name": "moonbox",
+    "className": "moonbox.jdbc.interpreter.MoonboxInterpreter",
+    "properties": {
+      "default.url": {
+        "envName": null,
+        "propertyName": "default.url",
+        "defaultValue": "jdbc:moonbox://localhost:10010/default",
+        "description": "The URL for moonbox JDBC",
+        "type": "string"
+      },
+      "default.user": {
+        "envName": null,
+        "propertyName": "default.user",
+        "defaultValue": "org@user",
+        "description": "The moonbox JDBC user name",
+        "type": "string"
+      },
+      "default.password": {
+        "envName": null,
+        "propertyName": "default.password",
+        "defaultValue": "yourPassword",
+        "description": "The moonbox JDBC user password",
+        "type": "password"
+      },
+      "default.driver": {
+        "envName": null,
+        "propertyName": "default.driver",
+        "defaultValue": "moonbox.jdbc.MbDriver",
+        "description": "Moonbox JDBC Driver Name",
+        "type": "string"
+      },
+      "default.maxConcurrency": {
+        "envName": null,
+        "propertyName": "default.maxConcurrency",
+        "defaultValue": "10",
+        "description": "Max number of paralleled paragraphs",
+        "type": "number"
+      },
+      "default.max_count": {
+        "envName": null,
+        "propertyName": "default.max_count",
+        "defaultValue": "100",
+        "description": "Max number of SQL result to display",
+        "type": "number"
+      },
+      "default.timeout": {
+        "envName": null,
+        "propertyName": "default.timeout",
+        "defaultValue": "600",
+        "description": "Query time out, time unit(s)",
+        "type": "number"
+      }
+    },
+    "editor": {
+      "language": "sql",
+      "editOnDblClick": false
+    }
+  }
+]

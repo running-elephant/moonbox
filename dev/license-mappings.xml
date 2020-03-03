@@ -6,4 +6,9 @@
         <artifactId>zookeeper</artifactId>
         <license>Apache License, Version 2.0</license>
     </artifact>
+    <artifact>
+        <groupId>org.codehaus.jettison</groupId>
+        <artifactId>jettison</artifactId>
+        <license>Apache License, Version 2.0</license>
+    </artifact>
 </license-lookup>

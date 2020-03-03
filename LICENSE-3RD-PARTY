@@ -1,0 +1,28 @@
+
+List of third-party dependencies grouped by their license type.
+
+    Apache 2.0:
+
+        * config (com.typesafe:config:1.3.1 - https://github.com/typesafehub/config)
+        * Commons IO (commons-io:commons-io:2.4 - http://commons.apache.org/io/)
+        * Apache Log4j (log4j:log4j:1.2.17 - http://logging.apache.org/log4j/1.2/)
+        * scalactic (org.scalactic:scalactic_2.11:3.0.0 - http://www.scalatest.org)
+        * scalatest (org.scalatest:scalatest_2.11:3.0.0 - http://www.scalatest.org)
+
+    BSD:
+
+        * Scala Library (org.scala-lang:scala-library:2.11.11 - http://www.scala-lang.org/)
+        * Scala Compiler (org.scala-lang:scala-reflect:2.11.8 - http://www.scala-lang.org/)
+        * scala-parser-combinators (org.scala-lang.modules:scala-parser-combinators_2.11:1.0.4 - http://www.scala-lang.org/)
+        * scala-xml (org.scala-lang.modules:scala-xml_2.11:1.0.5 - http://www.scala-lang.org/)
+
+    MIT:
+
+        * sourcecode (com.lihaoyi:sourcecode_2.11:0.1.4 - https://github.com/lihaoyi/sourcecode)
+        * SLF4J API Module (org.slf4j:slf4j-api:1.7.16 - http://www.slf4j.org)
+        * SLF4J LOG4J-12 Binding (org.slf4j:slf4j-log4j12:1.7.16 - http://www.slf4j.org)
+
+    MIT license:
+
+        * fastparse-utils (com.lihaoyi:fastparse-utils_2.11:1.0.0 - https://github.com/lihaoyi/scala-parser)
+        * fastparse (com.lihaoyi:fastparse_2.11:1.0.0 - https://github.com/lihaoyi/scala-parser)

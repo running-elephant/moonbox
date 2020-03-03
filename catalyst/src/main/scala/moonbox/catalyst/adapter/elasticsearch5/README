@@ -1,0 +1,56 @@
+es date <==> sql timestamp
+-----------------sql support-----
+SQL Select
+SQL Where
+SQL Order By
+SQL Group By
+SQL AND & OR
+SQL Like
+SQL COUNT distinct
+SQL In
+SQL Between
+SQL Aliases
+SQL Not Null
+SQL Nulls
+SQL avg()
+SQL count()
+SQL max()
+SQL min()
+SQL sum()
+
+----------------------array function support --------------
+array_exists
+select about from people where array_exists(about, "x='playing'")
+SELECT comments.name as aaa, comments.age as bbb from  people_nest where array_exists(comments.age, "x>19")
+
+array_filter
+SELECT array_filter(user.age, "x>20") as aaa , user.age as bbb from  nest_test_table
+
+array_map
+SELECT array_map(user.age, "x+100") as aaa , user.age as bbb from  nest_test_table
+
+-------------------- geo function support --------------------
+https://www.elastic.co/guide/en/elasticsearch/reference/current/geo-queries.html
+geo_distance
+select name from attractions where geo_distance('1km', 40.715, -73.988)
+
+geo_shape
+select name,location from shape_geo where geo_shape('envelope', 13.0, 53.0, 14.0, 52.0, 'within')
+
+geo_bounding_box
+select name, pin from my_locations where geo_bounding_box('pin.location', 40.73, -74.1, 40.01, -71.12)
+
+geo_polygon
+select name, pin from my_locations where geo_polygon('pin.location', array(40,30,20,50), array(-70,-80,-90,-90) )
+
+-----------------case example------------------
+Class.forName("moonbox.catalyst.adapter.elasticsearch5.jdbc.Driver")
+val url = s"jdbc:es://slave1:9200,slave2:9200/$tbl"
+val prop = new Properties
+prop.put("es.type", mtype)
+prop.put("es.read.field.as.array.include", "column")  //if column is array
+prop.put("es.user", "admin")        //if es has auth
+prop.put("es.password", "123456")   //if es has auth
+connection = DriverManager.getConnection(url, prop)
+val statement: Statement = connection.createStatement()
+val rs: ResultSet = statement.executeQuery(s""" $sql """)
