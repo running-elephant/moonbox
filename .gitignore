@@ -23,6 +23,7 @@ metastore_db
 spark-warehouse
 *.bak
 conf/moonbox-defaults.conf
+conf/moonbox-defaults.conf-master
 conf/moonbox-env.sh
 conf/nodes
 conf/log4j.properties
