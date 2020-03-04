@@ -48,6 +48,7 @@
         <module>external/clickhouse-adapter</module>
         <module>external/redis-adapter</module>
         <module>external/kafka-adapter</module>
+        <module>external/postgres-adapter</module>
         <module>external/moonbox-zeppelin-interpreter-0.7</module>
         <module>external/moonbox-zeppelin-interpreter-0.8</module>
 
@@ -57,6 +58,7 @@
         <module>applications/hive-interactive</module>
 
         <module>assembly</module>
+
 
 
     </modules>

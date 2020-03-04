@@ -142,6 +142,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>postgres</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-postgres-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>kudu</id>
             <dependencies>
                 <dependency>
