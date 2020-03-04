@@ -196,6 +196,7 @@ class MoonboxMaster(
 		AppMasterManager.registerAppMaster(new SparkClusterAppMaster(catalog))
 		AppMasterManager.registerAppMaster(new SparkBatchAppMaster(catalog))
 
+		logInfo(s"Running Moonbox version 0.4.0")
 		logInfo(s"Starting MoonboxMaster at ${self.path.toSerializationFormatWithAddress(address)}")
 	}
 

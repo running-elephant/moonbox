@@ -11,4 +11,8 @@ class SparkClusterAppMaster(jdbcCatalog: JdbcCatalog) extends AppMaster(jdbcCata
 	override def typeName: String = "sparkcluster"
 
 	override def resourceTemplate: Map[String, String] = Map()
+
+	override def onWorkerExit(driverRunner: DriverRunner): Unit = {
+		driverRunner.kill()
+	}
 }

@@ -119,13 +119,18 @@ private[deploy] class DriverRunner(
 		if (sparkAppHandle != null) {
 			try {
 				sparkAppHandle.stop()
-				if (process != null) { process.destroy() }
 			} catch {
 				case e: Exception =>
 					logWarning(s"Kill application with id: $appId failed." + e.getMessage)
 			}
 		} else {
 			logWarning(s"SparkAppHandle is null, driver id is $driverId ")
+		}
+		try {
+			if (process != null) { process.destroy() }
+		} catch {
+			case e: Exception =>
+				logWarning("exit application main process failed.")
 		}
 	}
 

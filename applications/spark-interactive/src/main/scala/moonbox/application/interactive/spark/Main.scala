@@ -322,7 +322,7 @@ class Main(
 
 
 	private def startComputeEnv(): Unit = {
-		SparkEngine.start(conf)
+		SparkEngine.start(conf, () => { logInfo("shutdown hook call") })
 	}
 
 	private def handleRegisterResponse(msg: RegisterApplicationResponse): Unit = {

@@ -30,6 +30,7 @@ import moonbox.core.MoonboxCatalog
 import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
 import org.apache.spark.rdd.RDD
+import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.analyze.MbAnalyzer
 import org.apache.spark.sql.catalyst.analysis.{UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
@@ -841,12 +842,11 @@ object SparkEngine extends MbLogging {
 
   private def getSparkContext(conf: MbConf): SparkContext = {
     if (sparkContext == null) {
-      start(conf)
-      sparkContext
+      throw new IllegalStateException("SparkContext is uninitialized.")
     } else sparkContext
   }
 
-  def start(conf: MbConf): Unit = {
+  def start(conf: MbConf, shutdownHooks: (() => Unit)*): Unit = {
     synchronized {
       if (sparkContext == null || sparkContext.isStopped) {
         val sparkConf = new SparkConf().setAll(conf.getAll.filterKeys(_.startsWith("spark.")))
@@ -860,6 +860,12 @@ object SparkEngine extends MbLogging {
         // val toUpperCased =
         // val loglevel = org.apache.log4j.Level.toLevel(toUpperCased)
         // org.apache.log4j.Logger.getRootLogger.setLevel(loglevel)
+				sparkContext.addSparkListener(new SparkListener {
+					override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit = {
+						logInfo(s"application stopped at ${applicationEnd.time}")
+						shutdownHooks.foreach(_())
+					}
+				})
         logInfo("New a sparkContext instance.")
       } else {
         logInfo("Using an exists sparkContext.")

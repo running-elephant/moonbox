@@ -14,4 +14,8 @@ class SparkLocalAppMaster(jdbcCatalog: JdbcCatalog) extends AppMaster(jdbcCatalo
 	override def typeName: String = "sparklocal"
 
 	override def resourceTemplate: Map[String, String] = Map()
+
+	override def onWorkerExit(driverRunner: DriverRunner): Unit = {
+		driverRunner.kill()
+	}
 }

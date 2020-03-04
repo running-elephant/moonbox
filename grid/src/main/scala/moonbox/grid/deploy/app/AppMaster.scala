@@ -34,6 +34,8 @@ abstract class AppMaster(jdbcCatalog: JdbcCatalog) extends MbLogging {
 
 	}
 
+	def onWorkerExit(driverRunner: DriverRunner): Unit = {}
+
 	def createDriverDesc(config: Map[String, String]): DriverDesc
 
 	def typeName: String
