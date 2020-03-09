@@ -31,7 +31,7 @@ object HadoopFsBaseDataSystem {
     if (isHadoopFsType(props("type"))) {
       isRemoteHaCluster(props) match {
         case true =>
-          checkRemoteOptions(props)
+//          checkRemoteOptions(props)
           val nameService = new URI(props(PATH)).getHost
           val nameNodes = props(NAMENODES).split(",")
           hadoopConfMap.put(SPARK_HADOOP_KEY_PREFIX + DFSConfigKeys.DFS_HA_NAMENODES_KEY_PREFIX + "." + nameService, "nn1,nn2")

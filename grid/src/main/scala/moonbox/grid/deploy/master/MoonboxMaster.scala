@@ -691,9 +691,14 @@ class MoonboxMaster(
   }
 
   override def onDisconnected(remoteAddress: Address): Unit = {
-    logInfo(s"$remoteAddress got disassociated, removing it.")
-    addressToWorker.get(remoteAddress).foreach(removeWorker)
-    addressToApp.get(remoteAddress).foreach(removeApplication)
+    addressToWorker.get(remoteAddress).foreach(worker => {
+      logInfo(s"Worker ${worker.id} remoteAddress got disassociated, removing it.")
+      removeWorker(worker)
+    })
+    addressToApp.get(remoteAddress).foreach(app => {
+      logInfo(s"App ${app.id} remoteAddress got disassociated, removing it.")
+      removeApplication(app)
+    })
     if (state == RecoveryState.RECOVERING && canCompleteRecovery) {
       completeRecovery()
     }
@@ -881,12 +886,12 @@ class MoonboxMaster(
         apps.find(_.id == driverId) match {
           case Some(app) =>
             removeApplication(app)
-          case None =>
-            logWarning(s"Asked to remove unknown app: $driverId")
+          case None => // nothing
+          // logWarning(s"Asked to remove unknown app: $driverId")
         }
         schedule()
-      case None =>
-        logWarning(s"Asked to remove unknown driver: $driverId")
+      case None => // nothing
+      // logWarning(s"Asked to remove unknown driver: $driverId")
     }
   }
 

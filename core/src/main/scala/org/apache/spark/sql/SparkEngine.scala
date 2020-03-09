@@ -50,10 +50,10 @@ import org.apache.spark.sql.types.{IntegerType, NullType, StructField, StructTyp
 import org.apache.spark.{SparkConf, SparkContext}
 import org.spark_project.guava.util.concurrent.Striped
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
 
 class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
@@ -299,14 +299,14 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     }
   }
 
-  private def resolveTables(logicalPlan: LogicalPlan): Seq[String] = {
+  private def resolveTables(logicalPlan: LogicalPlan): Set[String] = {
     val tables = ListBuffer.empty[String]
     logicalPlan.transformDown({
       case relation: LogicalRelation =>
         tables.append(resolveTable(relation.catalogTable.get))
         relation
     })
-    tables
+    tables.toSet
   }
 
   // table form like [db].name
@@ -325,7 +325,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
   def sql(sql: String, maxRows: Int = 100): (Iterator[Row], StructType) = {
     var outputTable: String = null
-    var inputTables = Seq.empty[String]
+    var inputTables = Set.empty[String]
     val parsedPlan = parsePlan(sql)
     injectTableFunctions(parsedPlan)
     val unlimited = maxRows < 0
@@ -363,9 +363,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
           }
       }
 
-      val hookContext = new HookContext(mbCatalog.getCurrentOrg, mbCatalog.catalogUser.name, sql, inputTables.toSet, outputTable)
-      hookContext.setHookType(hookContext.HookType.POST_EXEC_HOOK)
-
       val optimizedPlan = optimizePlan(limitPlan)
 
       val result = if (pushdownEnable) {
@@ -392,7 +389,10 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         val dataFrame = createDataFrame(optimizedPlan)
         (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
       }
-      Future(HookRunner.runPostExecHooks(hookContext))
+      if (inputTables.nonEmpty) {
+        val hookContext = new HookContext(mbCatalog.getCurrentOrg, mbCatalog.catalogUser.name, sql, inputTables, outputTable)
+        Future(HookRunner.runPostExecHooks(hookContext))
+      }
       result
     }
   }
@@ -779,7 +779,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       )
     } else {
       val path = hiveCatalogTable.storage.locationUri.get.toString
-      setRemoteHadoopConf(mergeRemoteHadoopConf(props) ++ Map("path" -> path))
+      setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
 
       val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 

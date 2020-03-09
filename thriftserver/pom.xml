@@ -24,6 +24,7 @@
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-jdbc_2.11</artifactId>
             <version>${project.version}</version>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>protobuf-java</artifactId>
@@ -35,7 +36,7 @@
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-common_2.11</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>scala-library</artifactId>

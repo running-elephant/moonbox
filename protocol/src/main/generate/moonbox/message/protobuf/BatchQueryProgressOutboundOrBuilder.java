@@ -18,11 +18,21 @@ public interface BatchQueryProgressOutboundOrBuilder extends
       getMessageBytes();
 
   /**
-   * <code>string state = 2;</code>
+   * <code>string appId = 2;</code>
+   */
+  java.lang.String getAppId();
+  /**
+   * <code>string appId = 2;</code>
+   */
+  com.google.protobuf.ByteString
+      getAppIdBytes();
+
+  /**
+   * <code>string state = 3;</code>
    */
   java.lang.String getState();
   /**
-   * <code>string state = 2;</code>
+   * <code>string state = 3;</code>
    */
   com.google.protobuf.ByteString
       getStateBytes();

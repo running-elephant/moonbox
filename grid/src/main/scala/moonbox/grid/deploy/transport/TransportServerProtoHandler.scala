@@ -285,7 +285,7 @@ class TransportServerProtoHandler(channelToToken: ConcurrentHashMap[Channel, Str
 		}
 
 		def batchProgressResponse(message: String, appId: Option[String], state: Option[String]): Unit = {
-			val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(message, state.orNull)
+			val toResp = ProtoOutboundMessageBuilder.batchQueryProgressOutbound(message, appId.orNull, state.orNull)
 			val message1: ProtoMessage = protobuf.ProtoMessage.newBuilder().setMessageId(messageId).setBatchQueryProgressOutbound(toResp).build()
 			ctx.writeAndFlush(message1)
 		}

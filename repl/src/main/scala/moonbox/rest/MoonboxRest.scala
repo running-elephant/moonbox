@@ -122,9 +122,11 @@ object MoonboxRest {
       }
       if (state == SUCCESS) {
         stopped = true
+        println("State: SUCCESS")
         System.exit(0)
       } else if (FAILED.contains(state)) {
-        println("error message: " + message)
+        println("State: FAILED")
+        println("ERROR MESSAGE: " + message)
         stopped = true
         System.exit(-1)
       } else {

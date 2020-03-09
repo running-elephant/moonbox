@@ -17,6 +17,7 @@ private static final long serialVersionUID = 0L;
   }
   private BatchQueryProgressOutbound() {
     message_ = "";
+    appId_ = "";
     state_ = "";
   }
 
@@ -51,6 +52,12 @@ private static final long serialVersionUID = 0L;
             break;
           }
           case 18: {
+            java.lang.String s = input.readStringRequireUtf8();
+
+            appId_ = s;
+            break;
+          }
+          case 26: {
             java.lang.String s = input.readStringRequireUtf8();
 
             state_ = s;
@@ -122,10 +129,44 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int STATE_FIELD_NUMBER = 2;
+  public static final int APPID_FIELD_NUMBER = 2;
+  private volatile java.lang.Object appId_;
+  /**
+   * <code>string appId = 2;</code>
+   */
+  public java.lang.String getAppId() {
+    java.lang.Object ref = appId_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      appId_ = s;
+      return s;
+    }
+  }
+  /**
+   * <code>string appId = 2;</code>
+   */
+  public com.google.protobuf.ByteString
+      getAppIdBytes() {
+    java.lang.Object ref = appId_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      appId_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int STATE_FIELD_NUMBER = 3;
   private volatile java.lang.Object state_;
   /**
-   * <code>string state = 2;</code>
+   * <code>string state = 3;</code>
    */
   public java.lang.String getState() {
     java.lang.Object ref = state_;
@@ -140,7 +181,7 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
-   * <code>string state = 2;</code>
+   * <code>string state = 3;</code>
    */
   public com.google.protobuf.ByteString
       getStateBytes() {
@@ -173,8 +214,11 @@ private static final long serialVersionUID = 0L;
     if (!getMessageBytes().isEmpty()) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 1, message_);
     }
+    if (!getAppIdBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, appId_);
+    }
     if (!getStateBytes().isEmpty()) {
-      com.google.protobuf.GeneratedMessageV3.writeString(output, 2, state_);
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, state_);
     }
     unknownFields.writeTo(output);
   }
@@ -188,8 +232,11 @@ private static final long serialVersionUID = 0L;
     if (!getMessageBytes().isEmpty()) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, message_);
     }
+    if (!getAppIdBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, appId_);
+    }
     if (!getStateBytes().isEmpty()) {
-      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, state_);
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, state_);
     }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
@@ -209,6 +256,8 @@ private static final long serialVersionUID = 0L;
     boolean result = true;
     result = result && getMessage()
         .equals(other.getMessage());
+    result = result && getAppId()
+        .equals(other.getAppId());
     result = result && getState()
         .equals(other.getState());
     result = result && unknownFields.equals(other.unknownFields);
@@ -224,6 +273,8 @@ private static final long serialVersionUID = 0L;
     hash = (19 * hash) + getDescriptor().hashCode();
     hash = (37 * hash) + MESSAGE_FIELD_NUMBER;
     hash = (53 * hash) + getMessage().hashCode();
+    hash = (37 * hash) + APPID_FIELD_NUMBER;
+    hash = (53 * hash) + getAppId().hashCode();
     hash = (37 * hash) + STATE_FIELD_NUMBER;
     hash = (53 * hash) + getState().hashCode();
     hash = (29 * hash) + unknownFields.hashCode();
@@ -361,6 +412,8 @@ private static final long serialVersionUID = 0L;
       super.clear();
       message_ = "";
 
+      appId_ = "";
+
       state_ = "";
 
       return this;
@@ -390,6 +443,7 @@ private static final long serialVersionUID = 0L;
     public moonbox.message.protobuf.BatchQueryProgressOutbound buildPartial() {
       moonbox.message.protobuf.BatchQueryProgressOutbound result = new moonbox.message.protobuf.BatchQueryProgressOutbound(this);
       result.message_ = message_;
+      result.appId_ = appId_;
       result.state_ = state_;
       onBuilt();
       return result;
@@ -441,6 +495,10 @@ private static final long serialVersionUID = 0L;
       if (other == moonbox.message.protobuf.BatchQueryProgressOutbound.getDefaultInstance()) return this;
       if (!other.getMessage().isEmpty()) {
         message_ = other.message_;
+        onChanged();
+      }
+      if (!other.getAppId().isEmpty()) {
+        appId_ = other.appId_;
         onChanged();
       }
       if (!other.getState().isEmpty()) {
@@ -545,9 +603,78 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
+    private java.lang.Object appId_ = "";
+    /**
+     * <code>string appId = 2;</code>
+     */
+    public java.lang.String getAppId() {
+      java.lang.Object ref = appId_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        appId_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <code>string appId = 2;</code>
+     */
+    public com.google.protobuf.ByteString
+        getAppIdBytes() {
+      java.lang.Object ref = appId_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        appId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <code>string appId = 2;</code>
+     */
+    public Builder setAppId(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      appId_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string appId = 2;</code>
+     */
+    public Builder clearAppId() {
+      
+      appId_ = getDefaultInstance().getAppId();
+      onChanged();
+      return this;
+    }
+    /**
+     * <code>string appId = 2;</code>
+     */
+    public Builder setAppIdBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      appId_ = value;
+      onChanged();
+      return this;
+    }
+
     private java.lang.Object state_ = "";
     /**
-     * <code>string state = 2;</code>
+     * <code>string state = 3;</code>
      */
     public java.lang.String getState() {
       java.lang.Object ref = state_;
@@ -562,7 +689,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string state = 2;</code>
+     * <code>string state = 3;</code>
      */
     public com.google.protobuf.ByteString
         getStateBytes() {
@@ -578,7 +705,7 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>string state = 2;</code>
+     * <code>string state = 3;</code>
      */
     public Builder setState(
         java.lang.String value) {
@@ -591,7 +718,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>string state = 2;</code>
+     * <code>string state = 3;</code>
      */
     public Builder clearState() {
       
@@ -600,7 +727,7 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>string state = 2;</code>
+     * <code>string state = 3;</code>
      */
     public Builder setStateBytes(
         com.google.protobuf.ByteString value) {

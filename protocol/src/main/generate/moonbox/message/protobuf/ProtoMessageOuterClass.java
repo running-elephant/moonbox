@@ -245,26 +245,26 @@ public final class ProtoMessageOuterClass {
       "ryOutbound\022\016\n\006job_id\030\001 \001(\t\022\r\n\005error\030\002 \001(" +
       "\t\"O\n\031BatchQueryProgressInbound\022\020\n\010userna" +
       "me\030\001 \001(\t\022\020\n\010password\030\002 \001(\t\022\016\n\006job_id\030\003 \001" +
-      "(\t\"<\n\032BatchQueryProgressOutbound\022\017\n\007mess" +
-      "age\030\001 \001(\t\022\r\n\005state\030\002 \001(\t\"B\n\035InteractiveQ" +
-      "ueryCancelInbound\022\r\n\005token\030\001 \001(\t\022\022\n\nsess" +
-      "ion_id\030\002 \001(\t\"/\n\036InteractiveQueryCancelOu" +
-      "tbound\022\r\n\005error\030\001 \001(\t\"M\n\027BatchQueryCance" +
-      "lInbound\022\020\n\010username\030\001 \001(\t\022\020\n\010password\030\002" +
-      " \001(\t\022\016\n\006job_id\030\003 \001(\t\")\n\030BatchQueryCancel" +
-      "Outbound\022\r\n\005error\030\001 \001(\t\"\036\n\rInternalError" +
-      "\022\r\n\005error\030\001 \001(\t\"\"\n\004Data\022\032\n\003row\030\001 \003(\0132\r.p" +
-      "rotobuf.Row\"#\n\003Row\022\034\n\004cell\030\001 \003(\0132\016.proto" +
-      "buf.Cell\"\335\001\n\004Cell\022\026\n\014string_value\030\001 \001(\tH" +
-      "\000\022\024\n\nlong_value\030\002 \001(\003H\000\022\023\n\tint_value\030\003 \001" +
-      "(\005H\000\022\027\n\rboolean_value\030\004 \001(\010H\000\022)\n\013big_dec" +
-      "imal\030\005 \001(\0132\022.protobuf.BDecimalH\000\022\024\n\nbyte" +
-      "_array\030\006 \001(\014H\000\022\026\n\014double_value\030\007 \001(\001H\000\022\025" +
-      "\n\013float_value\030\010 \001(\002H\000B\t\n\007objects\">\n\010BDec" +
-      "imal\022\r\n\005scale\030\001 \001(\005\022#\n\007int_val\030\002 \001(\0132\022.p" +
-      "rotobuf.BInteger\"\031\n\010BInteger\022\r\n\005value\030\001 " +
-      "\001(\014B\034\n\030moonbox.message.protobufP\001b\006proto" +
-      "3"
+      "(\t\"K\n\032BatchQueryProgressOutbound\022\017\n\007mess" +
+      "age\030\001 \001(\t\022\r\n\005appId\030\002 \001(\t\022\r\n\005state\030\003 \001(\t\"" +
+      "B\n\035InteractiveQueryCancelInbound\022\r\n\005toke" +
+      "n\030\001 \001(\t\022\022\n\nsession_id\030\002 \001(\t\"/\n\036Interacti" +
+      "veQueryCancelOutbound\022\r\n\005error\030\001 \001(\t\"M\n\027" +
+      "BatchQueryCancelInbound\022\020\n\010username\030\001 \001(" +
+      "\t\022\020\n\010password\030\002 \001(\t\022\016\n\006job_id\030\003 \001(\t\")\n\030B" +
+      "atchQueryCancelOutbound\022\r\n\005error\030\001 \001(\t\"\036" +
+      "\n\rInternalError\022\r\n\005error\030\001 \001(\t\"\"\n\004Data\022\032" +
+      "\n\003row\030\001 \003(\0132\r.protobuf.Row\"#\n\003Row\022\034\n\004cel" +
+      "l\030\001 \003(\0132\016.protobuf.Cell\"\335\001\n\004Cell\022\026\n\014stri" +
+      "ng_value\030\001 \001(\tH\000\022\024\n\nlong_value\030\002 \001(\003H\000\022\023" +
+      "\n\tint_value\030\003 \001(\005H\000\022\027\n\rboolean_value\030\004 \001" +
+      "(\010H\000\022)\n\013big_decimal\030\005 \001(\0132\022.protobuf.BDe" +
+      "cimalH\000\022\024\n\nbyte_array\030\006 \001(\014H\000\022\026\n\014double_" +
+      "value\030\007 \001(\001H\000\022\025\n\013float_value\030\010 \001(\002H\000B\t\n\007" +
+      "objects\">\n\010BDecimal\022\r\n\005scale\030\001 \001(\005\022#\n\007in" +
+      "t_val\030\002 \001(\0132\022.protobuf.BInteger\"\031\n\010BInte" +
+      "ger\022\r\n\005value\030\001 \001(\014B\034\n\030moonbox.message.pr" +
+      "otobufP\001b\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -398,7 +398,7 @@ public final class ProtoMessageOuterClass {
     internal_static_protobuf_BatchQueryProgressOutbound_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_protobuf_BatchQueryProgressOutbound_descriptor,
-        new java.lang.String[] { "Message", "State", });
+        new java.lang.String[] { "Message", "AppId", "State", });
     internal_static_protobuf_InteractiveQueryCancelInbound_descriptor =
       getDescriptor().getMessageTypes().get(18);
     internal_static_protobuf_InteractiveQueryCancelInbound_fieldAccessorTable = new
