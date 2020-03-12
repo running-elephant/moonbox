@@ -516,15 +516,10 @@ case class DropView(
 
     val database = mbSession.catalog.getDatabase(view.database.getOrElse(getCurrentDb))
 
-    val existView = mbSession.catalog.getTable(database.name, view.table)
-
-    if (existView.tableType != CatalogTableType.VIEW) {
-      throw new Exception(s"${existView.name} is not a view.")
-    }
-
     mbSession.catalog.dropTable(
       database.name, view.table, ignoreIfNotExists)
 
+    mbSession.engine.catalog.dropTempView(view.table)
     Seq.empty[Row]
   }
 }
