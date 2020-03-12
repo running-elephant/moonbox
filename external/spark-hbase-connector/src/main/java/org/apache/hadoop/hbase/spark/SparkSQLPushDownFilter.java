@@ -189,7 +189,7 @@ public class SparkSQLPushDownFilter extends FilterBase {
     }
 
     String encoder = proto.getEncoderClassName();
-    BytesEncoder enc = JavaBytesEncoder$.MODULE$.create(encoder);
+    BytesEncoder enc = JavaBytesEncoder.create(encoder);
 
     //Load DynamicLogicExpression
     DynamicLogicExpression dynamicLogicExpression =
