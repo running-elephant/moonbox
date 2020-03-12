@@ -131,6 +131,7 @@ case class HBaseRelation (
     if(LatestHBaseContextCache.latest == null) {
       LatestHBaseContextCache.latest = {
         val config = HBaseConfiguration.create()
+        parameters.foreach(kv => if (kv._1.startsWith("hbase") && kv._1 != HBaseSparkConf.HBASE_CONFIG_LOCATION) config.set(kv._1, kv._2))
         // TODO  changed
         if(configResources.equals("")) {
           config.set(HConstants.ZOOKEEPER_QUORUM, parameters.getOrElse(HConstants.ZOOKEEPER_QUORUM, throw new NoSuchElementException(s"${HConstants.ZOOKEEPER_QUORUM} must be config")))
@@ -145,7 +146,8 @@ case class HBaseRelation (
     LatestHBaseContextCache.latest
   } else {
     val config = HBaseConfiguration.create()
-    if(configResources.equals("")) {
+    parameters.foreach(kv => if (kv._1.startsWith("hbase") && kv._1 != HBaseSparkConf.HBASE_CONFIG_LOCATION) config.set(kv._1, kv._2))
+    if (configResources.equals("")) {
       config.set(HConstants.ZOOKEEPER_QUORUM, parameters.getOrElse(HConstants.ZOOKEEPER_QUORUM, throw new NoSuchElementException(s"${HConstants.ZOOKEEPER_QUORUM} must be config")))
       config.set(HConstants.ZOOKEEPER_CLIENT_PORT, parameters.getOrElse(HConstants.ZOOKEEPER_CLIENT_PORT, "2181"))
       config.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parameters.getOrElse(HConstants.ZOOKEEPER_ZNODE_PARENT, "/hbase"))
@@ -170,12 +172,10 @@ case class HBaseRelation (
 
   def createTable() {
     val numReg = parameters.get(HBaseTableCatalog.newTable).map(x => x.toInt).getOrElse(0)
-    val startKey =  Bytes.toBytes(
-      parameters.get(HBaseTableCatalog.regionStart)
-        .getOrElse(HBaseTableCatalog.defaultRegionStart))
+    val startKey = Bytes.toBytes(
+      parameters.getOrElse(HBaseTableCatalog.regionStart, HBaseTableCatalog.defaultRegionStart))
     val endKey = Bytes.toBytes(
-      parameters.get(HBaseTableCatalog.regionEnd)
-        .getOrElse(HBaseTableCatalog.defaultRegionEnd))
+      parameters.getOrElse(HBaseTableCatalog.regionEnd, HBaseTableCatalog.defaultRegionEnd))
     if (numReg > 3) {
       val tName = TableName.valueOf(catalog.name)
       val cfs = catalog.getColumnFamilies
@@ -195,7 +195,7 @@ case class HBaseRelation (
           admin.createTable(tableDesc, splitKeys)
 
         }
-      }finally {
+      } finally {
         admin.close()
         connection.close()
       }
