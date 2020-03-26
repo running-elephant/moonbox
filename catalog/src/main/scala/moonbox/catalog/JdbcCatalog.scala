@@ -95,7 +95,7 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
     } else await {
       jdbcDao.action(jdbcDao.getUser(userId)).map {
         case Some(userEntity) => userEntity.name
-        case None => throw new IllegalStateException(s"user is deleted.")
+        case None => throw new IllegalStateException(s"user $userId is deleted.")
       }
     }
   }
@@ -1128,13 +1128,20 @@ class JdbcCatalog(conf: MbConf) extends AbstractCatalog with MbLogging {
           case Some(tableEntity) =>
             val dbId = tableEntity.databaseId
             val tId = tableEntity.id.get
-            jdbcDao.actionTransactionally(
-              for (
-                _ <- jdbcDao.deleteTablePrivilege(dbId, tId);
-                _ <- jdbcDao.deleteColumnPrivilege(dbId, tId);
-                _ <- jdbcDao.deleteTable(dbId, table)
-              ) yield ()
-            )
+            jdbcDao.action(jdbcDao.getTablePrivilege(dbId, tId)).map {
+              tps => {
+                jdbcDao.action(jdbcDao.getColumnPrivilege(dbId, tId)).map {
+                  cps =>
+                    jdbcDao.actionTransactionally(
+                      for (
+                        _ <- jdbcDao.deleteTablePrivilege(tps.map(_.id.get));
+                        _ <- jdbcDao.deleteColumnPrivilege(cps.map(_.id.get));
+                        _ <- jdbcDao.deleteTable(tId)
+                      ) yield ()
+                    )
+                }
+              }
+            }
           case None =>
             if (!ignoreIfNotExists) {
               throw new NoSuchTableException(database, table)
