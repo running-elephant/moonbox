@@ -83,30 +83,26 @@ object UmsCommon {
   def genUmsTuple(sparkSchema: StructType, sparkRow: InternalRow): UmsTuple = {
     val seq = new ArrayBuffer[String]
     for (i <- sparkSchema.indices) {
-      val umsValue = sparkSchema(i).dataType match {
-        case StringType => sparkRow.getUTF8String(i)
-        case IntegerType => sparkRow.getInt(i)
-        case LongType => sparkRow.getLong(i)
-        case FloatType => sparkRow.getFloat(i)
-        case DoubleType => sparkRow.getDouble(i)
-        case BooleanType => sparkRow.getBoolean(i)
-        case DateType =>
-          if(sparkRow.isNullAt(i)) null
-          else DateTimeUtils.toJavaDate(sparkRow.getInt(i))
-        case TimestampType =>
-          if(sparkRow.isNullAt(i)) null
-          else DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
-        case d@DecimalType.Fixed(p, s) =>
-          if (sparkRow.isNullAt(i)) null
-          else sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
-        case BinaryType => sparkRow.getBinary(i)
+      if (sparkRow.isNullAt(i))
+        seq.append(null)
+      else {
+        val umsValue = sparkSchema(i).dataType match {
+          case StringType => sparkRow.getUTF8String(i)
+          case IntegerType => sparkRow.getInt(i)
+          case LongType => sparkRow.getLong(i)
+          case FloatType => sparkRow.getFloat(i)
+          case DoubleType => sparkRow.getDouble(i)
+          case BooleanType => sparkRow.getBoolean(i)
+          case DateType => DateTimeUtils.toJavaDate(sparkRow.getInt(i))
+          case TimestampType => DateTimeUtils.toJavaTimestamp(sparkRow.getLong(i))
+          case d@DecimalType.Fixed(p, s) => sparkRow.getDecimal(i, d.precision, d.scale).toJavaBigDecimal
+          case BinaryType => sparkRow.getBinary(i)
+        }
+        seq.append(umsValue.toString)
       }
-      if (umsValue == null) seq.append(null)
-      else seq.append(umsValue.toString)
     }
     UmsTuple(seq)
   }
-
 
 
   //  def genSparkStructType(schema: String): StructType = {
