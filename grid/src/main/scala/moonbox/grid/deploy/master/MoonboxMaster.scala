@@ -413,6 +413,7 @@ class MoonboxMaster(
     case JobSubmit(org, username, lang, sqls, userConfig) =>
       if (state != RecoveryState.ACTIVE) {
         val msg = s"Current master is not active: $state. Can only accept driver submissions in ALIVE state."
+        logError(s"Batch job submitted failed: $msg")
         sender() ! JobSubmitResponse(None, msg)
       } else {
         logInfo("Batch job submitted: " + sqls.mkString("; "))

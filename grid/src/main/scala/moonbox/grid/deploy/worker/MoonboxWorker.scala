@@ -159,7 +159,7 @@ class MoonboxWorker(
 
     sendToMaster(driverStateChanged)
 
-    if (state == DriverState.FINISHED || state == DriverState.FAILED || state == DriverState.LOST) {
+    if (state == DriverState.FINISHED || state == DriverState.FAILED || state == DriverState.LOST || state == DriverState.KILLED) {
       if (killMarker.contains(driverId)) {
         killMarker.remove(driverId)
       } else {
