@@ -24,8 +24,8 @@ import java.sql.Connection
 import java.util.ServiceLoader
 
 import moonbox.core.datasys.{DataSystem, Updatable}
-import org.apache.spark.sql.execution.datasources.jdbc.JdbcUtils._
-import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD, JdbcUtils}
+import org.apache.spark.sql.execution.datasources.mbjdbc.JdbcUtils._
+import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD}
 import org.apache.spark.sql.jdbc.{JdbcDialect, JdbcDialects}
 import org.apache.spark.sql.sources.{CreatableRelationProvider, RelationProvider, _}
 import org.apache.spark.sql.types.StructType

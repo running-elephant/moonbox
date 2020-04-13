@@ -48,7 +48,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.analysis.Resolver
 import org.apache.spark.sql.catalyst.util.DateTimeUtil._
 import org.apache.spark.sql.catalyst.util.{DateFormatter, TimestampFormatter}
-import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCPartition, JDBCRDD, JdbcUtils}
+import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCPartition, JDBCRDD}
 import org.apache.spark.sql.jdbc.JdbcDialects
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.sqlbuilder.MbDialect
@@ -334,10 +334,12 @@ case class MbJDBCRelation(
           ds.update(data, Some(schema), isCaseSensitive, parameters)
         case _ => throw new Exception(s"${parameters.getOrElse("type", "Underlying data source")} doesn't support upsert operation.")
       }
-    } else {
+    } else { // for insert table present in select clause
       data.write
         .mode(if (overwrite) SaveMode.Overwrite else SaveMode.Append)
-        .jdbc(url, table, properties)
+	          .format(DataSystem.lookupDataSource(properties.getProperty("type")))
+	          .options(properties)
+	          .save()
     }
   }
 
