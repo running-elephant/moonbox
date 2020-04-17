@@ -24,12 +24,17 @@ import moonbox.grid.deploy.worker.LaunchUtils
 import org.apache.spark.launcher.SparkLauncher
 
 trait DriverDesc {
-	def master: Option[String]
-	def deployMode: Option[String]
-	def mainClass: String
-	def appResource: String
-	def toAppArgs: Seq[String]
-	def toConf: Map[String, String]
+  def master: Option[String]
+
+  def deployMode: Option[String]
+
+  def mainClass: String
+
+  def appResource: String
+
+  def toAppArgs: Seq[String]
+
+  def toConf: Map[String, String]
 }
 
 trait LongRunDriverDesc extends DriverDesc
@@ -37,154 +42,162 @@ trait LongRunDriverDesc extends DriverDesc
 trait OnceRunDriverDesc extends DriverDesc
 
 case class SparkLocalDriverDesc(
-	driverId: String,
-	label: String,
-	masters: Array[String],
-	config: Map[String, String]) extends LongRunDriverDesc {
+                                 driverId: String,
+                                 label: String,
+                                 masters: Array[String],
+                                 config: Map[String, String]) extends LongRunDriverDesc {
 
-	override def master = {
-		val cores = Runtime.getRuntime.availableProcessors()
-		val specialized = config.get("spark.driver.cores")
-		val configured = specialized.map(_.toInt).getOrElse(cores / 2)
-		Some(s"local[$configured]")
-	}
-	override def deployMode = None
-	override def mainClass = "moonbox.application.interactive.spark.Main"
+  override def master = {
+    val cores = Runtime.getRuntime.availableProcessors()
+    val specialized = config.get("spark.driver.cores")
+    val configured = specialized.map(_.toInt).getOrElse(cores / 2)
+    Some(s"local[$configured]")
+  }
 
-	override def toString: String = {
-		s"DriverDescription ($master)"
-	}
+  override def deployMode = None
 
-	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark."))
-			++ Map(
-			"driverId" -> driverId,
-			"appLabel" -> label,
-			"masters" -> masters.mkString(";"),
-			"applicationType" -> "CENTRALIZED"
-		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
-	}
+  override def mainClass = "moonbox.application.interactive.spark.Main"
 
-	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("spark.")) ++ Map(
-			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath()
-		)
-	}
+  override def toString: String = {
+    s"DriverDescription ($master)"
+  }
 
-	override def appResource: String = {
-		LaunchUtils.getAppResourceJar("spark-interactive").getOrElse(
-			throw new Exception("Interactive app jar does not found in env.")
-		)
-	}
+  override def toAppArgs: Seq[String] = {
+    (config.filterKeys(key => !key.startsWith("spark."))
+      ++ Map(
+      "driverId" -> driverId,
+      "appLabel" -> label,
+      "masters" -> masters.mkString(";"),
+      "applicationType" -> "CENTRALIZED"
+    )).toSeq.flatMap { case (k, v) => Seq(k, v) }
+  }
+
+  override def toConf: Map[String, String] = {
+    config.filterKeys(_.startsWith("spark.")) ++ Map(
+      SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath()
+    )
+  }
+
+  override def appResource: String = {
+    LaunchUtils.getAppResourceJar("spark-interactive").getOrElse(
+      throw new Exception("Interactive app jar does not found in env.")
+    )
+  }
 }
 
 case class SparkClusterDriverDesc(
-	driverId: String,
-	label: String,
-	masters: Array[String],
-	config: Map[String, String]) extends LongRunDriverDesc {
+                                   driverId: String,
+                                   label: String,
+                                   masters: Array[String],
+                                   config: Map[String, String]) extends LongRunDriverDesc {
 
-	override def master = Some("yarn")
-	override def deployMode = Some("client")
-	override def mainClass = "moonbox.application.interactive.spark.Main"
+  override def master = Some("yarn")
 
-	override def toString: String = {
-		s"DriverDescription ($master ${deployMode.get})"
-	}
+  override def deployMode = Some("client")
 
-	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark."))
-			++ Map(
-			"driverId" -> driverId,
-			"appLabel" -> label,
-			"masters" -> masters.mkString(";"),
-			"applicationType" -> "DISTRIBUTED"
-		)).toSeq.flatMap { case (k, v) => Seq(k, v)}
-	}
+  override def mainClass = "moonbox.application.interactive.spark.Main"
 
-	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("spark.")) ++ Map(
-			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath()
-		)
-	}
+  override def toString: String = {
+    s"DriverDescription ($master ${deployMode.get})"
+  }
 
-	override def appResource: String = {
-		LaunchUtils.getAppResourceJar("spark-interactive").getOrElse(
-			throw new Exception("Interactive app jar does not found in env.")
-		)
-	}
+  override def toAppArgs: Seq[String] = {
+    (config.filterKeys(key => !key.startsWith("spark."))
+      ++ Map(
+      "driverId" -> driverId,
+      "appLabel" -> label,
+      "masters" -> masters.mkString(";"),
+      "applicationType" -> "DISTRIBUTED"
+    )).toSeq.flatMap { case (k, v) => Seq(k, v) }
+  }
+
+  override def toConf: Map[String, String] = {
+    config.filterKeys(_.startsWith("spark.")) ++ Map(
+      SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getDriverClasspath()
+    )
+  }
+
+  override def appResource: String = {
+    LaunchUtils.getAppResourceJar("spark-interactive").getOrElse(
+      throw new Exception("Interactive app jar does not found in env.")
+    )
+  }
 }
 
 case class SparkBatchDriverDesc(
-	org: String,
-	username: String,
-	sqls: Seq[String],
-	config: Map[String, String]
-) extends OnceRunDriverDesc {
+                                 org: String,
+                                 username: String,
+                                 sqls: Seq[String],
+                                 config: Map[String, String]
+                               ) extends OnceRunDriverDesc {
 
-	override def master = Some("yarn")
-	override def deployMode = Some("cluster")
-	override def mainClass = "moonbox.application.batch.spark.Main"
+  override def master = Some("yarn")
 
-	override def toString: String = {
-		s"DriverDescription ($master ${deployMode.get} $username ${sqls.mkString(";")})"
-	}
+  override def deployMode = Some("cluster")
 
-	override def toAppArgs: Seq[String] = {
-		(config.filterKeys(key => !key.startsWith("spark."))
-			++ Map(
-			"org" -> org,
-			"username" -> username,
-			"sqls" -> sqls.mkString(";")
-		)).toSeq.flatMap { case (k, v) => Seq(k, v) }
-	}
+  override def mainClass = "moonbox.application.batch.spark.Main"
 
-	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("spark."))
-	}
+  override def toString: String = {
+    s"DriverDescription ($master ${deployMode.get} $username ${sqls.mkString(";")})"
+  }
 
-	override def appResource: String = {
-		LaunchUtils.getAppResourceJar("spark-batch").getOrElse(
-			throw new Exception("batch app jar does not found in env.")
-		)
-	}
+  override def toAppArgs: Seq[String] = {
+    (config.filterKeys(key => !key.startsWith("spark."))
+      ++ Map(
+      "org" -> org,
+      "username" -> username,
+      "sqls" -> sqls.mkString(";")
+    )).toSeq.flatMap { case (k, v) => Seq(k, v) }
+  }
+
+  override def toConf: Map[String, String] = {
+    config.filterKeys(_.startsWith("spark."))
+  }
+
+  override def appResource: String = {
+    LaunchUtils.getAppResourceJar("spark-batch").getOrElse(
+      throw new Exception("batch app jar does not found in env.")
+    )
+  }
 }
 
 case class HiveBatchDriverDesc(
-	driverId: String,
-	org: String,
-	username: String,
-	sqls: Seq[String],
-	config: Map[String, String]
-) extends OnceRunDriverDesc {
+                                driverId: String,
+                                org: String,
+                                username: String,
+                                sqls: Seq[String],
+                                config: Map[String, String]
+                              ) extends OnceRunDriverDesc {
 
-	override def master = None
-	override def deployMode = None
-	override def mainClass = "moonbox.application.batch.hive.Main"
+  override def master = None
 
-	override def toString: String = {
-		s"DriverDescription (hive $username ${sqls.mkString(";")})"
-	}
+  override def deployMode = None
 
-	override def toAppArgs: Seq[String] = {
-		Map(
-			"driverId" -> driverId,
-			"org" -> org,
-			"username" -> username,
-			"sqls" -> sqls.mkString(";")
-		).toSeq.flatMap { case (k, v) => Seq(k, v) }
-	}
+  override def mainClass = "moonbox.application.batch.hive.Main"
 
-	override def toConf: Map[String, String] = {
-		config.filterKeys(_.startsWith("hive.")) ++ Map(
-			SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getMoonboxLibs()
-		)
-	}
+  override def toString: String = {
+    s"DriverDescription (hive $username ${sqls.mkString(";")})"
+  }
 
-	override def appResource: String = {
-		LaunchUtils.getAppResourceJar("hive-batch").getOrElse(
-			throw new Exception("hive app jar does not found in env.")
-		)
-	}
+  override def toAppArgs: Seq[String] = {
+    Map(
+      "driverId" -> driverId,
+      "org" -> org,
+      "username" -> username,
+      "sqls" -> sqls.mkString(";")
+    ).toSeq.flatMap { case (k, v) => Seq(k, v) }
+  }
+
+  override def toConf: Map[String, String] = {
+    config.filterKeys(_.startsWith("hive.")) ++ Map(
+      SparkLauncher.DRIVER_EXTRA_CLASSPATH -> LaunchUtils.getMoonboxLibs()
+    )
+  }
+
+  override def appResource: String = {
+    LaunchUtils.getAppResourceJar("hive-batch").getOrElse(
+      throw new Exception("hive app jar does not found in env.")
+    )
+  }
 }
 

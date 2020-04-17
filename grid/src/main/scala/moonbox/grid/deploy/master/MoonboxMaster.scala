@@ -77,6 +77,10 @@ class MoonboxMaster(
   // for batch
   private val waitingDrivers = new ArrayBuffer[DriverInfo]
 
+  // for mointor driver
+
+  private var driverMonitors: Seq[DriverMonitor] = _
+
   // for batch driver id
   private var nextBatchDriverNumber = 0
 
@@ -101,7 +105,6 @@ class MoonboxMaster(
   private var tcpServer: Option[TransportServer] = None
   private var tcpServerBoundPort: Option[Int] = None
 
-
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
 
@@ -112,6 +115,10 @@ class MoonboxMaster(
       self,
       CheckForWorkerTimeOut
     )
+
+    // monitor drivers
+    DriverMonitor.registerDriverMonitor(new SparkBatchDriverMonitor(system, self, conf))
+    driverMonitors = DriverMonitor.getDriverMonitors()
 
     // start persist engine and election agent
     try {
@@ -213,6 +220,7 @@ class MoonboxMaster(
           new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS), self, CompleteRecovery)
       } else {
         logInfo(s"Now working as $state")
+        driverMonitors.foreach(driverMonitor => driverMonitor.monitorDrivers())
       }
 
     case RevokedLeadership =>
@@ -429,6 +437,7 @@ class MoonboxMaster(
         persistenceEngine.addDriver(driver)
         waitingDrivers += driver
         drivers.add(driver)
+        driverMonitors.foreach(driverMonitor => driverMonitor.registerDriver(driver))
         schedule()
         val msg = s"Batch job successfully submitted as ${driver.id}"
         logInfo(msg)
@@ -443,12 +452,13 @@ class MoonboxMaster(
         waitingDrivers.find(_.id == driverId) match {
           case Some(driver) =>
             val msg = s"Driver $driverId is waiting for submit."
-            sender() ! JobProgressState(driverId, driver.appId, driver.startTime, driver.state.toString, msg)
+            sender() ! JobProgressState(driverId, driver.appId, driver.submitTime, driver.state.toString, msg)
           case None =>
             (drivers ++ completedDrivers).find(_.id == driverId) match {
               case Some(driver) =>
+
                 val msg = driver.exception.map(_.getMessage).getOrElse("")
-                sender() ! JobProgressState(driverId, driver.appId, driver.startTime, driver.state.toString, msg)
+                sender() ! JobProgressState(driverId, driver.appId, driver.submitTime, driver.state.toString, msg)
               case None =>
                 val msg = s"Ask unknown job state: $driverId"
                 logWarning(msg)
@@ -468,12 +478,14 @@ class MoonboxMaster(
           case Some(d) =>
             if (waitingDrivers.contains(d)) {
               waitingDrivers -= d
+              logInfo(s"Remove driver $driverId from waitingDrivers.")
               self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
             } else {
               d.worker.foreach(_.endpoint ! KillDriver(driverId))
+              logInfo(s"Asked worker ${d.worker.get.id} to kill driver $driverId.")
+              driverMonitors.find(_.isInstanceOf[SparkBatchDriverMonitor]).get.killDriver(d)
             }
             val msg = s"Kill request for $driverId submitted."
-            logInfo(msg)
             sender() ! BatchJobCancelResponse(driverId, success = true, msg)
           case None =>
             val msg = s"Driver $driverId has already finished or does not exist."
@@ -689,6 +701,19 @@ class MoonboxMaster(
         )
       }
       sender() ! AppsInfoResponse(appsInfo)
+    case DriversInfoRequest =>
+      val driversInfo = drivers.toSeq
+        .filter(driver => DriverDeployMode(driver.desc.deployMode.getOrElse("NONE")) == DriverDeployMode.CLUSTER)
+        .map { driver =>
+          Seq(
+            driver.id,
+            driver.appId.getOrElse("none"),
+            if (driver.worker.isDefined) driver.worker.get.id else "none",
+            driver.state.toString,
+            driver.submitDate.toString
+          )
+        }
+      sender() ! DriversInfoResponse(driversInfo)
   }
 
   override def onDisconnected(remoteAddress: Address): Unit = {
@@ -874,9 +899,10 @@ class MoonboxMaster(
   private def removeDriver(driverId: String, state: DriverState, appId: Option[String], exception: Option[Exception]) {
     drivers.find(_.id == driverId) match {
       case Some(driver) =>
-        logInfo(s"Removing driver: $driverId. Final state $state")
+        logInfo(s"Removing driver: $driverId. Final state $state.")
         drivers -= driver
         // TODO complete retain
+        driver.setFinishDate(System.currentTimeMillis())
         completedDrivers += driver
         persistenceEngine.removeDriver(driver)
         driver.state = state

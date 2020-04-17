@@ -124,7 +124,7 @@ class MoonboxWorker(
           killMarker.add(driverId)
           runner.kill()
         case None =>
-          logError(s"Asked to kill unknown driver $driverId")
+         logWarning(s"Asked to kill unknown driver $driverId")
       }
 
     case driverStateChanged@DriverStateChanged(driverId, state, appId, exception) =>
@@ -150,6 +150,7 @@ class MoonboxWorker(
         logInfo(s"Driver $driverId has submitted to yarn.")
       case DriverState.RUNNING =>
         logInfo(s"Driver $driverId begin running.")
+
       case _ =>
         logDebug(s"Driver $driverId changed state to $state")
     }

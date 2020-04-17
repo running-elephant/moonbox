@@ -23,43 +23,67 @@ package moonbox.grid.deploy.app
 import java.util.Date
 
 import moonbox.grid.deploy.master.WorkerInfo
+import org.apache.hadoop.yarn.api.records.ApplicationId
 
 
 class DriverInfo(
-	val startTime: Long,
-	val id: String,
-	val desc: DriverDesc,
-	val submitDate: Date) extends Serializable {
+                  val submitTime: Long,
+                  val id: String,
+                  val desc: DriverDesc,
+                  val submitDate: Date) extends Serializable {
 
-	@transient var state: DriverState.Value = DriverState.WAITING
+  @transient var state: DriverState.Value = DriverState.WAITING
 
-	@transient var exception: Option[Exception] = None
+  @transient var exception: Option[Exception] = None
 
-	@transient var worker: Option[WorkerInfo] = None
+  @transient var worker: Option[WorkerInfo] = None
 
-	@transient var appId: Option[String] = None
+  @transient var appId: Option[String] = None
 
-	init()
+  @transient var appIdInfo: Option[ApplicationId] = None
 
-	private def init(): Unit = {
-		state = DriverState.WAITING
-		worker = None
-		exception = None
-		appId = None
-	}
+  @transient var startDate: Option[Date] = None
 
-	private def readObject(in: java.io.ObjectInputStream): Unit = {
-		in.defaultReadObject()
-		init()
-	}
+  @transient var finishDate: Option[Date] = None
 
-	override def toString: String = {
-		s"""startTime: $startTime
-		   |id: $id
-		   |desc: $desc
-		   |submitDate: $submitDate
-		   |state: $state
-		   |appId: $appId
+  init()
+
+  def setStartDate(time: Long): Unit = {
+    if (time != 0)
+      Some(new Date(time))
+    else this.startDate = null
+  }
+
+  def setFinishDate(time: Long): Unit = {
+    if (time != 0)
+      Some(new Date(time))
+    else this.finishDate = null
+  }
+
+  def setException(msg: String): Unit = {
+    if (msg != null)
+      this.exception = Some(new Exception(msg))
+  }
+
+  private def init(): Unit = {
+    state = DriverState.WAITING
+    worker = None
+    exception = None
+    appId = None
+  }
+
+  private def readObject(in: java.io.ObjectInputStream): Unit = {
+    in.defaultReadObject()
+    init()
+  }
+
+  override def toString: String = {
+    s"""startTime: $submitTime
+       		   |id: $id
+       		   |desc: $desc
+       		   |submitDate: $submitDate
+       		   |state: $state
+       		   |appId: $appId
 		 """.stripMargin
-	}
+  }
 }

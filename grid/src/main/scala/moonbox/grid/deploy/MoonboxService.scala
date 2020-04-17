@@ -406,6 +406,15 @@ private[deploy] class MoonboxService(
     }
   }
 
+  def driversInfo(): DriversInfoOutbound = {
+    askSync[DriversInfoResponse](DriversInfoRequest)(SHORT_TIMEOUT) match {
+      case Left(DriversInfoResponse(drivers)) =>
+        DriversInfoOutbound(drivers)
+      case Right(message) =>
+        DriversInfoOutbound(Seq.empty[Seq[String]])
+    }
+  }
+
   private def parseUsername(user: String): Option[(String, String)] = {
     if (user.equalsIgnoreCase("ROOT")) Some(("SYSTEM", "ROOT"))
     else {

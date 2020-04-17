@@ -935,6 +935,7 @@ object SparkEngine extends MbLogging {
     synchronized {
       if (sparkContext == null || sparkContext.isStopped) {
         val sparkConf = new SparkConf().setAll(conf.getAll.filterKeys(_.startsWith("spark.")))
+        conf.getAll
         sparkConf.set(StaticSQLConf.CATALOG_IMPLEMENTATION.key, "in-memory")
         sparkConf.set(StaticSQLConf.WAREHOUSE_PATH.key,
           "file://" + Utils.getMoonboxHomeOption.getOrElse("/tmp") + File.separator + "spark-warehouse")

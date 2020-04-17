@@ -41,6 +41,7 @@ private[deploy] class DriverRunner(
   @transient private var process: Process = _
 
   def start() = {
+    //todo handle spark-submit process submit app failed state
     new Thread("DriverRunner for " + driverId) {
       override def run(): Unit = {
         try {
@@ -69,34 +70,42 @@ private[deploy] class DriverRunner(
             launcher.addJar
           }
 
-          sparkAppHandle = launcher.startApplication(new SparkAppHandle.Listener {
+          def startApplication(): SparkAppHandle = {
+            if (desc.deployMode.isDefined && desc.deployMode.get == "cluster") {
+              launcher.startApplication()
+            } else {
+              launcher.startApplication(new SparkAppHandle.Listener {
 
-            override def infoChanged(handle: SparkAppHandle): Unit = {
-            }
+                override def infoChanged(handle: SparkAppHandle): Unit = {
+                }
 
-            override def stateChanged(handle: SparkAppHandle): Unit = {
-              logInfo(handle.getState.toString)
-              val state = handle.getState match {
-                case SparkAppHandle.State.UNKNOWN =>
-                  DriverState.UNKNOWN
-                case SparkAppHandle.State.LOST =>
-                  DriverState.LOST
-                case SparkAppHandle.State.CONNECTED =>
-                  DriverState.CONNECTED
-                case SparkAppHandle.State.SUBMITTED =>
-                  DriverState.SUBMITTED
-                case SparkAppHandle.State.RUNNING =>
-                  DriverState.RUNNING
-                case SparkAppHandle.State.FAILED =>
-                  DriverState.FAILED
-                case SparkAppHandle.State.KILLED =>
-                  DriverState.KILLED
-                case SparkAppHandle.State.FINISHED =>
-                  DriverState.FINISHED
-              }
-              worker ! DriverStateChanged(driverId, state, Option(handle.getAppId), None)
+                override def stateChanged(handle: SparkAppHandle): Unit = {
+                  logInfo(handle.getState.toString)
+                  val state = handle.getState match {
+                    case SparkAppHandle.State.UNKNOWN =>
+                      DriverState.UNKNOWN
+                    case SparkAppHandle.State.LOST =>
+                      DriverState.LOST
+                    case SparkAppHandle.State.CONNECTED =>
+                      DriverState.CONNECTED
+                    case SparkAppHandle.State.SUBMITTED =>
+                      DriverState.SUBMITTED
+                    case SparkAppHandle.State.RUNNING =>
+                      DriverState.RUNNING
+                    case SparkAppHandle.State.FAILED =>
+                      DriverState.FAILED
+                    case SparkAppHandle.State.KILLED =>
+                      DriverState.KILLED
+                    case SparkAppHandle.State.FINISHED =>
+                      DriverState.FINISHED
+                  }
+                  worker ! DriverStateChanged(driverId, state, Option(handle.getAppId), None)
+                }
+              })
             }
-          })
+          }
+
+          sparkAppHandle = startApplication()
           process = launcher.process
         } catch {
           case e: Exception =>

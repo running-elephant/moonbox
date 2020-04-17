@@ -120,12 +120,11 @@ object MoonboxRest {
         appIdInitial = appId
         println("YarnApplicationId: " + appIdInitial)
       }
+      println(s"State: $state")
       if (state == SUCCESS) {
         stopped = true
-        println("State: SUCCESS")
         System.exit(0)
       } else if (FAILED.contains(state)) {
-        println("State: FAILED")
         println("ERROR MESSAGE: " + message)
         stopped = true
         System.exit(-1)

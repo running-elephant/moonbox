@@ -147,4 +147,8 @@ object Message {
 
   case class AppsInfoResponse(apps: Seq[Seq[String]]) extends ManagementMessage
 
+  case object DriversInfoRequest extends ManagementMessage
+
+  case class DriversInfoResponse(drivers: Seq[Seq[String]]) extends ManagementMessage
+
 }

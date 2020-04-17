@@ -131,6 +131,10 @@ object Interface extends Interface {
 
   case class AppsInfoOutbound(apps: Seq[Seq[String]]) extends Outbound
 
+  case object DriversInfoInbound extends Inbound
+
+  case class DriversInfoOutbound(drivers: Seq[Seq[String]]) extends Outbound
+
 }
 
 
