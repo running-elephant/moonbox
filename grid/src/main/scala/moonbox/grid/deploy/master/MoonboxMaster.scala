@@ -77,8 +77,7 @@ class MoonboxMaster(
   // for batch
   private val waitingDrivers = new ArrayBuffer[DriverInfo]
 
-  // for mointor driver
-
+  // for monitor driver
   private var driverMonitors: Seq[DriverMonitor] = _
 
   // for batch driver id
@@ -481,9 +480,12 @@ class MoonboxMaster(
               logInfo(s"Remove driver $driverId from waitingDrivers.")
               self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
             } else {
-              d.worker.foreach(_.endpoint ! KillDriver(driverId))
-              logInfo(s"Asked worker ${d.worker.get.id} to kill driver $driverId.")
-              driverMonitors.find(_.isInstanceOf[SparkBatchDriverMonitor]).get.killDriver(d)
+              if (d.appId.isEmpty) {
+                d.worker.foreach(_.endpoint ! KillDriver(driverId))
+                logInfo(s"Asked worker ${d.worker.get.id} to kill driver $driverId.")
+              } else {
+                driverMonitors.find(_.isInstanceOf[SparkBatchDriverMonitor]).get.killDriver(d)
+              }
             }
             val msg = s"Kill request for $driverId submitted."
             sender() ! BatchJobCancelResponse(driverId, success = true, msg)

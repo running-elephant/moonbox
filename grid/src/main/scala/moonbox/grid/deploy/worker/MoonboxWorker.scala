@@ -124,7 +124,7 @@ class MoonboxWorker(
           killMarker.add(driverId)
           runner.kill()
         case None =>
-         logWarning(s"Asked to kill unknown driver $driverId")
+          logWarning(s"Asked to kill unknown driver $driverId")
       }
 
     case driverStateChanged@DriverStateChanged(driverId, state, appId, exception) =>
@@ -154,6 +154,11 @@ class MoonboxWorker(
       case _ =>
         logDebug(s"Driver $driverId changed state to $state")
     }
+
+    if (drivers(driverId).desc.isInstanceOf[SparkBatchDriverDesc] && state == DriverState.SUBMITTED) {
+      finishDriver(driverId)
+    }
+
     if (DriverState.isFinished(state)) {
       finishDriver(driverId)
     }
@@ -232,6 +237,7 @@ class MoonboxWorker(
     connectionAttemptCount += 1
     if (registered) {
       cancelRegistrationScheduler()
+      connectionAttemptCount = 0
     } else if (connectionAttemptCount <= 15) {
       masterAddresses.par.foreach(sendRegisterMessageToMaster)
     } else {

@@ -380,6 +380,7 @@ class Main(
     connectionAttemptCount += 1
     if (registered) {
       cancelRegistrationScheduler()
+      connectionAttemptCount = 0
     } else if (connectionAttemptCount <= 15) {
       logInfo(s"Connecting to master (attempt $connectionAttemptCount)")
       masterAddresses.foreach(sendRegisterMessageToMaster)

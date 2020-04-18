@@ -240,10 +240,12 @@ object MoonboxRest {
         "   -s            Connect to host:port.\n" +
         "   -u            User for login.\n" +
         "   -p            Password to use when connecting to server.\n" +
+        "   -n            Job Name.\n" +
         "   -l            Mql or hql to execute.\n" +
         "   -d            Current database, optional.\n" +
         "   -f            MQL or HQL script file path.\n" +
-        "   -e 			  MQL with double quotes"
+        "   -e 			      MQL with double quotes.\n" +
+        "   -C            Execution configuration, format as key=value,key1=value1...\n"
     )
     System.exit(exitCode)
   }
