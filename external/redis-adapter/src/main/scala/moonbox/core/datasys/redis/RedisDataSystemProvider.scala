@@ -30,5 +30,5 @@ class RedisDataSystemProvider extends DataSystemProvider with DataSystemRegister
 
 	override def shortName(): String = "redis"
 
-	override def dataSource(): String = "org.apache.spark.sql.execution.datasources.redis"
+	override def dataSource(): String = "org.apache.spark.sql.redis"
 }

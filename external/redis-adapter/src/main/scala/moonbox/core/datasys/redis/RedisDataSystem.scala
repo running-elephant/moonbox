@@ -20,30 +20,21 @@
 
 package moonbox.core.datasys.redis
 
-import moonbox.core.datasys.{DataSystem, DataTable, Insertable}
-import org.apache.spark.sql.SaveMode
+import moonbox.common.MbLogging
+import moonbox.core.datasys.DataSystem
 
 class RedisDataSystem(props: Map[String, String])
-	extends DataSystem(props) with Insertable {
+	extends DataSystem(props) with MbLogging {
 
 	override def tableNames(): Seq[String] = Seq()
 
-	override def tableName(): String = ""
+	override def tableName(): String = props("table")
 
-	override def tableProperties(tableName: String): Map[String, String] = Map()
+	override def tableProperties(tableName: String): Map[String, String] = {
+		props.+("table" -> tableName)
+	}
 
-	override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-		throw new Exception("Unsupport operation: insert with datatalbe.")
-		/*require(props.contains("jobId"))
-		val servers = props.getOrElse("", "")
-		val redisClient = new RedisClient(servers)
-		val jobId = props("jobId")
-		redisClient.put[String, String, String]("SCHEMA", jobId, table.schema.json)
-		table.iter.foreach { row =>
-			// TODO decimal
-			redisClient.put(jobId, row.toSeq)
-		}
-		redisClient.close
-		table.close()*/
+	override def test(): Unit = {
+
 	}
 }

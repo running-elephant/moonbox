@@ -227,6 +227,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>redis</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-redis-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>dist</id>
             <build>
                 <plugins>
