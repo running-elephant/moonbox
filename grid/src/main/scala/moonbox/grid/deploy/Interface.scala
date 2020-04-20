@@ -68,7 +68,7 @@ object Interface extends Interface {
   // batch mode
   // support cluster runtime engine only
   // support asynchronous
-  case class BatchQueryInbound(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends Inbound
+  case class BatchQueryInbound(username: String, password: String, lang: String, sqls: Seq[String], isPool: Option[Boolean], config: Map[String, String]) extends Inbound
 
   case class BatchQueryOutbound(
                                  jobId: Option[String] = None,
@@ -83,6 +83,11 @@ object Interface extends Interface {
 
   // interactive and batch
   case class BatchQueryCancelInbound(username: String, password: String, jobId: String) extends Inbound
+
+  case class BatchPoolSubmitInbound(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends Inbound
+
+  case class BatchPoolSubmitOutbound(jobIds: Option[Seq[String]] = None,
+                                     error: Option[String] = None) extends Outbound
 
   case class InteractiveQueryCancelInbound(token: String, sessionId: String) extends Inbound
 
@@ -134,6 +139,10 @@ object Interface extends Interface {
   case object DriversInfoInbound extends Inbound
 
   case class DriversInfoOutbound(drivers: Seq[Seq[String]]) extends Outbound
+
+  case class ConfigInbound(config: Map[String, String]) extends Inbound
+
+  case class ConfigOutbound(message: String) extends Outbound
 
 }
 

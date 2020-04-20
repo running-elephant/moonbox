@@ -43,6 +43,7 @@ object MoonboxRest {
   private var ql: String = null
   private var server: String = _
   private var name: Option[String] = None
+  private var isPool: Boolean = false
   private val config = new scala.collection.mutable.HashMap[String, String]
 
   private var stopped = false
@@ -58,20 +59,23 @@ object MoonboxRest {
       "http://" + server
     }
 
-    val jobId = submit(url + SUBMIT_PATH)
-
-    Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
-      override def run(): Unit = {
-        if (!stopped) {
-          cancel(url + CANCEL_PATH, jobId)
+    //todo job pool progress
+    if (isPool) {
+      submitJobPool(url + SUBMIT_PATH)
+    } else {
+      val jobId = submitJob(url + SUBMIT_PATH)
+      Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
+        override def run(): Unit = {
+          if (!stopped) {
+            cancel(url + CANCEL_PATH, jobId)
+          }
         }
-      }
-    }))
-
-    loopProgress(url + PROGRESS_PATH, jobId, 1 * 60 * 1000)
+      }))
+      loopProgress(url + PROGRESS_PATH, jobId, 1 * 30 * 1000)
+    }
   }
 
-  private def submit(url: String): String = {
+  private def submitJob(url: String): String = {
     name.foreach {
       n =>
         config.put("name", n)
@@ -97,6 +101,40 @@ object MoonboxRest {
     jobId
   }
 
+  private def submitJobPool(url: String): Unit = {
+    name.foreach {
+      n =>
+        config.put("name", n)
+        println(s"submit job pool, job name prefix is $n")
+    }
+    val jsonObject = new JSONObject()
+      .put("username", user)
+      .put("password", password)
+      .put("sqls", readSqls().asJava)
+      .put("lang", language)
+      .put("config", config.toMap.asJava)
+      .put("isPool", isPool)
+
+    val parameter = jsonObject.toString
+    println(parameter)
+    val response = HttpClient.doPost(url, parameter, Charsets.UTF_8.name())
+    try {
+      val jobIds = new JSONObject(response).getJSONArray("jobIds").asScala
+      val message =
+        s"""
+           |batch job pool submitted success, parameters is $parameter,
+           |jobId sequence size is ${jobIds.size},
+           |jobId sequence: ${jobIds.mkString(", ")}
+         """.stripMargin
+      println(message)
+    }
+    catch {
+      case e: Exception =>
+        println(s"batch job pool submit failed, error message is ${e.getMessage}")
+        System.exit(-1)
+    }
+  }
+
   private def progress(url: String, jobId: String): (String, String, String) = {
     val jsonObject = new JSONObject()
       .put("username", user)
@@ -115,21 +153,27 @@ object MoonboxRest {
     val FAILED = Seq("UNKNOWN", "KILLED", "FAILED", "ERROR")
     var appIdInitial: String = null
     while (true) {
-      val (appId, state, message) = progress(url, jobId)
-      if (appId != null && appIdInitial == null) {
-        appIdInitial = appId
-        println("YarnApplicationId: " + appIdInitial)
-      }
-      println(s"State: $state")
-      if (state == SUCCESS) {
-        stopped = true
-        System.exit(0)
-      } else if (FAILED.contains(state)) {
-        println("ERROR MESSAGE: " + message)
-        stopped = true
-        System.exit(-1)
-      } else {
-        Thread.sleep(interval)
+      try {
+        val (appId, state, message) = progress(url, jobId)
+        if (appId != null && appIdInitial == null) {
+          appIdInitial = appId
+          println("YarnApplicationId: " + appIdInitial)
+        }
+        println(s"State: $state")
+        if (state == SUCCESS) {
+          stopped = true
+          System.exit(0)
+        } else if (FAILED.contains(state)) {
+          println("ERROR MESSAGE: " + message)
+          stopped = true
+          System.exit(-1)
+        } else {
+          Thread.sleep(interval)
+        }
+      } catch {
+        case e: Exception =>
+          println("Request for job state failed, ", e)
+          Thread.sleep(interval)
       }
     }
   }
@@ -221,11 +265,14 @@ object MoonboxRest {
     case n :: tail if n.startsWith("-n") =>
       name = Some(n.stripPrefix("-n"))
       parse(tail)
+    case pool :: tail if pool.startsWith("-isPool") =>
+      isPool = pool.stripPrefix("-isPool").toBoolean
+      parse(tail)
     case c :: tail if c.startsWith("-C") =>
-      c.stripPrefix("-C").split(",").foreach { keyvalues =>
-        val kv = keyvalues.trim.split("=")
+      c.stripPrefix("-C").split(",").foreach { keyValues =>
+        val kv = keyValues.trim.split("=")
         assert(kv.length >= 2, "please check config format.")
-        config.put(kv(0).trim, keyvalues.substring(kv(0).length + 1).trim)
+        config.put(kv(0).trim, keyValues.substring(kv(0).length + 1).trim)
       }
     case Nil =>
     case _ =>
@@ -241,6 +288,7 @@ object MoonboxRest {
         "   -u            User for login.\n" +
         "   -p            Password to use when connecting to server.\n" +
         "   -n            Job Name.\n" +
+        "   -isPool       Submit job pool.\n" +
         "   -l            Mql or hql to execute.\n" +
         "   -d            Current database, optional.\n" +
         "   -f            MQL or HQL script file path.\n" +

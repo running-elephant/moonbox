@@ -155,15 +155,13 @@ class MoonboxWorker(
         logDebug(s"Driver $driverId changed state to $state")
     }
 
-    if (drivers(driverId).desc.isInstanceOf[SparkBatchDriverDesc] && state == DriverState.SUBMITTED) {
-      finishDriver(driverId)
-    }
-
     if (DriverState.isFinished(state)) {
       finishDriver(driverId)
     }
 
-    sendToMaster(driverStateChanged)
+    if (sender() == self) {
+      sendToMaster(driverStateChanged)
+    }
 
     if (state == DriverState.FINISHED || state == DriverState.FAILED || state == DriverState.LOST || state == DriverState.KILLED) {
       if (killMarker.contains(driverId)) {

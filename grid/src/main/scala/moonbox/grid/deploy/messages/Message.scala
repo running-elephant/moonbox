@@ -72,7 +72,6 @@ object Message {
 
   case class JobSubmitResponse(jobId: Option[String], message: String) extends JobMessage
 
-
   case class JobProgress(jobId: String) extends JobMessage
 
   case class JobProgressState(jobId: String, appId: Option[String], submitTime: Long, state: String, message: String) extends JobMessage
@@ -80,6 +79,10 @@ object Message {
   case class BatchJobCancel(jobId: String) extends JobMessage
 
   case class BatchJobCancelResponse(jobId: String, success: Boolean, message: String) extends JobMessage
+
+  case class JobPoolSubmit(org: String, username: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends JobMessage
+
+  case class JobPoolSubmitResponse(jobIds: Option[Seq[String]], message: String) extends JobMessage
 
   // service
   sealed trait ServiceMessage extends Message
@@ -150,5 +153,9 @@ object Message {
   case object DriversInfoRequest extends ManagementMessage
 
   case class DriversInfoResponse(drivers: Seq[Seq[String]]) extends ManagementMessage
+
+  case class ConfigRequest(config: Map[String, String]) extends ManagementMessage
+
+  case class ConfigResponse(message: String) extends ManagementMessage
 
 }

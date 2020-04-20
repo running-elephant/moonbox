@@ -122,7 +122,8 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-yarn-client</artifactId>
-            <version>${yarn.version}</version>
+            <version>${hadoop.version}</version>
+            <scope>compile</scope>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -153,7 +154,8 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
-            <version>${yarn.version}</version>
+            <version>${hadoop.version}</version>
+            <scope>compile</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.hadoop</groupId>

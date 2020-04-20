@@ -58,9 +58,13 @@ class MoonboxMaster(
   private def createDateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.ROOT)
 
   private implicit val ASK_TIMEOUT = Timeout(FiniteDuration(600, SECONDS))
+
   private val WORKER_TIMEOUT_MS = conf.get(WORKER_TIMEOUT)
 
+  private def POOL_SCHEDULER_INTERVAL_MS: Long = conf.get(BATCH_DRIVER_POOL_SCHEDULER_INTERVAL)
+
   private val recoveryMode = conf.get(RECOVERY_MODE)
+
   private val recoveryEnable = !recoveryMode.equalsIgnoreCase("NONE")
 
   private var state = RecoveryState.STANDBY
@@ -76,6 +80,13 @@ class MoonboxMaster(
   private val completedDrivers = new ArrayBuffer[DriverInfo]
   // for batch
   private val waitingDrivers = new ArrayBuffer[DriverInfo]
+
+  // for batch pool
+  private def driverPoolParallelism: Int = conf.get(BATCH_DRIVER_POOL_PARALLELISM)
+
+  private var driverPoolOnScheduled: Boolean = false
+  private val driverPool = new ArrayBuffer[DriverInfo]
+  private var schedulingDrivers = new ArrayBuffer[String]
 
   // for monitor driver
   private var driverMonitors: Seq[DriverMonitor] = _
@@ -95,6 +106,7 @@ class MoonboxMaster(
 
   private var recoveryCompletionScheduler: Cancellable = _
   private var checkForWorkerTimeOutTask: Cancellable = _
+  private var driverPollScheduler: Cancellable = _
 
   private var timedEventService: TimedEventService = _
 
@@ -206,15 +218,15 @@ class MoonboxMaster(
   override def handleMessage: Receive = {
     case ElectedLeader =>
       logInfo("I have been elected leader!")
-      val (storedDrivers, storedWorkers, storedApps) = persistenceEngine.readPersistedData()
-      state = if (storedDrivers.isEmpty && storedWorkers.isEmpty && storedApps.isEmpty) {
+      val (storedDrivers, storedDriverPool, storedWorkers, storedApps) = persistenceEngine.readPersistedData()
+      state = if (storedDrivers.isEmpty && storedDriverPool.isEmpty && storedWorkers.isEmpty && storedApps.isEmpty) {
         logInfo("Nothing to recovery.")
         RecoveryState.ACTIVE
       } else {
         RecoveryState.RECOVERING
       }
       if (state == RecoveryState.RECOVERING) {
-        beginRecovery(storedDrivers, storedWorkers, storedApps)
+        beginRecovery(storedDrivers, storedDriverPool, storedWorkers, storedApps)
         recoveryCompletionScheduler = system.scheduler.scheduleOnce(
           new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS), self, CompleteRecovery)
       } else {
@@ -303,6 +315,7 @@ class MoonboxMaster(
                 driver.worker = Some(worker)
                 driver.state = DriverState.UNKNOWN
                 worker.addDriver(driver)
+                driverMonitors.foreach(_.registerDriver(driver))
               }
             }
           }
@@ -348,7 +361,14 @@ class MoonboxMaster(
     case CheckForWorkerTimeOut =>
       timeOutDeadWorkers()
 
-    case DriverStateChanged(driverId, driverState, appId, exception) =>
+    case driverStateChanged@DriverStateChanged(driverId, driverState, appId, exception) =>
+      if (sender() == self && driverState != DriverState.SUBMITTED) {
+        drivers.find(_.id == driverId)
+          .foreach(driver => {
+            driver.worker.get.endpoint ! driverStateChanged
+          })
+      }
+
       driverState match {
         case DriverState.ERROR | DriverState.FINISHED | DriverState.LOST | DriverState.KILLED | DriverState.FAILED =>
           removeDriver(driverId, driverState, appId, exception)
@@ -436,11 +456,45 @@ class MoonboxMaster(
         persistenceEngine.addDriver(driver)
         waitingDrivers += driver
         drivers.add(driver)
-        driverMonitors.foreach(driverMonitor => driverMonitor.registerDriver(driver))
         schedule()
         val msg = s"Batch job successfully submitted as ${driver.id}"
         logInfo(msg)
         sender() ! JobSubmitResponse(Some(driver.id), msg)
+      }
+
+    case JobPoolSubmit(org, username, lang, sqls, userConfig) =>
+      if (state != RecoveryState.ACTIVE) {
+        val msg = s"Current master is not active: $state. Can only accept driver pool submissions in ALIVE state."
+        logError(s"Batch job pool submitted failed: $msg")
+        sender() ! JobPoolSubmitResponse(None, msg)
+      } else {
+        logInfo("Batch job pool submitted.")
+        val config = LaunchUtils.getBatchDriverConfigs(conf, userConfig)
+        val submitDate = new Date()
+        val submitDriverIds = new ArrayBuffer[String]
+        val submitDrivers = sqls.zipWithIndex.map {
+          case (sql, index) =>
+            val driverId = newDriverId(submitDate) +
+              userConfig.get(EventEntity.NAME).map("-" + _).getOrElse("") + s"-pool-${index + 1}"
+            submitDriverIds.append(driverId)
+            val driverDesc = if (lang == "hql") {
+              HiveBatchDriverDesc(driverId, org, username, Seq(sql), config)
+            } else {
+              SparkBatchDriverDesc(org, username, Seq(sql), config)
+            }
+            createDriver(driverDesc, driverId, submitDate)
+        }
+        submitDrivers.foreach { driver =>
+          persistenceEngine.addDriverPool(driver)
+          driverPool += driver
+        }
+
+        if (!driverPoolOnScheduled) {
+          scheduleDriverPool
+        }
+        val msg = s"Batch job pool successfully submitted, driver sequence size is ${submitDriverIds.size}. "
+        logInfo(msg)
+        sender() ! JobPoolSubmitResponse(Some(submitDriverIds), msg)
       }
 
     case JobProgress(driverId) =>
@@ -455,7 +509,6 @@ class MoonboxMaster(
           case None =>
             (drivers ++ completedDrivers).find(_.id == driverId) match {
               case Some(driver) =>
-
                 val msg = driver.exception.map(_.getMessage).getOrElse("")
                 sender() ! JobProgressState(driverId, driver.appId, driver.submitTime, driver.state.toString, msg)
               case None =>
@@ -480,7 +533,8 @@ class MoonboxMaster(
               logInfo(s"Remove driver $driverId from waitingDrivers.")
               self ! DriverStateChanged(driverId, DriverState.KILLED, None, None)
             } else {
-              if (d.appId.isEmpty) {
+              //todo driver has submitted to yarn, but state hasn't reported yet
+              if (d.state == DriverState.SUBMITTING) {
                 d.worker.foreach(_.endpoint ! KillDriver(driverId))
                 logInfo(s"Asked worker ${d.worker.get.id} to kill driver $driverId.")
               } else {
@@ -683,29 +737,35 @@ class MoonboxMaster(
 
   private def handleManagementMessage: Receive = {
     case ClusterInfoRequest =>
-      val clusterInfo = workers.toSeq.map { worker =>
-        Seq(
-          worker.host,
-          worker.port.toString,
-          worker.state.toString,
-          s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
-        )
-      }
+      val clusterInfo = workers.toSeq
+        .sortBy(worker => (worker.host, worker.id))
+        .map { worker =>
+          Seq(
+            worker.host,
+            worker.port.toString,
+            worker.state.toString,
+            s"${(Utils.now - worker.lastHeartbeat) / 1000}s"
+          )
+        }
       sender() ! ClusterInfoResponse(clusterInfo)
     case AppsInfoRequest =>
-      val appsInfo = apps.toSeq.map { app =>
-        Seq(
-          app.id,
-          app.host,
-          app.port.toString,
-          app.state.toString,
-          app.appType.toString
-        )
-      }
+      val appsInfo = apps.toSeq
+        .sortBy(app => (app.host, app.id))
+        .map { app =>
+          Seq(
+            app.id,
+            app.host,
+            app.port.toString,
+            app.state.toString,
+            app.appType.toString
+          )
+        }
       sender() ! AppsInfoResponse(appsInfo)
+
     case DriversInfoRequest =>
-      val driversInfo = drivers.toSeq
+      val driversInfo = (drivers ++ driverPool).toSeq
         .filter(driver => DriverDeployMode(driver.desc.deployMode.getOrElse("NONE")) == DriverDeployMode.CLUSTER)
+        .sortBy(_.id)
         .map { driver =>
           Seq(
             driver.id,
@@ -716,6 +776,15 @@ class MoonboxMaster(
           )
         }
       sender() ! DriversInfoResponse(driversInfo)
+
+    case ConfigRequest(config) =>
+      //todo dynamic set grid config
+      config.foreach {
+        case (k, v) =>
+          logInfo(s"ROOT set config $k=$v")
+          conf.set(k, v)
+      }
+      sender() ! ConfigResponse("Config set success.")
   }
 
   override def onDisconnected(remoteAddress: Address): Unit = {
@@ -754,12 +823,44 @@ class MoonboxMaster(
         val worker = shuffledAliveWorkers(curPos)
         launchDriver(worker, driver)
         waitingDrivers -= driver
+        driverMonitors.foreach(_.registerDriver(driver))
         curPos = (curPos + 1) % numWorkerAlive
       }
     }
   }
 
-  private def beginRecovery(storedDrivers: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[AppInfo]): Unit = {
+  // for scheduler driver pool
+  private def scheduleDriverPool() = {
+    driverPoolOnScheduled = true
+    driverPollScheduler = system.scheduler.schedule(
+      new FiniteDuration(0, SECONDS),
+      new FiniteDuration(POOL_SCHEDULER_INTERVAL_MS, MICROSECONDS)
+    )(submitDriverPool())
+    logInfo("Driver pool schedule started.")
+  }
+
+  private def submitDriverPool(): Unit = {
+    while (schedulingDrivers.length < driverPoolParallelism && driverPool.nonEmpty) {
+      val driver = driverPool.remove(0)
+      persistenceEngine.removeDriverPool(driver)
+      schedulingDrivers += driver.id
+      drivers += driver
+      waitingDrivers += driver
+      logInfo(s"Submit driver ${driver.id} from driver pool.")
+      schedule()
+      if (schedulingDrivers.length == driverPoolParallelism) {
+        logInfo(s"Driver pool parallelism is $driverPoolParallelism.")
+        logInfo(s"There are still ${driverPool.size} drivers waiting to schedule.")
+      }
+    }
+    if (driverPool.isEmpty) {
+      driverPollScheduler.cancel()
+      driverPoolOnScheduled = false
+      logInfo("Driver pool schedule finished.")
+    }
+  }
+
+  private def beginRecovery(storedDrivers: Seq[DriverInfo], storedDriverPool: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[AppInfo]): Unit = {
     for (worker <- storedWorkers) {
       logInfo("Try to recovery worker: " + worker.id)
       try {
@@ -784,6 +885,10 @@ class MoonboxMaster(
 
     for (driver <- storedDrivers) {
       drivers += driver
+    }
+
+    for (driver <- storedDriverPool) {
+      driverPool += driver
     }
 
   }
@@ -818,8 +923,10 @@ class MoonboxMaster(
     addressToWorker -= worker.address
 
     for (driver <- worker.drivers.values) {
-      logInfo(s"Remove driver ${driver.id} because it's worker disconnected.")
-      removeDriver(driver.id, DriverState.ERROR, driver.appId, None)
+      if (driver.desc.isInstanceOf[LongRunDriverDesc] || (driver.appId.isEmpty && (driver.state == DriverState.SUBMITTING))) {
+        logInfo(s"Remove driver ${driver.id} because it's worker disconnected.")
+        removeDriver(driver.id, DriverState.ERROR, driver.appId, None)
+      }
     }
 
     persistenceEngine.removeWorker(worker)
@@ -893,9 +1000,12 @@ class MoonboxMaster(
   private def launchDriver(worker: WorkerInfo, driver: DriverInfo): Unit = {
     logInfo("Launching driver " + driver.id + " on worker " + worker.id)
     worker.addDriver(driver)
-    driver.worker = Some(worker)
     worker.endpoint ! LaunchDriver(driver.id, driver.desc)
-    driver.state = DriverState.SUBMITTING
+    drivers.find(_.id == driver.id)
+      .foreach(driver => {
+        driver.state == DriverState.SUBMITTING
+        driver.worker = Some(worker)
+      })
   }
 
   private def removeDriver(driverId: String, state: DriverState, appId: Option[String], exception: Option[Exception]) {
@@ -916,11 +1026,11 @@ class MoonboxMaster(
           case Some(app) =>
             removeApplication(app)
           case None => // nothing
-          // logWarning(s"Asked to remove unknown app: $driverId")
         }
+        schedulingDrivers -= driverId
+        driverMonitors.foreach(_.unRegisterDriver(driver))
         schedule()
       case None => // nothing
-      // logWarning(s"Asked to remove unknown driver: $driverId")
     }
   }
 

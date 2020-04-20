@@ -1,10 +1,15 @@
 package moonbox.grid.app
 
+import java.io.{ByteArrayInputStream, File, InputStream}
+
 import moonbox.common.util.Utils
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.scalatest.FunSuite
+
+import scala.collection.JavaConversions._
+import scala.io.Source
 
 
 class SparkBatchDriverMonitorTest extends FunSuite {
@@ -26,6 +31,15 @@ class SparkBatchDriverMonitorTest extends FunSuite {
     val keytab = "/Users/swallow/Documents/kerberos/adxtest.keytab"
 
     UserGroupInformation.loginUserFromKeytab(principal, keytab)
+  }
+
+  test("inputStream") {
+    val pb = new ProcessBuilder()
+    pb.command("/bin/sh", "-c", "ll /")
+    pb.redirectErrorStream(true)
+    val process = pb.start()
+    val inputStream = process.getInputStream
+    println(Source.fromInputStream(inputStream).mkString(""))
   }
 
 }

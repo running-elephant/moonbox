@@ -25,52 +25,65 @@ import moonbox.grid.deploy.app.{AppInfo, DriverInfo}
 import scala.reflect.ClassTag
 
 abstract class PersistenceEngine {
-	protected def persist(name: String, obj: Object): Unit
+  protected def persist(name: String, obj: Object): Unit
 
-	protected def unpersist(name: String): Unit
+  protected def unpersist(name: String): Unit
 
-	protected def read[T: ClassTag](prefix: String): Seq[T]
+  protected def read[T: ClassTag](prefix: String): Seq[T]
 
-	final def readPersistedData() = {
-		(readDrivers(), readWorkers(), readApplication())
-	}
-	final def readDrivers(): Seq[DriverInfo] = {
-		read[DriverInfo]("drivers")
-	}
+  final def readPersistedData() = {
+    (readDrivers(), readDriverPool(), readWorkers(), readApplication())
+  }
 
-	final def readWorkers(): Seq[WorkerInfo] = {
-		read[WorkerInfo]("workers")
-	}
+  final def readDrivers(): Seq[DriverInfo] = {
+    read[DriverInfo]("drivers")
+  }
 
-	final def readApplication(): Seq[AppInfo] = {
-		read[AppInfo]("apps")
-	}
+  final def readDriverPool(): Seq[DriverInfo] = {
+    read[DriverInfo]("driverPool")
+  }
 
-	final def addDriver(driver: DriverInfo): Unit = {
-		persist("drivers/" + driver.id, driver)
-	}
+  final def readWorkers(): Seq[WorkerInfo] = {
+    read[WorkerInfo]("workers")
+  }
 
-	final def removeDriver(driver: DriverInfo): Unit = {
-		unpersist("drivers/" + driver.id)
-	}
+  final def readApplication(): Seq[AppInfo] = {
+    read[AppInfo]("apps")
+  }
 
-	final def addWorker(node: WorkerInfo): Unit = {
-		persist("workers/" + node.id, node)
-	}
+  final def addDriver(driver: DriverInfo): Unit = {
+    persist("drivers/" + driver.id, driver)
+  }
 
-	final def removeWorker(node: WorkerInfo): Unit = {
-		unpersist("workers/" + node.id)
-	}
+  final def removeDriver(driver: DriverInfo): Unit = {
+    unpersist("drivers/" + driver.id)
+  }
 
-	final def addApplication(app: AppInfo): Unit = {
-		persist("apps/" + app.id, app)
-	}
+  final def addDriverPool(driver: DriverInfo): Unit = {
+    persist("driverPool/" + driver.id, driver)
+  }
 
-	final def removeApplication(app: AppInfo): Unit = {
-		unpersist("apps/" + app.id)
-	}
+  final def removeDriverPool(driver: DriverInfo): Unit = {
+    unpersist("driverPool/" + driver.id)
+  }
 
-	def exist(path: String): Boolean
+  final def addWorker(node: WorkerInfo): Unit = {
+    persist("workers/" + node.id, node)
+  }
 
-	def close(): Unit = {}
+  final def removeWorker(node: WorkerInfo): Unit = {
+    unpersist("workers/" + node.id)
+  }
+
+  final def addApplication(app: AppInfo): Unit = {
+    persist("apps/" + app.id, app)
+  }
+
+  final def removeApplication(app: AppInfo): Unit = {
+    unpersist("apps/" + app.id)
+  }
+
+  def exist(path: String): Boolean
+
+  def close(): Unit = {}
 }

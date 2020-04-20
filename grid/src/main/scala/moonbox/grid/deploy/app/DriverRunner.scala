@@ -26,6 +26,7 @@ import java.util.Date
 import akka.actor.ActorRef
 import moonbox.common.{MbConf, MbLogging}
 import moonbox.grid.deploy.DeployMessages.DriverStateChanged
+import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.worker.LaunchUtils
 import moonbox.launcher.AppLauncher
 import org.apache.spark.launcher.SparkAppHandle
@@ -39,9 +40,13 @@ private[deploy] class DriverRunner(
 
   @transient private var sparkAppHandle: SparkAppHandle = _
   @transient private var process: Process = _
+  @transient private var state: Option[DriverState] = _
+
+  private val CHECK_PROCESS_INTERVAL_MS = 3000
+
+  private implicit val sender: ActorRef = worker
 
   def start() = {
-    //todo handle spark-submit process submit app failed state
     new Thread("DriverRunner for " + driverId) {
       override def run(): Unit = {
         try {
@@ -71,7 +76,7 @@ private[deploy] class DriverRunner(
           }
 
           def startApplication(): SparkAppHandle = {
-            if (desc.deployMode.isDefined && desc.deployMode.get == "cluster") {
+            if (desc.deployMode.isDefined && DriverDeployMode(desc.deployMode.get) == DriverDeployMode.CLUSTER) {
               launcher.startApplication()
             } else {
               launcher.startApplication(new SparkAppHandle.Listener {
@@ -81,7 +86,7 @@ private[deploy] class DriverRunner(
 
                 override def stateChanged(handle: SparkAppHandle): Unit = {
                   logInfo(handle.getState.toString)
-                  val state = handle.getState match {
+                  val reportState = handle.getState match {
                     case SparkAppHandle.State.UNKNOWN =>
                       DriverState.UNKNOWN
                     case SparkAppHandle.State.LOST =>
@@ -99,7 +104,8 @@ private[deploy] class DriverRunner(
                     case SparkAppHandle.State.FINISHED =>
                       DriverState.FINISHED
                   }
-                  worker ! DriverStateChanged(driverId, state, Option(handle.getAppId), None)
+                  state = Some(reportState)
+                  worker ! DriverStateChanged(driverId, reportState, Option(handle.getAppId), None)
                 }
               })
             }
@@ -107,9 +113,20 @@ private[deploy] class DriverRunner(
 
           sparkAppHandle = startApplication()
           process = launcher.process
+
+          if (desc.deployMode.isDefined && DriverDeployMode(desc.deployMode.get) == DriverDeployMode.CLUSTER) {
+            process.waitFor()
+            if (process.exitValue() == 0) {
+              worker ! DriverStateChanged(driverId, DriverState.SUBMITTED, None, None)
+            } else {
+              val message = s"Launch driver $driverId failed."
+              logError(message)
+              worker ! DriverStateChanged(driverId, DriverState.ERROR, None, Some(new Exception(message)))
+            }
+          }
         } catch {
           case e: Exception =>
-            logError("Launch driver failed.", e)
+            logError(s"Launch driver $driverId failed.", e)
             worker ! DriverStateChanged(driverId, DriverState.ERROR, None, Some(e))
         }
       }

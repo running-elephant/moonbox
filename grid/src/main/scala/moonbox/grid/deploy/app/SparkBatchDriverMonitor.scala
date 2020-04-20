@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import akka.actor.{ActorRef, ActorSystem}
 import moonbox.common.MbConf
 import moonbox.common.util.Utils
-import moonbox.grid.config.DRIVER_STATEREPORT_INTERVAL
+import moonbox.grid.config.DRIVER_STATEMONITOR_INTERVAL
 import moonbox.grid.deploy.DeployMessages.DriverStateChanged
 import moonbox.grid.deploy.app.DriverState.DriverState
 import org.apache.hadoop.conf.Configuration
@@ -26,7 +26,9 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
   private var yarnConf: Configuration = _
   private var yarnClient: YarnClient = _
 
-  private val STATEREPORT_INTERVAL_MS = conf.get(DRIVER_STATEREPORT_INTERVAL)
+  private val STATEREPORT_INTERVAL_MS = conf.get(DRIVER_STATEMONITOR_INTERVAL)
+
+  private implicit val sender: ActorRef = master
 
   import SparkBatchDriverMonitor._
 
@@ -56,7 +58,8 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
   }
 
   override def registerDriver(driverInfo: DriverInfo): Unit = {
-    if (acceptsDeployMode(DriverDeployMode(driverInfo.desc.deployMode.getOrElse("None")))) {
+    if (acceptsDeployMode(DriverDeployMode(driverInfo.desc.deployMode.getOrElse("None"))) &&
+      !drivers.containsKey(driverInfo.id)) {
       drivers.put(driverInfo.id, driverInfo)
     }
   }
@@ -73,6 +76,7 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
   override def killDriver(driverInfo: DriverInfo): Unit = {
     if (driverInfo.appId.isDefined) {
       yarnClient.killApplication(driverInfo.appIdInfo.get)
+      unRegisterDriver(driverInfo)
       logInfo(s"Driver ${driverInfo.id} kill success.")
     }
   }
@@ -98,14 +102,14 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
         driverInfo.setFinishDate(finishTime)
         driverInfo.setException(exception)
         drivers.update(driverInfo.id, driverInfo)
-        logInfo(s"Driver ${driverInfo.id} submit success, state $state.")
+        logInfo(s"Driver ${driverInfo.id} has submitted to yarn, current state is $state.")
         true
       } else if (driverInfo.appId.get == appReport.getApplicationId.toString && driverInfo.state != state) {
         driverInfo.state = state
         driverInfo.setFinishDate(finishTime)
         driverInfo.setException(exception)
         drivers.update(driverInfo.id, driverInfo)
-        logInfo(s"Driver ${driverInfo.id} current state $state.")
+        logInfo(s"Driver ${driverInfo.id} current state is $state.")
         true
       } else {
         false

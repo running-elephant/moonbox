@@ -27,9 +27,14 @@ import org.apache.commons.codec.Charsets
 import org.json.JSONObject
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 object MoonboxCluster {
+
+  private var args: Array[String] = _
+
   def main(args: Array[String]) {
+    this.args = args
     val home = sys.env.getOrElse("MOONBOX_HOME",
       throw new Exception("MOONBOX_HOME not found in env"))
     val host = sys.env.getOrElse("MOONBOX_MASTER_HOST",
@@ -50,29 +55,54 @@ object MoonboxCluster {
     val url = s"http://$host:$restPort/management"
     var path: String = ""
     var key: String = ""
-
     args.headOption match {
       case Some(arg) =>
         if (arg.equalsIgnoreCase("apps")) {
           path = url + "/apps-info"
           key = "apps"
+          getInfo(path, key)
         } else if (arg.equalsIgnoreCase("workers")) {
           path = url + "/cluster-info"
           key = "cluster"
+          getInfo(path, key)
         } else if (arg.equalsIgnoreCase("drivers")) {
           path = url + "/drivers-info"
           key = "drivers"
+          getInfo(path, key)
+        } else if (arg.equalsIgnoreCase("config-set")) {
+          path = url + "/config-set"
+          setConfig(path)
         } else {
           printUsageAndExit(-1)
         }
       case None =>
         printUsageAndExit(-1)
     }
+  }
 
+  private def getInfo(path: String, key: String): Unit = {
     val response: String = HttpClient.doGet(path, Charsets.UTF_8.name())
-    val string = new JSONObject(response).getJSONArray(key).asScala.mkString("\n")
-    println(string)
 
+    val array = new JSONObject(response).getJSONArray(key).asScala
+    println(s"$key size is ${array.size}")
+    println(array.mkString("\n"))
+  }
+
+  private def setConfig(path: String): Unit = {
+    assert(args.size == 2, "config-set command should have 1 parameters like key1=value1,key2=value2")
+    val config = new mutable.HashMap[String, String]
+    args(1).split(",").foreach { keyValues =>
+      val kv = keyValues.trim.split("=")
+      assert(kv.length >= 2, "please check config format.")
+      config.put(kv(0).trim, keyValues.substring(kv(0).length + 1).trim)
+    }
+    val jsonObject = new JSONObject()
+      .put("config", config.toMap.asJava)
+
+    val response: String = HttpClient.doPost(path, jsonObject.toString, Charsets.UTF_8.name())
+
+    val message = new JSONObject(response).getString("message")
+    println(message)
   }
 
   private def printUsageAndExit(exitCode: Int): Unit = {
@@ -82,7 +112,8 @@ object MoonboxCluster {
         "options:\n" +
         "   apps             List current running apps.\n" +
         "   drivers          List current running batch drivers.\n" +
-        "   workers          List current running workers.\n"
+        "   workers          List current running workers.\n" +
+        "   config-set       Set grid config, like key1=value1,key2=value2.\n"
     )
     System.exit(exitCode)
   }

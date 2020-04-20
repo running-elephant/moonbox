@@ -100,6 +100,15 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxServic
                 mbService.driversInfo()
               }
             }
+          } ~
+          path("config-set") {
+            post {
+              entity(as[ConfigInbound]) { in =>
+                complete {
+                  mbService.setConfig(in.config)
+                }
+              }
+            }
           }
       } ~
         pathPrefix("service") {
@@ -163,7 +172,10 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxServic
             post {
               entity(as[BatchQueryInbound]) { in =>
                 complete {
-                  mbService.batchQuery(in.username, in.password, in.lang, in.sqls, in.config)
+                  if (in.isPool.isDefined && in.isPool.get)
+                    mbService.batchPoolSubmit(in.username, in.password, in.lang, in.sqls, in.config)
+                  else
+                    mbService.batchQuery(in.username, in.password, in.lang, in.sqls, in.config)
                 }
               }
             }
@@ -188,8 +200,6 @@ class RestServer(host: String, port: Int, conf: MbConf, mbService: MoonboxServic
             }
         }
     }
-
-
   }
 
   def start(): Int = {

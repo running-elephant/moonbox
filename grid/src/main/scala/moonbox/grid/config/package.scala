@@ -209,7 +209,15 @@ package object config {
     .timeConf
     .createWithDefaultString("30s")
 
-  val DRIVER_STATEREPORT_INTERVAL = ConfigBuilder("moonbox.mixcal.driver.stateReport.interval")
+  val DRIVER_STATEMONITOR_INTERVAL = ConfigBuilder("moonbox.master.driver.stateMonitor.interval")
     .timeConf
-    .createWithDefaultString("30s")
+    .createWithDefaultString("3s")
+
+  val BATCH_DRIVER_POOL_PARALLELISM = ConfigBuilder("moonbox.master.driver.pool.parallelism")
+    .intConf
+    .createWithDefault(10)
+
+  val BATCH_DRIVER_POOL_SCHEDULER_INTERVAL = ConfigBuilder("moonbox.master.driver.pool.scheduler.interval")
+    .timeConf
+    .createWithDefaultString("60s")
 }

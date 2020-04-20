@@ -182,8 +182,6 @@ private[deploy] class MoonboxService(
       case None =>
         BatchQueryOutbound(error = Some(s"User format is org@user, but it is '$username'"))
     }
-
-
   }
 
   def batchQueryCancel(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): CancelQueryOutbound = {
@@ -206,8 +204,6 @@ private[deploy] class MoonboxService(
       case None =>
         CancelQueryOutbound(error = Some(s"User format is org@user, but it is '$username'"))
     }
-
-
   }
 
   def batchQueryProgress(username: String, password: String, jobId: String)(implicit connection: ConnectionInfo): BatchQueryProgressOutbound = {
@@ -228,7 +224,28 @@ private[deploy] class MoonboxService(
       case None =>
         BatchQueryProgressOutbound(s"User format is org@user, but it is '$username'", None, None)
     }
+  }
 
+  def batchPoolSubmit(username: String, password: String, lang: String, sqls: Seq[String], config: Map[String, String])(implicit connection: ConnectionInfo): BatchPoolSubmitOutbound = {
+    auditLogger.log(username, "batchPoolSubmit", Map("sqls" -> sqls.mkString(";"), "config" -> config.mkString(", ")))
+    parseUsername(username) match {
+      case Some((org, user)) =>
+        loginManager.login(org, user, password) match {
+          case Some(_) =>
+            askSync[JobPoolSubmitResponse](JobPoolSubmit(org, user, lang, sqls, config))(SHORT_TIMEOUT) match {
+              case Left(JobPoolSubmitResponse(Some(jobIds), _)) =>
+                BatchPoolSubmitOutbound(jobIds = Some(jobIds))
+              case Left(JobPoolSubmitResponse(None, message)) =>
+                BatchPoolSubmitOutbound(error = Some(message))
+              case Right(message) =>
+                BatchPoolSubmitOutbound(error = Some(message))
+            }
+          case None =>
+            BatchPoolSubmitOutbound(error = Some("Login failed. Please check your username and password."))
+        }
+      case None =>
+        BatchPoolSubmitOutbound(error = Some(s"User format is org@user, but it is '$username'"))
+    }
   }
 
   def decodeToken(token: String): String = {
@@ -412,6 +429,15 @@ private[deploy] class MoonboxService(
         DriversInfoOutbound(drivers)
       case Right(message) =>
         DriversInfoOutbound(Seq.empty[Seq[String]])
+    }
+  }
+
+  def setConfig(config: Map[String, String]): ConfigOutbound = {
+    askSync[ConfigResponse](ConfigRequest(config))(SHORT_TIMEOUT) match {
+      case Left(ConfigResponse(message)) =>
+        ConfigOutbound(message)
+      case Right(message) =>
+        ConfigOutbound(message)
     }
   }
 
