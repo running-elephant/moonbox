@@ -103,6 +103,25 @@ case class AlterUserSetOptions(
   }
 }
 
+case class AlterUserRemoveOptions(
+                                name: String,
+                                options: Seq[String]) extends MbRunnableCommand with Account {
+
+  override def run(mbSession: MoonboxSession): Seq[Row] = {
+
+    import mbSession.catalog._
+
+    val existUser = getUser(getCurrentOrg, name)
+    alterUser(
+      existUser.copy(
+        configuration = existUser.configuration -- options
+      )
+    )
+
+    Seq.empty[Row]
+  }
+}
+
 case class DropUser(
                      name: String,
                      ignoreIfNotExists: Boolean) extends MbRunnableCommand with Account {

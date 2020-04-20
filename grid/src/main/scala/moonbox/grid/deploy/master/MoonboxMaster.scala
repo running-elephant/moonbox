@@ -770,7 +770,7 @@ class MoonboxMaster(
           Seq(
             driver.id,
             driver.appId.getOrElse("none"),
-            if (driver.worker.isDefined) driver.worker.get.id else "none",
+            if (driver.worker.isDefined) driver.worker.get.host else "none",
             driver.state.toString,
             driver.submitDate.toString
           )

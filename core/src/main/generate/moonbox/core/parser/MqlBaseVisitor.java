@@ -45,6 +45,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitSetOrganizationOptions(MqlBaseParser.SetOrganizationOptionsContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code removeOrganizationOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRemoveOrganizationOptions(MqlBaseParser.RemoveOrganizationOptionsContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code setOrganizationComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -93,6 +100,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitSetSaOptions(MqlBaseParser.SetSaOptionsContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code removeSaOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRemoveSaOptions(MqlBaseParser.RemoveSaOptionsContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code dropSa}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -220,6 +234,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitSetUserOptions(MqlBaseParser.SetUserOptionsContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code removeUserOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRemoveUserOptions(MqlBaseParser.RemoveUserOptionsContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code dropUser}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -304,6 +325,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitSetTableProperties(MqlBaseParser.SetTablePropertiesContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code removeTableProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRemoveTableProperties(MqlBaseParser.RemoveTablePropertiesContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code unmountTable}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -331,6 +359,13 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitSetDatabaseProperties(MqlBaseParser.SetDatabasePropertiesContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code removeDatabaseProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRemoveDatabaseProperties(MqlBaseParser.RemoveDatabasePropertiesContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code refreshDatabase}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -852,6 +887,12 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitProperty(MqlBaseParser.PropertyContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link MqlBaseParser#propertyKeyList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPropertyKeyList(MqlBaseParser.PropertyKeyListContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link MqlBaseParser#propertyKey}.
 	 * @param ctx the parse tree

@@ -149,7 +149,7 @@ private[sql] object MbJDBCRelation extends Logging {
         upperBound - lowerBound
       }
     // Overflow and silliness can happen if you subtract then divide.
-    // Here we get a little roundoff, but that's (hopefully) OK.
+    // Here we get a little roundOff, but that's (hopefully) OK.
     val stride: Long = upperBound / numPartitions - lowerBound / numPartitions
 
     var i: Int = 0

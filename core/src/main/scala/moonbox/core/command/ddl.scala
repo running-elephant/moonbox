@@ -127,6 +127,23 @@ case class AlterDatabaseSetOptions(
   }
 }
 
+case class AlterDatabaseRemoveOptions(
+                                       name: String,
+                                       props: Seq[String]) extends MbRunnableCommand with DDL {
+
+  override def run(mbSession: MoonboxSession): Seq[Row] = {
+    import mbSession.catalog._
+    val existDatabase = getDatabase(name)
+    alterDatabase(
+      existDatabase.copy(
+        properties = existDatabase.properties -- props
+      )
+    )
+
+    Seq.empty[Row]
+  }
+}
+
 case class UnmountDatabase(
                             name: String,
                             ignoreIfNotExists: Boolean,
@@ -341,6 +358,44 @@ case class AlterTableSetOptions(
           catalogTable.copy(
             storage = catalogTable.storage.copy(
               properties = catalogTable.storage.properties ++ props
+            )
+          )
+        )
+      }
+    }
+
+    Seq.empty[Row]
+  }
+}
+
+case class AlterTableRemoveOptions(
+                                    table: TableIdentifier,
+                                    props: Seq[String]) extends MbRunnableCommand with DDL {
+
+  override def run(mbSession: MoonboxSession): Seq[Row] = {
+
+    import mbSession.catalog._
+
+    val dbName = table.database.getOrElse(getCurrentDb)
+
+    val existTable = mbSession.catalog.getTable(dbName, table.table)
+
+    if (existTable.tableType != CatalogTableType.TABLE) {
+      throw new Exception(s"${existTable.name} is not a table.")
+    }
+
+    mbSession.catalog.alterTable(
+      existTable.copy(
+        properties = existTable.properties -- props
+      )
+    )
+
+    if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
+      mbSession.engine.catalog.getTableMetadataOption(table).foreach { catalogTable =>
+        mbSession.engine.catalog.alterTable(
+          catalogTable.copy(
+            storage = catalogTable.storage.copy(
+              properties = catalogTable.storage.properties -- props
             )
           )
         )

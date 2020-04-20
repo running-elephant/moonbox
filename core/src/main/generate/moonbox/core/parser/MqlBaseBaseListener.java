@@ -76,6 +76,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRemoveOrganizationOptions(MqlBaseParser.RemoveOrganizationOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRemoveOrganizationOptions(MqlBaseParser.RemoveOrganizationOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterSetOrganizationComment(MqlBaseParser.SetOrganizationCommentContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -155,6 +167,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitSetSaOptions(MqlBaseParser.SetSaOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRemoveSaOptions(MqlBaseParser.RemoveSaOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRemoveSaOptions(MqlBaseParser.RemoveSaOptionsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -376,6 +400,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRemoveUserOptions(MqlBaseParser.RemoveUserOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRemoveUserOptions(MqlBaseParser.RemoveUserOptionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterDropUser(MqlBaseParser.DropUserContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -520,6 +556,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRemoveTableProperties(MqlBaseParser.RemoveTablePropertiesContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRemoveTableProperties(MqlBaseParser.RemoveTablePropertiesContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterUnmountTable(MqlBaseParser.UnmountTableContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -563,6 +611,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitSetDatabaseProperties(MqlBaseParser.SetDatabasePropertiesContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRemoveDatabaseProperties(MqlBaseParser.RemoveDatabasePropertiesContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRemoveDatabaseProperties(MqlBaseParser.RemoveDatabasePropertiesContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1499,6 +1559,18 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitProperty(MqlBaseParser.PropertyContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPropertyKeyList(MqlBaseParser.PropertyKeyListContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPropertyKeyList(MqlBaseParser.PropertyKeyListContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

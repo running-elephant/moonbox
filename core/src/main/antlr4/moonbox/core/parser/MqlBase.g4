@@ -10,141 +10,146 @@ single
 
 mql
     : CREATE (ORG|ORGANIZATION) (IF NOT EXISTS)?
-        name=identifier (COMMENT comment=STRING)? (OPTIONS propertyList)?                       # createOrganization
-    | RENAME (ORG|ORGANIZATION) name=identifier TO newName=identifier                           # renameOrganization
-    | ALTER (ORG|ORGANIZATION) name=identifier RENAME TO newName=identifier                     # setOrganizationName
-    | ALTER (ORG|ORGANIZATION) name=identifier SET OPTIONS propertyList                         # setOrganizationOptions
-    | ALTER (ORG|ORGANIZATION) name=identifier SET COMMENT comment=STRING                       # setOrganizationComment
-    | DROP (ORG|ORGANIZATION) (IF EXISTS)? name=identifier (CASCADE)?                           # dropOrganization
+        name=identifier (COMMENT comment=STRING)? (OPTIONS propertyList)?                          # createOrganization
+    | RENAME (ORG|ORGANIZATION) name=identifier TO newName=identifier                              # renameOrganization
+    | ALTER (ORG|ORGANIZATION) name=identifier RENAME TO newName=identifier                        # setOrganizationName
+    | ALTER (ORG|ORGANIZATION) name=identifier SET OPTIONS propertyList                            # setOrganizationOptions
+    | ALTER (ORG|ORGANIZATION) name=identifier REMOVE OPTIONS propertyKeyList                         # removeOrganizationOptions
+    | ALTER (ORG|ORGANIZATION) name=identifier SET COMMENT comment=STRING                          # setOrganizationComment
+    | DROP (ORG|ORGANIZATION) (IF EXISTS)? name=identifier (CASCADE)?                              # dropOrganization
 
     | CREATE SA (IF NOT EXISTS)? name=identifier IN (ORG|ORGANIZATION)?
-        org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)?                       # createSa
-    | RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier     # renameSa
+        org=identifier IDENTIFIED BY pwd=password (OPTIONS propertyList)?                          # createSa
+    | RENAME SA name=identifier IN (ORG|ORGANIZATION)? org=identifier TO newName=identifier        # renameSa
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
-        RENAME TO newName=identifier                                                            # setSaName
+        RENAME TO newName=identifier                                                               # setSaName
     | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier
-        IDENTIFIED BY pwd=password                                                              # setSaPassword
-    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier SET OPTIONS propertyList   # setSaOptions
-    | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION)? org=identifier                # dropSa
+        IDENTIFIED BY pwd=password                                                                 # setSaPassword
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier SET OPTIONS propertyList      # setSaOptions
+    | ALTER SA name=identifier IN (ORG|ORGANIZATION)? org=identifier REMOVE OPTIONS propertyKeyList   # removeSaOptions
+    | DROP SA (IF EXISTS)? name=identifier IN (ORG|ORGANIZATION)? org=identifier                   # dropSa
 
-    | GRANT GRANT OPTION grantPrivilegeList TO USER? user=identifier                            # grantGrantToUser
-    | REVOKE GRANT OPTION grantPrivilegeList FROM USER? user=identifier                         # revokeGrantFromUser
-    | GRANT GRANT OPTION grantPrivilegeList TO GROUP group=identifier                           # grantGrantToGroup
-    | REVOKE GRANT OPTION grantPrivilegeList FROM GROUP group=identifier                        # revokeGrantFromGroup
+    | GRANT GRANT OPTION grantPrivilegeList TO USER? user=identifier                               # grantGrantToUser
+    | REVOKE GRANT OPTION grantPrivilegeList FROM USER? user=identifier                            # revokeGrantFromUser
+    | GRANT GRANT OPTION grantPrivilegeList TO GROUP group=identifier                              # grantGrantToGroup
+    | REVOKE GRANT OPTION grantPrivilegeList FROM GROUP group=identifier                           # revokeGrantFromGroup
 
-    | GRANT grantPrivilegeList TO USER? user=identifier                                         # grantPrivilegeToUsers
-    | REVOKE grantPrivilegeList FROM USER? user=identifier                                      # revokePrivilegeFromUsers
-    | GRANT grantPrivilegeList TO GROUP group=identifier                                        # grantPrivilegeToGroup
-    | REVOKE grantPrivilegeList FROM GROUP group=identifier                                     # revokePrivilegeFromGroup
+    | GRANT grantPrivilegeList TO USER? user=identifier                                            # grantPrivilegeToUsers
+    | REVOKE grantPrivilegeList FROM USER? user=identifier                                         # revokePrivilegeFromUsers
+    | GRANT grantPrivilegeList TO GROUP group=identifier                                           # grantPrivilegeToGroup
+    | REVOKE grantPrivilegeList FROM GROUP group=identifier                                        # revokePrivilegeFromGroup
 
 
-    | GRANT privileges ON tableCollections TO USER? user=identifier                             # grantResourcePrivilegeToUsers
-    | REVOKE privileges ON tableCollections FROM USER? user=identifier                          # revokeResourcePrivilegeFromUsers
-    | GRANT privileges ON tableCollections TO GROUP group=identifier                            # grantResourcePrivilegeToGroup
-    | REVOKE privileges ON tableCollections FROM GROUP group=identifier                         # revokeResourcePrivilegeFromGroup
+    | GRANT privileges ON tableCollections TO USER? user=identifier                                # grantResourcePrivilegeToUsers
+    | REVOKE privileges ON tableCollections FROM USER? user=identifier                             # revokeResourcePrivilegeFromUsers
+    | GRANT privileges ON tableCollections TO GROUP group=identifier                               # grantResourcePrivilegeToGroup
+    | REVOKE privileges ON tableCollections FROM GROUP group=identifier                            # revokeResourcePrivilegeFromGroup
 
 
     | CREATE USER (IF NOT EXISTS)? name=identifier IDENTIFIED BY pwd=password
-        (OPTIONS propertyList)?                                                                 # createUser
-    | RENAME USER name=identifier TO newName=identifier                                         # renameUser
-    | ALTER USER name=identifier RENAME TO newName=identifier                                   # setUserName
-    | ALTER USER name=identifier IDENTIFIED BY pwd=password                                     # setUserPassword
-    | ALTER USER name=identifier SET OPTIONS propertyList                                       # setUserOptions
-    | DROP USER (IF EXISTS)? name=identifier                                                    # dropUser
+        (OPTIONS propertyList)?                                                                    # createUser
+    | RENAME USER name=identifier TO newName=identifier                                            # renameUser
+    | ALTER USER name=identifier RENAME TO newName=identifier                                      #  setUserName
+    | ALTER USER name=identifier IDENTIFIED BY pwd=password                                        # setUserPassword
+    | ALTER USER name=identifier SET OPTIONS propertyList                                          # setUserOptions
+    | ALTER USER name=identifier REMOVE OPTIONS propertyKeyList                                       # removeUserOptions
+    | DROP USER (IF EXISTS)? name=identifier                                                       # dropUser
 
-    | CREATE GROUP (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                   # createGroup
-    | RENAME GROUP name=identifier TO newName=identifier                                        # renameGroup
-    | ALTER GROUP name=identifier RENAME TO newName=identifier                                  # setGroupName
-    | ALTER GROUP name=identifier SET COMMENT comment=STRING                                    # setGroupComment
-    | ALTER GROUP name=identifier addUser                                                       # addGroupUser
-    | ALTER GROUP name=identifier removeUser                                                    # removeGroupUser
-    | DROP GROUP (IF EXISTS)? name=identifier CASCADE?                                          # dropGroup
+    | CREATE GROUP (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                      # createGroup
+    | RENAME GROUP name=identifier TO newName=identifier                                           # renameGroup
+    | ALTER GROUP name=identifier RENAME TO newName=identifier                                     # setGroupName
+    | ALTER GROUP name=identifier SET COMMENT comment=STRING                                       # setGroupComment
+    | ALTER GROUP name=identifier addUser                                                          # addGroupUser
+    | ALTER GROUP name=identifier removeUser                                                       # removeGroupUser
+    | DROP GROUP (IF EXISTS)? name=identifier CASCADE?                                             # dropGroup
 
     | MOUNT STREAM? TABLE (IF NOT EXISTS)? tableIdentifier ('('columns=colTypeList')')?
-        OPTIONS propertyList                                                                    # mountTable
-    | RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                              # renameTable
-    | ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                        # setTableName
-    | ALTER TABLE name=tableIdentifier SET OPTIONS propertyList                                 # setTableProperties
-    | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                           # unmountTable
+        OPTIONS propertyList                                                                       # mountTable
+    | RENAME TABLE name=tableIdentifier TO newName=tableIdentifier                                 # renameTable
+    | ALTER TABLE name=tableIdentifier RENAME TO newName=tableIdentifier                           # setTableName
+    | ALTER TABLE name=tableIdentifier SET OPTIONS propertyList                                    # setTableProperties
+    | ALTER TABLE name=tableIdentifier REMOVE OPTIONS propertyKeyList                                 # removeTableProperties
+    | UNMOUNT TABLE (IF EXISTS)? name=tableIdentifier                                              # unmountTable
 
-    | MOUNT DATABASE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                      # mountDatabase
-    | UNMOUNT DATABASE (IF EXISTS)? name=identifier   (CASCADE)?                                # unmountDatabase
-    | ALTER DATABASE name=identifier SET OPTIONS propertyList                                   # setDatabaseProperties
-    | REFRESH DATABASE name=identifier                                                          # refreshDatabase
+    | MOUNT DATABASE (IF NOT EXISTS)? name=identifier OPTIONS propertyList                         # mountDatabase
+    | UNMOUNT DATABASE (IF EXISTS)? name=identifier   (CASCADE)?                                   # unmountDatabase
+    | ALTER DATABASE name=identifier SET OPTIONS propertyList                                      # setDatabaseProperties
+    | ALTER DATABASE name=identifier REMOVE OPTIONS propertyKeyList                                   # removeDatabaseProperties
+    | REFRESH DATABASE name=identifier                                                             # refreshDatabase
 
-    | CREATE DATABASE (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                # createDatabase
-    | RENAME DATABASE name=identifier TO newName=identifier                                     # renameDatabase
-    | ALTER DATABASE name=identifier RENAME TO newName=identifier                               # setDatabaseName
-    | ALTER DATABASE name=identifier SET COMMENT comment=STRING                                 # setDatabaseComment
-    | DROP DATABASE (IF EXISTS)? name=identifier (CASCADE)?                                     # dropDatabase
-    | USE db=identifier                                                                         # useDatabase
+    | CREATE DATABASE (IF NOT EXISTS)? name=identifier (COMMENT comment=STRING)?                   # createDatabase
+    | RENAME DATABASE name=identifier TO newName=identifier                                        # renameDatabase
+    | ALTER DATABASE name=identifier RENAME TO newName=identifier                                  # setDatabaseName
+    | ALTER DATABASE name=identifier SET COMMENT comment=STRING                                    # setDatabaseComment
+    | DROP DATABASE (IF EXISTS)? name=identifier (CASCADE)?                                        # dropDatabase
+    | USE db=identifier                                                                            # useDatabase
 
     | CREATE (TEMP | TEMPORARY)? FUNCTION (IF NOT EXISTS)? name=funcIdentifier
-        AS className=STRING (methodName=STRING)? (USING resource (',' resource)*)?              # createFunction
-    | DROP (TEMP | TEMPORARY)? FUNCTION (IF EXISTS)? name=funcIdentifier                        # dropFunction
+        AS className=STRING (methodName=STRING)? (USING resource (',' resource)*)?                 # createFunction
+    | DROP (TEMP | TEMPORARY)? FUNCTION (IF EXISTS)? name=funcIdentifier                           # dropFunction
 
-    | CREATE (OR REPLACE)? VIEW name=tableIdentifier (COMMENT comment=STRING)? AS query         # createView
-   // | RENAME VIEW name=tableIdentifier TO newName=tableIdentifier                               # renameView
-    //| ALTER VIEW name=tableIdentifier RENAME TO newName=tableIdentifier                         # setViewName
-   // | ALTER VIEW name=tableIdentifier SET COMMENT comment=STRING                                # setViewComment
-    | ALTER VIEW name=tableIdentifier AS query                                                  # setViewQuery
-    | DROP VIEW (IF EXISTS)? name=tableIdentifier                                               # dropView
+    | CREATE (OR REPLACE)? VIEW name=tableIdentifier (COMMENT comment=STRING)? AS query            # createView
+   // | RENAME VIEW name=tableIdentifier TO newName=tableIdentifier                                  # renameView
+    //| ALTER VIEW name=tableIdentifier RENAME TO newName=tableIdentifier                            # setViewName
+   // | ALTER VIEW name=tableIdentifier SET COMMENT comment=STRING                                   # setViewComment
+    | ALTER VIEW name=tableIdentifier AS query                                                     # setViewQuery
+    | DROP VIEW (IF EXISTS)? name=tableIdentifier                                                  # dropView
 
-    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds  # createProcedure
-    | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                           # renameProcedure
-    | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                    # setProcedureName
-    | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                     # setProcedureQuerys
-    | DROP   (PROC | PROCEDURE) (IF EXISTS)? name=identifier                                    # dropProcedure
+    | CREATE (PROC | PROCEDURE) (IF NOT EXISTS)? name=identifier USING (MQL | HQL) AS procCmds     # createProcedure
+    | RENAME (PROC | PROCEDURE) name=identifier TO newName=identifier                              # renameProcedure
+    | ALTER  (PROC | PROCEDURE) name=identifier RENAME TO newName=identifier                       # setProcedureName
+    | ALTER  (PROC | PROCEDURE) name=identifier AS procCmds                                        # setProcedureQuerys
+    | DROP   (PROC | PROCEDURE) (IF EXISTS)? name=identifier                                       # dropProcedure
 
     | CREATE (DEFINER definer)? EVENT (IF NOT EXISTS)? name=identifier ON SCHEDULE AT
         cronExpression=STRING
-        (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL proc=identifier                   # createEvent
-    | RENAME EVENT name=identifier TO newName=identifier                                        # renameEvent
-    | ALTER DEFINER definer EVENT name=identifier                                               # setDefiner
-    | ALTER EVENT name=identifier RENAME TO newName=identifier                                  # setEventName
-    | ALTER EVENT name=identifier ON SCHEDULE AT cronExpression=STRING                          # setEventSchedule
-    | ALTER EVENT name=identifier (ENABLE | DISABLE)                                            # setEventEnable
-    | DROP EVENT (IF EXISTS)? name=identifier                                                   # dropEvent
+        (ENABLE | DISABLE)? (COMMENT comment=STRING)? DO CALL proc=identifier                      # createEvent
+    | RENAME EVENT name=identifier TO newName=identifier                                           # renameEvent
+    | ALTER DEFINER definer EVENT name=identifier                                                  # setDefiner
+    | ALTER EVENT name=identifier RENAME TO newName=identifier                                     # setEventName
+    | ALTER EVENT name=identifier ON SCHEDULE AT cronExpression=STRING                             # setEventSchedule
+    | ALTER EVENT name=identifier (ENABLE | DISABLE)                                               # setEventEnable
+    | DROP EVENT (IF EXISTS)? name=identifier                                                      # dropEvent
 
-    | SHOW SYSINFO                                                                              # showSysInfo
-    | SHOW JOBS                                                                                 # showJobs
-    | SHOW RUNNING EVENTS                                                                       # showRunningEvents
-    | SHOW EVENTS (LIKE pattern=STRING)?                                                        # showEvents
+    | SHOW SYSINFO                                                                                 # showSysInfo
+    | SHOW JOBS                                                                                    # showJobs
+    | SHOW RUNNING EVENTS                                                                          # showRunningEvents
+    | SHOW EVENTS (LIKE pattern=STRING)?                                                           # showEvents
 
-    | SHOW DATABASES (LIKE pattern=STRING)?                                                     # showDatabase
-    | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                           # showTables
+    | SHOW DATABASES (LIKE pattern=STRING)?                                                        # showDatabase
+    | SHOW TABLES ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?                              # showTables
 
-    | SHOW (scope=identifier)? FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?    # showFunctions
+    | SHOW (scope=identifier)? FUNCTIONS ((FROM | IN) db=identifier)? (LIKE pattern=STRING)?       # showFunctions
 
-    | SHOW (ORGS | ORGANIZATIONS) (LIKE pattern=STRING)?                                        # showOrgs
-    | SHOW SAS (LIKE pattern=STRING)?                                                           # showSas
-    | SHOW USERS (LIKE pattern=STRING)?                                                         # showUsers
-    | SHOW GROUPS (LIKE pattern=STRING)?                                                        # showGroups
-    | SHOW USERS IN GROUP name=identifier (LIKE pattern=STRING)?                                # showUsersInGroup
+    | SHOW (ORGS | ORGANIZATIONS) (LIKE pattern=STRING)?                                           # showOrgs
+    | SHOW SAS (LIKE pattern=STRING)?                                                              # showSas
+    | SHOW USERS (LIKE pattern=STRING)?                                                            # showUsers
+    | SHOW GROUPS (LIKE pattern=STRING)?                                                           # showGroups
+    | SHOW USERS IN GROUP name=identifier (LIKE pattern=STRING)?                                   # showUsersInGroup
 
-    | SHOW (PROCS | PROCEDURES) (LIKE pattern=STRING)?                                          # showProcedures
-    | SHOW VARIABLES (LIKE pattern=STRING)?                                                     # showVariable
-    | SHOW GRANTS FOR user=identifier                                                           # showGrants
-    | SHOW CREATE TABLE name=tableIdentifier                                                    # showCreateTable
-    | SHOW SCHEMA FOR query                                                                     # showSchema
+    | SHOW (PROCS | PROCEDURES) (LIKE pattern=STRING)?                                             # showProcedures
+    | SHOW VARIABLES (LIKE pattern=STRING)?                                                        # showVariable
+    | SHOW GRANTS FOR user=identifier                                                              # showGrants
+    | SHOW CREATE TABLE name=tableIdentifier                                                       # showCreateTable
+    | SHOW SCHEMA FOR query                                                                        # showSchema
 
-    | (DESC | DESCRIBE) EVENT name=identifier                                                   # descEvent
-    | (DESC | DESCRIBE) (PROC | PROCEDURE) name=identifier                                      # descProcedure
-    | (DESC | DESCRIBE) DATABASE name=identifier                                                # descDatabase
-    | (DESC | DESCRIBE) TABLE? EXTENDED? tableIdentifier                                        # descTable
+    | (DESC | DESCRIBE) EVENT name=identifier                                                      # descEvent
+    | (DESC | DESCRIBE) (PROC | PROCEDURE) name=identifier                                         # descProcedure
+    | (DESC | DESCRIBE) DATABASE name=identifier                                                   # descDatabase
+    | (DESC | DESCRIBE) TABLE? EXTENDED? tableIdentifier                                           # descTable
 
-    | (DESC | DESCRIBE) FUNCTION EXTENDED? funcIdentifier                                       # descFunction
-    | (DESC | DESCRIBE) USER name=identifier                                                    # descUser
-    | (DESC | DESCRIBE) ORG name=identifier                                                     # descOrg
+    | (DESC | DESCRIBE) FUNCTION EXTENDED? funcIdentifier                                          # descFunction
+    | (DESC | DESCRIBE) USER name=identifier                                                       # descUser
+    | (DESC | DESCRIBE) ORG name=identifier                                                        # descOrg
 
-    | EXPLAIN EXTENDED? PLAN? query                                                             # explain
-    //| SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                      # setVariable
-    //| REFRESH TABLE tableIdentifier                                                             # refreshTable
-    //| REFRESH path=.*?                                                                          #refreshResource
+    | EXPLAIN EXTENDED? PLAN? query                                                                # explain
+    //| SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                         # setVariable
+    //| REFRESH TABLE tableIdentifier                                                                # refreshTable
+    //| REFRESH path=.*?                                                                             #refreshResource
 
     //| INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? coalesceSpec? AS? query                 # insertInto
-    | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS? query             # createTemporaryView
-    //| query                                                                                     # mqlQuery
+    | CREATE (OR REPLACE)? CACHE? (TEMP | TEMPORARY) VIEW name=identifier AS? query                # createTemporaryView
+    //| query                                                                                        # mqlQuery
     | statement=(SELECT | WITH | INSERT | SET | ANALYZE | REFRESH | SHOW).*?                                                                             # statement
     ;
 
@@ -259,6 +264,10 @@ propertyList
 
 property
     : key=propertyKey EQ? value=STRING
+    ;
+
+propertyKeyList
+    : '(' propertyKey (',' propertyKey)* ')'
     ;
 
 propertyKey

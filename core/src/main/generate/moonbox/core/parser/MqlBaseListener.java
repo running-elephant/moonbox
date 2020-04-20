@@ -66,6 +66,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitSetOrganizationOptions(MqlBaseParser.SetOrganizationOptionsContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code removeOrganizationOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRemoveOrganizationOptions(MqlBaseParser.RemoveOrganizationOptionsContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code removeOrganizationOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRemoveOrganizationOptions(MqlBaseParser.RemoveOrganizationOptionsContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code setOrganizationComment}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -149,6 +161,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitSetSaOptions(MqlBaseParser.SetSaOptionsContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code removeSaOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRemoveSaOptions(MqlBaseParser.RemoveSaOptionsContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code removeSaOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRemoveSaOptions(MqlBaseParser.RemoveSaOptionsContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code dropSa}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -366,6 +390,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitSetUserOptions(MqlBaseParser.SetUserOptionsContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code removeUserOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRemoveUserOptions(MqlBaseParser.RemoveUserOptionsContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code removeUserOptions}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRemoveUserOptions(MqlBaseParser.RemoveUserOptionsContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code dropUser}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -510,6 +546,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitSetTableProperties(MqlBaseParser.SetTablePropertiesContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code removeTableProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRemoveTableProperties(MqlBaseParser.RemoveTablePropertiesContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code removeTableProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRemoveTableProperties(MqlBaseParser.RemoveTablePropertiesContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code unmountTable}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree
@@ -557,6 +605,18 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitSetDatabaseProperties(MqlBaseParser.SetDatabasePropertiesContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code removeDatabaseProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRemoveDatabaseProperties(MqlBaseParser.RemoveDatabasePropertiesContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code removeDatabaseProperties}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRemoveDatabaseProperties(MqlBaseParser.RemoveDatabasePropertiesContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code refreshDatabase}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
@@ -1443,6 +1503,16 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitProperty(MqlBaseParser.PropertyContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link MqlBaseParser#propertyKeyList}.
+	 * @param ctx the parse tree
+	 */
+	void enterPropertyKeyList(MqlBaseParser.PropertyKeyListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MqlBaseParser#propertyKeyList}.
+	 * @param ctx the parse tree
+	 */
+	void exitPropertyKeyList(MqlBaseParser.PropertyKeyListContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MqlBaseParser#propertyKey}.
 	 * @param ctx the parse tree
