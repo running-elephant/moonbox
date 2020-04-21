@@ -21,8 +21,6 @@ abstract class DriverMonitor extends MbLogging {
   def listDrivers(): Seq[DriverInfo]
 
   def reportDrivers(): Unit
-
-  def monitorDrivers(): Unit
 }
 
 object DriverMonitor extends MbLogging {

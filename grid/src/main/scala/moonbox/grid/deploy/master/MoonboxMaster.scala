@@ -231,7 +231,6 @@ class MoonboxMaster(
           new FiniteDuration(WORKER_TIMEOUT_MS, MILLISECONDS), self, CompleteRecovery)
       } else {
         logInfo(s"Now working as $state")
-        driverMonitors.foreach(driverMonitor => driverMonitor.monitorDrivers())
       }
 
     case RevokedLeadership =>
@@ -835,7 +834,7 @@ class MoonboxMaster(
     driverPollScheduler = system.scheduler.schedule(
       new FiniteDuration(0, SECONDS),
       new FiniteDuration(POOL_SCHEDULER_INTERVAL_MS, MICROSECONDS)
-    )(submitDriverPool())
+    )(submitDriverPool)
     logInfo("Driver pool schedule started.")
   }
 

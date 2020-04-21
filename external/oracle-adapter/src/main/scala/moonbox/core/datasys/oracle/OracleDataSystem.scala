@@ -215,13 +215,13 @@ class OracleDataSystem(props: Map[String, String])
   )
 
   override def insert(table: DataTable, saveMode: SaveMode): Unit = {
-    throw new Exception("Unsupport operation: insert with datatalbe.")
+    throw new Exception("Unsupport operation: insert with datatable.")
   }
 
   private def socket: (String, Int) = {
     val url = props("url").toLowerCase
-    val removeProtocol = url.stripPrefix("jdbc:oracle:thin:@://")
-    val hostPort = removeProtocol.substring(0, removeProtocol.lastIndexOf(':')).split(":")
+    val removeProtocol = url.stripPrefix("jdbc:oracle:thin:@//")
+    val hostPort = removeProtocol.substring(0, removeProtocol.lastIndexOf('/')).split(":")
     val host = hostPort(0)
     val port = if (hostPort.length > 1) hostPort(1).toInt else 1521
     (InetAddress.getByName(host).getHostAddress, port)

@@ -30,9 +30,9 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
 
   private implicit val sender: ActorRef = master
 
-  import SparkBatchDriverMonitor._
+  val initLock = new Object()
 
-  init()
+  import SparkBatchDriverMonitor._
 
   private def init(): Unit = {
     val config = new YarnConfiguration()
@@ -51,6 +51,7 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
     }
     yarnClient.init(yarnConf)
     yarnClient.start()
+    monitorDrivers()
   }
 
   override def acceptsDeployMode(deployMode: DriverDeployMode): Boolean = {
@@ -61,6 +62,12 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
     if (acceptsDeployMode(DriverDeployMode(driverInfo.desc.deployMode.getOrElse("None"))) &&
       !drivers.containsKey(driverInfo.id)) {
       drivers.put(driverInfo.id, driverInfo)
+    }
+    if (!initialized && drivers.nonEmpty) {
+      initLock.synchronized {
+        initialized = true
+        init()
+      }
     }
   }
 
@@ -130,8 +137,8 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
     }
   }
 
-  override def monitorDrivers(): Unit = {
-    system.scheduler.schedule(0.seconds, STATEREPORT_INTERVAL_MS.milliseconds)(reportDrivers())
+  private def monitorDrivers(): Unit = {
+    system.scheduler.schedule(0.seconds, STATEREPORT_INTERVAL_MS.milliseconds)(reportDrivers)
   }
 
 }
@@ -142,6 +149,7 @@ object SparkBatchDriverMonitor {
   private val YARN_KEYTAB = Seq("moonbox.mixcal.spark.yarn.keytab", "moonbox.mixcal.batch.spark.yarn.keytab")
   private val yarnApplicationTypes = Set("SPARK")
 
+  private var initialized: Boolean = false
   private val drivers = new ConcurrentHashMap[String, DriverInfo]
 
   private def convertToDriverState(yarnApplicationState: YarnApplicationState): DriverState = {

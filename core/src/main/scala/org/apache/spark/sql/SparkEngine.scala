@@ -22,6 +22,7 @@ package org.apache.spark.sql
 
 
 import java.io.File
+import java.util.Locale
 
 import moonbox.catalog._
 import moonbox.common.util.Utils
@@ -735,7 +736,12 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param props connection or other parameters
     */
   private def registerDatasourceTable(table: TableIdentifier, props: Map[String, String]): Unit = {
-    setRemoteHadoopConf(mergeRemoteHadoopConf(props))
+    // todo for forward compatible
+    val filteredProps = props.filterNot(kv => kv._1.equalsIgnoreCase("spark.hadoop.dfs.nameservices") ||
+      kv._1.toLowerCase(Locale.ROOT).startsWith("spark.hadoop.dfs.client.failover.proxy.provider."))
+
+    setRemoteHadoopConf(mergeRemoteHadoopConf(filteredProps))
+
     val schema = props.get("schema").map(s => s"($s)").getOrElse("")
     val options = props.map {
       case (k, v) => s"'$k' '$v'"
@@ -779,7 +785,11 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       )
     } else {
       val path = hiveCatalogTable.storage.locationUri.get.toString
-      setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
+
+      // todo for forward compatible
+      val filteredProps = props.filterNot(kv => kv._1.equalsIgnoreCase("spark.hadoop.dfs.nameservices") ||
+        kv._1.toLowerCase(Locale.ROOT).startsWith("spark.hadoop.dfs.client.failover.proxy.provider."))
+      setRemoteHadoopConf(mergeRemoteHadoopConf(filteredProps ++ Map("path" -> path)))
 
       val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
