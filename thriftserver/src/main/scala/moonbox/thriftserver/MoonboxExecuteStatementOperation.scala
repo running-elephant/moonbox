@@ -289,6 +289,7 @@ object MoonboxExecuteStatementOperation {
       case JDBCType.JAVA_OBJECT => "map"
       case JDBCType.DECIMAL => "decimal(38,18)"
       case JDBCType.VARCHAR | JDBCType.CHAR => "string"
+      case JDBCType.BIT => "boolean"
       case _ => dataType.getName.toLowerCase(Locale.ROOT)
     }
   }
