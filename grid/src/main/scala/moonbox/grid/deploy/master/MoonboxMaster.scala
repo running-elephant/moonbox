@@ -497,19 +497,21 @@ class MoonboxMaster(
       }
 
     case BatchDriverSchedule =>
-      val driver = driverPool.remove(0)
-      persistenceEngine.removeDriverPool(driver)
-      schedulingDrivers += driver.id
-      logInfo(s"Schedule driver ${driver.id} from driver pool.")
+      while (schedulingDrivers.length < driverPoolParallelism && driverPool.nonEmpty) {
+        val driver = driverPool.remove(0)
+        persistenceEngine.removeDriverPool(driver)
+        schedulingDrivers += driver.id
+        logInfo(s"Schedule driver ${driver.id} from driver pool.")
 
-      persistenceEngine.addDriver(driver)
-      waitingDrivers += driver
-      drivers.add(driver)
-      schedule()
-      logInfo(s"Driver ${driver.id} successfully scheduled.")
+        persistenceEngine.addDriver(driver)
+        waitingDrivers += driver
+        drivers.add(driver)
+        schedule()
+        logInfo(s"Driver ${driver.id} successfully scheduled.")
+      }
 
       if (schedulingDrivers.length == driverPoolParallelism) {
-        logInfo(s"Driver pool parallelism is $driverPoolParallelism, there are still ${driverPool.size} drivers waiting to schedule.")
+        logInfo(s"Driver scheduler pool parallelism is $driverPoolParallelism, there are still ${driverPool.size} drivers waiting to schedule.")
       }
 
       if (driverPool.isEmpty) {
@@ -855,7 +857,7 @@ class MoonboxMaster(
     driverPoolOnScheduled = true
     driverPollScheduler = system.scheduler.schedule(
       new FiniteDuration(0, SECONDS),
-      new FiniteDuration(POOL_SCHEDULER_INTERVAL_MS, MICROSECONDS)
+      new FiniteDuration(POOL_SCHEDULER_INTERVAL_MS, MILLISECONDS)
     )(submitDriverPool)
     logInfo("Driver pool schedule started.")
   }
