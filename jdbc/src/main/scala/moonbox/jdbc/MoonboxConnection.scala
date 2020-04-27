@@ -147,8 +147,11 @@ class MoonboxConnection(url: String, props: Properties) extends java.sql.Connect
     if (props.containsKey(FETCH_SIZE)) {
       statement.setFetchSize(props.getProperty(FETCH_SIZE).toInt)
     }
-    if(props.containsKey(READ_TIMEOUT)) {
+    if (props.containsKey(READ_TIMEOUT)) {
       statement.setQueryTimeout(props.getProperty(READ_TIMEOUT).toInt)
+    }
+    if (props.containsKey(QUERY_TIMEOUT)) {
+      statement.setQueryTimeout(props.getProperty(QUERY_TIMEOUT).toInt)
     }
     statement
   }

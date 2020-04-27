@@ -793,6 +793,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
 
       val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
 
+      logInfo("Hive " + hivePartitions.toString())
+
       sessionState.catalog.createTable(hiveCatalogTable.copy(
         identifier = table,
         tableType = CatalogTableType.EXTERNAL,

@@ -23,7 +23,7 @@ package moonbox.grid.deploy
 import java.util.Date
 
 import akka.actor.{ActorRef, Address}
-import moonbox.grid.deploy.app.{AppType, DriverDesc, DriverState}
+import moonbox.grid.deploy.app.{AppType, DriverDesc, DriverInfo, DriverState}
 import DriverState.DriverState
 import moonbox.grid.timer.EventEntity
 

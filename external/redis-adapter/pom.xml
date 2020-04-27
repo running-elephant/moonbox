@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>moonbox-redis-adapter</artifactId>
+    <packaging>jar</packaging>
     <name>Moonbox Project Data Adapter Redis</name>
 
     <dependencies>
@@ -64,7 +65,8 @@
                             </filters>
 
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>

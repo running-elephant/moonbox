@@ -219,5 +219,5 @@ package object config {
 
   val BATCH_DRIVER_POOL_SCHEDULER_INTERVAL = ConfigBuilder("moonbox.master.driver.pool.scheduler.interval")
     .timeConf
-    .createWithDefaultString("60s")
+    .createWithDefaultString("5s")
 }

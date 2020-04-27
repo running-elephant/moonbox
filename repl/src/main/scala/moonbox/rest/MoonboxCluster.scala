@@ -84,7 +84,7 @@ object MoonboxCluster {
     val response: String = HttpClient.doGet(path, Charsets.UTF_8.name())
 
     val array = new JSONObject(response).getJSONArray(key).asScala
-    println(s"$key size is ${array.size}")
+    println(s"$key size: ${array.size}")
     println(array.mkString("\n"))
   }
 

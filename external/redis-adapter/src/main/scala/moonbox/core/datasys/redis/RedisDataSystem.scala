@@ -22,19 +22,60 @@ package moonbox.core.datasys.redis
 
 import moonbox.common.MbLogging
 import moonbox.core.datasys.DataSystem
+import redis.clients.jedis._
 
 class RedisDataSystem(props: Map[String, String])
-	extends DataSystem(props) with MbLogging {
+  extends DataSystem(props) with MbLogging {
 
-	override def tableNames(): Seq[String] = Seq()
+  checkOptions("type", "host")
 
-	override def tableName(): String = props("table")
+  override def tableNames(): Seq[String] = Seq()
 
-	override def tableProperties(tableName: String): Map[String, String] = {
-		props.+("table" -> tableName)
-	}
+  override def tableName(): String = props("table")
 
-	override def test(): Unit = {
+  override def tableProperties(tableName: String): Map[String, String] = {
+    props.+("table" -> tableName)
+  }
 
-	}
+  override def test(): Unit = {
+    var connection: Jedis = null
+    try {
+      connection = getConnection()
+    } catch {
+      case e: Exception =>
+        logError("redis test failed.", e)
+        throw e
+    } finally {
+      if (connection != null) {
+        connection.close()
+      }
+    }
+  }
+
+  private def getConnection(): Jedis = {
+    val host = props.getOrElse("host", Protocol.DEFAULT_HOST)
+    val port = props.get("port").map(_.toInt).getOrElse(Protocol.DEFAULT_PORT)
+    val auth = props.getOrElse("auth", null)
+    val dbNum = props.get("dbNum").map(_.toInt).getOrElse(Protocol.DEFAULT_DATABASE)
+    val timeout = props.get("timeout").map(_.toInt).getOrElse(Protocol.DEFAULT_TIMEOUT)
+    val poolConfig: JedisPoolConfig = new JedisPoolConfig()
+    poolConfig.setMaxTotal(1)
+    poolConfig.setMaxIdle(1)
+    poolConfig.setTestOnBorrow(false)
+    poolConfig.setTestOnReturn(false)
+    poolConfig.setTestWhileIdle(false)
+    poolConfig.setMinEvictableIdleTimeMillis(60000)
+    poolConfig.setTimeBetweenEvictionRunsMillis(30000)
+    poolConfig.setNumTestsPerEvictionRun(-1)
+    val pool = new JedisPool(poolConfig, host, port, timeout, auth, dbNum)
+    var conn: Jedis = null
+    try {
+      conn = pool.getResource
+    }
+    catch {
+      case e: Exception => throw e
+    }
+    conn
+  }
+
 }

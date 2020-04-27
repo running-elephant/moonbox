@@ -28,19 +28,28 @@ moonbox {
         spark.serializer = "org.apache.spark.serializer.KryoSerializer"
         spark.network.timeout = "600s"
         spark.executor.heartbeatInterval = "180s"
+        spark.loglevel = "INFO"
+
         local = [{}]
+
         cluster = [{
-          spark.hadoop.yarn.resourcemanager.hostname = "master"
-          spark.hadoop.yarn.resourcemanager.address = "master:8032"
-          spark.yarn.stagingDir = "hdfs://master:8020/tmp"
-          spark.yarn.access.namenodes = "hdfs://master:8020"
-          spark.loglevel = "ERROR"
           spark.cores.max = 2
           spark.yarn.am.memory = "512m"
           spark.yarn.am.cores = 1
           spark.executor.instances = 2
           spark.executor.cores = 1
           spark.executor.memory = "2g"
+        }]
+
+        batch = [{
+          spark.driver.memory = "4g"
+          spark.driver.cores = 2
+          spark.executor.instances = 8
+          spark.executor.cores = 2
+          spark.executor.memory = "4g"
+          spark.yarn.maxAppAttempts = 1
+          spark.task.maxFailures = 1
+          spark.yarn.submit.waitAppCompletion = false
         }]
     }
 

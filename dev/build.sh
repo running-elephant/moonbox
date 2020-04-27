@@ -9,6 +9,7 @@ cd ..
 mvn clean install package -Pdist -DskipTests \
 -Pmysql \
 -Poracle \
+-Pimpala \
 -Psqlserver \
 -Pkudu \
 -Phbase \
@@ -18,5 +19,6 @@ mvn clean install package -Pdist -DskipTests \
 -Pmongo \
 -Pclickhouse \
 -Pkafka \
+-Predis \
 )
 cd $current_dir

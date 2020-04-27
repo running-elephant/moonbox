@@ -26,7 +26,7 @@ else
   fi
 fi
 
-$RUNNER -cp "${MOONBOX_HOME}/libs/*:${SPARK_HOME}/jars/*" moonbox.grid.deploy.worker.MoonboxWorker $@ 1>>${LOGFILE} 2>&1 &
+$RUNNER -cp "${MOONBOX_HOME}/libs/*" moonbox.grid.deploy.worker.MoonboxWorker $@ 1>>${LOGFILE} 2>&1 &
 
 if [ $? -eq 0 ]; then
    echo "starting moonbox slave, logging to ${LOGFILE} "

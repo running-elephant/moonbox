@@ -353,15 +353,7 @@ case class AlterTableSetOptions(
     )
 
     if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
-      mbSession.engine.catalog.getTableMetadataOption(table).foreach { catalogTable =>
-        mbSession.engine.catalog.alterTable(
-          catalogTable.copy(
-            storage = catalogTable.storage.copy(
-              properties = catalogTable.storage.properties ++ props
-            )
-          )
-        )
-      }
+      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
     }
 
     Seq.empty[Row]
@@ -391,15 +383,7 @@ case class AlterTableRemoveOptions(
     )
 
     if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
-      mbSession.engine.catalog.getTableMetadataOption(table).foreach { catalogTable =>
-        mbSession.engine.catalog.alterTable(
-          catalogTable.copy(
-            storage = catalogTable.storage.copy(
-              properties = catalogTable.storage.properties -- props
-            )
-          )
-        )
-      }
+      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
     }
 
     Seq.empty[Row]
@@ -427,8 +411,7 @@ case class UnmountTable(
       ignoreIfNotExists)
 
     if (mbSession.engine.catalog.databaseExists(dbName)) {
-      mbSession.engine.catalog
-        .dropTable(table, ignoreIfNotExists = true, purge = true)
+      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
     }
 
     Seq.empty[Row]
@@ -557,6 +540,12 @@ case class AlterViewSetQuery(
       )
     )
 
+    if (mbSession.engine.catalog.databaseExists(database.name) &&
+      (mbSession.engine.catalog.getTempView(view.table).isDefined ||
+        mbSession.engine.catalog.getGlobalTempView(view.table).isDefined)) {
+      mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
+    }
+
     Seq.empty[Row]
   }
 }
@@ -574,7 +563,7 @@ case class DropView(
     mbSession.catalog.dropTable(
       database.name, view.table, ignoreIfNotExists)
 
-    mbSession.engine.catalog.dropTempView(view.table)
+    mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
     Seq.empty[Row]
   }
 }

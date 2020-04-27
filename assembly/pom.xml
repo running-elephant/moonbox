@@ -38,15 +38,15 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-             <groupId>edp.moonbox</groupId>
-             <artifactId>moonbox-core_2.11</artifactId>
-             <version>${project.version}</version>
-         </dependency>
-         <dependency>
-             <groupId>edp.moonbox</groupId>
-             <artifactId>moonbox-grid_2.11</artifactId>
-             <version>${project.version}</version>
-         </dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-core_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>moonbox-grid_2.11</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>edp.moonbox</groupId>
             <artifactId>moonbox-repl_2.11</artifactId>
@@ -132,6 +132,16 @@
                 <dependency>
                     <groupId>edp.moonbox</groupId>
                     <artifactId>moonbox-oracle-adapter</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>impala</id>
+            <dependencies>
+                <dependency>
+                    <groupId>edp.moonbox</groupId>
+                    <artifactId>moonbox-impala-adapter</artifactId>
                     <version>${project.version}</version>
                 </dependency>
             </dependencies>

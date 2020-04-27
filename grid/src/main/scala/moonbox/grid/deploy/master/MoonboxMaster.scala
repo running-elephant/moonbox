@@ -491,9 +491,31 @@ class MoonboxMaster(
         if (!driverPoolOnScheduled) {
           scheduleDriverPool
         }
-        val msg = s"Batch job pool successfully submitted, driver sequence size is ${submitDriverIds.size}. "
+        val msg = s"Batch job pool successfully submitted, driver sequence size is ${submitDriverIds.size}."
         logInfo(msg)
         sender() ! JobPoolSubmitResponse(Some(submitDriverIds), msg)
+      }
+
+    case BatchDriverSchedule =>
+      val driver = driverPool.remove(0)
+      persistenceEngine.removeDriverPool(driver)
+      schedulingDrivers += driver.id
+      logInfo(s"Schedule driver ${driver.id} from driver pool.")
+
+      persistenceEngine.addDriver(driver)
+      waitingDrivers += driver
+      drivers.add(driver)
+      schedule()
+      logInfo(s"Driver ${driver.id} successfully scheduled.")
+
+      if (schedulingDrivers.length == driverPoolParallelism) {
+        logInfo(s"Driver pool parallelism is $driverPoolParallelism, there are still ${driverPool.size} drivers waiting to schedule.")
+      }
+
+      if (driverPool.isEmpty) {
+        driverPollScheduler.cancel()
+        driverPoolOnScheduled = false
+        logInfo("Driver pool schedule finished.")
       }
 
     case JobProgress(driverId) =>
@@ -839,24 +861,7 @@ class MoonboxMaster(
   }
 
   private def submitDriverPool(): Unit = {
-    while (schedulingDrivers.length < driverPoolParallelism && driverPool.nonEmpty) {
-      val driver = driverPool.remove(0)
-      persistenceEngine.removeDriverPool(driver)
-      schedulingDrivers += driver.id
-      drivers += driver
-      waitingDrivers += driver
-      logInfo(s"Submit driver ${driver.id} from driver pool.")
-      schedule()
-      if (schedulingDrivers.length == driverPoolParallelism) {
-        logInfo(s"Driver pool parallelism is $driverPoolParallelism.")
-        logInfo(s"There are still ${driverPool.size} drivers waiting to schedule.")
-      }
-    }
-    if (driverPool.isEmpty) {
-      driverPollScheduler.cancel()
-      driverPoolOnScheduled = false
-      logInfo("Driver pool schedule finished.")
-    }
+    self ! BatchDriverSchedule
   }
 
   private def beginRecovery(storedDrivers: Seq[DriverInfo], storedDriverPool: Seq[DriverInfo], storedWorkers: Seq[WorkerInfo], storedApps: Seq[AppInfo]): Unit = {
@@ -1002,7 +1007,7 @@ class MoonboxMaster(
     worker.endpoint ! LaunchDriver(driver.id, driver.desc)
     drivers.find(_.id == driver.id)
       .foreach(driver => {
-        driver.state == DriverState.SUBMITTING
+        driver.state = DriverState.SUBMITTING
         driver.worker = Some(worker)
       })
   }
@@ -1027,7 +1032,6 @@ class MoonboxMaster(
           case None => // nothing
         }
         schedulingDrivers -= driverId
-        driverMonitors.foreach(_.unRegisterDriver(driver))
         schedule()
       case None => // nothing
     }

@@ -2,7 +2,7 @@ package moonbox.grid.deploy.app
 
 import java.util.concurrent.ConcurrentHashMap
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Cancellable}
 import moonbox.common.MbConf
 import moonbox.common.util.Utils
 import moonbox.grid.config.DRIVER_STATEMONITOR_INTERVAL
@@ -11,7 +11,7 @@ import moonbox.grid.deploy.app.DriverState.DriverState
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.security.UserGroupInformation
-import org.apache.hadoop.yarn.api.records.{ApplicationReport, YarnApplicationState}
+import org.apache.hadoop.yarn.api.records.{ApplicationReport, FinalApplicationStatus, YarnApplicationState}
 import org.apache.hadoop.yarn.client.api.YarnClient
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 
@@ -30,7 +30,11 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
 
   private implicit val sender: ActorRef = master
 
-  val initLock = new Object()
+  private var monitorScheduler: Cancellable = _
+  private var monitorOnScheduled: Boolean = false
+
+  private val initLock = new Object()
+  private val schedulerLock = new Object()
 
   import SparkBatchDriverMonitor._
 
@@ -51,7 +55,6 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
     }
     yarnClient.init(yarnConf)
     yarnClient.start()
-    monitorDrivers()
   }
 
   override def acceptsDeployMode(deployMode: DriverDeployMode): Boolean = {
@@ -63,16 +66,32 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
       !drivers.containsKey(driverInfo.id)) {
       drivers.put(driverInfo.id, driverInfo)
     }
+
     if (!initialized && drivers.nonEmpty) {
       initLock.synchronized {
         initialized = true
         init()
       }
     }
+
+    if (drivers.nonEmpty && !monitorOnScheduled) {
+      schedulerLock.synchronized {
+        logInfo("Spark batch driver monitor start scheduled.")
+        monitorOnScheduled = true
+        monitorScheduler = monitorDrivers()
+      }
+    }
   }
 
   override def unRegisterDriver(driverInfo: DriverInfo): Unit = {
     drivers.remove(driverInfo.id)
+    if (drivers.isEmpty && monitorOnScheduled) {
+      schedulerLock.synchronized {
+        logInfo("Spark batch driver monitor stop scheduled.")
+        monitorOnScheduled = false
+        monitorScheduler.cancel()
+      }
+    }
   }
 
   override def getDriver(id: String): Option[DriverInfo] = {
@@ -83,7 +102,6 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
   override def killDriver(driverInfo: DriverInfo): Unit = {
     if (driverInfo.appId.isDefined) {
       yarnClient.killApplication(driverInfo.appIdInfo.get)
-      unRegisterDriver(driverInfo)
       logInfo(s"Driver ${driverInfo.id} kill success.")
     }
   }
@@ -93,11 +111,10 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
   }
 
   override def reportDrivers(): Unit = {
-    val yarnAppReport = yarnClient.getApplications(yarnApplicationTypes)
 
     def reportDriver(driverInfo: DriverInfo, appReport: ApplicationReport): Boolean = {
       val appIdInfo = appReport.getApplicationId
-      val state = convertToDriverState(appReport.getYarnApplicationState)
+      val state = convertToDriverState(appReport.getYarnApplicationState, appReport.getFinalApplicationStatus)
       val startTime = appReport.getStartTime
       val finishTime = appReport.getFinishTime
       val exception = appReport.getDiagnostics
@@ -123,21 +140,25 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
       }
     }
 
-    val appReportIter = yarnAppReport.iterator()
-    while (appReportIter.hasNext) {
-      val appReport = appReportIter.next()
-      if (drivers.containsKey(appReport.getName)) {
-        val driverInfo = drivers.get(appReport.getName)
-        val isReported = reportDriver(driverInfo, appReport)
-        if (isReported) {
-          master ! DriverStateChanged(driverInfo.id, driverInfo.state, driverInfo.appId, driverInfo.exception)
-          if (DriverState.isFinished(driverInfo.state)) unRegisterDriver(driverInfo)
+    if (drivers.nonEmpty) {
+      val yarnAppReport = yarnClient.getApplications(yarnApplicationTypes)
+
+      val appReportIter = yarnAppReport.iterator()
+      while (appReportIter.hasNext) {
+        val appReport = appReportIter.next()
+        if (drivers.containsKey(appReport.getName)) {
+          val driverInfo = drivers.get(appReport.getName)
+          val isReported = reportDriver(driverInfo, appReport)
+          if (isReported) {
+            master ! DriverStateChanged(driverInfo.id, driverInfo.state, driverInfo.appId, driverInfo.exception)
+            if (DriverState.isFinished(driverInfo.state)) unRegisterDriver(driverInfo)
+          }
         }
       }
     }
   }
 
-  private def monitorDrivers(): Unit = {
+  private def monitorDrivers(): Cancellable = {
     system.scheduler.schedule(0.seconds, STATEREPORT_INTERVAL_MS.milliseconds)(reportDrivers)
   }
 
@@ -152,13 +173,18 @@ object SparkBatchDriverMonitor {
   private var initialized: Boolean = false
   private val drivers = new ConcurrentHashMap[String, DriverInfo]
 
-  private def convertToDriverState(yarnApplicationState: YarnApplicationState): DriverState = {
+  private def convertToDriverState(yarnApplicationState: YarnApplicationState, finalApplicationStatus: FinalApplicationStatus): DriverState = {
     yarnApplicationState match {
       case YarnApplicationState.NEW | YarnApplicationState.NEW_SAVING | YarnApplicationState.SUBMITTED =>
         DriverState.SUBMITTING
       case YarnApplicationState.ACCEPTED => DriverState.SUBMITTED
       case YarnApplicationState.RUNNING => DriverState.RUNNING
-      case YarnApplicationState.FINISHED => DriverState.FINISHED
+      case YarnApplicationState.FINISHED =>
+        finalApplicationStatus match {
+          case FinalApplicationStatus.FAILED => DriverState.FAILED
+          case FinalApplicationStatus.KILLED => DriverState.KILLED
+          case _ => DriverState.FINISHED
+        }
       case YarnApplicationState.FAILED => DriverState.FAILED
       case YarnApplicationState.KILLED => DriverState.KILLED
     }

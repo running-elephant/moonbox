@@ -25,6 +25,7 @@ import org.json.JSONObject
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
@@ -269,14 +270,49 @@ object MoonboxRest {
       isPool = pool.stripPrefix("-isPool").toBoolean
       parse(tail)
     case c :: tail if c.startsWith("-C") =>
-      c.stripPrefix("-C").split(",").foreach { keyValues =>
-        val kv = keyValues.trim.split("=")
-        assert(kv.length >= 2, "please check config format.")
-        config.put(kv(0).trim, keyValues.substring(kv(0).length + 1).trim)
-      }
+      config ++= parseSparkConfig(c.stripPrefix("-C"))
     case Nil =>
     case _ =>
       printUsageAndExit(1)
+  }
+
+
+  private def parseSparkConfig(config: String): Map[String, String] = {
+    val map = mutable.HashMap.empty[String, String]
+
+    val splitArray = config.split(",")
+
+    assert(splitArray.nonEmpty, "please check config format.")
+
+    var kv: Array[String] = null
+    var key: String = null
+    var value: StringBuilder = new StringBuilder
+
+    for (element <- splitArray) {
+      if (element.contains("=")) {
+        if (key != null) {
+          map.put(key, value.toString)
+          key = null
+          value.clear()
+
+          kv = element.split("=")
+          key = kv(0)
+          value ++= element.stripPrefix(s"$key=")
+        } else {
+          kv = element.split("=")
+          key = kv(0)
+          value ++= element.stripPrefix(s"$key=")
+        }
+      } else {
+        value ++= s",$element"
+      }
+    }
+
+    if (key != null) {
+      map.put(key, value.toString())
+    }
+
+    map.toMap
   }
 
   private def printUsageAndExit(exitCode: Int): Unit = {

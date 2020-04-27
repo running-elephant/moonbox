@@ -21,6 +21,7 @@
 package moonbox.grid.deploy.messages
 
 import moonbox.grid.deploy.Interface.Dag
+import moonbox.grid.deploy.app.DriverInfo
 
 
 sealed trait Message extends Serializable
@@ -83,6 +84,8 @@ object Message {
   case class JobPoolSubmit(org: String, username: String, lang: String, sqls: Seq[String], config: Map[String, String]) extends JobMessage
 
   case class JobPoolSubmitResponse(jobIds: Option[Seq[String]], message: String) extends JobMessage
+
+  case object BatchDriverSchedule extends JobMessage
 
   // service
   sealed trait ServiceMessage extends Message
