@@ -46,10 +46,10 @@ class ImpalaDataSystem(props: Map[String, String])
     classOf[Subquery],
     classOf[SubqueryAlias])
 
-  override val supportedJoinTypes: Seq[JoinType] = _
-  override val supportedExpressions: Seq[Class[_]] = _
-  override val beGoodAtOperators: Seq[Class[_]] = _
-  override val supportedUDF: Seq[String] = _
+  override val supportedJoinTypes: Seq[JoinType] = Seq()
+  override val supportedExpressions: Seq[Class[_]] = Seq()
+  override val beGoodAtOperators: Seq[Class[_]] = Seq()
+  override val supportedUDF: Seq[String] = Seq()
 
   override def tableNames(): Seq[String] = {
     val tables = new ArrayBuffer[String]()
