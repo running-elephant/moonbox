@@ -57,6 +57,12 @@
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
+            <directory>
+                ${project.parent.basedir}/scripts
+            </directory>
+            <outputDirectory>scripts</outputDirectory>
+        </fileSet>
+        <fileSet>
             <outputDirectory>logs</outputDirectory>
             <excludes><exclude>**/*</exclude></excludes>
         </fileSet>
