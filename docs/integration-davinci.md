@@ -16,7 +16,7 @@ title: Integration Davinci
 <p style="text-align: center;">
   <img src="img/integration-davinci.png" style="width:80%;" title="Integration Davinci" alt="Integration Davinci" />
 </p>
-请根据实际情况修改上图中的配置项,然后保存。
+其中host为moonbox master节点地址，port为 `moonbox-defaults.conf` 中tcp部分配置的端口，如没有修改默认为10010。请根据实际情况修改上图中的配置项,然后保存。
 
 #### 关于Davinci
 

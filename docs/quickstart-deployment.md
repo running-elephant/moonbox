@@ -24,7 +24,7 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
 配置文件位于conf目录下
 - step 1: 修改slaves
 
-    ```
+    ```shell
     mv slaves.example slaves
     vim slaves
     ```
@@ -32,10 +32,10 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
     ```
     localhost
     ```
-    请根据实际情况修改为需要部署worker节点的地址, 每行一个地址
+    请根据实际情况修改为需要部署worker节点的hostname或者ip地址, 每行一个地址
 
 - step 2: 修改moonbox-env.sh
-    ```
+    ```shell
     mv moonbox-env.sh.example moonbox-env.sh
     chmod u+x moonbox-env.sh
     vim moonbox-env.sh
@@ -96,13 +96,11 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
             }
         }
         mixcal {
-            pushdown.enable = true
-            column.permission.enable = true
-            spark.sql.cbo.enabled = true
-            spark.sql.constraintPropagation.enabled = false
-            spark.sql.catalogImplementation = "in-memory" # do not modify
 
-            local = [{}]
+            local = [{
+                spark.driver.cores = 1
+                spark.driver.memory = "2g"
+            }]
             cluster = [{
               spark.hadoop.yarn.resourcemanager.hostname = "master"
               spark.hadoop.yarn.resourcemanager.address = "master:8032"
@@ -151,7 +149,7 @@ tar -zxvf moonbox-assembly_2.11-0.3.0-beta-SNAPSHOT-dist.tar.gz
     ```
 
 #### 分发安装包
-   将MySQL Jdbc驱动包放置到libs和runtime目录下, 然后将整个moonbox安装目录拷贝到所有安装节点, 确保位置与主节点位置一致。
+   将MySQL Jdbc驱动包(5.x版本)放置到libs和runtime目录下, 然后将整个moonbox安装目录拷贝到所有安装节点, 确保位置与主节点位置一致。
 
 #### 启动集群
    在master节点执行

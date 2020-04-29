@@ -42,7 +42,7 @@ title: MQL Indexing
     所有语句
 
 #### 指令索引
-```
+```sql
 CREATE [ORG | ORGANIZATION] (IF NOT EXISTS)? identifier (COMMENT STRING)
 RENAME [ORG | ORGANIZATION] identifier TO identifier
 ALTER [ORG | ORGANIZATION] identifier RENAME TO identifier
@@ -135,6 +135,7 @@ SHOW SCHEMA FORM SELECT ...
 EXPLAIN EXTENDED? PLAN? query
 SET identifier [= | ==]? .*?
 
-INSERT [INTO | OVERWRITE] TABLE? tableIdentifier AS? query
+INSERT INTO TABLE? tableIdentifier query
+INSERT OVERWRITE TABLE tableIdentifier query
 CREATE (OR REPLACE)? CACHE? [TEMP | TEMPORARY] VIEW identifier AS query
 ```
