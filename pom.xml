@@ -49,7 +49,6 @@
         <module>external/hbase-adapter</module>
         <module>external/cassandra-adapter</module>
         <module>external/clickhouse-adapter</module>
-        <module>external/redis-adapter</module>
         <module>external/kafka-adapter</module>
         <module>external/redis-adapter</module>
         <module>external/moonbox-zeppelin-interpreter-0.7</module>
