@@ -21,7 +21,7 @@
 package org.apache.spark.sql
 
 
-import java.io.File
+import java.io.{File, IOException}
 import java.util.Locale
 
 import moonbox.catalog._
@@ -31,10 +31,11 @@ import moonbox.core.datasys.DataSystem
 import moonbox.core.udf.UdfUtils
 import moonbox.core.{HookRunner, MoonboxCatalog}
 import moonbox.hook.HookContext
+import org.apache.hadoop.fs.Path
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.analyze.MbAnalyzer
 import org.apache.spark.sql.catalyst.analysis.{DatabaseAlreadyExistsException, TableAlreadyExistsException, UnresolvedFunction, UnresolvedRelation}
-import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
+import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ExternalCatalogUtils, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
 import org.apache.spark.sql.catalyst.expressions.{Literal, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
@@ -776,8 +777,6 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     val hiveClient = HiveClientUtils.getHiveClient(props)
     val hiveCatalogTable = hiveClient.getTable(props("hivedb"), props("hivetable"))
 
-    logInfo(s"hive table $table catalog:  $hiveCatalogTable")
-
     if (hiveCatalogTable.tableType == CatalogTableType.VIEW) {
       injectTableFunctions(parsePlan(hiveCatalogTable.viewText.get))
       sessionState.catalog.createTable(
@@ -789,11 +788,10 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       // todo for forward compatible
       val filteredProps = props.filterNot(kv => kv._1.equalsIgnoreCase("spark.hadoop.dfs.nameservices") ||
         kv._1.toLowerCase(Locale.ROOT).startsWith("spark.hadoop.dfs.client.failover.proxy.provider."))
+
       setRemoteHadoopConf(mergeRemoteHadoopConf(filteredProps ++ Map("path" -> path)))
 
-      val hivePartitions = hiveClient.getPartitions(hiveCatalogTable)
-
-      logInfo("Hive " + hivePartitions.toString())
+      val hivePartitions = ListBuffer.empty ++= hiveClient.getPartitions(hiveCatalogTable)
 
       sessionState.catalog.createTable(hiveCatalogTable.copy(
         identifier = table,
@@ -803,7 +801,27 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         properties = hiveCatalogTable.properties ++ props
       ), ignoreIfExists = true)
 
-      // TODO modify storage.uri
+      val tableMeta = sessionState.catalog.getTableMetadata(table)
+      val partitionColumnNames = tableMeta.partitionColumnNames
+      val tablePath = new Path(tableMeta.location)
+
+      try {
+        val fs = tablePath.getFileSystem(sessionState.newHadoopConf())
+
+        hivePartitions.foreach { part =>
+          val partitionPath = part.storage.locationUri.map(new Path(_)).getOrElse {
+            ExternalCatalogUtils.generatePartitionPath(part.spec, partitionColumnNames, tablePath)
+          }
+          if (!fs.exists(partitionPath)) {
+            hivePartitions -= part
+            logInfo(s"Filter hive table ${tableMeta.identifier} partition path $partitionPath.")
+          }
+        }
+      } catch {
+        case e: IOException =>
+          logWarning(s"Unable to filter not exist partition path of table ${tableMeta.identifier}", e)
+      }
+
       sessionState.catalog.createPartitions(
         table,
         hivePartitions,

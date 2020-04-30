@@ -11,6 +11,7 @@ import moonbox.grid.deploy.app.DriverState.DriverState
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.security.UserGroupInformation
+import org.apache.hadoop.service.Service.STATE
 import org.apache.hadoop.yarn.api.records.{ApplicationReport, FinalApplicationStatus, YarnApplicationState}
 import org.apache.hadoop.yarn.client.api.YarnClient
 import org.apache.hadoop.yarn.conf.YarnConfiguration
@@ -67,9 +68,9 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
       drivers.put(driverInfo.id, driverInfo)
     }
 
-    if (!initialized && drivers.nonEmpty) {
+    if (!yarnClientInitialized && drivers.nonEmpty) {
       initLock.synchronized {
-        initialized = true
+        yarnClientInitialized = true
         init()
       }
     }
@@ -140,21 +141,32 @@ class SparkBatchDriverMonitor(system: ActorSystem, master: ActorRef, conf: MbCon
       }
     }
 
-    if (drivers.nonEmpty) {
-      val yarnAppReport = yarnClient.getApplications(yarnApplicationTypes)
+    try {
+      if (drivers.nonEmpty) {
+        val yarnAppReport = yarnClient.getApplications(yarnApplicationTypes)
 
-      val appReportIter = yarnAppReport.iterator()
-      while (appReportIter.hasNext) {
-        val appReport = appReportIter.next()
-        if (drivers.containsKey(appReport.getName)) {
-          val driverInfo = drivers.get(appReport.getName)
-          val isReported = reportDriver(driverInfo, appReport)
-          if (isReported) {
-            master ! DriverStateChanged(driverInfo.id, driverInfo.state, driverInfo.appId, driverInfo.exception)
-            if (DriverState.isFinished(driverInfo.state)) unRegisterDriver(driverInfo)
+        val appReportIter = yarnAppReport.iterator()
+        while (appReportIter.hasNext) {
+          val appReport = appReportIter.next()
+          if (drivers.containsKey(appReport.getName)) {
+            val driverInfo = drivers.get(appReport.getName)
+            val isReported = reportDriver(driverInfo, appReport)
+            if (isReported) {
+              master ! DriverStateChanged(driverInfo.id, driverInfo.state, driverInfo.appId, driverInfo.exception)
+              if (DriverState.isFinished(driverInfo.state)) unRegisterDriver(driverInfo)
+            }
           }
         }
       }
+    } catch {
+      case ex: Exception =>
+        logWarning("Get applications report from yarn failed", ex)
+        if (!yarnClient.isInState(STATE.STARTED)) {
+          logWarning(s"yarnClient is in ${yarnClient.getServiceState} now, restart yarnClient.")
+          initLock.synchronized {
+            yarnClient.start()
+          }
+        }
     }
   }
 
@@ -170,7 +182,7 @@ object SparkBatchDriverMonitor {
   private val YARN_KEYTAB = Seq("moonbox.mixcal.spark.yarn.keytab", "moonbox.mixcal.batch.spark.yarn.keytab")
   private val yarnApplicationTypes = Set("SPARK")
 
-  private var initialized: Boolean = false
+  private var yarnClientInitialized: Boolean = false
   private val drivers = new ConcurrentHashMap[String, DriverInfo]
 
   private def convertToDriverState(yarnApplicationState: YarnApplicationState, finalApplicationStatus: FinalApplicationStatus): DriverState = {

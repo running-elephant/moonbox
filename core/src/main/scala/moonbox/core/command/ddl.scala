@@ -540,11 +540,7 @@ case class AlterViewSetQuery(
       )
     )
 
-    if (mbSession.engine.catalog.databaseExists(database.name) &&
-      (mbSession.engine.catalog.getTempView(view.table).isDefined ||
-        mbSession.engine.catalog.getGlobalTempView(view.table).isDefined)) {
-      mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
-    }
+    mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
 
     Seq.empty[Row]
   }
