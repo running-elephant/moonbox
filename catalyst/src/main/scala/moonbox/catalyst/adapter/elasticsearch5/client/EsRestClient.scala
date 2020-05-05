@@ -27,7 +27,7 @@ import java.util.{ArrayList, Properties}
 
 import moonbox.catalyst.adapter.elasticsearch5.client.AggWrapper.AggregationType
 import org.apache.spark.sql.types._
-import org.elasticsearch.client.RestClientBuilder
+import org.elasticsearch.client.{Request, RestClientBuilder}
 import org.json.JSONArray
 
 import scala.collection.mutable
@@ -122,7 +122,7 @@ class EsRestClient(param: Map[String, String]) {
 
     /** like show databases, it shows indexs **/
     def getIndices(): Seq[String] = {
-        val response = restClient.performRequest("GET", "/_aliases", new util.Hashtable[String, String]())
+        val response = restClient.performRequest(new Request("GET", "/_aliases"))
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         if(isSucceeded(response)){
@@ -135,7 +135,7 @@ class EsRestClient(param: Map[String, String]) {
 
     /** likes show tables, it shows (index - type) list**/
     def getIndicesAndType(): Seq[(String, String)] = {
-        val response: Response = restClient.performRequest("GET", s"""/_mapping?pretty=true""", new util.Hashtable[String, String]())
+        val response: Response = restClient.performRequest(new Request("GET", s"""/_mapping?pretty=true"""))
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         if(isSucceeded(response)) {
@@ -154,7 +154,7 @@ class EsRestClient(param: Map[String, String]) {
 
     /** https://www.elastic.co/guide/en/elasticsearch/reference/5.3/indices-stats.html **/
     def getStats(index: String): (Long, Long) = {  //(doc num, doc size)
-        val response = restClient.performRequest("GET", s"$index/_stats/docs,store", new util.Hashtable[String, String]())
+        val response = restClient.performRequest(new Request("GET", s"$index/_stats/docs,store"))
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         if(isSucceeded(response)){
@@ -167,7 +167,7 @@ class EsRestClient(param: Map[String, String]) {
     }
 
     private def Version(): Unit = {
-        val response = restClient.performRequest("GET", "", new util.Hashtable[String, String]())
+        val response = restClient.performRequest(new Request("GET", ""))
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         version = if(isSucceeded(response)){
@@ -182,7 +182,8 @@ class EsRestClient(param: Map[String, String]) {
 
 
     def getSchema(index: String, mtype: String) : (StructType, Set[String]) = {
-        val response: Response = restClient.performRequest("GET", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String]())
+        val url = s"""/$index/_mapping${if (version.head < 7) "/" + mtype else ""}"""
+        val response: Response = restClient.performRequest(new Request("GET", url))
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         if(isSucceeded(response)){
@@ -201,7 +202,8 @@ class EsRestClient(param: Map[String, String]) {
 
     /**curl -i -XHEAD http://testserver1:9200/test_mb_100/_mapping/my_table **/
     def checkExist(index: String, mtype: String): Boolean = {
-        val response: Response = restClient.performRequest("HEAD", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String]())
+        val url = if (version.head < 7) s"""/$index/_mapping/$mtype""" else s"""/$index"""
+        val response: Response = restClient.performRequest(new Request("HEAD", url))
         if(isSucceeded(response)) {
             true
         }else{
@@ -216,7 +218,10 @@ class EsRestClient(param: Map[String, String]) {
     def truncateIndex(index: String, mtype: String): Boolean = {
         val deleteJson = """{ "query": { "match_all": {} } }"""
         val entityReq: HttpEntity = new StringEntity(deleteJson, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_delete_by_query""", new util.Hashtable[String, String](), entityReq)
+        val url = s"""/$index${if (version.head < 7) "/" + mtype else ""}/_delete_by_query"""
+        val request = new Request("POST", url)
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         if (isSucceeded(response)) {
             true
         } else {
@@ -227,7 +232,7 @@ class EsRestClient(param: Map[String, String]) {
     /** delete index in index, nothing left **/
     def deleteIndex(index: String): Boolean = {
         try {
-            val response: Response = restClient.performRequest("DELETE", s"""/$index""", new util.Hashtable[String, String]())
+            val response: Response = restClient.performRequest(new Request("DELETE", s"""/$index"""))
             if(isSucceeded(response)) {
                 true
             }else{
@@ -333,7 +338,9 @@ class EsRestClient(param: Map[String, String]) {
         System.out.println("putSchema" + mapping)
 
         val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("PUT", s"""/$index""", new util.Hashtable[String, String](), entityReq)
+        val request = new Request("PUT", s"""/$index""")
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         if(isSucceeded(response)) {
             true
         }else{
@@ -355,7 +362,10 @@ class EsRestClient(param: Map[String, String]) {
     def updateSchema(index: String, mtype: String, schema: StructType): Boolean = {
         val mapping = generateUpdateMapping(index, mtype, schema)
         val entityReq: HttpEntity = new StringEntity(mapping, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("PUT", s"""/$index/_mapping/$mtype""", new util.Hashtable[String, String](), entityReq)
+        val url = s"""/$index/_mapping${if (version.head < 7) ("/" + mtype) else ""}"""
+        val request = new Request("PUT", url)
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         if(isSucceeded(response)) {
             true
         }else{
@@ -374,7 +384,10 @@ class EsRestClient(param: Map[String, String]) {
 
         val updateRequest = s"""{ $updateBody }"""
         val entityReq: HttpEntity = new StringEntity(updateRequest, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("POST", s"/$index/$mtype/$id", new util.Hashtable[String, String](), entityReq)
+        val url = if (version.head < 7) s"/$index/$mtype/$id" else s"/$index/_update/$id"
+        val request = new Request("POST", url)
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         if(isSucceeded(response)) {
             true
         }else{
@@ -454,9 +467,17 @@ class EsRestClient(param: Map[String, String]) {
         //build bulk req string
         val bulkRequest = batchData.map{ data =>
             val bulkHeader = if(mappingIndex.isDefined ) {
-                s"""{"index": {"_index": "$index", "_type": "$mtype", "_id": "${data(mappingIndex.get)}"}}\n"""
+                if (version.head < 7) {
+                    s"""{"index": {"_index": "$index", "_type": "$mtype", "_id": "${data(mappingIndex.get)}"}}\n"""
+                } else {
+                    s"""{"index": {"_index": "$index", "_id": "${data(mappingIndex.get)}"}}\n"""
+                }
             } else{
-                s"""{"index": {"_index": "$index", "_type": "$mtype"}}\n"""
+                if (version.head < 7) {
+                    s"""{"index": {"_index": "$index", "_type": "$mtype"}}\n"""
+                } else {
+                    s"""{"index": {"_index": "$index"}}\n"""
+                }
             }
 
             val bulkBody = buildStruct(schema, data).toString  //get string from JSON Object
@@ -465,7 +486,9 @@ class EsRestClient(param: Map[String, String]) {
 
         //send bulk req
         val entityReq: HttpEntity = new StringEntity(bulkRequest, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("PUT", s"""/_bulk""", new util.Hashtable[String, String](), entityReq)
+        val request = new Request("PUT", s"""/_bulk""")
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
 
         //read bulk response
         handleBulkResponse(response, batchData)
@@ -657,7 +680,7 @@ class EsRestClient(param: Map[String, String]) {
 
 
     def sampleFieldData(index: String, mtype: String, fields: String): Option[AnyRef] = {
-        val request: String =
+        val query: String =
             s"""
               |{ "terminate_after":1, "size":1,
               |  "_source" : ["$fields"],
@@ -668,8 +691,10 @@ class EsRestClient(param: Map[String, String]) {
               |   }
               |}
             """.stripMargin
-        val entityReq: HttpEntity = new StringEntity(request, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("GET", s"""/$index/$mtype/_search""", new util.Hashtable[String, String](), entityReq)
+        val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
+        val request = new Request("GET", s"""/$index${if (version.head < 7) "/" + mtype else ""}/_search""")
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         val jsonStr = getContent(response)
         val jsonObject = new JSONObject(jsonStr)
         val map = scala.collection.mutable.Map.empty[String, AnyRef]
@@ -711,8 +736,8 @@ class EsRestClient(param: Map[String, String]) {
     def getMapping(result: JSONObject, index: String, mtype: String) = {
         if(result == null) null
         try {
-            val a = result.getJSONObject(index).getJSONObject("mappings").getJSONObject(mtype)
-            a
+            val a = result.getJSONObject(index).getJSONObject("mappings")
+            if (version.head >= 7) a else a.getJSONObject(mtype)
         }catch {
             case e: Exception => null
         }
@@ -723,7 +748,9 @@ class EsRestClient(param: Map[String, String]) {
         val actionRsp: ActionResponse = new ActionResponse()
 
         val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)   //default 2 min wait
-        val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search?scroll=2m""", new util.Hashtable[String, String](), entityReq)
+        val request = new Request("POST", s"""/$index${if (version.head < 7) "/" + mtype else ""}/_search?scroll=2m""")
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         if(!isSucceeded(response)) {
             actionRsp.succeeded(false)
             throw new Exception("performScrollRequest to Server return ERROR " +response.getStatusLine.getStatusCode)
@@ -731,7 +758,7 @@ class EsRestClient(param: Map[String, String]) {
 
         val content = getContent(response)
         val jsonObject = new JSONObject(content)
-        val totalLines = getFieldAsLong(jsonObject, "hits/total")
+        val totalLines = getSearchTotal(jsonObject)
         val scrollId :String = getFieldAsString(jsonObject, "_scroll_id")
         val fetchSize: Long = handleResponse(content, actionRsp)   //handle
 
@@ -749,8 +776,9 @@ class EsRestClient(param: Map[String, String]) {
         val actionRsp: ActionResponse = new ActionResponse()
         val leftQuery = s"""{"scroll":"2m","scroll_id":"$scrollId"}"""
         val leftScrollReq: HttpEntity = new StringEntity(leftQuery, ContentType.APPLICATION_JSON)
-
-        val response: Response = restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), leftScrollReq)
+        val request = new Request("POST", s"""/_search/scroll""")
+        request.setEntity(leftScrollReq)
+        val response: Response = restClient.performRequest(request)
 
         if(!isSucceeded(response)) {
             actionRsp.succeeded(false)
@@ -781,7 +809,7 @@ class EsRestClient(param: Map[String, String]) {
 
         val content = getContent(response)
         val jsonRspObject = new JSONObject(content)
-        val responseLines = getFieldAsLong(jsonRspObject, "hits/total")
+        val responseLines = getSearchTotal(jsonRspObject)
 
         val shouldProcessLines = if(limit) {
             math.min(requestLines, responseLines)
@@ -846,7 +874,7 @@ class EsRestClient(param: Map[String, String]) {
         var fetchSize: Long = 0
         val jsonObject = new JSONObject(response)
 
-        val total = getFieldAsLong(jsonObject, "hits/total")
+        val total = getSearchTotal(jsonObject)
         action.totalHits(total)
 
         if(containsAggs(jsonObject)){
@@ -921,17 +949,18 @@ class EsRestClient(param: Map[String, String]) {
 
     def performRequestWithScroll(index: String, mtype: String, query: String, isFirst: Boolean = true): Response = {
         val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
-        val response: Response = if(isFirst) {
-            restClient.performRequest("POST", s"""/$index/$mtype/_search?scroll=2m""", new util.Hashtable[String, String](), entityReq)
-        }else{
-            restClient.performRequest("POST", s"""/_search/scroll""", new util.Hashtable[String, String](), entityReq)
-        }
+        val url = if(isFirst) s"""/$index${if (version.head < 7) "/" + mtype else ""}/_search?scroll=2m""" else s"""/_search/scroll"""
+        val request = new Request("POST", url)
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         response
     }
 
     def performRequest(index: String, mtype: String, query: String): Response = {
         val entityReq: HttpEntity = new StringEntity(query, ContentType.APPLICATION_JSON)
-        val response: Response = restClient.performRequest("POST", s"""/$index/$mtype/_search""", new util.Hashtable[String, String](), entityReq)
+        val request = new Request("POST", s"""/$index${if (version.head < 7) "/" + mtype else ""}/_search""")
+        request.setEntity(entityReq)
+        val response: Response = restClient.performRequest(request)
         response
     }
 
@@ -948,7 +977,7 @@ class EsRestClient(param: Map[String, String]) {
         val rsp: ActionResponse = new ActionResponse()
         if(isSucceeded(response)){
             import scala.collection.JavaConversions._
-            val total = getFieldAsLong(jsonObject, "hits/total")
+            val total = getSearchTotal(jsonObject)
             rsp.totalHits(total)
 
             if(containsAggs(jsonObject)){
@@ -1204,6 +1233,10 @@ class EsRestClient(param: Map[String, String]) {
         obj.getLong(fields(fields.length - 1))
     }
 
+    def getSearchTotal(jsonObject: JSONObject) = {
+        val path = if (version.head < 7) "hits/total" else "hits/total/value"
+        getFieldAsLong(jsonObject, path)
+    }
 }
 
 
