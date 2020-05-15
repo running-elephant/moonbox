@@ -24,6 +24,8 @@ import moonbox.common.MbLogging
 import moonbox.core.datasys.DataSystem
 import redis.clients.jedis._
 
+import scala.collection.JavaConversions._
+
 class RedisDataSystem(props: Map[String, String])
   extends DataSystem(props) with MbLogging {
 
@@ -58,6 +60,7 @@ class RedisDataSystem(props: Map[String, String])
     val auth = props.getOrElse("auth", null)
     val dbNum = props.get("dbNum").map(_.toInt).getOrElse(Protocol.DEFAULT_DATABASE)
     val timeout = props.get("timeout").map(_.toInt).getOrElse(Protocol.DEFAULT_TIMEOUT)
+    val master = props.getOrElse("sentinel.master", null)
     val poolConfig: JedisPoolConfig = new JedisPoolConfig()
     poolConfig.setMaxTotal(1)
     poolConfig.setMaxIdle(1)
@@ -67,7 +70,12 @@ class RedisDataSystem(props: Map[String, String])
     poolConfig.setMinEvictableIdleTimeMillis(60000)
     poolConfig.setTimeBetweenEvictionRunsMillis(30000)
     poolConfig.setNumTestsPerEvictionRun(-1)
-    val pool = new JedisPool(poolConfig, host, port, timeout, auth, dbNum)
+    val pool = if (master == null || master.trim.isEmpty) {
+      new JedisPool(poolConfig, host.split(",")(0), port, timeout, auth, dbNum)
+    } else {
+      val sentinels = host.split(",").map(x => x + ":" + port).toSet
+      new JedisSentinelPool(master, sentinels, poolConfig, timeout, auth, dbNum)
+    }
     var conn: Jedis = null
     try {
       conn = pool.getResource

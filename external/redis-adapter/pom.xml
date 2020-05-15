@@ -29,9 +29,15 @@
         </dependency>
 
         <dependency>
-            <groupId>com.redislabs</groupId>
-            <artifactId>spark-redis</artifactId>
-            <version>2.4.0</version>
+            <groupId>edp.moonbox</groupId>
+            <artifactId>spark-redis-connector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>${jedis.version}</version>
         </dependency>
     </dependencies>
 

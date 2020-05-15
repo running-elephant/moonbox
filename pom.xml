@@ -37,6 +37,7 @@
         <module>external/spark-hbase-connector</module>
         <module>external/spark-presto-connector</module>
         <module>external/spark-kafka-0-10-sql</module>
+        <module>external/spark-redis-connector</module>
 
         <module>external/elasticsearch-adapter</module>
         <module>external/mongo-adapter</module>
@@ -109,6 +110,7 @@
         <esv5-spark.version>5.3.2</esv5-spark.version>
         <mongo.version>3.6.0</mongo.version>
         <mongo-spark.version>2.2.0</mongo-spark.version>
+        <jedis.version>3.1.0-m1</jedis.version>
     </properties>
 
     <dependencyManagement>
@@ -313,6 +315,11 @@
                 <version>2.2.1</version>
             </dependency>
 
+            <dependency>
+                <groupId>redis.clients</groupId>
+                <artifactId>jedis</artifactId>
+                <version>${jedis.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
