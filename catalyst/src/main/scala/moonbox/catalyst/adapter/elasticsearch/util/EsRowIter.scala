@@ -18,9 +18,9 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.util
+package moonbox.catalyst.adapter.elasticsearch.util
 
-import moonbox.catalyst.adapter.elasticsearch5.client.{ActionResponse, EsRestClient}
+import moonbox.catalyst.adapter.elasticsearch.client.{ActionResponse, EsRestClient}
 import moonbox.catalyst.adapter.util.SparkUtil.colId2colNameMap
 import org.apache.spark.sql.types.StructType
 import org.elasticsearch.client.Response

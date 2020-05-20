@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.client
+package moonbox.catalyst.adapter.elasticsearch.client
 
 import java.sql.Timestamp
 import java.util.{Calendar, GregorianCalendar}

@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.plan
+package moonbox.catalyst.adapter.elasticsearch.plan
 
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.CatalystContext
@@ -55,7 +55,7 @@ class EsFilterExec(condition: Expression, child: CatalystPlan) extends FilterExe
         }
     }
 
-    import moonbox.catalyst.adapter.elasticsearch5.util.EsUtil._
+    import moonbox.catalyst.adapter.elasticsearch.util.EsUtil._
     import moonbox.catalyst.adapter.util.SparkUtil._
 
 

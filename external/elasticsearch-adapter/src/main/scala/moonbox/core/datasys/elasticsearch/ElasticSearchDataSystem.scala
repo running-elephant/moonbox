@@ -22,7 +22,7 @@ package moonbox.core.datasys.elasticsearch
 
 import java.util.Properties
 
-import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
+import moonbox.catalyst.adapter.elasticsearch.EsCatalystQueryExecutor
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.common.MbLogging
 import moonbox.core.datasys._

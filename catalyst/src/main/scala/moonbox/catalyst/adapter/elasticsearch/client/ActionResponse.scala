@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.client
+package moonbox.catalyst.adapter.elasticsearch.client
 
 import java.util
 import java.util.LinkedList

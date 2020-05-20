@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.plan
+package moonbox.catalyst.adapter.elasticsearch.plan
 
 import moonbox.catalyst.adapter.util.SparkUtil._
 import moonbox.catalyst.core.parser.udf.{ArrayExists, ArrayFilter, ArrayMap}

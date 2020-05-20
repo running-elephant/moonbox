@@ -18,9 +18,9 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.rule
+package moonbox.catalyst.adapter.elasticsearch.rule
 
-import moonbox.catalyst.adapter.elasticsearch5.plan._
+import moonbox.catalyst.adapter.elasticsearch.plan._
 import moonbox.catalyst.core.Strategy
 import moonbox.catalyst.core.plan._
 import org.apache.spark.sql.catalyst.catalog.CatalogRelation
