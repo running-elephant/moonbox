@@ -248,10 +248,16 @@ private[sql] object MbJDBCRelation extends Logging {
 case class MbJDBCRelation(
                            parts: Array[Partition],
                            userSchema: Option[StructType],
-                           jdbcOptions: JDBCOptions)(@transient val sparkSession: SparkSession)
+                           @transient parameters: Map[String, String])(@transient val sparkSession: SparkSession)
   extends BaseRelation
     with PrunedFilteredScan
     with InsertableRelation with MbLogging {
+
+  private lazy val jdbcOptions = new JDBCOptions(parameters.filterNot(kv =>
+    List(JDBCOptions.JDBC_LOWER_BOUND.toLowerCase,
+      JDBCOptions.JDBC_UPPER_BOUND.toLowerCase,
+      JDBCOptions.JDBC_PARTITION_COLUMN.toLowerCase,
+      JDBCOptions.JDBC_NUM_PARTITIONS).contains(kv._1)))
 
   override def sqlContext: SQLContext = sparkSession.sqlContext
 
@@ -317,14 +323,14 @@ case class MbJDBCRelation(
   }
 
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-    val url = jdbcOptions.url
-    val table = jdbcOptions.table
     val properties = jdbcOptions.asProperties
 
     import scala.collection.JavaConversions._
+
     val parameters = properties.entrySet().map { entry =>
       (entry.getKey.toString, entry.getValue.toString)
     }.toMap
+
     val isUpdate = !overwrite && Option(properties.getProperty("update")).exists(_.equalsIgnoreCase("true"))
     val isCaseSensitive = sqlContext.conf.caseSensitiveAnalysis
     if (isUpdate) {
@@ -334,12 +340,13 @@ case class MbJDBCRelation(
           ds.update(data, Some(schema), isCaseSensitive, parameters)
         case _ => throw new Exception(s"${parameters.getOrElse("type", "Underlying data source")} doesn't support upsert operation.")
       }
-    } else { // for insert table present in select clause
+    } else {
+      // for insert table present in select clause
       data.write
         .mode(if (overwrite) SaveMode.Overwrite else SaveMode.Append)
-	          .format(DataSystem.lookupDataSource(properties.getProperty("type")))
-	          .options(properties)
-	          .save()
+        .format(DataSystem.lookupDataSource(properties.getProperty("type")))
+        .options(properties)
+        .save()
     }
   }
 
