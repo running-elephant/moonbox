@@ -1216,6 +1216,30 @@ public class MqlBaseBaseListener implements MqlBaseListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRefreshTable(MqlBaseParser.RefreshTableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRefreshTable(MqlBaseParser.RefreshTableContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRefreshFunction(MqlBaseParser.RefreshFunctionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRefreshFunction(MqlBaseParser.RefreshFunctionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterCreateTemporaryView(MqlBaseParser.CreateTemporaryViewContext ctx) { }
 	/**
 	 * {@inheritDoc}

@@ -144,7 +144,8 @@ mql
 
     | EXPLAIN EXTENDED? PLAN? query                                                                # explain
     //| SET (GLOBAL | SESSION?) key=identifier EQ? value=.*?                                         # setVariable
-    //| REFRESH TABLE tableIdentifier                                                                # refreshTable
+    | REFRESH TABLE tableIdentifier                                                                # refreshTable
+    | REFRESH FUNCTION funcIdentifier                                                              # refreshFunction
     //| REFRESH path=.*?                                                                             #refreshResource
 
     //| INSERT (INTO | OVERWRITE | UPDATE | MERGE ) TABLE? tableIdentifier partitionSpec? coalesceSpec? AS? query                 # insertInto

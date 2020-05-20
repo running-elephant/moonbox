@@ -315,11 +315,18 @@ case class DescFunction(function: FunctionIdentifier, isExtended: Boolean)
 
     val db = function.database.getOrElse(getCurrentDb)
 
+    def descResources(resources: Seq[FunctionResource]): String = {
+      resources.map(resource => {
+        s"type ${resource.resourceType.`type`}, ${resource.uri}"
+      }).mkString("; ")
+    }
+
     mbSession.catalog.getFunctionOption(db, function.funcName) match {
       case Some(func) => // UDF
         val result =
           Row("Function", func.name) ::
             Row("Class", func.className) ::
+            Row("Resource", descResources(func.resources)) ::
             Row("Usage", func.description.getOrElse("-")) :: Nil
         if (isExtended) {
           result :+ Row("Extended Usage", "-")
@@ -360,7 +367,6 @@ case class DescFunction(function: FunctionIdentifier, isExtended: Boolean)
             } else {
               result
             }
-
         }
     }
   }
