@@ -28,7 +28,7 @@ object ConnectionPool {
           new JedisPool(poolConfig, re.host, re.port, re.timeout, re.auth, re.dbNum)
         } else {
           val sentinels = re.host.split(",").map(x => x + ":" + re.port).toSet
-          new JedisSentinelPool(re.master.trim, sentinels, poolConfig, re.auth)
+          new JedisSentinelPool(re.master.trim, sentinels, poolConfig, re.timeout, re.auth, re.dbNum)
         }
       }
     )
