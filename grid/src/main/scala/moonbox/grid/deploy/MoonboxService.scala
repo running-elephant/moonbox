@@ -383,13 +383,13 @@ private[deploy] class MoonboxService(
 
   }
 
-  def lineage(username: String, password: String, sqls: Seq[String], database: Option[String])(implicit connection: ConnectionInfo): LineageOutbound = {
+  def lineage(username: String, password: String, sqls: Seq[String], database: Option[String], analyzable: Option[Boolean])(implicit connection: ConnectionInfo): LineageOutbound = {
     auditLogger.log(username, "lineage", Map("sql" -> sqls.mkString("; ")))
     parseUsername(username) match {
       case Some((org, user)) =>
         loginManager.login(org, user, password, forget = true) match {
           case Some(_) =>
-            askSync[LineageResponse](LineageRequest(org, user, sqls, database))(LONG_TIMEOUT) match {
+            askSync[LineageResponse](LineageRequest(org, user, sqls, database, analyzable))(LONG_TIMEOUT) match {
               case Left(LineageSuccessed(dags)) =>
                 LineageOutbound(success = true, dags = Some(dags))
               case Left(LineageFailed(message)) =>

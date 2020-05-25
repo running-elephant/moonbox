@@ -23,6 +23,7 @@ package org.apache.spark.sql.sqlbuilder
 import java.sql.Connection
 
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
 import org.apache.spark.sql.types.{DataType, DoubleType, LongType, StringType}
 
@@ -38,7 +39,7 @@ class MbOracleDialect extends MbDialect {
   override def explainSQL(sql: String): String = s"EXPLAIN $sql"
 
   override def relation(relation: LogicalRelation): String = {
-    relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
+    relation.relation.asInstanceOf[MbJDBCRelation].parameters(JDBCOptions.JDBC_TABLE_NAME)
   }
 
   override def maybeQuote(name: String): String = {
