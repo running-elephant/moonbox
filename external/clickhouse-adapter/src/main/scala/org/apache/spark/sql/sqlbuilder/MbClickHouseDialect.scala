@@ -26,6 +26,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.Last
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, DayOfMonth, EqualTo, Expression, Hour, Md5, Minute, Month, RLike, RegExpExtract, RegExpReplace, Second, StringLocate, ToDate, Year}
 import org.apache.spark.sql.catalyst.plans.logical.{Join, Project}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions
 import org.apache.spark.sql.execution.datasources.mbjdbc.MbJDBCRelation
 import org.apache.spark.sql.types.{DataType, StringType}
 
@@ -37,7 +38,7 @@ class MbClickHouseDialect extends MbDialect {
   import MbSqlBuilder._
 
   override def relation(relation: LogicalRelation): String = {
-    relation.relation.asInstanceOf[MbJDBCRelation].jdbcOptions.table
+    relation.relation.asInstanceOf[MbJDBCRelation].parameters(JDBCOptions.JDBC_TABLE_NAME)
   }
 
   override def canHandle(url: String): Boolean = {

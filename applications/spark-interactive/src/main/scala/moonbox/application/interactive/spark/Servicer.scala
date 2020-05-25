@@ -26,6 +26,7 @@ import moonbox.core._
 import moonbox.grid.deploy.Interface.Dag
 import moonbox.grid.deploy.messages.Message._
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
@@ -148,16 +149,23 @@ class Servicer(
     SchemaResponses(success = true, result = Some(result))
   }
 
-  def lineage(sqls: Seq[String]): LineageResponse = {
-    val lineage = sqls.map(sql => {
-      val dag = sqlDag(sql.trim.stripSuffix(";"))
-      Dag(write(dag.dag_table), write(dag.dag_col))
-    })
+  def lineage(sqls: Seq[String], analyzable: Option[Boolean]): LineageResponse = {
+    val lineage = analyzable.getOrElse(true) match {
+      case true => sqls.map(sql => {
+        val dag = sqlDag(sql.trim.stripSuffix(";"))
+        Dag(write(dag.dag_table), write(dag.dag_col))
+      })
+      case false =>
+        sqls.map(sql => {
+          val dag = unresolvedSqlDag(sql.trim.stripSuffix(";"))
+          Dag(write(dag.dag_table), write(dag.dag_col))
+        })
+    }
     LineageSuccessed(lineage)
   }
 
   /**
-    * get dag of sql
+    * get resolved dag of sql
     *
     * @param sql sql
     * @return dag
@@ -183,6 +191,29 @@ class Servicer(
       dag_col = DagEntity(Nil, Nil))
   }
 
+  /**
+    * get unresolved dag of sql
+    *
+    * @param sql sql
+    * @return dag
+    */
+  private def unresolvedSqlDag(sql: String): SqlDag = {
+    val lineageBuilder = new LineageBuilder
+    val parsedPlan = mbSession.engine.parsePlan(sql)
+    var targetTableNodeId: Int = 0
+    val query = parsedPlan match {
+      case _@InsertIntoTable(plan, _, query, _, _) =>
+        val relation = plan.asInstanceOf[UnresolvedRelation]
+        targetTableNodeId = lineageBuilder.genTableNode(relation.tableIdentifier)
+        query
+      case _ =>
+        throw new Exception("Lineage analysis is not supported for this sql")
+    }
+    unresolvedQueryDag(lineageBuilder, targetTableNodeId, query)
+    SqlDag(dag_table = lineageBuilder.buildTableDag,
+      dag_col = DagEntity(Nil, Nil))
+  }
+
   def queryDag(lineageBuilder: LineageBuilder, targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
 
     def genDag(targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
@@ -195,6 +226,30 @@ class Servicer(
           val viewTableNodeId = lineageBuilder.genTableNode(view.desc)
           lineageBuilder.putTableNodeEdge(viewTableNodeId, targetTableNodeId)
           queryDag(lineageBuilder, viewTableNodeId, view.child)
+        case unary: UnaryNode =>
+          genDag(targetTableNodeId, unary.child)
+        case binary: BinaryNode =>
+          genDag(targetTableNodeId, binary.left)
+          genDag(targetTableNodeId, binary.right)
+        case _: LogicalPlan =>
+      }
+    }
+
+    genDag(targetTableNodeId, logicalPlan)
+  }
+
+  def unresolvedQueryDag(lineageBuilder: LineageBuilder, targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
+
+    def genDag(targetTableNodeId: Int, logicalPlan: LogicalPlan): Unit = {
+      logicalPlan match {
+        // can't adjust sequence
+        case relation: UnresolvedRelation =>
+          val sourceTableNodeId = lineageBuilder.genTableNode(relation.tableIdentifier)
+          lineageBuilder.putTableNodeEdge(sourceTableNodeId, targetTableNodeId)
+        //        case view: View =>
+        //          val viewTableNodeId = lineageBuilder.genTableNode(view.desc)
+        //          lineageBuilder.putTableNodeEdge(viewTableNodeId, targetTableNodeId)
+        //          queryDag(lineageBuilder, viewTableNodeId, view.child)
         case unary: UnaryNode =>
           genDag(targetTableNodeId, unary.child)
         case binary: BinaryNode =>

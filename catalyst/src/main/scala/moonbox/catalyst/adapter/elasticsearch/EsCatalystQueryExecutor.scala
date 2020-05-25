@@ -18,13 +18,13 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5
+package moonbox.catalyst.adapter.elasticsearch
 
 import java.util.Properties
 
-import moonbox.catalyst.adapter.elasticsearch5.client.EsRestClient
-import moonbox.catalyst.adapter.elasticsearch5.rule.EsBaseOperator
-import moonbox.catalyst.adapter.elasticsearch5.util.{EsRowIter, EsUtil}
+import moonbox.catalyst.adapter.elasticsearch.client.EsRestClient
+import moonbox.catalyst.adapter.elasticsearch.rule.EsBaseOperator
+import moonbox.catalyst.adapter.elasticsearch.util.{EsRowIter, EsUtil}
 import moonbox.catalyst.adapter.util.SparkUtil
 import moonbox.catalyst.core.plan.CatalystPlan
 import moonbox.catalyst.core.{CatalystContext, CatalystQueryExecutor, Strategy}

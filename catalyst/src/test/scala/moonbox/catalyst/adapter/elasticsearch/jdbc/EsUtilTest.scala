@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.jdbc
+package moonbox.catalyst.adapter.elasticsearch.jdbc
 
 import java.util.Properties
 

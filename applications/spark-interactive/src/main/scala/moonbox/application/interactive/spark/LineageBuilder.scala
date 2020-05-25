@@ -1,5 +1,6 @@
 package moonbox.application.interactive.spark
 
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.catalog.{CatalogTable, CatalogTableType}
 import org.apache.spark.sql.types.StructType
 
@@ -17,21 +18,33 @@ class LineageBuilder {
   private val tableNodeEdgeMap = mutable.HashMap.empty[Int, Int]
 
   def genTableNode(catalogTable: CatalogTable): Int = {
-    val database = catalogTable.database
-    val table = catalogTable.identifier.table
-    val columns = schemaToNodeColumns(catalogTable.schema)
+    addTableNode(database = catalogTable.database,
+      table = catalogTable.identifier.table,
+      tableType = getTableType(catalogTable.tableType),
+      schema = Some(catalogTable.schema))
+  }
+
+  def genTableNode(identifier: TableIdentifier): Int = {
+    addTableNode(database = identifier.database.getOrElse(""),
+      table = identifier.table,
+      tableType = "TABLE",
+      schema = None)
+  }
+
+  private def addTableNode(database: String, table: String, tableType: String, schema: Option[StructType]): Int = {
     val tableNodeKey = tableName(database, table)
+    val columns = schema.map(schemaToNodeColumns)
     if (tableNodeMap.contains(tableNodeKey)) {
       tableNodeMap(tableNodeKey)
     } else {
       genNextId
-      tableNodeMap.put(database + "." + table, id)
+      tableNodeMap.put(tableNodeKey, id)
       tableNodeBuffer.append(DagNode(id,
         database = database,
         table = table,
-        `type` = getTableType(catalogTable.tableType),
+        `type` = tableType,
         desc = "",
-        cols = Some(columns)
+        cols = columns
       ))
       id
     }

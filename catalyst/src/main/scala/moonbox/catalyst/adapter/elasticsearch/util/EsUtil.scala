@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.util
+package moonbox.catalyst.adapter.elasticsearch.util
 
 import java.util.{Calendar, Date, Properties}
 import javax.xml.bind.DatatypeConverter

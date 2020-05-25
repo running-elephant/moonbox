@@ -1206,6 +1206,30 @@ public interface MqlBaseListener extends ParseTreeListener {
 	 */
 	void exitExplain(MqlBaseParser.ExplainContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code refreshTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRefreshTable(MqlBaseParser.RefreshTableContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code refreshTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRefreshTable(MqlBaseParser.RefreshTableContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code refreshFunction}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void enterRefreshFunction(MqlBaseParser.RefreshFunctionContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code refreshFunction}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 */
+	void exitRefreshFunction(MqlBaseParser.RefreshFunctionContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code createTemporaryView}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree

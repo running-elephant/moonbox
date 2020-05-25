@@ -34,7 +34,7 @@ import moonbox.hook.HookContext
 import org.apache.hadoop.fs.Path
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.analyze.MbAnalyzer
-import org.apache.spark.sql.catalyst.analysis.{DatabaseAlreadyExistsException, TableAlreadyExistsException, UnresolvedFunction, UnresolvedRelation}
+import org.apache.spark.sql.catalyst.analysis.{DatabaseAlreadyExistsException, NoSuchFunctionException, TableAlreadyExistsException, UnresolvedFunction, UnresolvedRelation}
 import org.apache.spark.sql.catalyst.catalog.{CatalogTableType, ExternalCatalogUtils, SessionCatalog, ArchiveResource => SparkArchiveResource, FileResource => SparkFileResource, FunctionResource => SparkFunctionResource, JarResource => SparkJarResource}
 import org.apache.spark.sql.catalyst.expressions.{Literal, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -391,6 +391,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
         val dataFrame = createDataFrame(optimizedPlan)
         (collectWithTryCatch(dataFrame, unlimited), dataFrame.schema)
       }
+
       if (inputTables.nonEmpty) {
         val hookContext = new HookContext(mbCatalog.getCurrentOrg, mbCatalog.catalogUser.name, sql, inputTables, outputTable)
         Future(HookRunner.runPostExecHooks(hookContext))
@@ -420,6 +421,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
       case e: OutOfMemoryError =>
         logError("collect cause OutOfMemoryError", e)
         throw new RuntimeException(e)
+      case e: Exception if e.getMessage != null && e.getMessage.contains("cancelled") =>
+        throw e
     }
   }
 
@@ -589,6 +592,17 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   }
 
   /**
+    * drop table from spark session
+    *
+    * @param tableIdentifier
+    * @param ignoreIfNotExists
+    * @param purge
+    */
+  def dropTable(tableIdentifier: TableIdentifier, ignoreIfNotExists: Boolean, purge: Boolean): Unit = {
+    sessionState.catalog.dropTable(tableIdentifier, ignoreIfNotExists, purge)
+  }
+
+  /**
     * spark session catalog
     *
     * @return
@@ -696,6 +710,31 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   }
 
   /**
+    * drop function from spark session
+    *
+    * @param function
+    * @param ignoreIfNotExists
+    */
+  def dropFunction(function: FunctionIdentifier, ignoreIfNotExists: Boolean): Unit = {
+    val db = function.database.getOrElse(mbCatalog.getCurrentDb)
+
+    val dbFuncLowerCase = FunctionIdentifier(function.funcName, Some(db.toLowerCase(Locale.ROOT)))
+    val dbFuncUpperCase = FunctionIdentifier(function.funcName, Some(db.toUpperCase(Locale.ROOT)))
+
+    if (sessionState.functionRegistry.functionExists(dbFuncLowerCase.unquotedString) ||
+      sessionState.functionRegistry.functionExists(dbFuncUpperCase.unquotedString)) {
+      if (sessionState.functionRegistry.functionExists(dbFuncLowerCase.unquotedString)) {
+        sessionState.functionRegistry.dropFunction(dbFuncLowerCase.unquotedString)
+      }
+      if (sessionState.functionRegistry.functionExists(dbFuncUpperCase.unquotedString)) {
+        sessionState.functionRegistry.dropFunction(dbFuncUpperCase.unquotedString)
+      }
+    } else if (!ignoreIfNotExists) {
+      throw new NoSuchFunctionException(db = db, func = function.funcName)
+    }
+  }
+
+  /**
     * register database to catalog in sparkSession
     *
     * @param db database name
@@ -703,9 +742,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
   def registerDatabase(db: String): Unit = {
     try {
       if (!sessionState.catalog.databaseExists(db)) {
-        createDataFrame(s"create database if not exists ${
-          db
-        }")
+        createDataFrame(s"create database if not exists $db")
       }
     } catch {
       case _: DatabaseAlreadyExistsException => //good
@@ -737,11 +774,8 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param props connection or other parameters
     */
   private def registerDatasourceTable(table: TableIdentifier, props: Map[String, String]): Unit = {
-    // todo for forward compatible
-    val filteredProps = props.filterNot(kv => kv._1.equalsIgnoreCase("spark.hadoop.dfs.nameservices") ||
-      kv._1.toLowerCase(Locale.ROOT).startsWith("spark.hadoop.dfs.client.failover.proxy.provider."))
 
-    setRemoteHadoopConf(mergeRemoteHadoopConf(filteredProps))
+    setRemoteHadoopConf(mergeRemoteHadoopConf(props))
 
     val schema = props.get("schema").map(s => s"($s)").getOrElse("")
     val options = props.map {
@@ -785,11 +819,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     } else {
       val path = hiveCatalogTable.storage.locationUri.get.toString
 
-      // todo for forward compatible
-      val filteredProps = props.filterNot(kv => kv._1.equalsIgnoreCase("spark.hadoop.dfs.nameservices") ||
-        kv._1.toLowerCase(Locale.ROOT).startsWith("spark.hadoop.dfs.client.failover.proxy.provider."))
-
-      setRemoteHadoopConf(mergeRemoteHadoopConf(filteredProps ++ Map("path" -> path)))
+      setRemoteHadoopConf(mergeRemoteHadoopConf(props ++ Map("path" -> path)))
 
       val hivePartitions = ListBuffer.empty ++= hiveClient.getPartitions(hiveCatalogTable)
 
@@ -857,11 +887,7 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     * @param func
     */
   def registerFunction(func: CatalogFunction): Unit = {
-    val funcName = s"${
-      func.database
-    }.${
-      func.name
-    }"
+    val funcName = s"${func.database}.${func.name}"
     val (nonSourceResources, sourceResources) = func.resources.partition {
       resource =>
         resource.resourceType match {

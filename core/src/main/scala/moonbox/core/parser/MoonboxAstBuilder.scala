@@ -459,6 +459,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
     UnmountTable(tableIdentifier, ignoreIfNotExists)
   }
 
+  override def visitRefreshTable(ctx: RefreshTableContext): MbCommand = {
+    val tableIdentifier = visitTableIdentifier(ctx.tableIdentifier())
+    RefreshTable(tableIdentifier)
+  }
+
   override def visitTableIdentifier(ctx: TableIdentifierContext): TableIdentifier = {
     val database = Option(ctx.db).map(_.getText).map(ParserUtils.tripQuotes)
     val table = ParserUtils.tripQuotes(ctx.table.getText)
@@ -539,6 +544,11 @@ class MoonboxAstBuilder extends MqlBaseBaseVisitor[AnyRef] {
     } else {
       DropFunction(functionIdentifier, ignoreIfNotExists)
     }
+  }
+
+  override def visitRefreshFunction(ctx: RefreshFunctionContext): MbCommand = {
+    val funcIdentifier = visitFuncIdentifier(ctx.funcIdentifier())
+    RefreshFunction(funcIdentifier)
   }
 
   override def visitFuncIdentifier(ctx: FuncIdentifierContext): FunctionIdentifier = {

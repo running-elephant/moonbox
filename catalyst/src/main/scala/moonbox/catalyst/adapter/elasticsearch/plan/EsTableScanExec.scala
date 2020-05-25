@@ -18,7 +18,7 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.plan
+package moonbox.catalyst.adapter.elasticsearch.plan
 
 import moonbox.catalyst.core.CatalystContext
 import moonbox.catalyst.core.plan.TableScanExec

@@ -22,7 +22,7 @@ package org.apache.spark.sql.rdd
 
 import java.util.Properties
 
-import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
+import moonbox.catalyst.adapter.elasticsearch.EsCatalystQueryExecutor
 import moonbox.catalyst.adapter.util.SparkUtil
 import org.apache.spark.sql.udf.UdfUtil
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}

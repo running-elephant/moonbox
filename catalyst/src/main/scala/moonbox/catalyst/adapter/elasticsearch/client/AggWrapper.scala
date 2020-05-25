@@ -18,22 +18,24 @@
  * >>
  */
 
-package moonbox.catalyst.adapter.elasticsearch5.client
+package moonbox.catalyst.adapter.elasticsearch.client
 
-class HitWrapper(index: String, mtype: String, id: String, source: String, map: Map[String, AnyRef]) {
+import moonbox.catalyst.adapter.elasticsearch.client.AggWrapper.AggregationType.AggregationType
 
-    def this(source: String) {
-        this(null, null, null, source, Map.empty[String, AnyRef])
-    }
 
-    def getSourceAsString: String = source
+class AggWrapper(mtype: AggregationType, result: String, map: Map[String, AnyRef]= Map.empty[String, AnyRef]) {
 
-    def getIndex: String = index
-
-    def getType: String = mtype
-
-    def getId: String = id
+    def getType: AggregationType = mtype
+    def getResult: String = result
 
     def getMap: Map[String, AnyRef] = map
 
+}
+
+object AggWrapper {
+    /** Type of an aggregation (to know if there are buckets or not) */
+    object AggregationType extends Enumeration {
+        type AggregationType = Value
+        val SIMPLE, MULTI_BUCKETS = Value
+    }
 }

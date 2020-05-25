@@ -352,9 +352,7 @@ case class AlterTableSetOptions(
       )
     )
 
-    if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
-      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
-    }
+    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
 
     Seq.empty[Row]
   }
@@ -382,9 +380,7 @@ case class AlterTableRemoveOptions(
       )
     )
 
-    if (mbSession.engine.catalog.databaseExists(dbName) && mbSession.engine.catalog.tableExists(table)) {
-      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
-    }
+    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
 
     Seq.empty[Row]
   }
@@ -410,9 +406,18 @@ case class UnmountTable(
       table.table,
       ignoreIfNotExists)
 
-    if (mbSession.engine.catalog.databaseExists(dbName)) {
-      mbSession.engine.catalog.dropTable(table, ignoreIfNotExists = true, purge = true)
-    }
+    mbSession.engine.dropTable(table, ignoreIfNotExists, purge = true)
+
+    Seq.empty[Row]
+  }
+}
+
+
+case class RefreshTable(table: TableIdentifier) extends MbRunnableCommand with DDL {
+
+  override def run(mbSession: MoonboxSession): Seq[Row] = {
+
+    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
 
     Seq.empty[Row]
   }
@@ -460,8 +465,17 @@ case class DropFunction(
       function.funcName,
       ignoreIfNotExists)
 
-    if (mbSession.engine.catalog.databaseExists(database.name))
-      mbSession.engine.catalog.dropFunction(function, ignoreIfNotExists = true)
+    mbSession.engine.dropFunction(function, ignoreIfNotExists)
+
+    Seq.empty[Row]
+  }
+}
+
+case class RefreshFunction(function: FunctionIdentifier) extends MbRunnableCommand with DDL {
+
+  override def run(mbSession: MoonboxSession): Seq[Row] = {
+
+    mbSession.engine.dropFunction(function, ignoreIfNotExists = true)
 
     Seq.empty[Row]
   }

@@ -710,6 +710,20 @@ public interface MqlBaseVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExplain(MqlBaseParser.ExplainContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code refreshTable}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRefreshTable(MqlBaseParser.RefreshTableContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code refreshFunction}
+	 * labeled alternative in {@link MqlBaseParser#mql}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRefreshFunction(MqlBaseParser.RefreshFunctionContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code createTemporaryView}
 	 * labeled alternative in {@link MqlBaseParser#mql}.
 	 * @param ctx the parse tree

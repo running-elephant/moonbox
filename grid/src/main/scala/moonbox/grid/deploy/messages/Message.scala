@@ -21,7 +21,6 @@
 package moonbox.grid.deploy.messages
 
 import moonbox.grid.deploy.Interface.Dag
-import moonbox.grid.deploy.app.DriverInfo
 
 
 sealed trait Message extends Serializable
@@ -134,7 +133,7 @@ object Message {
 
   case class SchemaField(name: String, `type`: String, nullable: Boolean, metadata: Option[String] = None)
 
-  case class LineageRequest(org: String, username: String, sqls: Seq[String], database: Option[String]) extends ServiceMessage
+  case class LineageRequest(org: String, username: String, sqls: Seq[String], database: Option[String], analyzable: Option[Boolean]) extends ServiceMessage
 
   sealed trait LineageResponse extends ServiceMessage
 

@@ -23,8 +23,8 @@ package moonbox.catalyst.jdbc
 import java.sql._
 import java.util.Properties
 
-import moonbox.catalyst.adapter.elasticsearch5.EsCatalystQueryExecutor
-import moonbox.catalyst.adapter.elasticsearch5.util.EsUtil
+import moonbox.catalyst.adapter.elasticsearch.EsCatalystQueryExecutor
+import moonbox.catalyst.adapter.elasticsearch.util.EsUtil
 import moonbox.catalyst.adapter.mongo.MongoCatalystQueryExecutor
 import moonbox.catalyst.adapter.mongo.util.MongoJDBCUtils
 import moonbox.catalyst.core.parser.SqlParser

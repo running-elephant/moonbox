@@ -103,11 +103,11 @@ object DataSystem extends MbLogging {
   }
 
   def lookupDataSource(provider: String): String = {
-    val datasoruce = registeredDataSource.get(provider)
-    if (datasoruce == null) {
+    val datasource = registeredDataSource.get(provider)
+    if (datasource == null) {
       provider
     } else {
-      datasoruce
+      datasource
     }
   }
 

@@ -593,7 +593,7 @@ class MoonboxMaster(
           }
         case None =>
           val appType = if (centralized) "centralized" else "distributed"
-          val msg = s"There is no available application for $appType $appLabel computation."
+          val msg = s"There is no available $appLabel application for $appType computation."
           logWarning(msg)
           sender() ! OpenSessionResponse(None, message = msg)
       }
@@ -1028,11 +1028,11 @@ class MoonboxMaster(
         driver.appId = appId
         driver.worker.foreach(_.removeDriver(driver))
         // remove driverId reference app
-        apps.find(_.id == driverId) match {
-          case Some(app) =>
-            removeApplication(app)
-          case None => // nothing
-        }
+        //        apps.find(_.id == driverId) match {
+        //          case Some(app) =>
+        //            removeApplication(app)
+        //          case None => // nothing
+        //        }
         schedulingDrivers -= driverId
         schedule()
       case None => // nothing

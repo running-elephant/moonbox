@@ -24,8 +24,8 @@ import java.sql.Connection
 import java.util.ServiceLoader
 
 import moonbox.core.datasys.{DataSystem, Updatable}
-import org.apache.spark.sql.execution.datasources.mbjdbc.JdbcUtils._
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCRDD}
+import org.apache.spark.sql.execution.datasources.mbjdbc.JdbcUtils._
 import org.apache.spark.sql.jdbc.{JdbcDialect, JdbcDialects}
 import org.apache.spark.sql.sources.{CreatableRelationProvider, RelationProvider, _}
 import org.apache.spark.sql.types.StructType
@@ -95,6 +95,7 @@ class DefaultSource extends CreatableRelationProvider
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String], schema: StructType): BaseRelation = {
     val newParameters = addDriverIfNecessary(parameters) ++ addDefaultProps(parameters)
     val mbJdbcOptions = new MbJDBCOptions(newParameters)
+
     val removedPartitionBoundParameters =
       newParameters
         .filterNot(kv =>
@@ -102,19 +103,21 @@ class DefaultSource extends CreatableRelationProvider
             JDBCOptions.JDBC_UPPER_BOUND.toLowerCase,
             JDBCOptions.JDBC_PARTITION_COLUMN.toLowerCase,
             JDBCOptions.JDBC_NUM_PARTITIONS).contains(kv._1))
+
     val jdbcOptions = new JDBCOptions(removedPartitionBoundParameters)
     val autoCalculateBound = newParameters.get(AUTO_COMPUTE_PARTITION_BOUND).map(_.toBoolean)
     if (autoCalculateBound.nonEmpty && autoCalculateBound.get) {
       val (lowerBound, upperBound) = computePartitionBound(jdbcOptions, mbJdbcOptions.partitionColumn.get)
       mbJdbcOptions.setLowerBound(lowerBound)
       mbJdbcOptions.setUpperBound(upperBound)
+      newParameters ++ Map(JDBCOptions.JDBC_LOWER_BOUND -> lowerBound, JDBCOptions.JDBC_UPPER_BOUND -> upperBound)
     }
+
     val tableSchema = if (schema == null) JDBCRDD.resolveTable(jdbcOptions) else schema
     val resolver = sqlContext.conf.resolver
     val timeZoneId = sqlContext.conf.sessionLocalTimeZone
     val parts = MbJDBCRelation.columnPartition(tableSchema, resolver, timeZoneId, mbJdbcOptions)
-
-    MbJDBCRelation(parts, Option(schema), jdbcOptions)(sqlContext.sparkSession)
+    MbJDBCRelation(parts, Option(schema), newParameters)(sqlContext.sparkSession)
   }
 
   override def createRelation(
@@ -131,7 +134,7 @@ class DefaultSource extends CreatableRelationProvider
       val tableExists = JdbcUtils.tableExists(conn, options)
       if (tableExists) {
         parameters.get("update") match {
-          case Some("true") =>
+          case Some("true") if mode != SaveMode.Overwrite =>
             val dataSystem = DataSystem.lookupDataSystem(parameters)
             dataSystem match {
               case ds: Updatable =>
