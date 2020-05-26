@@ -3,7 +3,7 @@ layout: global
 title: Integration DataSource
 ---
 
-Moonbox支持多种数据源,以下为挂载各种类型的数据源的示例。
+Moonbox支持多种数据源,以下为挂载各种类型的数据源的示例。所有配置参数仅仅列出了必需参数，其他优化相关的参数请参阅对应的spark datasource connector参数。
 
 #### 在TYPE 1类型数据库中挂载虚拟表。
 
@@ -40,8 +40,8 @@ Note: <br/>
 - SqlServer
 
 ```
-mount table sqlserver_test_booklist options(
-    type 'sqlserver',                                           # 类型，必填，为kudu
+mount database sqlserver_test_booklist options(
+    type 'sqlserver',                                           # 类型，必填，为sqlserver
     url 'jdbc:sqlserver://host:1433;DatabaseName=database',     # url，必填，
     dbtable 'table_name' ,                                      # 表名，必填
     user 'root',                                                # 用户名 ，必填
