@@ -406,7 +406,7 @@ case class UnmountTable(
       table.table,
       ignoreIfNotExists)
 
-    mbSession.engine.dropTable(table, ignoreIfNotExists, purge = true)
+    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
 
     Seq.empty[Row]
   }
