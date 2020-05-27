@@ -352,7 +352,9 @@ case class AlterTableSetOptions(
       )
     )
 
-    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    if (mbSession.engine.catalog.databaseExists(dbName)) {
+      mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    }
 
     Seq.empty[Row]
   }
@@ -380,7 +382,9 @@ case class AlterTableRemoveOptions(
       )
     )
 
-    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    if (mbSession.engine.catalog.databaseExists(dbName)) {
+      mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    }
 
     Seq.empty[Row]
   }
@@ -406,7 +410,9 @@ case class UnmountTable(
       table.table,
       ignoreIfNotExists)
 
-    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    if (mbSession.engine.catalog.databaseExists(dbName)) {
+      mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    }
 
     Seq.empty[Row]
   }
@@ -417,7 +423,13 @@ case class RefreshTable(table: TableIdentifier) extends MbRunnableCommand with D
 
   override def run(mbSession: MoonboxSession): Seq[Row] = {
 
-    mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    import mbSession.catalog._
+
+    val dbName = table.database.getOrElse(getCurrentDb)
+
+    if (mbSession.engine.catalog.databaseExists(dbName)) {
+      mbSession.engine.dropTable(table, ignoreIfNotExists = true, purge = true)
+    }
 
     Seq.empty[Row]
   }
@@ -465,7 +477,9 @@ case class DropFunction(
       function.funcName,
       ignoreIfNotExists)
 
-    mbSession.engine.dropFunction(function, ignoreIfNotExists)
+    if (mbSession.engine.catalog.databaseExists(database.name)) {
+      mbSession.engine.dropFunction(function, ignoreIfNotExists)
+    }
 
     Seq.empty[Row]
   }
@@ -474,8 +488,13 @@ case class DropFunction(
 case class RefreshFunction(function: FunctionIdentifier) extends MbRunnableCommand with DDL {
 
   override def run(mbSession: MoonboxSession): Seq[Row] = {
+    import mbSession.catalog._
 
-    mbSession.engine.dropFunction(function, ignoreIfNotExists = true)
+    val database = mbSession.catalog.getDatabase(function.database.getOrElse(getCurrentDb))
+
+    if (mbSession.engine.catalog.databaseExists(database.name)) {
+      mbSession.engine.dropFunction(function, ignoreIfNotExists = true)
+    }
 
     Seq.empty[Row]
   }
@@ -554,7 +573,9 @@ case class AlterViewSetQuery(
       )
     )
 
-    mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
+    if (mbSession.engine.catalog.databaseExists(database.name)) {
+      mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
+    }
 
     Seq.empty[Row]
   }
@@ -573,7 +594,10 @@ case class DropView(
     mbSession.catalog.dropTable(
       database.name, view.table, ignoreIfNotExists)
 
-    mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
+    if (mbSession.engine.catalog.databaseExists(database.name)) {
+      mbSession.engine.catalog.dropTable(view, ignoreIfNotExists = true, purge = true)
+    }
+
     Seq.empty[Row]
   }
 }
