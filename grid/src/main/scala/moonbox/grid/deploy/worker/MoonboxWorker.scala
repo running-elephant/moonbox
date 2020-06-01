@@ -171,7 +171,7 @@ class MoonboxWorker(
           if (desc.isInstanceOf[LongRunDriverDesc]) {
             // Fix sparkContext is stopped, but driver is still running problem
             finishedDrivers(driverId).kill()
-            system.scheduler.scheduleOnce(new FiniteDuration(3, SECONDS)) {
+            system.scheduler.scheduleOnce(new FiniteDuration(0, SECONDS)) {
               logInfo(s"Relaunch driver $driverId")
               self ! LaunchDriver(driverId, desc)
             }
