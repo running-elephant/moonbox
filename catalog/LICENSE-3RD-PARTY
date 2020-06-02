@@ -5,7 +5,7 @@ List of third-party dependencies grouped by their license type.
 
         * config (com.typesafe:config:1.3.1 - https://github.com/typesafehub/config)
         * HikariCP (com.zaxxer:HikariCP:2.5.1 - https://github.com/brettwooldridge/HikariCP)
-        * Moonbox Project Common (edp.moonbox:moonbox-common_2.11:0.3.0-beta-SNAPSHOT - no url defined)
+        * Moonbox Project Common (edp.moonbox:moonbox-common_2.11:0.3.1-beta-SNAPSHOT - no url defined)
         * Apache Log4j (log4j:log4j:1.2.17 - http://logging.apache.org/log4j/1.2/)
         * scalactic (org.scalactic:scalactic_2.11:3.0.0 - http://www.scalatest.org)
         * scalatest (org.scalatest:scalatest_2.11:3.0.0 - http://www.scalatest.org)

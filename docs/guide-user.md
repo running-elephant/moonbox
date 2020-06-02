@@ -80,7 +80,7 @@ moonbox master节点启动了http server，提供rest调用服务。端口号为
         2. jobId为submit接口调用后返回的jobId
 
 #### 3 使用jdbc编程连接moonbox进行计算
-Moonbox提供了jdbc驱动，下载地址：[moonbox jdbc驱动下载](https://github.com/edp963/moonbox/releases/tag/0.3.0-beta-SNAPSHOT)。将驱动加入代码依赖，编写jdbc代码。其中url中的端口为moonbox-defaults.conf中tcp部分配置的端口，如果没有修改默认为10010。
+Moonbox提供了jdbc驱动，下载地址：[moonbox jdbc驱动下载](https://github.com/edp963/moonbox/releases/tag/0.3.1-beta-SNAPSHOT)。将驱动加入代码依赖，编写jdbc代码。其中url中的端口为moonbox-defaults.conf中tcp部分配置的端口，如果没有修改默认为10010。
 Scala示例:
 ```scala
 Class.forName("moonbox.jdbc.MbDriver")
