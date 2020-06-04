@@ -1,4 +1,4 @@
-package org.apache.spark.sql.datasys
+package org.apache.spark.sql.util
 
 import java.net.URI
 import java.util.Locale
@@ -7,7 +7,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys
 
 import scala.collection.mutable
 
-object HadoopFsBaseDataSystem {
+object RemoteHdfsUtils {
 
   val REMOTE_HA_CLUSTER = "remotehacluster"
   val NAMENODES = "namenodes"

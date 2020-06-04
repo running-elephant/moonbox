@@ -40,7 +40,7 @@ import org.apache.spark.sql.catalyst.expressions.{Literal, SubqueryExpression}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, QualifiedTableName, TableIdentifier}
-import org.apache.spark.sql.datasys.HadoopFsBaseDataSystem._
+import org.apache.spark.sql.util.RemoteHdfsUtils._
 import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive._
@@ -301,18 +301,18 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
     }
   }
 
-  private def resolveTables(logicalPlan: LogicalPlan): Set[String] = {
+  private def collectTables(logicalPlan: LogicalPlan): Set[String] = {
     val tables = ListBuffer.empty[String]
     logicalPlan.transformDown({
       case relation: LogicalRelation =>
-        tables.append(resolveTable(relation.catalogTable.get))
+        tables.append(qualifiedTable(relation.catalogTable.get))
         relation
     })
     tables.toSet
   }
 
   // table form like [db].name
-  private def resolveTable(catalog: catalyst.catalog.CatalogTable): String = {
+  private def qualifiedTable(catalog: catalyst.catalog.CatalogTable): String = {
     if (catalog.identifier.database.isEmpty) s"${mbCatalog.getCurrentDb}.${catalog.qualifiedName}"
     else catalog.qualifiedName
   }
@@ -342,22 +342,22 @@ class SparkEngine(conf: MbConf, mbCatalog: MoonboxCatalog) extends MbLogging {
           val analyzedPlan = checkColumns(analyzePlan(parsedPlan))
           analyzedPlan match {
             case insert: InsertIntoDataSourceCommand =>
-              outputTable = resolveTable(insert.logicalRelation.catalogTable.get)
-              inputTables = resolveTables(insert.query)
+              outputTable = qualifiedTable(insert.logicalRelation.catalogTable.get)
+              inputTables = collectTables(insert.query)
               insert.copy(query = alterLogicalPlanPartition(insert.query, insert.logicalRelation.catalogTable.get.storage.properties))
             case insert: InsertIntoHadoopFsRelationCommand =>
-              outputTable = resolveTable(insert.catalogTable.get)
-              inputTables = resolveTables(insert.query)
+              outputTable = qualifiedTable(insert.catalogTable.get)
+              inputTables = collectTables(insert.query)
               insert.copy(query = alterLogicalPlanPartition(insert.query, insert.catalogTable.get.storage.properties))
             case insert: InsertIntoHiveTable =>
-              outputTable = resolveTable(insert.table)
-              inputTables = resolveTables(insert.query)
+              outputTable = qualifiedTable(insert.table)
+              inputTables = collectTables(insert.query)
               insert.copy(query = alterLogicalPlanPartition(insert.query, insert.table.storage.properties))
             case _ if unlimited =>
-              inputTables = resolveTables(analyzedPlan)
+              inputTables = collectTables(analyzedPlan)
               analyzedPlan
             case _ =>
-              inputTables = resolveTables(analyzedPlan)
+              inputTables = collectTables(analyzedPlan)
               GlobalLimit(
                 Literal(maxRows, IntegerType),
                 LocalLimit(Literal(maxRows, IntegerType),
