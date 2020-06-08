@@ -128,8 +128,14 @@ class MoonboxMaster(
     )
 
     // monitor drivers
-    DriverMonitor.registerDriverMonitor(new SparkBatchDriverMonitor(system, self, conf))
-    driverMonitors = DriverMonitor.getDriverMonitors()
+	try {
+		Class.forName("org.apache.hadoop.conf.Configuration")
+		DriverMonitor.registerDriverMonitor(new SparkBatchDriverMonitor(system, self, conf))
+		driverMonitors = DriverMonitor.getDriverMonitors()
+	}  catch {
+		case e: ClassNotFoundException =>
+			driverMonitors = Seq()
+	}
 
     // start persist engine and election agent
     try {
