@@ -44,7 +44,6 @@ import org.apache.spark.sql.util.RemoteHdfsUtils._
 import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive._
-import org.apache.spark.sql.hive.execution.InsertIntoHiveTable
 import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
 import org.apache.spark.sql.optimizer.{MbOptimizer, MbPruneFilters, WholePushdown}
 import org.apache.spark.sql.rewrite.CTESubstitution
@@ -942,7 +941,7 @@ object SparkEngine extends MbLogging {
     (session: SparkSession) => CatalogRelationConversions(sqlConf(session), session),
     (session: SparkSession) => PreprocessTableCreation(session),
     (session: SparkSession) => PreprocessTableInsertion(sqlConf(session)),
-    (session: SparkSession) => HiveAnalysis
+    (session: SparkSession) => HiveInsertAnalysis
   )
 
   private def sqlConf(session: SparkSession): SQLConf = {

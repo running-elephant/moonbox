@@ -25,17 +25,17 @@ import java.util.Locale
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkException
 import org.apache.spark.sql.catalyst.{QualifiedTableName, TableIdentifier}
-import org.apache.spark.sql.{SparkEngine, SparkSession, Strategy}
+import org.apache.spark.sql.{SaveMode, SparkEngine, SparkSession, Strategy}
 import org.apache.spark.sql.catalyst.catalog.{CatalogRelation, CatalogTable}
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, Expression}
 import org.apache.spark.sql.catalyst.planning.PhysicalOperation
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoTable, LogicalPlan, ScriptTransformation}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.SparkPlan
-import org.apache.spark.sql.execution.command.DDLUtils
+import org.apache.spark.sql.execution.command.{CreateTableCommand, DDLUtils}
 import org.apache.spark.sql.execution.datasources.{DataSource, FileIndex, InMemoryFileIndex, _}
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFileFormat, ParquetOptions}
-import org.apache.spark.sql.hive.execution.{HiveScriptIOSchema, HiveTableScanExec, ScriptTransformationExec}
+import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, HiveScriptIOSchema, HiveTableScanExec, ScriptTransformationExec}
 import org.apache.spark.sql.hive.orc.OrcFileFormat
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.internal.SQLConf.HiveCaseSensitiveInferenceMode
@@ -70,6 +70,20 @@ object Scripts extends Strategy {
 			val hiveIoSchema = HiveScriptIOSchema(ioschema)
 			ScriptTransformationExec(input, script, output, planLater(child), hiveIoSchema) :: Nil
 		case _ => Nil
+	}
+}
+
+object HiveInsertAnalysis extends Rule[LogicalPlan] {
+	override def apply(plan: LogicalPlan): LogicalPlan = plan resolveOperators {
+		case InsertIntoTable(r: CatalogRelation, partSpec, query, overwrite, ifPartitionNotExists)
+			if DDLUtils.isHiveTable(r.tableMeta) =>
+			InsertIntoHiveTable(r.tableMeta, partSpec, query, overwrite, ifPartitionNotExists)
+
+		case CreateTable(tableDesc, mode, None) if DDLUtils.isHiveTable(tableDesc) =>
+			CreateTableCommand(tableDesc, ignoreIfExists = mode == SaveMode.Ignore)
+
+		case CreateTable(tableDesc, mode, Some(query)) if DDLUtils.isHiveTable(tableDesc) =>
+			CreateHiveTableAsSelectCommand(tableDesc, query, mode)
 	}
 }
 
