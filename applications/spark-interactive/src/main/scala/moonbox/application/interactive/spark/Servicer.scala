@@ -29,6 +29,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.{InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
+import org.apache.spark.sql.hive.InsertIntoHiveTable
 import org.apache.spark.sql.sqlbuilder.{MbDialect, MbSqlBuilder}
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization.write
@@ -183,6 +184,9 @@ class Servicer(
       case hadoopFs: InsertIntoHadoopFsRelationCommand =>
         targetTableNodeId = lineageBuilder.genTableNode(hadoopFs.catalogTable.get)
         hadoopFs.query
+      case hive: InsertIntoHiveTable =>
+	      targetTableNodeId = lineageBuilder.genTableNode(hive.table)
+	      hive.query
       case _ =>
         throw new Exception("Lineage analysis is not supported for this sql")
     }
