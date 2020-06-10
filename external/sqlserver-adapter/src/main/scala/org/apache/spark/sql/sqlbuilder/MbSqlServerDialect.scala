@@ -34,7 +34,7 @@ class MbSqlServerDialect extends MbDialect {
   override def canHandle(url: String): Boolean = url.toLowerCase.startsWith(prefix)
 
   override def quote(name: String): String = {
-    "'" + name.replace("`", "") + "'"
+    "\"" + name.replace("`", "") + "\""
   }
 
   override def explainSQL(sql: String): String = s"EXPLAIN $sql"
@@ -47,7 +47,11 @@ class MbSqlServerDialect extends MbDialect {
     name
   }
 
-  override def getIndexes(conn: Connection, url: String, tableName: String): Set[String] = {
+	override def limitSQL(sql: String, limit: String) = {
+		s"SELECT top $limit " + sql.trim.stripPrefix("select").stripPrefix("SELECT")
+	}
+
+	override def getIndexes(conn: Connection, url: String, tableName: String): Set[String] = {
     val splitName = url.toLowerCase.stripPrefix(prefix).split("databasename=")
     val dbName = if (splitName.length == 2) {
       splitName(1)
