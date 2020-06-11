@@ -66,7 +66,7 @@ private[client] class MoonboxClientImpl(config: CaseInsensitiveMap[String]) exte
 
 	override def sessionId = _sessionId
 
-	override def version = "0.3.0"
+	override def version = "0.3.1"
 
 	override def isActive = _client != null && _client.isActive() && _token != null && _sessionId != null && _dataFetchClient != null && _dataFetchClient.isActive()
 

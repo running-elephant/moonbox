@@ -68,7 +68,7 @@ class MoonboxWorker(
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     assert(!registered)
-    logInfo(s"Running Moonbox version 0.3.0") // TODO
+    logInfo(s"Running Moonbox version 0.3.1") // TODO
     logInfo(s"Starting MoonboxWorker at ${self.path.toSerializationFormatWithAddress(address)}")
 
     Runtime.getRuntime.addShutdownHook(new Thread(new Runnable {
