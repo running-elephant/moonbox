@@ -29,7 +29,7 @@ import moonbox.grid.deploy.DeployMessages.DriverStateChanged
 import moonbox.grid.deploy.app.DriverState.DriverState
 import moonbox.grid.deploy.worker.LaunchUtils
 import moonbox.launcher.AppLauncher
-import org.apache.spark.launcher.SparkAppHandle
+import org.apache.spark.launcher.{SparkAppHandle, SparkLauncher}
 
 private[deploy] class DriverRunner(
                                     conf: MbConf,
@@ -51,11 +51,13 @@ private[deploy] class DriverRunner(
       override def run(): Unit = {
         try {
           val launcher = new AppLauncher()
+
+          val logDirectory = LaunchUtils.getLogsDirectory.getOrElse("/tmp")
+          val logName = logDirectory + File.separator + driverId + ".log"
+
           // redirect log
-          LaunchUtils.getLogsDirectory.foreach { dir =>
-            launcher.redirectOutput(
-              ProcessBuilder.Redirect.appendTo(new File(dir + File.separator + driverId + ".log")))
-          }
+          launcher.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(logName)))
+
           launcher.setAppName(driverId)
 
           desc.master.foreach(launcher.setMaster)
@@ -67,8 +69,16 @@ private[deploy] class DriverRunner(
             .addAppArgs(desc.toAppArgs: _*)
             .setVerbose(false)
             .setAppResource(desc.appResource)
-          desc.toConf.foreach { case (k, v) =>
+          val launchConfig = desc.toConf
+
+          launchConfig.foreach { case (k, v) =>
             launcher.setConf(k, v)
+          }
+
+          if (launchConfig.contains(SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS)) {
+	          launcher.setConf(SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS, launchConfig(SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS) + s" -Dlog.file=$logName")
+          } else {
+	          launcher.setConf(SparkLauncher.DRIVER_EXTRA_JAVA_OPTIONS, s"-Dlog.file=$logName")
           }
 
           LaunchUtils.getRuntimeJars().foreach {
