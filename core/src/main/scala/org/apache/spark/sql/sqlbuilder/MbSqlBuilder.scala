@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import moonbox.common.MbLogging
 import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression, AggregateFunction, Last}
-import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, BinaryOperator, CaseWhenCodegen, Cast, CheckOverflow, Coalesce, Contains, DayOfMonth, EndsWith, EqualTo, Exists, ExprId, Expression, GetArrayStructFields, GetStructField, Hour, If, In, InSet, IsNotNull, IsNull, Like, ListQuery, Literal, MakeDecimal, Minute, Month, NamedExpression, Not, RLike, RegExpExtract, RegExpReplace, ScalarSubquery, Second, SortOrder, StartsWith, StringLocate, StringPredicate, SubqueryExpression, ToDate, UnscaledValue, Year}
+import org.apache.spark.sql.catalyst.expressions.{Alias, And, AttributeReference, BinaryOperator, CaseWhenCodegen, Cast, CheckOverflow, Coalesce, Contains, DayOfMonth, EndsWith, EqualTo, Exists, ExprId, Expression, GetArrayStructFields, GetStructField, Hour, If, In, InSet, IsNotNull, IsNull, Like, ListQuery, Literal, MakeDecimal, Minute, Month, NamedExpression, Not, Or, RLike, RegExpExtract, RegExpReplace, ScalarSubquery, Second, SortOrder, StartsWith, StringLocate, StringPredicate, SubqueryExpression, ToDate, UnscaledValue, Year}
 import org.apache.spark.sql.catalyst.optimizer.{CollapseProject, CombineUnions}
 import org.apache.spark.sql.catalyst.plans.logical.{GlobalLimit, Intersect, LocalLimit, Union, _}
 import org.apache.spark.sql.catalyst.rules.{Rule, RuleExecutor}
@@ -218,6 +218,10 @@ class MbSqlBuilder(plan: LogicalPlan, dialect: MbDialect) extends MbLogging {
       val valueSQL = childrenSQL.head
       val listSQL = childrenSQL.tail.mkString(", ")
       s"($valueSQL IN ($listSQL))"
+    case And(left, right) =>
+	    s"(${expressionToSQL(left)}) AND (${expressionToSQL(right)})"
+    case Or(left, right) =>
+	    s"(${expressionToSQL(left)}) OR (${expressionToSQL(right)})"
     case InSet(child, hset) =>
       val valueSQL = expressionToSQL(child)
       val listSQL = hset.toSeq.map(s => {
