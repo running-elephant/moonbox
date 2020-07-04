@@ -39,6 +39,7 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   private var closed: Boolean = false
   private var isResultSet: Boolean = true
   private var canceled: Boolean = false
+  private var queryFinished: Boolean = false
   private var resultSet: MoonboxResultSet = _
   private var batchSql: Seq[String] = Nil
 
@@ -90,8 +91,10 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
 
   override def executeQuery(sql: String): ResultSet = {
     canceled = false
+    queryFinished = false
     try {
       val rowSet = interactiveQuery(splitSql(sql, sqlDelimiter))
+      queryFinished = true
       isResultSet = !rowSet.isEmptySchema
       resultSet = new MoonboxResultSet(getConnection, this, rowSet)
       resultSet
@@ -103,6 +106,9 @@ class MoonboxStatement(connection: MoonboxConnection) extends Statement {
   override def executeUpdate(sql: String) = throw new SQLException("Unsupported")
 
   override def close() = {
+    if (!queryFinished) {
+      cancel()
+    }
     if (resultSet != null && !resultSet.isClosed) {
       resultSet.close()
     }
