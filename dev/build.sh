@@ -20,5 +20,6 @@ mvn clean install package -Pdist -DskipTests \
 -Pclickhouse \
 -Pkafka \
 -Predis \
+-Ppostgres \
 )
 cd $current_dir
