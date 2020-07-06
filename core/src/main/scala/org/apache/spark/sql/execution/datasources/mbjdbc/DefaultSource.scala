@@ -50,6 +50,7 @@ class DefaultSource extends CreatableRelationProvider
         case "sqlserver" => Some("com.microsoft.sqlserver.jdbc.SQLServerDriver")
         case "presto" => Some("com.facebook.presto.jdbc.PrestoDriver")
         case "impala" => Some("com.cloudera.impala.jdbc41.Driver")
+        case "postgres" => Some("org.postgresql.Driver")
         case _ => None
       }
       if (driver.isDefined) {
