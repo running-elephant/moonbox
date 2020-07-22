@@ -118,7 +118,6 @@ Please download the latest [RELEASE](https://github.com/edp963/moonbox/releases)
 
 ## Help
 
-- **Mailling list**：edp_support@groups.163.com
 - **WeChat**：edpstack <img src = "https://github.com/edp963/edp-resource/raw/master/WeChat.jpg" alt="" width="100">
 
 ## License

@@ -97,7 +97,8 @@ object MoonboxRest {
       println(s"batch job submitted as $jobId, parameters is $parameter")
     } catch {
       case e: Exception =>
-        println(s"batch job submit failed, error message is ${e.getMessage}")
+        println(s"batch job submit failed, error message is $response")
+        System.exit(-1)
     }
     jobId
   }
