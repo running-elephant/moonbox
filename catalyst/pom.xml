@@ -64,7 +64,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20160212</version>
+            <version>20230227</version>
             <scope>provided</scope>
         </dependency>
 
